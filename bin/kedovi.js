@@ -52,6 +52,10 @@
  *   kedovi datamodel check [repo|폴더]   데이터 설계 검사: 참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조 (datamodel 팩)
  *   kedovi secret set <이름> [--global] · list [--all] · test <이름> · rm <이름> [--global] · import [--global|--project] · exec [--only A,B] -- <명령>   비밀값(토큰): OS 저장소(키체인 · 자격 증명 팀장 · libsecret)에 프로젝트별 · 전역으로. 값은 숨김 입력, 어디에도 출력하지 않는다
  *   kedovi gitlab pipeline [--repo R] [--ref 브랜치 | --mr 번호 | --id ID] [--limit N] [--log [줄 수]] [--json]   GitLab 파이프라인 조회 (gitlab 팩, 읽기만): 최근 목록 · 단계별 작업 상태 · 실패한 작업의 로그 끝부분. MR 은 머지 커밋의 파이프라인도 찾는다
+ *   kedovi gitlab wait [--repo R] --mr 번호 | --id ID | --ref 브랜치 [--sha 커밋] [--timeout 분] [--json]   파이프라인이 끝날 때까지 대기: 지금 커밋(MR 머리 · 머지 커밋 · 브랜치 머리)의 파이프라인이 생길 때까지 먼저 기다린다. 성공 0 · 실패 1 · 수동 작업에서 멈추면 0
+ *   kedovi gitlab merge <MR 번호> [--repo R] --yes [--json]   MR 머지: 충돌 · 초안 · 토론 · 승인 확인, 도는 파이프라인은 끝날 때까지 기다린 뒤 머지, 머지 커밋 SHA. vars.gitlab.agentMerge 가 true 이거나 사람이 터미널에서 칠 때만
+ *   kedovi gitlab create --repo R --source S [--target T] --title … --description-file F [--json]   MR 생성: 같은 source→target 의 열린 MR 이 있으면 그것을 쓴다
+ *   kedovi gitlab play --id ID --job 작업 --yes · retry --id ID [--job 작업] --yes · cancel --ref 브랜치 [--sha 커밋] --yes   수동 작업 실행 · 실패한 작업 다시 실행 · 도는 파이프라인 취소 (취소는 agentMerge 를 켰을 때만). --yes 없으면 확인 문구만
  *   kedovi prefs [language ko|en|team · style learn|normal|expert|team] [--team] · mermaid [install] · setup   응답 언어 · 대화 스타일(학습 · 일반 · 전문가) · 그림 미리보기(claude-mermaid). 이 PC 값이 팀 값보다 먼저. 인자 없이 = 지금 값
  *   kedovi timestamp [on|off|team] [--team]   답변 첫 줄에 요청 받은 시각(yyyy-MM-dd HH:mm:ss) 표시 (Claude Code, 기본 켜짐). 이 PC 값이 팀 값보다 먼저, team = 이 PC 값 지우기. 인자 없이 = 지금 값
  *   kedovi type [유형] [--approach a] [--code 이름,…]   유형 바꾸기: 분석·설계 → 구축 · 고도화 등. 유형 팩 · 현행 repo 중 고칠 것(개발 repo 로) · 진행 방식 · 로드맵 새 뼈대 (팀장)

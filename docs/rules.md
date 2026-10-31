@@ -54,7 +54,7 @@ kedovi detect --hint spring --contains 'com\.example\.platform:platform-starter'
 | 팩 | 내용 |
 |---|---|
 | `core` | 커뮤니케이션·검증 원칙, 변경 영향 체크리스트, 컨텍스트 관리, 핸드오프·재개·인수인계·팀 현황·진단 스킬, 레포 업데이트·죽은 참조 검사 훅 |
-| `gitlab` · `github` | 브랜치 전략(에이전트는 MR·PR 까지, 머지는 사람), 커밋·문안 규칙, MR·PR 생성 스킬. repo 의 호스트에 따라 repo 마다 |
+| `gitlab` · `github` | 브랜치 전략(에이전트는 MR·PR 까지, 머지는 사람. GitLab 은 `vars.gitlab.agentMerge` 를 켜면 지시받은 MR 만 에이전트가 머지 · 배포 연쇄), 커밋·문안 규칙, MR·PR 생성 스킬. repo 의 호스트에 따라 repo 마다 |
 | `backend` · `frontend` · `desktop` · `mobile` · `watch` · `tv` · `db` | 기술과 무관한 공통 원칙. OWASP·WCAG·RFC·플랫폼 공식 문서 기반, 팩마다 `docs/SOURCES.md` 에 규칙별 근거 |
 | `stack-spring` · `stack-react` · `stack-postgres` | 그 기술에만 해당하는 규칙과 검사 도구 |
 | `modernization` · `enhancement` · `consulting` | 시작 유형 팩 |

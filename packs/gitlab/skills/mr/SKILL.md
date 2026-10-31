@@ -1,14 +1,14 @@
 ---
 name: mr
-description: 지정한 source→target 으로 GitLab 머지리퀘스트를 만든다 (target 생략 시 통합 브랜치). 미리보기 → 사용자 OK → 생성 → 팀 배포 안내까지. 머지는 하지 않는다. "MR 만들어줘", "QA MR" 요청에 쓴다.
+description: 지정한 source→target 으로 GitLab 머지리퀘스트를 만든다 (target 생략 시 통합 브랜치). 미리보기 → 사용자 OK → 생성 → 팀 배포 안내까지. 머지는 사람이 한다 (agentMerge 를 켠 워크스페이스는 지시받은 MR 만 배포 연쇄로). "MR 만들어줘", "QA MR", "배포해줘" 요청에 쓴다.
 argument-hint: "<source 브랜치> [target 브랜치]"
 ---
 
 # mr — GitLab Merge Request 생성
 
-**source → target** MR 을 만든다. **생성까지만** — 머지·auto-merge 는 하지 않는다(사람이 GitLab 에서 직접).
+**source → target** MR 을 만든다. 기본은 **생성까지만**이고 머지는 사람이 GitLab 에서 한다. 에이전트 머지 설정 `agentMerge = {{ws:vars.gitlab.agentMerge}}` 가 `true` 면 사용자가 지시한 MR 만 아래 「배포 연쇄」로 머지까지 한다.
 
-도우미: `node packs/gitlab/bin/gitlab-mr.js` (`preview` · `create` · `repos`, `--dry-run` 지원). 만든 뒤 파이프라인은 `pipeline --mr <번호>` 로 본다. 수동 작업 실행 · 실패한 작업 다시 실행은 `pipeline --id <ID> --play <작업>` · `--retry <작업>` 이고, 사용자 승인을 받은 뒤에만 `--yes` 를 붙인다 (운영 배포 작업은 반드시). 파이프라인 취소는 사람이 한다.
+도우미: `node packs/gitlab/bin/gitlab-mr.js` = `kedovi gitlab` (`preview` · `create` · `repos` · `pipeline` · `wait` · `merge` · `play` · `retry` · `cancel`, `--dry-run` 지원). 만든 뒤 파이프라인은 `pipeline --mr <번호>` 로 보고 `wait --mr <번호>` 로 끝까지 기다린다. 실행 · 다시 실행 · 머지 · 취소는 사용자 승인을 받은 뒤에만 `--yes` 를 붙인다 (운영 배포 작업은 반드시). 임시 스크립트를 짜지 않고 이 명령을 이어 부른다.
 설정: `workspace.json` 의 `repos[].gitlab = {"host": "...", "projectId": 12}`, 토큰은 환경변수 `GITLAB_TOKEN`
 (이름은 `vars.gitlab.tokenEnv` 로 변경) 또는 `git credential fill`. 설정이 없으면 만들지 말고 무엇을 채워야 하는지 안내한다.
 
@@ -34,7 +34,7 @@ argument-hint: "<source 브랜치> [target 브랜치]"
 - **미리보기를 낸 뒤 사용자의 명시적 OK 없이 생성하지 않는다.** 호출 자체는 "미리보기를 만들어라" 다.
   미리보기 직후 온 **다른 주제의 지시**(문구·표기·언어 수정 등)나 지난번 승인 이력은 OK 가 아니다.
   MR 생성은 되돌려도 흔적(번호 소비·알림)이 남는다.
-- **머지하지 않는다.** 머지·auto-merge(`merge_when_pipeline_succeeds`) 요청을 받아도 "머지는 GitLab 에서 직접 하셔야 합니다" 로 답한다.
+- `agentMerge` 가 `false` 면 **머지하지 않는다.** 머지 요청을 받아도 "머지는 GitLab 에서 직접 하셔야 합니다" 로 답한다 (도구도 안내만 하고 멈춘다). auto-merge(`merge_when_pipeline_succeeds`)는 설정과 상관없이 쓰지 않는다.
 - **토큰을 출력·로그·인계·커밋 어디에도 남기지 않는다.**
 
 ## 절차
@@ -48,7 +48,7 @@ argument-hint: "<source 브랜치> [target 브랜치]"
    node packs/gitlab/bin/gitlab-mr.js preview --repo <name> --source <source> --target <target>
    ```
 
-   - 커밋 0개 → 그 repo 는 건너뛴다. 이미 열린 MR 이 있으면 만들지 않고 그 링크를 안내한다.
+   - 커밋 0개 → 그 repo 는 건너뛴다. 이미 열린 MR 이 있으면 새로 만들지 않는다 (`create` 도 그 MR 을 그대로 쓰고 번호를 낸다).
    - 로컬에 push 안 된 커밋이 있으면 경고하고 push 여부를 묻는다(작업 브랜치 push 만 허용).
 4. **title / description 작성** — 커밋 목록으로 채운다. 언어는 그 repo 규칙을 따른다(project 팩).
    - **title = `<type>: [<target>] <대표 작업 한 줄>`** — 대괄호 target 은 필수(목록에서 어디로 가는 MR 인지 구분, hotfix 2건 구별).
@@ -110,6 +110,24 @@ target 이 배포로 이어지는 영구 브랜치(`{{ws:vars.branch.develop}}` 
 **web-client**
 - 56656a6: 상세 드로어 편집 추가
 ```
+
+## 배포 연쇄 (agentMerge = true 인 워크스페이스)
+
+사용자가 "배포해줘" 처럼 머지 · 배포까지 지시했을 때만. 단계마다 결과(MR 링크 · 파이프라인 번호 · 머지 커밋)를 한 줄씩 보고하고, 실패하면 거기서 멈춘다. 각 명령은 끝까지 기다리고 끝 코드로 성공(0) · 실패(1) · 확인 필요(3) · 시간 초과(4)를 알린다.
+
+```bash
+kedovi gitlab create --repo <r> --source <작업 브랜치> --title "…" --description-file <파일> --json   # 열린 MR 이 있으면 그것을 쓴다
+kedovi gitlab wait --repo <r> --mr <번호>              # 그 MR 의 지금 커밋 파이프라인이 생길 때까지 기다린 뒤 끝까지 (다시 push 했으면 새 파이프라인)
+kedovi gitlab merge <번호> --repo <r> --yes            # 머지할 수 있는지 확인 → 머지 → 머지 커밋 SHA
+kedovi gitlab create --repo <r> --source {{ws:vars.branch.develop}} --target {{ws:vars.branch.release}} --title "…" --description-file <파일> --json
+kedovi gitlab wait --repo <r> --mr <번호>              # release MR 파이프라인
+kedovi gitlab merge <번호> --repo <r> --yes
+kedovi gitlab wait --repo <r> --ref {{ws:vars.branch.release}}   # 머지 커밋의 배포 파이프라인 (수동 작업에서 멈추면 끝 코드 0 + 수동 작업 이름)
+kedovi gitlab play --repo <r> --id <파이프라인> --job <배포 작업> --yes   # 운영 배포는 이 단계 직전에 사용자에게 한 번 더 묻는다
+```
+
+- 실패한 작업: `kedovi gitlab pipeline --id <파이프라인> --log` 로 원인을 보고, 고칠 수 없는 일시 오류면 `retry --id <파이프라인> [--job <작업>] --yes`.
+- 같은 브랜치의 낡은 파이프라인이 겹치면 `cancel --ref <브랜치> [--sha <커밋>] --yes` (agentMerge 가 true 일 때만, 사용자 지시 뒤).
 
 ## CI 스킵 요청
 

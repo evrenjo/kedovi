@@ -1,6 +1,6 @@
 {
   "name": "kedovi",
-  "version": "0.80.0",
+  "version": "0.81.0",
   "private": false,
   "description": "Claude Code · Codex 겸용 AI 협업 워크스페이스 킷",
   "license": "MIT",

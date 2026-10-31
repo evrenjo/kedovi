@@ -14,7 +14,7 @@
 | 리뷰 `reviewer` | diff 검토 (정확성·보안·회귀·테스트 누락) | 읽기 전용 | high |
 | 문서화 `documenter` | README·사용법·이슈 문서 | 쓰기(문서) | low |
 
-- **많이 부르지 않는다**: 한 요청(사용자 메시지 하나)에 동시 · 모두 상한이 있다 (절약 1 · 3, 표준 2 · 5, 최고 3 · 8, `agents.limits` 로 바꾼다. 이 PC 값은 팀 값보다 낮게만). Claude Code 는 넘으면 훅이 막고 AI 가 이유와 함께 사용자에게 묻는다. Codex 는 `config.toml` 의 동시 상한과 규칙으로 지킨다. 같은 역할은 새로 부르지 않고 앞 에이전트에게 이어서 맡긴다.
+- **많이 부르지 않는다**: 한 요청(사용자 메시지 하나)에 동시 · 모두 상한이 있다 (절약 2 · 5, 표준 4 · 10, 최고 6 · 20, `agents.limits` 로 바꾼다. 이 PC 값은 팀 값보다 낮게만). Claude Code 는 넘으면 훅이 막고 AI 가 이유와 함께 사용자에게 묻는다. Codex 는 `config.toml` 의 동시 상한과 규칙으로 지킨다. 같은 역할은 새로 부르지 않고 앞 에이전트에게 이어서 맡긴다.
 - project 팩의 `agents/` 에 같은 이름을 두면 덮어쓰고, 새 이름이면 역할이 추가된다. 역할 머리말에 `grade: high | standard | low` 를 두면 프로필에 그 역할이 없어도 성향에 맞는 모델이 정해진다 (예: 표준의 high = Sonnet high).
 
 > 참고: 역할 정의 원본은 `packs/core/agents/*.md` 하나다. sync 가 Claude Code 용 `.claude/agents/*.md` 와 Codex 용 `.codex/agents/*.toml` 로 만든다.
@@ -128,7 +128,7 @@
 | 언제든 | 누구나 | `kedovi models` → 프로필 바꾸기 · 역할별로 한 번에 고르기 | 범위를 팀 또는 이 PC 로 고른다 |
 
 개인 값은 팀 값을 넘지 않는다. 팀보다 높은 이 PC 프로필은 적용하지 않고(sync 가 경고), 역할 에이전트 상한(동시 · 모두)도 팀 값 이내다.
-팀과 다른 값이 적용 중이면 세션 시작 줄과 `kedovi start` 에 보인다: `모델 프로필: 이 PC 절약 (팀 표준 대신) · 되돌리기 kedovi models profile team · 상한 동시 1 · 모두 3 (팀 2 · 5)`.
+팀과 다른 값이 적용 중이면 세션 시작 줄과 `kedovi start` 에 보인다: `모델 프로필: 이 PC 절약 (팀 표준 대신) · 되돌리기 kedovi models profile team · 상한 동시 2 · 모두 5 (팀 4 · 10)`.
 
 **역할별로 직접 고르기**: 기준 프로필을 고른 뒤 메인 → 역할 전부 → 교차 검토 순으로 하나씩 고른다.
 
@@ -151,6 +151,8 @@
 | 역할 에이전트 파일 | 사람마다 모델이 다를 수 있어 git 에 올리지 않고 각자 sync 가 만든다 |
 | Fable 과금 | Claude Pro·표준 좌석은 첫 요청부터 사용량 크레딧, Max·프리미엄 좌석은 주간 한도 50% 까지 포함 |
 | AI 게이트웨이 | 위 "AI 연결 방식". 별칭(`opus` 등)이 게이트웨이 모델로 이어져 있으면(`ANTHROPIC_DEFAULT_*_MODEL`) 별칭 그대로, 아니면 게이트웨이 모델 ID 로 바꿔 쓴다. 아래 「게이트웨이 모델 이름」 |
+| 여러 repo 작업 | 리더가 계획과 repo 간 계약(API · 이벤트 필드)을 먼저 정하고, repo 마다 구현 팀원 1~2명을 동시에 띄운다. 리뷰는 관련 변경 묶음 단위, 끝에 리더가 계약 양쪽을 함께 검증한다. 한 repo 안은 백엔드 · 프론트 · 도메인 단위로 나눈다 (team 스킬) |
+| 팀원 git 안전장치 | 팀원 · 하위 에이전트 · 위임 세션은 워크스페이스 루트 repo 에 git 쓰기(commit · reset · checkout · clean · stash 등)와 어디서든 push 를 못 한다 (훅 `git-guard`). `cd` 를 따라가며 실제 위치를 보고, `cd` 가 실패하면 루트에서 도는 것으로 본다. `bash x.sh` 로 부른 스크립트 안도 본다. 위치를 알 수 없으면(`$변수`) `git -C repos/<이름>` 으로 쓰게 한다. push 는 리더만 |
 | 팀원 승인 질문 | 팀 모드 팀원 창에 권한 승인이 뜨면 팀원은 멈추고 리더 화면에는 보이지 않는다. 훅이 승인 대기를 적어 리더의 다음 요청 · 턴 끝에 알리고(텔레그램을 켰으면 바로 「🔐 팀원 … 승인 대기」), 사용자가 그 창에서 승인하면 풀린다 |
 | 미리 허용한 조회 명령 | 승인 없이 쓰는 읽기 전용 명령: `git log · show · diff · status · blame · grep · ls-files · rev-parse`, `ls · cat · head · tail · wc · grep · rg · tree · pwd`, `kedovi docs show · refs · trace` (`.claude/settings.json` 의 `permissions.allow`, sync 가 만든다). 더 넣을 것은 팀이면 `workspace.json` 의 `claude.settings.permissions.allow`, 나만이면 `.claude/settings.local.json` |
 | Codex 역할 모델 | Codex(0.158)는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 않는다. 개인 지침(`AGENTS.override.md`)의 역할 모델 표대로 리더가 `spawn_agent` 에 모델 · 추론 강도를 넣는다 |

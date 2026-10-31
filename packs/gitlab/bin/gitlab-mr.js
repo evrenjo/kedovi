@@ -1,24 +1,33 @@
 #!/usr/bin/env node
-// GitLab MR 미리보기·생성 · 파이프라인 조회 · 작업 실행 도우미 (머지는 하지 않는다). 사용: node packs/gitlab/bin/gitlab-mr.js <preview|create|pipeline|repos> --repo <name> … (파이프라인은 kedovi gitlab pipeline 으로도)
+// GitLab MR 미리보기·생성 · 파이프라인 조회 · 대기 · 작업 실행 · 머지 도우미. 사용: node packs/gitlab/bin/gitlab-mr.js <명령> --repo <name> … (= kedovi gitlab <명령>)
 'use strict';
 
 /*
  * preview  --repo R --source S [--target T]
  *     커밋 목록(머지 제외, 오래된 순) · 기존 열린 MR · 제안 remove_source_branch 를 출력. 아무것도 만들지 않는다.
  * create   --repo R --source S [--target T] --title "..." --description-file F
- *          [--assignee <username>] [--remove-source true|false] [--dry-run]
- *     MR 을 만든다. --dry-run 이면 보낼 요청만 출력한다 (토큰은 가린다).
+ *          [--assignee <username>] [--remove-source true|false] [--dry-run] [--json]
+ *     MR 을 만든다. 같은 source→target 의 열린 MR 이 있으면 새로 만들지 않고 그 MR 을 쓴다 (--json: {iid, url, reused}).
  * pipeline [--repo R] [--ref 브랜치 | --mr 번호 | --id 파이프라인ID] [--limit N] [--log [줄 수]] [--json]
- *     최근 파이프라인 목록(기본 5개)과 맨 위(또는 --id) 파이프라인의 단계별 작업 상태. 읽기만 한다 (작업 실행은 아래 --play · --retry).
- *     --repo 는 gitlab 설정이 있는 repo 가 하나면 생략. --log 는 실패한 작업의 로그 끝부분(기본 40줄).
- * pipeline --id ID --play <작업> | --retry <작업> [--repo R] [--yes] [--timeout 분]
- *     수동 작업 실행(--play: 앞 작업이 끝나 manual 이 될 때까지 기다린 뒤) · 실패한 작업 다시 실행(--retry). 끝날 때까지 상태를 보여 준다.
- *     --yes 가 없으면 무엇을 실행할지와 확인 문구만 보이고 멈춘다 (끝 코드 3). 운영 배포 작업은 사용자 승인 뒤에만 --yes 로 부른다.
+ *     최근 파이프라인 목록(기본 5개)과 맨 위(또는 --id) 파이프라인의 단계별 작업 상태. 읽기만 한다. --log 는 실패한 작업의 로그 끝부분(기본 40줄).
+ * wait     [--repo R] --mr 번호 | --id 파이프라인ID | --ref 브랜치 [--sha 커밋] [--timeout 분] [--json]
+ *     파이프라인이 끝날 때까지 기다린다. --mr · --ref 는 지금 커밋(MR 머리 · 머지 커밋 · 브랜치 머리)의 파이프라인이 생길 때까지 먼저 기다린다.
+ *     끝 코드: 성공 0 · 실패 · 취소 1 · 시간 초과 4 · 파이프라인이 안 생김 5. 수동 작업에서 멈추면 0 과 수동 작업 이름.
+ * merge    <MR 번호> [--repo R] [--yes] [--timeout 분] [--json]
+ *     머지할 수 있는지(충돌 · 초안 · 토론 · 승인 · 파이프라인) 확인하고, 파이프라인이 돌고 있으면 끝날 때까지 기다린 뒤 머지한다. 머지 커밋 SHA 를 낸다.
+ * play     --id 파이프라인ID --job <작업> [--repo R] [--yes] [--timeout 분]     (= pipeline --id ID --play <작업>)
+ *     수동 작업 실행: 앞 작업이 끝나 manual 이 될 때까지 기다린 뒤 실행하고 끝날 때까지 상태를 보인다.
+ * retry    --id 파이프라인ID [--job <작업>] [--repo R] [--yes] [--timeout 분]
+ *     실패한 작업 다시 실행. --job 이 없으면 그 파이프라인의 실패한 작업 전부.
+ * cancel   --ref 브랜치 [--sha 커밋] | --id 파이프라인ID [--repo R] [--yes]
+ *     도는 파이프라인 취소 (같은 브랜치의 낡은 파이프라인이 겹칠 때).
+ *   play · retry · merge · cancel 은 --yes 가 없으면 무엇을 할지만 보이고 멈춘다 (끝 코드 3). 사용자 승인을 받은 뒤에만 --yes.
+ *   merge · cancel 은 vars.gitlab.agentMerge 가 true 이거나 사람이 터미널에서 직접 칠 때만 한다.
  * repos    workspace.json repos 중 gitlab 설정이 있는 것 목록
  *
  * 설정: workspace.json repos[].gitlab = { host, projectId, apiBase? }
  * 토큰: 환경변수 GITLAB_TOKEN (vars.gitlab.tokenEnv 로 이름 변경) → 비밀값 저장소(kedovi secret: 프로젝트 > 전역 > 옛 ~/.config/kedovi/gitlab-token) → 없으면 git credential fill.
- * 토큰은 어떤 출력에도 찍지 않는다. 머지·auto-merge · 파이프라인 취소 API 는 이 도구에 없다.
+ * 토큰은 어떤 출력에도 찍지 않는다. auto-merge(merge_when_pipeline_succeeds) 는 쓰지 않는다.
  * 의존성 없음 (Node 18+ fetch).
  */
 
@@ -106,10 +115,16 @@ function token(ws, r) {
   return null;
 }
 
+/** 프로젝트 API (/projects/:id 아래) */
 async function api(ws, r, method, p, body) {
+  return apiRoot(ws, r, method, `/projects/${encodeURIComponent(r.gitlab.projectId)}${p}`, body);
+}
+
+/** 전역 API (/runners · /users · /groups 등 프로젝트 밖). 호스트 · 토큰은 그 repo 의 gitlab 설정을 쓴다 */
+async function apiRoot(ws, r, method, p, body) {
   const t = token(ws, r);
   if (!t) throw new Error('토큰이 없습니다. 터미널에서 kedovi secret set GITLAB_TOKEN (숨김 입력, 권한 api)');
-  const res = await fetch(`${apiBase(r)}/projects/${encodeURIComponent(r.gitlab.projectId)}${p}`, {
+  const res = await fetch(`${apiBase(r)}${p}`, {
     method,
     headers: { 'PRIVATE-TOKEN': t.value, ...(body ? { 'Content-Type': 'application/json' } : {}) },
     body: body ? JSON.stringify(body) : undefined,
@@ -117,7 +132,7 @@ async function api(ws, r, method, p, body) {
   const text = await res.text();
   let data; try { data = JSON.parse(text); } catch { data = text; }
   if (res.status === 401) throw new Error(`HTTP 401: 토큰이 거부됐습니다 (${t.from}).${t.from === 'git credential' ? ' git 계정 비밀번호는 API 에 쓸 수 없습니다.' : ' 만료 · 취소됐을 수 있습니다.'} 개인 액세스 토큰(권한 api)을 터미널에서 kedovi secret set GITLAB_TOKEN 으로 넣고 kedovi secret test GITLAB_TOKEN 으로 확인하세요`);
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${typeof data === 'string' ? data.slice(0, 300) : JSON.stringify(data.message || data).slice(0, 300)}`);
+  if (!res.ok) { const e = new Error(`HTTP ${res.status} ${typeof data === 'string' ? data.slice(0, 300) : JSON.stringify(data.message || data).slice(0, 300)}`); e.status = res.status; throw e; }
   return data;
 }
 
@@ -190,15 +205,27 @@ async function cmdCreate(ws, a) {
     return;
   }
   if (a.assignee && a.assignee !== true) {
-    const t = token(ws, r);
-    const res = await fetch(`${apiBase(r)}/users?username=${encodeURIComponent(a.assignee)}`, { headers: { 'PRIVATE-TOKEN': (t && t.value) || '' } });
-    const users = res.ok ? await res.json() : [];
+    let users = [];
+    try { users = await apiRoot(ws, r, 'GET', `/users?username=${encodeURIComponent(a.assignee)}`); } catch { users = []; }
     if (!users.length) die(`assignee '${a.assignee}' 를 찾지 못했습니다. 임의 id 로 대체하지 않습니다`);
     body.assignee_id = users[0].id;
   }
-  const open = await api(ws, r, 'GET', `/merge_requests?state=opened&source_branch=${encodeURIComponent(source)}&target_branch=${encodeURIComponent(target)}`);
-  if (open.length) { console.log(`이미 열린 MR 이 있어 만들지 않았습니다: !${open[0].iid} ${open[0].web_url}`); return; }
-  const mr = await api(ws, r, 'POST', '/merge_requests', body);
+  const openMr = async () => (await api(ws, r, 'GET', `/merge_requests?state=opened&source_branch=${encodeURIComponent(source)}&target_branch=${encodeURIComponent(target)}`))[0];
+  const reuse = (m) => {
+    if (a.json) { console.log(JSON.stringify({ iid: m.iid, url: m.web_url, reused: true, sha: m.sha })); return; }
+    console.log(`✔ MR !${m.iid} ${m.web_url} (이미 열린 MR 을 그대로 씀: 새로 만들지 않았습니다)`);
+    console.log(`  ${source} → ${target} · 제목: ${m.title}`);
+  };
+  const existing = await openMr();
+  if (existing) return reuse(existing);
+  let mr;
+  try { mr = await api(ws, r, 'POST', '/merge_requests', body); } catch (e) {
+    // 같은 순간 다른 쪽이 만들었으면 409: 그 MR 을 쓴다
+    const again = e.status === 409 ? await openMr() : null;
+    if (again) return reuse(again);
+    throw e;
+  }
+  if (a.json) { console.log(JSON.stringify({ iid: mr.iid, url: mr.web_url, reused: false, sha: mr.sha })); return; }
   console.log(`✔ MR !${mr.iid} ${mr.web_url}`);
   console.log(`  ${source} → ${target} · remove_source_branch=${remove} · assignee=${mr.assignee ? mr.assignee.username : '비움'}`);
 }
@@ -332,6 +359,195 @@ async function cmdJobRun(ws, a) {
   process.exit(1);
 }
 
+const WAITING = new Set(['created', 'waiting_for_resource', 'preparing', 'pending', 'running', 'scheduled']);
+const pollMs = () => Math.max(200, Number(process.env.KEDOVI_POLL_MS) || 5000);
+const deadline = (a, def = 30) => Date.now() + Math.max(1, Number(a.timeout) || def) * 60000;
+
+/** merge · cancel: vars.gitlab.agentMerge 가 true 이거나 사람이 터미널에서 직접 칠 때만 */
+function allowWrite(ws, what) {
+  if (vars(ws).agentMerge === true) return;
+  if (process.stdin.isTTY && process.stdout.isTTY) return;
+  console.error(`✖ ${what} 하지 않았습니다: 에이전트 ${what}은(는) 꺼져 있습니다 (workspace.json vars.gitlab.agentMerge = false).`);
+  console.error(`  GitLab 화면에서 직접 하거나 터미널에서 직접 kedovi gitlab ${what === '머지' ? 'merge' : 'cancel'} … 를 실행합니다. 에이전트에게 맡기려면 팀장이 vars.gitlab.agentMerge 를 true 로 두고 node bin/kit.js sync.`);
+  process.exit(1);
+}
+
+/** 파이프라인이 끝날 때까지 (수동 작업에서 멈춘 것도 끝으로 본다). 상태가 바뀔 때마다 한 줄 */
+async function follow(ws, r, id, until, quiet = false) {
+  const say = quiet ? () => {} : (t) => console.log(t);
+  let last = '';
+  const seen = {};
+  for (;;) {
+    const p = await api(ws, r, 'GET', `/pipelines/${encodeURIComponent(id)}`);
+    const jobs = (await api(ws, r, 'GET', `/pipelines/${encodeURIComponent(id)}/jobs?per_page=100`)).sort((x, y) => x.id - y.id);
+    // 작업: 처음 볼 때는 도는 · 실패 · 수동만, 그 뒤로는 바뀔 때마다
+    for (const j of jobs) {
+      const first = seen[j.id] === undefined;
+      if (seen[j.id] !== j.status && (first ? ['running', 'failed', 'manual'] : ['running', 'success', 'failed', 'canceled', 'manual']).includes(j.status)) say(`  ${clock()} ${mark(j.status)} ${j.stage}/${j.name} ${j.status}`);
+      seen[j.id] = j.status;
+    }
+    if (p.status !== last) { last = p.status; say(`  ${clock()} 파이프라인 #${p.id} ${mark(p.status)} ${p.status}`); }
+    if (!WAITING.has(p.status)) return { p, jobs };
+    if (Date.now() > until) { console.log(`✖ 시간이 지나 멈춥니다 (지금 ${p.status}, 파이프라인은 계속 돈다). 다시: kedovi gitlab wait --id ${id}`); process.exit(4); }
+    await sleep(pollMs());
+  }
+}
+
+/** 끝난 파이프라인 보고 → 끝 코드 (0 성공 · 수동 작업 대기, 1 실패 · 취소) */
+function finish(r, { p, jobs }, json) {
+  const manual = jobs.filter((j) => j.status === 'manual').map((j) => j.name);
+  const failed = jobs.filter((j) => j.status === 'failed' && !j.allow_failure).map((j) => j.name);
+  const code = p.status === 'success' || p.status === 'manual' ? 0 : 1;
+  if (json) { console.log(JSON.stringify({ repo: r.name, pipeline: p.id, status: p.status, ref: p.ref, sha: p.sha, url: p.web_url, manual, failed })); return code; }
+  if (p.status === 'success') console.log(`✔ 파이프라인 #${p.id} 성공 (${took(p.duration)}) ${p.web_url}`);
+  else if (p.status === 'manual') console.log(`✋ 파이프라인 #${p.id} 수동 작업에서 멈춤: ${manual.join(' · ')} ${p.web_url}`);
+  else console.log(`✖ 파이프라인 #${p.id} ${p.status}${failed.length ? `: ${failed.join(' · ')}` : ''} ${p.web_url}`);
+  if (manual.length) console.log(`  수동 작업 실행 (사용자 승인 뒤): kedovi gitlab play --repo ${r.name} --id ${p.id} --job ${manual[0]} --yes`);
+  if (code) console.log(`  로그 끝부분: kedovi gitlab pipeline --repo ${r.name} --id ${p.id} --log · 다시 실행: kedovi gitlab retry --repo ${r.name} --id ${p.id} --yes`);
+  return code;
+}
+
+/** 이 커밋의 파이프라인 (가장 새것). mr 이 있으면 MR 파이프라인도 본다 */
+async function pipelineFor(ws, r, { sha, ref, mr }) {
+  const list = [];
+  if (mr) list.push(...await api(ws, r, 'GET', `/merge_requests/${encodeURIComponent(mr)}/pipelines?per_page=20`));
+  list.push(...await api(ws, r, 'GET', `/pipelines?per_page=20&order_by=id&sort=desc${sha ? `&sha=${encodeURIComponent(sha)}` : ''}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`));
+  return list.filter((x) => !sha || x.sha === sha || String(x.sha || '').startsWith(sha)).sort((x, y) => y.id - x.id)[0] || null;
+}
+
+async function cmdWait(ws, a) {
+  const r = repoOrOnly(ws, a.repo);
+  const until = deadline(a);
+  const say = a.json ? () => {} : (t) => console.log(t);
+  let id = a.id && a.id !== true ? String(a.id).replace(/^#/, '') : null;
+  if (!id) {
+    let sha = a.sha && a.sha !== true ? String(a.sha) : null;
+    let ref = null;
+    let mr = null;
+    let what;
+    if (a.mr && a.mr !== true) {
+      mr = String(a.mr).replace(/^!/, '');
+      const m = await api(ws, r, 'GET', `/merge_requests/${encodeURIComponent(mr)}`);
+      if (m.state === 'closed') die(`MR !${mr} 은(는) 닫혀 있습니다`);
+      const merged = m.state === 'merged';
+      sha = sha || (merged ? m.merge_commit_sha || m.squash_commit_sha || m.sha : m.sha);
+      if (merged) { ref = m.target_branch; mr = null; }
+      what = `MR !${m.iid} ${merged ? `머지 커밋 (${m.target_branch})` : `머리 커밋 (${m.source_branch})`} ${String(sha).slice(0, 7)}`;
+    } else if (a.ref && a.ref !== true) {
+      ref = a.ref;
+      if (!sha) sha = (await api(ws, r, 'GET', `/repository/branches/${encodeURIComponent(ref)}`)).commit.id;
+      what = `브랜치 ${ref} 커밋 ${String(sha).slice(0, 7)}`;
+    } else die('--mr <번호> · --id <파이프라인ID> · --ref <브랜치> 중 하나가 필요합니다');
+    say(`repo: ${r.name} · ${what}`);
+    const appear = Date.now() + Math.max(1, Number(a.appear) || 5) * 60000;
+    let shown = false;
+    for (;;) {
+      const p = await pipelineFor(ws, r, { sha, ref, mr });
+      if (p) { id = p.id; break; }
+      if (!shown) { say(`  ${clock()} 이 커밋의 파이프라인이 생기길 기다림`); shown = true; }
+      if (Date.now() > Math.min(appear, until)) { console.log(`✖ 이 커밋(${String(sha).slice(0, 7)})의 파이프라인이 생기지 않았습니다. CI 규칙상 없을 수 있습니다 ([skip ci] · rules). 확인: kedovi gitlab pipeline --repo ${r.name}${ref ? ` --ref ${ref}` : ''}`); process.exit(5); }
+      await sleep(pollMs());
+    }
+    say(`  파이프라인 #${id}`);
+  }
+  process.exit(finish(r, await follow(ws, r, id, until, a.json), a.json));
+}
+
+const MERGE_BLOCK = {
+  conflict: '충돌이 있습니다. 작업 브랜치에 대상 브랜치를 머지해 풀고 다시 push 합니다',
+  draft_status: '초안(Draft) MR 입니다',
+  discussions_not_resolved: '풀리지 않은 토론이 있습니다',
+  not_approved: '승인이 모자랍니다',
+  requested_changes: '변경 요청이 남아 있습니다',
+  blocked_status: '다른 MR 에 막혀 있습니다',
+  need_rebase: '대상 브랜치에 맞춰 rebase 가 필요합니다 (프로젝트 설정)',
+  not_open: '열린 MR 이 아닙니다',
+  jira_association_missing: '이슈 연결이 필요합니다',
+  external_status_checks: '외부 상태 검사가 통과하지 않았습니다',
+  merge_request_blocked: '머지가 막혀 있습니다',
+  security_policy_violations: '보안 정책 위반이 있습니다',
+};
+
+async function cmdMerge(ws, a) {
+  const r = repoOrOnly(ws, a.repo);
+  const iid = String((a._[1] || (a.mr !== true && a.mr) || '')).replace(/^!/, '');
+  if (!iid) die('머지할 MR 번호가 필요합니다: kedovi gitlab merge <번호> [--repo R] --yes');
+  const say = a.json ? () => {} : (t) => console.log(t);
+  const get = () => api(ws, r, 'GET', `/merge_requests/${encodeURIComponent(iid)}`);
+  const done = (m) => {
+    const sha = m.merge_commit_sha || m.squash_commit_sha || m.sha;
+    if (a.json) console.log(JSON.stringify({ repo: r.name, iid: m.iid, state: m.state, target: m.target_branch, mergeCommit: sha, url: m.web_url }));
+    else { console.log(`✔ 머지됨 !${m.iid} ${m.source_branch} → ${m.target_branch} · 머지 커밋 ${String(sha).slice(0, 7)} ${m.web_url}`); console.log(`merge_commit_sha=${sha}`); }
+  };
+  let m = await get();
+  if (m.state === 'merged') return done(m);
+  if (m.state !== 'opened') die(`MR !${iid} 은(는) ${m.state} 입니다`);
+  allowWrite(ws, '머지');
+  const pipe = m.head_pipeline || m.pipeline;
+  say(`⚠ 머지: ${r.name} !${m.iid} ${m.title}`);
+  say(`  ${m.source_branch} → ${m.target_branch} · 상태 ${m.detailed_merge_status || m.merge_status} · 파이프라인 ${pipe ? `#${pipe.id} ${pipe.status}` : '없음'} · 머지 뒤 source ${m.force_remove_source_branch || m.should_remove_source_branch ? '지움' : '남김'}`);
+  const blocked = () => (m.has_conflicts ? MERGE_BLOCK.conflict : (m.draft || m.work_in_progress) ? MERGE_BLOCK.draft_status : MERGE_BLOCK[m.detailed_merge_status]);
+  if (blocked()) die(`머지할 수 없습니다: ${blocked()} (${m.web_url})`);
+  if (!a.yes) { console.log('  머지하지 않았습니다. 사용자가 이 MR 의 머지를 지시했으면 같은 명령에 --yes 를 붙여 다시 실행합니다'); process.exit(3); }
+  const until = deadline(a);
+  // 파이프라인이 돌고 있으면 끝날 때까지
+  if (pipe && WAITING.has(pipe.status)) {
+    say(`  ${clock()} 파이프라인 #${pipe.id} 이(가) 끝나길 기다림`);
+    const res = await follow(ws, r, pipe.id, until, a.json);
+    if (res.p.status !== 'success' && res.p.status !== 'manual' && res.p.status !== 'skipped') { finish(r, res, false); die(`파이프라인이 ${res.p.status} 라 머지하지 않습니다`); }
+    m = await get();
+  } else if (pipe && (pipe.status === 'failed' || pipe.status === 'canceled')) die(`파이프라인 #${pipe.id} 이(가) ${pipe.status} 라 머지하지 않습니다. 다시 실행: kedovi gitlab retry --repo ${r.name} --id ${pipe.id} --yes`);
+  // 머지 가능 판정이 아직이면 잠깐 기다린다 (그래도 머지 요청은 보낸다: 서버가 판정한다)
+  for (let i = 0; i < 6 && ['checking', 'unchecked', 'preparing', 'approvals_syncing'].includes(m.detailed_merge_status); i++) { await sleep(Math.min(5000, pollMs())); m = await get(); }
+  if (blocked()) die(`머지할 수 없습니다: ${blocked()} (${m.web_url})`);
+  try {
+    m = await api(ws, r, 'PUT', `/merge_requests/${encodeURIComponent(iid)}/merge`, { sha: m.sha });
+  } catch (e) {
+    const why = { 405: `지금 머지할 수 없는 상태입니다 (${m.detailed_merge_status})`, 406: '충돌이 있거나 머지할 수 없습니다', 409: 'MR 커밋이 바뀌었습니다 (새 push). kedovi gitlab wait --mr 로 새 파이프라인을 본 뒤 다시', 401: '권한이 없습니다', 403: '이 계정은 대상 브랜치에 머지할 권한이 없습니다' }[e.status];
+    die(`머지 실패: ${why || e.message}`);
+  }
+  say(`  ${clock()} ▶ 머지 요청`);
+  while (m.state !== 'merged') {
+    if (Date.now() > until) { console.log(`✖ 시간이 지나 멈춥니다 (지금 ${m.state}). 확인: ${m.web_url}`); process.exit(4); }
+    await sleep(Math.min(3000, pollMs()));
+    m = await get();
+    if (m.state === 'closed') die('MR 이 닫혔습니다');
+  }
+  done(m);
+}
+
+async function cmdRetry(ws, a) {
+  if (a.job && a.job !== true) return cmdJobRun(ws, { ...a, retry: a.job });
+  const r = repoOrOnly(ws, a.repo);
+  const id = a.id && a.id !== true ? String(a.id).replace(/^#/, '') : null;
+  if (!id) die('--id <파이프라인 ID> 가 필요합니다 (작업 하나만: --job <이름>)');
+  const p = await api(ws, r, 'GET', `/pipelines/${encodeURIComponent(id)}`);
+  const jobs = await api(ws, r, 'GET', `/pipelines/${encodeURIComponent(id)}/jobs?per_page=100`);
+  const failed = jobs.filter((j) => j.status === 'failed' || j.status === 'canceled');
+  if (!failed.length) die(`파이프라인 #${id} (${p.status}) 에 실패 · 취소된 작업이 없습니다`);
+  console.log(`⚠ 다시 실행: ${r.name} · 파이프라인 #${id} (${p.ref} ${String(p.sha || '').slice(0, 7)}) · ${failed.map((j) => `${j.stage}/${j.name}`).join(' · ')}`);
+  console.log('  운영 배포 · 데이터를 바꾸는 작업이 들어 있으면 사용자 승인을 받은 뒤에만 실행한다.');
+  if (!a.yes) { console.log('  실행하지 않았습니다. 사용자 승인을 받았으면 같은 명령에 --yes 를 붙여 다시 실행합니다'); process.exit(3); }
+  await api(ws, r, 'POST', `/pipelines/${encodeURIComponent(id)}/retry`);
+  console.log(`  ${clock()} ▶ 다시 실행 요청`);
+  process.exit(finish(r, await follow(ws, r, id, deadline(a), a.json), a.json));
+}
+
+async function cmdCancel(ws, a) {
+  const r = repoOrOnly(ws, a.repo);
+  allowWrite(ws, '취소');
+  let list;
+  if (a.id && a.id !== true) list = [await api(ws, r, 'GET', `/pipelines/${encodeURIComponent(String(a.id).replace(/^#/, ''))}`)];
+  else if (a.ref && a.ref !== true) list = await api(ws, r, 'GET', `/pipelines?per_page=50&order_by=id&sort=desc&ref=${encodeURIComponent(a.ref)}`);
+  else die('--ref <브랜치> [--sha 커밋] 또는 --id <파이프라인 ID> 가 필요합니다');
+  const sha = a.sha && a.sha !== true ? String(a.sha) : null;
+  list = list.filter((p) => WAITING.has(p.status) && (!sha || String(p.sha || '').startsWith(sha)));
+  if (!list.length) { console.log('취소할(도는) 파이프라인이 없습니다'); return; }
+  console.log(`⚠ 파이프라인 취소: ${r.name} · ${list.map((p) => `#${p.id} ${p.ref} ${String(p.sha || '').slice(0, 7)} ${p.status}`).join(' · ')}`);
+  if (!a.yes) { console.log('  취소하지 않았습니다. 사용자가 지시했으면 같은 명령에 --yes 를 붙여 다시 실행합니다'); process.exit(3); }
+  for (const p of list) { await api(ws, r, 'POST', `/pipelines/${p.id}/cancel`); console.log(`  ⊘ #${p.id} 취소 요청`); }
+}
+
 function cmdRepos(ws) {
   const list = ws.repos.filter((r) => r.gitlab);
   if (!list.length) { console.log('gitlab 설정이 있는 repo 가 없습니다. workspace.json repos[].gitlab = {host, projectId}'); return; }
@@ -341,17 +557,24 @@ function cmdRepos(ws) {
 async function main() {
   const a = parseArgs(process.argv.slice(2));
   const cmd = a._[0];
-  if (!['preview', 'create', 'pipeline', 'repos'].includes(cmd)) {
-    console.log(fs.readFileSync(__filename, 'utf8').split("\n").slice(5, 22).map((l) => l.replace(/^ \* ?/, '')).join('\n'));
+  if (!['preview', 'create', 'pipeline', 'repos', 'wait', 'merge', 'play', 'retry', 'cancel'].includes(cmd)) {
+    const lines = fs.readFileSync(__filename, 'utf8').split('\n');
+    const from = lines.indexOf('/*') + 1;
+    console.log(lines.slice(from, lines.findIndex((l, i) => i > from && l.startsWith(' * 설정:'))).map((l) => l.replace(/^ \* ?/, '')).join('\n').trim());
     process.exit(cmd ? 1 : 0);
   }
   const ws = loadWs();
   if (cmd === 'repos') return cmdRepos(ws);
   if (cmd === 'pipeline') return a.play !== undefined || a.retry !== undefined ? cmdJobRun(ws, a) : cmdPipeline(ws, a);
+  if (cmd === 'wait') return cmdWait(ws, a);
+  if (cmd === 'merge') return cmdMerge(ws, a);
+  if (cmd === 'retry') return cmdRetry(ws, a);
+  if (cmd === 'cancel') return cmdCancel(ws, a);
+  if (cmd === 'play') { if (!a.job || a.job === true) die('--job <작업 이름> 이 필요합니다'); return cmdJobRun(ws, { ...a, play: a.job }); }
   if (cmd === 'preview') return cmdPreview(ws, a);
   return cmdCreate(ws, a);
 }
 
 if (require.main === module) main().catch((e) => die(e.message));
 
-module.exports = { loadWs, parseArgs, die, token, api, apiBase, repoOf, repoOrOnly, defaultRemoveSource };
+module.exports = { loadWs, parseArgs, die, token, api, apiRoot, apiBase, repoOf, repoOrOnly, defaultRemoveSource, pipelineFor };

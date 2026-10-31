@@ -1303,7 +1303,7 @@ function resolveModels(root, ws) {
   if (blocked) runWarnings.push(`이 PC 프로필 ${profileLabel(cat, blocked)} 은(는) 팀 프로필 ${profileLabel(cat, teamProfile)} 보다 높아 적용하지 않습니다 (팀 값 사용). 지우기: kedovi models profile team · 팀이 허용하려면 kedovi models allow-higher on`);
   // 역할 에이전트 상한 — 팀 값(프로필 ← workspace.json agents.limits)이 기준이고, 이 PC 값(개인 프로필 · agents.limits)은 낮추기만 한다
   const num = (o) => Object.fromEntries(Object.entries(o || {}).filter(([k, v]) => ['parallel', 'total'].includes(k) && Number.isInteger(v) && v > 0));
-  const teamLimits = { parallel: 2, total: 5, ...num(((cat.profiles || {})[teamProfile] || {}).limits), ...num(teamAgents.limits) };
+  const teamLimits = { parallel: 4, total: 10, ...num(((cat.profiles || {})[teamProfile] || {}).limits), ...num(teamAgents.limits) };
   const mine = { ...(localProfile ? num(((cat.profiles || {})[localProfile] || {}).limits) : {}), ...num(local.limits) };
   const limits = { parallel: Math.min(teamLimits.parallel, mine.parallel || teamLimits.parallel), total: Math.min(teamLimits.total, mine.total || teamLimits.total) };
   // 규칙 강제 수준 (훅) — 팀 값이 기준이고 이 PC 값은 더 세게만 한다 (상한과 같은 방침). teammateName = 팀 모드에서 이름 없는 역할 에이전트
@@ -1345,7 +1345,7 @@ function countPicks(agents) {
 
 /**
  * 팀과 다른 개인 모델 설정이 적용 중이면 한 줄로 알린다 (세션 시작 훅 · kedovi start · kedovi models). 모두 팀 값이면 ''.
- * 예: 모델 프로필: 이 PC 절약 (팀 표준 대신) · 되돌리기 kedovi models profile team · 상한 동시 1 · 모두 3 (팀 2 · 5)
+ * 예: 모델 프로필: 이 PC 절약 (팀 표준 대신) · 되돌리기 kedovi models profile team · 상한 동시 2 · 모두 5 (팀 4 · 10)
  */
 function profileNotice(root, ws) {
   let cat = {};

@@ -25,7 +25,7 @@ run(() => {
   if (ev === 'UserPromptSubmit') { st.turn = 0; st.running = 0; return save(); } // 팀원(agent teams)은 SubagentStop 이 없어 동시 수도 요청마다 새로 센다
   if (ev === 'SubagentStop') { st.running = Math.max(0, st.running - 1); return save(); }
   if (ev !== 'PreToolUse') return;
-  let limits = { parallel: 2, total: 5 };
+  let limits = { parallel: 4, total: 10 };
   let nameCheck = 'block';
   let roster = 'warn';
   try {

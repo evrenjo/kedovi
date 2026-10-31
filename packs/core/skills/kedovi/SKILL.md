@@ -40,7 +40,7 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 게이트웨이 쓰기 · 모델 목록 다시 받기 | `kedovi ai gateway [--url <주소> --key-env <키가 든 환경변수 이름>]` · `kedovi ai refresh` | 이 PC |
 | 역할 구성 | `kedovi ai compose mix\|vendor\|single` (섞기 · 한 회사만 · 단일 모델) | 이 PC |
 | 게이트웨이에서 메인 모델 회사 | `kedovi ai main claude\|gpt` | 이 PC |
-| 역할 에이전트 상한 | `.agents/local.json` 의 `agents.limits` `{ "parallel": 2, "total": 5 }` 를 고치고 `node bin/kit.js sync` (팀은 `workspace.json`). 이 PC 값은 팀 값보다 낮게만 | 이 PC · 팀 |
+| 역할 에이전트 상한 | `.agents/local.json` 의 `agents.limits` `{ "parallel": 4, "total": 10 }` 를 고치고 `node bin/kit.js sync` (팀은 `workspace.json`). 이 PC 값은 팀 값보다 낮게만 | 이 PC · 팀 |
 | 지난 대화 이어서 시작 | `kedovi start -c`(마지막 대화) · `kedovi start -r <세션 ID>` · `kedovi start -r`(목록). 세션 안에서는 할 수 없으니 사용자에게 명령을 알려 준다 | 이 PC |
 | 에이전트 · 팀원을 캐릭터 화면으로 보기 | `kedovi start --pixel-agents`. 이 PC 에 `pixel-agents`(`npm i -g pixel-agents`)가 있어야 한다. 브라우저로 열고 세션이 끝나면 끈다. 세션 안에서는 할 수 없으니 사용자에게 명령을 알려 준다 | 이 PC |
 | 시작 도구 바꾸기 | `kedovi agent --claude\|--codex [--args "<인자>"]` | 이 PC |
@@ -87,6 +87,10 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 리뷰 확인 (commit · push 전에 리뷰를 거쳤나) | 상태 `kedovi review status` (대상 repo 마다 리뷰 안 된 줄 수 · 마지막 리뷰) · 훅이 알 수 없는 방법으로 리뷰했으면 `kedovi review mark [--repo <이름>] [--by "<누가>"]` · 생략은 **사용자에게 먼저 묻고 승인받았을 때만** `kedovi review skip --reason "<사유>"` (다음 한 번). 켜기 · 수준 · 대상은 `kedovi team-mode enforce review off\|warn\|block [--repos a,b\|*] [--min-lines N] [--paths p1,p2] --team` (기본 꺼짐) | 이 PC · 수준은 팀 |
 | GitLab 파이프라인 보기 | `kedovi gitlab pipeline [--repo <이름>] [--ref <브랜치> \| --mr <번호> \| --id <파이프라인 ID>] [--limit N] [--log] [--json]` (최근 목록 · 단계별 작업 상태 · `--log` 는 실패한 작업의 로그 끝부분. 읽기만 한다, gitlab 팩). "파이프라인 통과했어?" · "배포 왜 깨졌어?" 같은 말에 쓴다. MR 은 MR 파이프라인이 없으면 머지 커밋의 것을 찾는다 | 보기 |
 | GitLab 수동 작업 실행 · 다시 실행 | `kedovi gitlab pipeline --id <파이프라인 ID> --play <작업> --yes` · `--retry <작업> --yes` (manual 이 될 때까지 기다린 뒤 실행 · 끝날 때까지 상태. `--yes` 없이 부르면 확인 문구만 나온다). "배포 job 눌러 줘" · "실패한 거 다시 돌려" 같은 말에 쓴다. **운영 배포 · 데이터를 바꾸는 작업은 사용자에게 선택지 질문으로 승인받은 뒤에만 `--yes` 로** | GitLab |
+| GitLab 파이프라인 끝까지 기다리기 | `kedovi gitlab wait [--repo <이름>] --mr <번호> \| --id <파이프라인 ID> \| --ref <브랜치>` (지금 커밋의 파이프라인이 생길 때까지 먼저 기다린다: 다시 push 했으면 새 파이프라인). 성공 0 · 실패 1 · 수동 작업에서 멈추면 0 과 실행 명령. "파이프라인 끝나면 알려 줘" 같은 말에 쓴다 | GitLab |
+| GitLab MR 머지 | `kedovi gitlab merge <번호> [--repo <이름>] --yes` (머지할 수 있는지 확인 → 도는 파이프라인 대기 → 머지 → 머지 커밋 SHA). `vars.gitlab.agentMerge` 가 true 인 워크스페이스에서 사용자가 그 MR 의 머지를 지시했을 때만. false 면 "머지는 GitLab 에서 직접" 으로 답한다 | GitLab |
+| GitLab MR 만들기 (배포 연쇄) | `kedovi gitlab create --repo <이름> --source <브랜치> [--target <브랜치>] --title "…" --description-file <파일> --json` (열린 MR 이 있으면 그것을 쓴다). 미리보기 · 승인 절차는 `mr` 스킬 | GitLab |
+| GitLab 작업 실행 · 다시 실행 · 취소 | `kedovi gitlab play --id <ID> --job <작업> --yes` · `kedovi gitlab retry --id <ID> [--job <작업>] --yes` (작업 이름 없으면 실패한 작업 전부) · `kedovi gitlab cancel --ref <브랜치> [--sha <커밋>] --yes` (도는 파이프라인만, agentMerge 가 true 일 때). 모두 사용자 승인 뒤에만 `--yes` | GitLab |
 | 기획 repo 새로 만들기 | `kedovi init-docs <폴더>` 로 뼈대를 만들고 `kedovi repo add <폴더> --kind docs` 로 등록 | 팀 |
 | 화면 비교 (프로토타입 ↔ 구현) | `kedovi screens compare <화면 ID> [--impl <주소\|/경로>] [--proto <파일\|주소>] [--widths 1280,390] [--storage <상태.json>] [--find]` (같은 폭으로 두 장씩 찍어 `compare.html`. 구현 주소는 진입점 `@spec` 줄의 `@route`, screens 팩 · Playwright). "프로토타입이랑 비교해 줘" · "디자인 맞게 됐어?" 같은 말에 쓴다. 다른 곳은 「프로토타입 요소 · 구현 · 다른 이유」 표로 | 보기 |
 | 화면설계서 검사 | `kedovi screens check [기획 repo]` (근거 ID · 화면 ID 중복 · 기능 ID 누락). 화면설계서 작성 절차는 `screens` 스킬 | 보기 |

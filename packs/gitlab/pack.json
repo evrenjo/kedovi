@@ -2,8 +2,8 @@
   "name": "gitlab",
   "title": "GitLab 팀 워크플로",
   "category": "workflow",
-  "summary": "브랜치 전략 · MR 생성 · 이슈 등록 · 파이프라인 조회 · 수동 작업 실행 · 커밋 규칙",
-  "description": "GitLab 협업: 브랜치 전략(작업 브랜치 → MR, 머지는 사람만), 커밋 메시지, 이슈·MR 어조, MR 생성 스킬, 이슈 찾기 · 읽기 · 등록 · 조치 보고 댓글 스킬, 파이프라인 조회(kedovi gitlab pipeline) · 수동 작업 실행 · 다시 실행(--play · --retry: manual 이 될 때까지 기다린 뒤 실행하고 끝날 때까지 상태, --yes 없이는 확인 문구만)",
+  "summary": "브랜치 전략 · MR 생성 · 이슈 등록 · 파이프라인 조회 · 배포 연쇄(대기 · 머지 · 수동 작업) · 커밋 규칙",
+  "description": "GitLab 협업: 브랜치 전략(작업 브랜치 → MR, 머지는 사람만. vars.gitlab.agentMerge 를 켜면 지시받은 MR 만 에이전트가), 커밋 메시지, 이슈·MR 어조, MR 생성 스킬, 이슈 찾기 · 읽기 · 등록 · 조치 보고 댓글 스킬, 파이프라인 조회(kedovi gitlab pipeline) · 수동 작업 실행 · 다시 실행(--play · --retry: manual 이 될 때까지 기다린 뒤 실행하고 끝날 때까지 상태, --yes 없이는 확인 문구만), 배포 연쇄 명령(kedovi gitlab wait · merge · play · retry · cancel, create 는 열린 MR 을 다시 씀)",
   "requires": [
     "core"
   ],
@@ -15,6 +15,10 @@
     "branch.release": {
       "default": "release",
       "desc": "QA·운영 배포 영구 브랜치 이름"
+    },
+    "gitlab.agentMerge": {
+      "default": false,
+      "desc": "에이전트 머지 · 파이프라인 취소 허용. false(기본)면 kedovi gitlab merge · cancel 이 에이전트 실행에서 안내만 하고 멈춘다 (사람이 터미널에서 직접 치면 된다). true 면 사용자가 그 건을 지시했을 때 merge --yes"
     },
     "gitlab.commitNote": {
       "default": "",

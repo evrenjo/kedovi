@@ -231,7 +231,7 @@ Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 
 이 PC 프로필은 팀과 같거나 낮은 것만 적용한다 (높은 것은 리더가 `kedovi models allow-higher on` 으로 허용). 상한은 팀 값 이내.
 
 > 참고: 모델 목록 원본은 `packs/core/models.json`
-팀과 다른 값이 적용 중이면 세션 시작 줄과 `kedovi start` 에 `모델 프로필: 이 PC 절약 (팀 표준 대신) · 되돌리기 kedovi models profile team · 상한 동시 1 · 모두 3 (팀 2 · 5)` 로 보인다.
+팀과 다른 값이 적용 중이면 세션 시작 줄과 `kedovi start` 에 `모델 프로필: 이 PC 절약 (팀 표준 대신) · 되돌리기 kedovi models profile team · 상한 동시 2 · 모두 5 (팀 4 · 10)` 로 보인다.
 
 ## 6. 팀원 (`kedovi install`)
 
@@ -317,6 +317,7 @@ flowchart TD
     Q -->|"리뷰 확인"| RVW["kedovi review status · mark · skip --reason &lt;사유&gt;<br/>commit · push 전 리뷰 안 된 줄 수 (훅이 알림 · 막기)<br/>켜기: kedovi team-mode enforce review warn · block --team"]
     Q -->|"파이프라인 보기"| GLP["kedovi gitlab pipeline [--ref 브랜치 · --mr 번호 · --id ID] [--log]<br/>최근 목록 · 단계별 작업 상태 · 실패한 작업의 로그 끝부분 (읽기만)"]
     Q -->|"수동 작업 실행 · 다시 실행"| GLJ["kedovi gitlab pipeline --id ID --play 작업 · --retry 작업 --yes<br/>manual 이 될 때까지 기다린 뒤 실행 · 끝날 때까지 상태<br/>--yes 없으면 확인 문구만 (운영 배포는 사용자 승인 뒤)"]
+    Q -->|"배포 연쇄"| GLW["kedovi gitlab create --json → wait --mr 번호 → merge 번호 --yes<br/>→ wait --ref 브랜치 → play --id ID --job 작업 --yes<br/>열린 MR 은 다시 씀 · 지금 커밋의 파이프라인을 기다림<br/>머지 · 취소는 vars.gitlab.agentMerge 가 true 일 때만"]
     Q -->|"화면 비교"| SCC["kedovi screens compare &lt;화면 ID&gt;<br/>프로토타입 ↔ 구현을 같은 폭(PC · 폰)으로 찍어 compare.html<br/>구현 주소 = @spec 줄의 @route 또는 --impl"]
     Q -->|"응답 언어 · 대화 스타일"| PRF["kedovi prefs language ko · en · style learn · normal · expert [--team]<br/>값 team = 이 PC 값 지우기 · mermaid [install] · setup (화면)<br/>→ .agents/local.json (팀은 workspace.json) → sync"]
     Q -->|"답변 시각 표시"| TS["kedovi timestamp on · off · team [--team]<br/>답변 첫 줄에 요청 받은 시각 (기본 켜짐, Claude Code)<br/>→ .agents/local.json (팀은 workspace.json)"]
@@ -395,6 +396,7 @@ flowchart TD
 | `kedovi import` | 기존 AI 작업 폴더 훑기 (읽기만): 종류별 분류 · 큰 폴더 · 문서 속 절대경로 · 비밀값 의심 줄. 옮기기는 `import` 스킬 (계획 → 승인 → 반영) |
 | `kedovi review` | 리뷰 확인 (기본 꺼짐, `kedovi team-mode enforce review warn\|block --team` 으로 켠다): `status` 대상 repo 마다 리뷰 안 된 줄 수 · `mark` 지금 상태를 리뷰했다고 기록 · `skip --reason` 사용자 승인 뒤 한 번 생략 |
 | `kedovi gitlab pipeline` | GitLab 파이프라인 조회 (gitlab 팩): 최근 목록 · 단계별 작업 상태 · `--ref` · `--mr` · `--id` · `--log`(실패한 작업의 로그 끝부분). `--id <ID> --play <작업>` · `--retry <작업>` 은 수동 작업 실행 · 다시 실행 (manual 이 될 때까지 기다리고 끝날 때까지 상태, `--yes` 없으면 확인 문구만) |
+| `kedovi gitlab wait` · `merge` · `create` · `play` · `retry` · `cancel` | 배포 연쇄 (gitlab 팩): 지금 커밋의 파이프라인이 끝날 때까지 대기 · 머지할 수 있는지 확인 뒤 머지(머지 커밋 SHA) · 열린 MR 다시 쓰기 · 수동 작업 실행 · 실패한 작업 다시 실행 · 겹친 파이프라인 취소. 머지 · 취소는 `vars.gitlab.agentMerge` 가 true 일 때만, 모두 `--yes` 없으면 확인 문구만 |
 | `kedovi board` | 워크스페이스 현황판: 로드맵 · 팀원별 마지막 핸드오프 · 미완 작업 · 공지 + 기록(핸드오프 · 로드맵 · 모델 조사 · 설정 요약). 이 PC 의 `.agents/board/` 에 만들어 브라우저로 연다 (보기 전용) |
 | `kedovi screens compare <화면 ID>` | 프로토타입과 구현 화면을 같은 폭(PC 1280 · 폰 390)으로 찍어 나란히 보는 `compare.html` (screens 팩, Playwright). 프로토타입 = 화면 목록의 「프로토타입」 칸 · `prototype/` 파일 이름, 구현 = `@spec` 줄의 `@route` · `--impl` |
 | `kedovi screens check [repo]` | 화면설계서 검사 (screens 팩): 근거 ID 가 색인에 있는지 · 화면 ID 중복 · 기능 ID 누락(「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |

@@ -553,8 +553,8 @@
       "label": "최고",
       "hint": "무제한·엔터프라이즈: 상위 모델 위주, 리뷰·테스트(Claude 세션) 또는 설계·구현·리뷰(Codex 세션)는 상대 회사 모델에게 위임",
       "limits": {
-        "parallel": 3,
-        "total": 8
+        "parallel": 6,
+        "total": 20
       },
       "claude": {
         "main": {
@@ -666,8 +666,8 @@
       "label": "표준",
       "hint": "추천 기본: 설계·구현은 Opus, 리뷰는 다른 회사 모델(두 도구 모두), 테스트는 가성비 모델",
       "limits": {
-        "parallel": 2,
-        "total": 5
+        "parallel": 4,
+        "total": 10
       },
       "claude": {
         "main": "opusplan",
@@ -775,8 +775,8 @@
       "label": "절약",
       "hint": "사용량이 빠듯할 때: 최상위 모델 없이. 리뷰는 다른 회사 모델(Claude 세션은 분석도 GPT-6.1 Sol)",
       "limits": {
-        "parallel": 1,
-        "total": 3
+        "parallel": 2,
+        "total": 5
       },
       "claude": {
         "main": "sonnet",

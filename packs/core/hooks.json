@@ -37,12 +37,15 @@
     { "matcher": "Edit|Write|MultiEdit|NotebookEdit", "script": "hooks/plan-first.js", "timeout": 5, "agents": "claude" },
     { "matcher": "Bash", "script": "hooks/team-guard.js", "timeout": 5, "agents": "claude" },
     { "matcher": "Edit|Write|MultiEdit|NotebookEdit|apply_patch|Bash", "script": "hooks/repo-guard.js", "timeout": 5, "agents": "all" },
+    { "matcher": "Bash", "script": "hooks/git-guard.js", "timeout": 5, "agents": "all" },
+    { "matcher": "Bash|Read", "script": "hooks/secret-guard.js", "timeout": 5, "agents": "all" },
     { "matcher": "Bash", "script": "hooks/review-gate.js", "timeout": 30, "agents": "claude" },
     { "matcher": "Bash", "script": "hooks/spec-commit.js", "timeout": 30, "agents": "claude" }
   ],
   "PostToolUse": [
     { "script": "hooks/channel-progress.js", "timeout": 10, "agents": "claude" },
     { "script": "hooks/chat-prefs.js", "timeout": 5, "agents": "all" },
+    { "matcher": "Bash", "script": "hooks/secret-guard.js", "timeout": 5, "agents": "all" },
     { "matcher": "AskUserQuestion", "script": "hooks/notify.js", "timeout": 5, "agents": "claude" },
     { "matcher": "mcp__plugin_telegram.*reply", "script": "hooks/notify.js", "timeout": 5, "agents": "claude" }
   ],

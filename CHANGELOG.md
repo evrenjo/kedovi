@@ -2,6 +2,18 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.81.0
+
+| 구분 | 내용 |
+|---|---|
+| 안전 | 팀원 · 하위 에이전트 · 위임 세션: 워크스페이스 루트 repo 의 git 쓰기(commit · reset · checkout · clean · stash 등) · 모든 push 를 막음. cd 뒤 `&&` · `set -e` 없이 이어진 git 쓰기는 `git -C <절대경로>` 로 안내, 스크립트 안도 봄. 리더는 경고만 (훅 git-guard) |
+| 안전 | 비밀값 파일(.pgpass · .env · ~/.ssh · *.pem · *.key · 러너 config.toml)의 내용 출력 · 읽기를 막음 (존재 · 줄 · 칸 수 · 키 이름은 됨). 출력에 토큰 · 개인 키 · DB 비밀번호 모양이 보이면 알리고 교체를 묻게 함 (훅 secret-guard) |
+| 명령 | `kedovi gitlab wait`(지금 커밋의 파이프라인이 생길 때까지 · 끝까지) · `merge`(확인 → 머지 → 머지 커밋 SHA) · `play` · `retry`(작업 없으면 실패 전부) · `cancel`. `create` 는 열린 MR 을 다시 씀 · `--json` |
+| 설정 | `vars.gitlab.agentMerge` (기본 false): 켜면 사용자가 지시한 MR 만 에이전트가 머지 · 취소 (mr 스킬 「배포 연쇄」) |
+| 변경 | 역할 에이전트 상한 기본값: 표준 4 · 10, 최고 6 · 20, 절약 2 · 5 |
+| 규칙 | team 스킬 「여러 repo 작업」 구성(계약 먼저 → repo 별 동시 구현 → 묶음 리뷰 → 통합 검증) · 보고는 한 번 · 커밋 type 에 ci · build · 일회성 토큰 화면은 캡처 말고 복사 · 비밀값 파일은 형식 확인도 값 칸 빼고 |
+| 적용 | `kedovi upgrade` 뒤 sync. 에이전트 머지를 쓰려면 팀장이 workspace.json `vars.gitlab.agentMerge` 를 true 로 |
+
 ## 0.80.0
 
 | 구분 | 내용 |

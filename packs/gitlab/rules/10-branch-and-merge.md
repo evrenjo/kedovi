@@ -14,11 +14,11 @@ load: always
 3. 그 브랜치에서만 커밋·push 한다
 4. MR 직전 `{{ws:vars.branch.develop}}` **을 내 브랜치로** 머지(`git merge origin/{{ws:vars.branch.develop}}`)하고 빌드·검증을 다시 돌린다 — 충돌이 없어도. rebase 하지 않는다
 5. MR 을 만든다 (`mr` 스킬)
-6. **사람이 GitLab 에서 머지한다**
+6. 머지: 에이전트 머지 설정 `agentMerge = {{ws:vars.gitlab.agentMerge}}`. `false`(기본)면 **사람이 GitLab 에서 머지한다**. `true` 면 사용자가 그 MR 의 머지를 지시했을 때만 `kedovi gitlab merge <번호> --yes` (`mr` 스킬 「배포 연쇄」)
 
 **🚫 금지**
 - `{{ws:vars.branch.develop}}` 를 체크아웃한 채 고치거나 push 하지 않는다. 이미 고쳤으면 커밋하지 말고 `git switch -c <브랜치>`.
-- 에이전트는 **MR 생성까지만** 한다. `{{ws:vars.branch.develop}}`·`{{ws:vars.branch.release}}` 로의 머지(auto-merge 설정 포함)는 **요청받아도 수행하지 않고** "머지는 GitLab 에서 직접 하셔야 합니다" 라고 답한다.
+- `agentMerge` 가 `false` 면 에이전트는 **MR 생성까지만** 한다. `{{ws:vars.branch.develop}}`·`{{ws:vars.branch.release}}` 로의 머지 · 파이프라인 취소는 **요청받아도 수행하지 않고** "머지는 GitLab 에서 직접 하셔야 합니다 (에이전트에게 맡기려면 workspace.json `vars.gitlab.agentMerge` 를 true 로)" 라고 답한다. `true` 여도 지시 없이 머지하지 않고 auto-merge 는 설정하지 않는다.
 - 답변·안내·인계에서 머지를 먼저 꺼내지 않는다.
 - 작업 브랜치를 `{{ws:vars.branch.release}}` 로 직접 올리지 않는다 — QA MR 의 source 는 항상 `{{ws:vars.branch.develop}}`.
 

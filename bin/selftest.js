@@ -188,19 +188,19 @@ for (const c of cases) {
     fs.writeFileSync(localFile, JSON.stringify({ agents: { profile: 'rich', limits: { parallel: 9, total: 9 } } }));
     run(process.execPath, ['bin/kit.js', 'sync'], dir);
     const res1 = kitLib.resolveModels(dir, kitLib.loadWorkspace(dir));
-    const blocked = res1.profile.blocked === 'rich' && !res1.profile.local && effortOf('architect') === 'xhigh' && res1.limits.parallel === 2 && res1.limits.total === 5;
+    const blocked = res1.profile.blocked === 'rich' && !res1.profile.local && effortOf('architect') === 'xhigh' && res1.limits.parallel === 4 && res1.limits.total === 9;
     const hookLine = (run(process.execPath, ['packs/core/hooks/model-profile.js'], dir).out || '').trim();
     const hookBlocked = /^🎚 모델 프로필: 팀 표준 \(이 PC 값 최고 은 팀보다 높아 적용하지 않음\)/.test(hookLine);
     fs.writeFileSync(wsFile, JSON.stringify({ ...JSON.parse(wsRaw), agents: { allowHigherProfile: true } }, null, 2));
     run(process.execPath, ['bin/kit.js', 'sync'], dir);
     const res2 = kitLib.resolveModels(dir, kitLib.loadWorkspace(dir));
-    const allowed = res2.profile.local === 'rich' && effortOf('architect') === 'max' && res2.limits.parallel === 2 && res2.limits.total === 5;
+    const allowed = res2.profile.local === 'rich' && effortOf('architect') === 'max' && res2.limits.parallel === 4 && res2.limits.total === 9;
     fs.writeFileSync(wsFile, wsRaw);
     fs.writeFileSync(localFile, JSON.stringify({ agents: { profile: 'lean' } }));
     run(process.execPath, ['bin/kit.js', 'sync'], dir);
     const res3 = kitLib.resolveModels(dir, kitLib.loadWorkspace(dir));
     const hookLean = (run(process.execPath, ['packs/core/hooks/model-profile.js'], dir).out || '').trim();
-    const leanOk = res3.limits.parallel === 1 && res3.limits.total === 3 && /^🎚 모델 프로필: 이 PC 절약 \(팀 표준 대신\) · 되돌리기 kedovi models profile team · 상한 동시 1 · 모두 3 \(팀 2 · 5\)$/.test(hookLean);
+    const leanOk = res3.limits.parallel === 2 && res3.limits.total === 5 && /^🎚 모델 프로필: 이 PC 절약 \(팀 표준 대신\) · 되돌리기 kedovi models profile team · 상한 동시 2 · 모두 5 \(팀 4 · 10\)$/.test(hookLean);
     if (localRaw === null) fs.rmSync(localFile); else fs.writeFileSync(localFile, localRaw);
     run(process.execPath, ['bin/kit.js', 'sync'], dir);
     const hookNone = (run(process.execPath, ['packs/core/hooks/model-profile.js'], dir).out || '').trim();
@@ -963,8 +963,8 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const claudeHooks = fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8');
   const codexHooks = fs.readFileSync(path.join(dir, '.codex', 'hooks.json'), 'utf8');
   const wired = /agent-budget/.test(claudeHooks) && !/agent-budget/.test(codexHooks) && /max_concurrent_threads_per_session = \d/.test(fs.readFileSync(path.join(dir, '.codex', 'config.toml'), 'utf8'));
-  // 이 PC 값은 팀 값(표준 2 · 5)보다 낮게만: 동시 5 는 2 로 눌리고 모두 2 는 그대로
-  const capped = /동시 2개 · 모두 2개\*\*까지 \(팀 2 · 5 보다 낮춘 이 PC 값\)/;
+  // 이 PC 값은 팀 값(표준 4 · 10)보다 낮게만: 동시 5 는 4 로 눌리고 모두 2 는 그대로
+  const capped = /동시 4개 · 모두 2개\*\*까지 \(팀 4 · 10 보다 낮춘 이 PC 값\)/;
   const limitsText = capped.test(fs.readFileSync(path.join(dir, 'CLAUDE.local.md'), 'utf8')) || spawnSync(process.execPath, [path.join(dir, 'bin', 'kit.js'), 'sync', '--quiet'], { cwd: dir }).status === 0 && capped.test(fs.readFileSync(path.join(dir, 'CLAUDE.local.md'), 'utf8'));
   record('역할 에이전트 상한 (훅 · Codex 동시 상한 · 개인 지침)', denied && reset && wired && limitsText, `넘으면 막음 ${denied} · 새 요청이면 다시 셈 ${reset} · Claude 훅만·Codex 설정 ${wired} · 개인 지침 ${limitsText}`);
 }
