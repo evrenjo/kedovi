@@ -30,7 +30,7 @@ for (const c of ['ls -l ~/.pgpass', 'test -f .env && echo ok', 'stat .env', 'wc 
   'openssl x509 -in ca.pem -noout -subject', 'sha256sum ~/.ssh/id_rsa']) assert.ok(!leak(c), c);
 
 // 출력 검사
-assert.deepStrictEqual(scanOutput('READONLY_PASSWORD=Zx81qPm0vLr7tYc2'), ['READONLY_PASSWORD= 값']);
+assert.deepStrictEqual(scanOutput('READONLY_PASSWORD=' + 'Zx81qPm0vLr7tYc2'), ['READONLY_PASSWORD= 값']);
 assert.ok(scanOutput('token ' + 'glpat' + '-AbCdEfGhIjKlMnOpQrSt12').includes('GitLab 개인 토큰(glpat-)'));
 assert.ok(scanOutput('--token ' + 'glrt' + '-t1_abcdefghijklmnopqrstuv').includes('GitLab 러너 토큰(glrt-)'));
 assert.ok(scanOutput('-----BEGIN OPENSSH ' + 'PRIVATE KEY-----\nb3Bl').includes('PEM 개인 키'));
@@ -45,7 +45,7 @@ assert.ok(deny(hook({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_inp
 assert.ok(deny(hook({ hook_event_name: 'PreToolUse', tool_name: 'Bash', agent_id: 'a1', tool_input: { command: 'cat .env' } })));
 assert.ok(deny(hook({ hook_event_name: 'PreToolUse', tool_name: 'Read', tool_input: { file_path: path.join(tmp, '.env.local') } })));
 assert.strictEqual(hook({ hook_event_name: 'PreToolUse', tool_name: 'Read', tool_input: { file_path: path.join(tmp, '.env.example') } }), '');
-const post = hook({ hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: 'x' }, tool_response: { stdout: 'READONLY_PASSWORD=Zx81qPm0vLr7tYc2\n', stderr: '' } });
+const post = hook({ hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command: 'x' }, tool_response: { stdout: 'READONLY_PASSWORD=' + 'Zx81qPm0vLr7tYc2\n', stderr: '' } });
 assert.ok(/노출 가능성/.test(post) && /교체할지 묻는다/.test(post) && !post.includes('Zx81qPm0'), post);
 assert.strictEqual(hook({ hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_response: { stdout: 'ok\n' } }), '');
 
