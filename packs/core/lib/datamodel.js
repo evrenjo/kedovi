@@ -163,9 +163,12 @@ const TIME_NAME = /(_at|At|_AT|_dt|_DT|_ts|_TS)$/;
 const yes = (v) => /^(y|yes|true|on|예|켬)$/i.test(String(v || '').trim());
 const JSON_TYPE = /^jsonb?\b/i;
 const JSON_OK = /JSON\s*허용\s*:/i;
+// SQLite: 저장 형식(타입 친화도) 다섯 가지. 그 밖의 이름(VARCHAR · DATETIME 등)도 받아 주지만 친화도 규칙으로 바뀌어 저장돼 정의서와 실제가 어긋난다
+const SQLITE_TYPES = ['INTEGER', 'TEXT', 'REAL', 'BLOB', 'NUMERIC'];
+const isSqlite = (d) => /^sqlite3?$/i.test(String(d || '').trim());
 
 /**
- * 검사. conv = vars.datamodel ({ naming, tablePrefix, pkType, auditColumns, timeType, jsonReason })
+ * 검사. conv = vars.datamodel ({ dialect, naming, tablePrefix, pkType, auditColumns, timeType, jsonReason }). dialect 가 sqlite 면 타입이 SQLite 타입(INTEGER · TEXT · REAL · BLOB · NUMERIC)인지도 본다
  * 반환 { errors, warns } (문자열, 「파일:줄 테이블」 로 시작)
  */
 function check(m, conv = {}) {
@@ -177,6 +180,7 @@ function check(m, conv = {}) {
   const audit = list(conv.auditColumns);
   const pkType = String(conv.pkType || '').trim().toLowerCase();
   const timeType = String(conv.timeType || '').trim().toLowerCase();
+  const sqlite = isSqlite(conv.dialect);
   for (const t of m.tables) {
     const at = `${t.file}:${t.line} ${t.id}`;
     if (byId.has(t.id)) errors.push(`${at}: 같은 이름 테이블이 또 있습니다 (${byId.get(t.id).file}:${byId.get(t.id).line})`);
@@ -213,6 +217,7 @@ function check(m, conv = {}) {
       if (fx) continue;
       if (nameRe && !nameRe.test(c.name)) warns.push(`${at}.${c.name}: 컬럼 이름 규칙(${conv.naming})과 다릅니다`);
       if (timeType && (TIME_NAME.test(c.name) || /일시$/.test(c.logical)) && !c.type.toLowerCase().startsWith(timeType)) warns.push(`${at}.${c.name}: 시점 타입이 ${conv.timeType} 가 아닙니다 (${c.type})`);
+      if (sqlite && c.type && !SQLITE_TYPES.includes(c.type.replace(/\(.*$/, '').trim().toUpperCase())) warns.push(`${at}.${c.name}: SQLite 타입(${SQLITE_TYPES.join(' · ')})이 아닙니다 (${c.type}). 일시는 TEXT(ISO 8601) 또는 INTEGER(유닉스 시각)로 적는다`);
       if (yes(conv.jsonReason) && JSON_TYPE.test(c.type) && !JSON_OK.test(c.desc)) warns.push(`${at}.${c.name}: JSON 컬럼(${c.type})인데 설명에 「JSON 허용: <사유>」 가 없습니다`);
     }
     if (!t.logical) warns.push(`${at}: 테이블 논리명이 없습니다 (「### 스키마.테이블 논리명」)`);
@@ -234,4 +239,4 @@ function check(m, conv = {}) {
   return { errors, warns };
 }
 
-module.exports = { parseFile, model, hasTables, check, namingRe, splitTags, idsIn, REF_RE, LREF_RE, NAMING };
+module.exports = { parseFile, model, hasTables, check, namingRe, splitTags, idsIn, REF_RE, LREF_RE, NAMING, SQLITE_TYPES, isSqlite };

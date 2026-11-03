@@ -80,7 +80,7 @@
 
 **팀 에이전트 역할**: 분석 (`analyst`) · 설계 (`architect`) · 문서화 (`documenter`) · 구현 (`implementer`) · 리뷰 (`reviewer`) · 설계 문서 (`spec-writer`) · 테스트 (`tester`)
 
-**도구**: `bin/board.js` · `bin/brief.js` · `bin/budget.js` · `bin/check-docs.js` · `bin/check-refs.js` · `bin/cross-review.js` · `bin/debate.js` · `bin/delegate.js` · `bin/docs-site.js` · `bin/doctor.js` · `bin/handoff.js` · `bin/import-scan.js` · `bin/issue-check.js` · `bin/notify.js` · `bin/plan.js` · `bin/rename-ref.js` · `bin/repo-activity.js` · `bin/repo-check.js` · `bin/review.js` · `bin/secret.js` · `bin/strip-ai-trailers.js` · `bin/team-status.js` · `bin/tidy.js`
+**도구**: `bin/archrules.js` · `bin/board.js` · `bin/brief.js` · `bin/budget.js` · `bin/check-docs.js` · `bin/check-refs.js` · `bin/cross-review.js` · `bin/debate.js` · `bin/delegate.js` · `bin/docs-site.js` · `bin/doctor.js` · `bin/handoff.js` · `bin/import-scan.js` · `bin/issue-check.js` · `bin/notify.js` · `bin/plan.js` · `bin/rename-ref.js` · `bin/repo-activity.js` · `bin/repo-check.js` · `bin/review.js` · `bin/secret.js` · `bin/strip-ai-trailers.js` · `bin/team-status.js` · `bin/tidy.js`
 
 **훅**: 세션 시작: `check-repo-updates.js` · 세션 시작: `check-context-sync.js` · 세션 시작: `handoff-brief.js` · 세션 시작: `session-brief.js` · 세션 시작: `model-profile.js` · 세션 시작: `team-mode.js` · 세션 시작: `channel-mode.js` · 세션 끝: `task-check.js` · 세션 끝: `decision-ask.js` · 세션 끝: `handoff-reminder.js` · 세션 끝: `agent-cleanup.js` · 세션 끝: `budget-check.js` · 세션 끝: `team-idle.js` · 세션 끝: `notify.js` · UserPromptSubmit: `agent-budget.js` · UserPromptSubmit: `task-focus.js` · UserPromptSubmit: `prompt-time.js` · UserPromptSubmit: `chat-prefs.js` · UserPromptSubmit: `settings-hint.js` · UserPromptSubmit: `budget-check.js` · UserPromptSubmit: `team-idle.js` · UserPromptSubmit: `decision-ask.js` · UserPromptSubmit: `plan-first.js` · UserPromptSubmit: `notify.js` · PreToolUse: `agent-budget.js` · PreToolUse: `notify.js` · PreToolUse: `decision-ask.js` · PreToolUse: `notify.js` · PreToolUse: `plan-first.js` · PreToolUse: `team-guard.js` · PreToolUse: `repo-guard.js` · PreToolUse: `git-guard.js` · PreToolUse: `secret-guard.js` · PreToolUse: `review-gate.js` · PreToolUse: `spec-commit.js` · PostToolUse: `channel-progress.js` · PostToolUse: `chat-prefs.js` · PostToolUse: `secret-guard.js` · PostToolUse: `notify.js` · PostToolUse: `notify.js` · Notification: `team-idle.js` · Notification: `notify.js` · SubagentStop: `agent-budget.js` · SubagentStop: `notify.js` · TeammateIdle: `team-idle.js` · TeammateIdle: `notify.js`
 
@@ -192,7 +192,7 @@ GitHub 협업: 브랜치 전략(작업 브랜치 → PR, 머지는 사람만), �
 <details>
 <summary><b>gitlab</b> · GitLab 팀 워크플로: 브랜치 전략 · MR 생성 · 이슈 등록 · 파이프라인 조회 · 배포 연쇄(대기 · 머지 · 수동 작업) · 커밋 규칙</summary>
 
-GitLab 협업: 브랜치 전략(작업 브랜치 → MR, 머지는 사람만. vars.gitlab.agentMerge 를 켜면 지시받은 MR 만 에이전트가), 커밋 메시지, 이슈·MR 어조, MR 생성 스킬, 이슈 찾기 · 읽기 · 등록 · 조치 보고 댓글 스킬, 파이프라인 조회(kedovi gitlab pipeline) · 수동 작업 실행 · 다시 실행(--play · --retry: manual 이 될 때까지 기다린 뒤 실행하고 끝날 때까지 상태, --yes 없이는 확인 문구만), 배포 연쇄 명령(kedovi gitlab wait · merge · play · retry · cancel, create 는 열린 MR 을 다시 씀)
+GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.branchMode 를 trunk 로 두면 통합 브랜치 직접 커밋 · 운영 배포만 MR. 머지는 사람만. vars.gitlab.agentMerge 를 켜면 지시받은 MR 만 에이전트가), 커밋 메시지, 이슈·MR 어조, MR 생성 스킬, 이슈 찾기 · 읽기 · 등록 · 조치 보고 댓글 스킬, 파이프라인 조회(kedovi gitlab pipeline) · 수동 작업 실행 · 다시 실행(--play · --retry: manual 이 될 때까지 기다린 뒤 실행하고 끝날 때까지 상태, --yes 없이는 확인 문구만), 배포 연쇄 명령(kedovi gitlab wait · merge · play · retry · cancel, create 는 열린 MR 을 다시 씀)
 
 | 항목 | 내용 |
 |---|---|
@@ -205,9 +205,11 @@ GitLab 협업: 브랜치 전략(작업 브랜치 → MR, 머지는 사람만. va
 | ID | 제목 | 읽는 때 |
 |---|---|---|
 | `gitlab--10-branch-and-merge` | 브랜치·MR·머지 원칙 | 상시 |
+| `gitlab--11-branch-trunk` | 브랜치·MR·머지 원칙 (통합 브랜치 직접) | 상시 |
 | `gitlab--20-commit-message` | 커밋 메시지 | 상시 |
 | `gitlab--30-issue-mr-tone` | 이슈·MR 본문 어조와 확인 항목 양식 | 필요할 때: 이슈 문서·GitLab 이슈·MR 본문·코드 담당자에게 보내는 확인 요청을 쓸 때 |
 | `gitlab--40-branch-detail` | 브랜치 전략 상세 | 필요할 때: 브랜치를 새로 따거나, MR 방향(source→target)·hotfix·브랜치 이름을 정할 때 |
+| `gitlab--41-branch-trunk-detail` | 브랜치 전략 상세 (통합 브랜치 직접) | 필요할 때: 운영 배포 MR 을 만들거나, 통합 브랜치에 push 가 밀렸거나, 예외로 브랜치 · worktree 를 써야 할 때 |
 
 **스킬**
 
@@ -452,7 +454,7 @@ Django: 업무 로직 위치(서비스 · 선택자) · 뷰 · 시그널에 로�
 <details>
 <summary><b>stack-fastapi</b> · FastAPI 스택: FastAPI 라우터 · Pydantic 모델 · 의존성 · async · 설정</summary>
 
-FastAPI: 얇은 라우터 · Pydantic 모델 분리 · Annotated 의존성 · async 안 블로킹 금지 · 설정 의존성. 서버 공통은 backend 팩
+FastAPI: 얇은 라우터 · Pydantic 모델 분리 · Annotated 의존성 · async 안 블로킹 금지 · 설정 의존성, 기능 폴더 구조 선택 + import-linter 계약 · 역할 파일 검사 템플릿(kedovi archrules fastapi). 서버 공통은 backend 팩
 
 | 항목 | 내용 |
 |---|---|
@@ -464,6 +466,7 @@ FastAPI: 얇은 라우터 · Pydantic 모델 분리 · Annotated 의존성 · as
 | ID | 제목 | 읽는 때 |
 |---|---|---|
 | `stack-fastapi--10-fastapi` | FastAPI 기본 규약 | 상시 |
+| `stack-fastapi--20-feature-layout` | FastAPI 폴더 구조 (기능 먼저) | 필요할 때: FastAPI 코드에 파일 · 폴더를 새로 만들거나 옮기거나, 다른 기능의 모듈을 import 할 때 |
 
 </details>
 
@@ -543,7 +546,7 @@ PostgreSQL 전용 규칙: 트랜잭션 DDL 로 건수 시험, CONCURRENTLY 는 �
 <details>
 <summary><b>stack-react</b> · React 스택: React·TanStack Query·라우터 구현 규약</summary>
 
-React + TypeScript + Vite + TanStack Query + React Router 구현 규약: 생성 쿼리 옵션·쿼리 키, 훅 사용, URL 상태 훅, 폼·다이얼로그 구현, 접근성 속성 + a11y 라벨·런타임 검사기, 공용 폴더 배치 검사기. 화면 공통 원칙은 frontend 레이어 팩
+React + TypeScript + Vite + TanStack Query + React Router 구현 규약: 생성 쿼리 옵션·쿼리 키, 훅 사용, URL 상태 훅, 폼·다이얼로그 구현, 접근성 속성 + a11y 라벨·런타임 검사기, 공용 폴더 배치 검사기, FSD 구조 선택 + eslint-plugin-boundaries 경계 설정 템플릿(kedovi archrules react). 화면 공통 원칙은 frontend 레이어 팩
 
 | 항목 | 내용 |
 |---|---|
@@ -558,6 +561,7 @@ React + TypeScript + Vite + TanStack Query + React Router 구현 규약: 생성 
 | `stack-react--20-react-patterns` | React 구조·쿼리·URL·폼·다이얼로그 구현 | 필요할 때: React 화면 코드를 새로 쓰거나 고칠 때 (파일 추가·이동, TanStack Query 연동, URL 상태·폼·다이얼로그 구현 포함) |
 | `stack-react--30-react-a11y` | React 접근성 구현·검사기 | 필요할 때: React 폼 컨트롤·버튼·표·탭·드롭다운·모달을 만들거나 고칠 때, 접근성 검사기를 돌리거나 공용 입력 컴포넌트를 추가할 때 |
 | `stack-react--40-logic-placement` | React 컴포넌트 책임 · 로직 위치 | 상시 |
+| `stack-react--50-fsd-layout` | React 폴더 구조 (FSD) | 필요할 때: React 화면 코드에 파일 · 폴더를 새로 만들거나 옮기거나, 다른 slice 를 import 할 때 |
 
 **스킬**
 
@@ -572,7 +576,7 @@ React + TypeScript + Vite + TanStack Query + React Router 구현 규약: 생성 
 <details>
 <summary><b>stack-spring</b> · Spring 백엔드 스택: Spring·JPA·QueryDSL 트랜잭션·쿼리 규칙</summary>
 
-Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked 예외 롤백 함정, 파생 쿼리/QueryDSL/네이티브 SQL 정책, 엔티티당 리포지토리, 복합 키 값 객체, 대량 처리 예외, MapStruct·Bean Validation + 쿼리 술어 추출기·QueryDSL 런타임 오류 검사기·로깅 검사기. 계층·API 계약 원칙은 backend 팩
+Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked 예외 롤백 함정, 파생 쿼리/QueryDSL/네이티브 SQL 정책, 엔티티당 리포지토리, 복합 키 값 객체, 대량 처리 예외, MapStruct·Bean Validation, 패키지 구조 선택(계층 먼저 · 기능 먼저, jOOQ 안내) + 쿼리 술어 추출기·QueryDSL 런타임 오류 검사기·로깅 검사기·ArchUnit 구조 검사 템플릿(kedovi archrules spring). 계층·API 계약 원칙은 backend 팩
 
 | 항목 | 내용 |
 |---|---|
@@ -584,7 +588,9 @@ Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked �
 | ID | 제목 | 읽는 때 |
 |---|---|---|
 | `stack-spring--10-spring-baseline` | Spring 기본 규약 | 상시 |
-| `stack-spring--20-layers-and-naming` | Spring 패키지 구조·이름·Javadoc | 필요할 때: Spring 백엔드에 클래스·패키지를 새로 만들거나, 메서드 이름을 짓거나, Javadoc 을 달 때 |
+| `stack-spring--20-layers-and-naming` | Spring 패키지 구조 (계층 먼저) | 필요할 때: Spring 백엔드에 클래스·패키지를 새로 만들거나 옮길 때 |
+| `stack-spring--21-feature-first-layout` | Spring 패키지 구조 (기능 먼저) | 필요할 때: Spring 백엔드에 클래스·패키지를 새로 만들거나 옮기거나, 다른 기능의 클래스를 참조할 때 |
+| `stack-spring--22-naming-and-javadoc` | Spring 이름·MapStruct·Javadoc | 필요할 때: Spring 백엔드에서 메서드 이름을 짓거나, MapStruct 변환을 쓰거나, Javadoc 을 달 때 |
 | `stack-spring--30-persistence` | Spring 데이터 접근: 리포지토리·QueryDSL·네이티브 SQL | 필요할 때: Repository·QueryDSL·네이티브 SQL 로 DB 를 읽거나 쓰는 코드를 새로 쓰거나 고칠 때 (대량 수정·삭제·복제 포함) |
 | `stack-spring--40-api-and-validation` | Spring 기존 관례 찾기·입력 검증 | 필요할 때: Spring 에서 엔드포인트를 새로 만들거나 요청·응답·예외·검증·사용자 메시지를 정하거나 바꿀 때 |
 | `stack-spring--50-logging` | Spring 로깅 | 필요할 때: Spring 백엔드에서 로그를 새로 넣거나, 예외를 잡아 로그로 남기는 코드·@RestControllerAdvice 를 고칠 때 |
@@ -599,7 +605,7 @@ Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked �
 <details>
 <summary><b>clean-code</b> · 클린 코드 공통: 이름 · 함수 · 클래스 · 주석 · 읽히는 코드 · 레이어 책임 (언어 공통)</summary>
 
-언어가 감지된 모든 코드 repo 에 붙는 클린 코드 공통 규칙: 이름 · 함수 · 모듈 · 주석 · 읽히는 코드 · 레이어 파일에 private 상수 · 함수 늘어놓지 않기와 공통 로직 위치. 근거는 클린 코드 규칙 문서
+언어가 감지된 모든 코드 repo 에 붙는 클린 코드 공통 규칙: 이름 · 함수 · 모듈 · 주석 · 읽히는 코드 · 레이어 파일에 도우미 메서드(접근 제한자 무관) · 상수 늘어놓지 않기와 공통 로직 위치. 도우미 기준은 vars.cleanCode.helperMethods(few · none), 구조 검사 템플릿(kedovi archrules)도 이 값을 따른다. 근거는 클린 코드 규칙 문서
 
 | 항목 | 내용 |
 |---|---|

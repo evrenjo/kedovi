@@ -39,6 +39,14 @@ assert.ok(scanOutput('db.local:5432:app:reader:hunter2pw').includes('.pgpass 비
 for (const ok of ['commit a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0', 'HEAD_SHA=a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0', 'DATABASE_URL=postgres://app:***@db/app', 'NODE_ENV=production', 'PASSWORD=changeme', '✔ 115 passed', 'PATH=/usr/local/bin:/usr/bin']) assert.deepStrictEqual(scanOutput(ok), [], ok);
 
 // 훅: 모든 세션에서 막음 (팀원도), Read 도구, PostToolUse 알림에 값을 다시 찍지 않음
+// 식별자 · 경로 모양은 이름에 KEY 가 있어도 넘긴다 (라우팅 키 · 큐 이름 · 캐시 키 · 설정 키 상수 · 경로)
+for (const ok of ['ROUTING_KEY=order.created.v1.events', 'ORDER_ROUTING_KEY = "trade.order.created.v2"', 'QUEUE_KEY=ORDER_CREATED_DEAD_LETTER', 'CACHE_KEY="user-profile-detail-cache"', 'MESSAGE_KEY: error.order.not_found', 'CONFIG_KEY=app.feature.checkout.enabled', 'PATH=/opt/homebrew/bin', 'PATH=/Users/dev/.nvm/versions/node/v24.1.0/bin', 'FEATURE_FLAG=checkout.v2.rollout2024']) assert.deepStrictEqual(scanOutput(ok), [], ok);
+// 진짜 비밀값은 계속 잡는다 (낱말 안에 대소문자 · 숫자가 섞인 무작위 값 · 구분자로 나눈 무작위 값)
+assert.deepStrictEqual(scanOutput('API_KEY=' + 'q8Zr' + 'T2mXv9LpW4nB'), ['API_KEY= 값']);
+assert.deepStrictEqual(scanOutput('SIGNING_KEY=' + 'aB3d.Xy9Q' + '-Lm2Pz7Rt'), ['SIGNING_KEY= 값']);
+assert.deepStrictEqual(scanOutput('LICENSE_KEY=' + 'A1B2-C3D4' + '-E5F6-G7H8'), ['LICENSE_KEY= 값']);
+assert.ok(scanOutput('ROUTING_KEY=x ' + 'glpat' + '-AbCdEfGhIjKlMnOpQrSt12').includes('GitLab 개인 토큰(glpat-)'));
+
 const hook = (input) => spawnSync(process.execPath, [path.join(__dirname, 'secret-guard.js')], { cwd: tmp, input: JSON.stringify({ cwd: tmp, ...input }), encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: tmp } }).stdout;
 const deny = (o) => /"permissionDecision":"deny"/.test(o);
 assert.ok(deny(hook({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: "awk -F: '{print $1,$5}' ~/.pgpass" } })));

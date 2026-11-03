@@ -54,7 +54,7 @@ kedovi detect --hint spring --contains 'com\.example\.platform:platform-starter'
 | 팩 | 내용 |
 |---|---|
 | `core` | 커뮤니케이션·검증 원칙, 변경 영향 체크리스트, 컨텍스트 관리, 핸드오프·재개·인수인계·팀 현황·진단 스킬, 레포 업데이트·죽은 참조 검사 훅 |
-| `gitlab` · `github` | 브랜치 전략(에이전트는 MR·PR 까지, 머지는 사람. GitLab 은 `vars.gitlab.agentMerge` 를 켜면 지시받은 MR 만 에이전트가 머지 · 배포 연쇄), 커밋·문안 규칙, MR·PR 생성 스킬. repo 의 호스트에 따라 repo 마다 |
+| `gitlab` · `github` | 브랜치 전략(에이전트는 MR·PR 까지, 머지는 사람. GitLab 은 `vars.gitlab.agentMerge` 를 켜면 지시받은 MR 만 에이전트가 머지 · 배포 연쇄, `vars.gitlab.branchMode` 로 작업 브랜치(feature) · 통합 브랜치 직접(trunk) 선택), 커밋·문안 규칙, MR·PR 생성 스킬. repo 의 호스트에 따라 repo 마다 |
 | `backend` · `frontend` · `desktop` · `mobile` · `watch` · `tv` · `db` | 기술과 무관한 공통 원칙. OWASP·WCAG·RFC·플랫폼 공식 문서 기반, 팩마다 `docs/SOURCES.md` 에 규칙별 근거 |
 | `stack-spring` · `stack-react` · `stack-postgres` | 그 기술에만 해당하는 규칙과 검사 도구 |
 | `modernization` · `enhancement` · `consulting` | 시작 유형 팩 |
@@ -62,6 +62,14 @@ kedovi detect --hint spring --contains 'com\.example\.platform:platform-starter'
 ### 규칙 사용 · 해제 · 변경
 
 킷이 넣는 규칙이 팀에 맞지 않으면 `kedovi rules` 로 끄고(`workspace.json` 의 `rules.off`), 우리 방식으로 바꾸려면 `packs/project/rules/` 에 `replaces: <규칙 ID>` 를 적은 규칙을 둔다. 근거·안전·보안 규칙은 필수라 끌 수 없다. AGENTS.md 가 커지면 끄지 않고 `kedovi rules ondemand <ID>` 로 필요할 때만 읽게 할 수 있다. 모든 팩과 규칙 목록은 [팩 종류](packs.md), 만드는 방법은 [팩 제작](pack-making.md).
+
+설정값으로 고르는 규칙도 있다. 아래 값을 `workspace.json` 의 `vars` 에 적고 `node bin/kit.js sync` 하면 맞는 규칙만 들어간다.
+
+| 설정 | 값 | 바뀌는 것 |
+|---|---|---|
+| `gitlab.branchMode` | `feature`(기본) · `trunk` | feature = 작업 브랜치 → 통합 브랜치 MR. trunk = 작업 브랜치 · worktree 없이 통합 브랜치에 직접 커밋 · push, 운영 배포만 MR (팀원 브랜치 생성은 훅이 막고, 같은 repo 를 두 팀원에게 동시에 맡기지 않는다) |
+| `git.cleanupMerged` | `false`(기본) · `true` | true 면 머지가 확인된 로컬 브랜치 · worktree 를 머지 직후 정리 (원격 삭제는 건마다 승인) |
+| `cleanCode.helperMethods` | `few`(기본) · `none` | 역할 클래스의 도우미 메서드(접근 제한자 무관) 기준. none 이면 0개, `kedovi archrules` 검사도 켜진다 |
 
 
 ## 기본 작업 방식

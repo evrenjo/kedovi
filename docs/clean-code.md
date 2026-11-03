@@ -7,7 +7,7 @@ repo 에 감지된 언어마다 클린 코드 규칙이 붙는다. 언어 공통
 
 | repo 에 있는 것 | 붙는 팩 | 핵심 |
 |---|---|---|
-| 감지된 언어가 하나라도 (TypeScript · JavaScript · Go · C# 포함) | `clean-code` | 온전한 낱말 이름 · 한 문장으로 설명되는 함수 · 왜만 쓰는 주석 · 레이어 파일에 private 상수 · 함수 늘어놓지 않기 · 공통 로직 위치와 이름 |
+| 감지된 언어가 하나라도 (TypeScript · JavaScript · Go · C# 포함) | `clean-code` | 온전한 낱말 이름 · 한 문장으로 설명되는 함수 · 왜만 쓰는 주석 · 레이어 파일에 도우미 메서드(접근 제한자 무관) · 상수 늘어놓지 않기 (기준은 vars.cleanCode.helperMethods) · 공통 로직 위치와 이름 |
 | Java · Kotlin | `lang-java` · `lang-kotlin` | 이름 · 메서드 · record · sealed · Javadoc · KDoc · 스코프 함수 |
 | Python | `lang-python` | PEP 8 · 타입 힌트 · docstring · 예외. ML · AI 코드는 작업할 때 읽는 규칙 |
 | C · C++ | `lang-c` · `lang-cpp` | 반환값 확인 · 정리 경로 · RAII · 소유권 · const · 오류 방식 하나 |

@@ -177,7 +177,7 @@ function prePush() {
   let stdin = '';
   try { stdin = fs.readFileSync(0, 'utf8'); } catch { /* 없음 */ }
   const changes = notify.collectPush((args) => git(ROOT, args), stdin, remote);
-  const messages = notify.teamMessages(cfg, { project: PROJECT, ...changes });
+  const messages = notify.teamMessages(cfg, { project: PROJECT, external: require('../lib/plan').externalOf(ws), ...changes });
   if (!messages.length) return;
   const job = path.join(os.tmpdir(), `kedovi-notify-${process.pid}-${Date.now()}.json`);
   fs.writeFileSync(job, JSON.stringify({ remote, refs: changes.refs, messages }), { mode: 0o600 });

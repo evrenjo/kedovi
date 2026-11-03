@@ -2,7 +2,7 @@
 // 문서 사이트: 기획 repo 의 md 를 같은 경로 구조의 HTML(docs-site/)로 만든다. 실행: kedovi docs <명령> 또는 node packs/core/bin/docs-site.js <명령>
 /*
  * 명령
- *   build [repo|폴더] [--out docs-site] [--force]   만들기. repo 를 안 주면 workspace.json 의 기획 repo(kind: docs) 전부. 옛 출력 폴더 html/ 은 docs-site/ 로 한 번 옮긴다 (git mv)
+ *   build [repo|폴더] [--out docs-site] [--force] [--write-config]   만들기. --out 은 폴더 기준 상대 경로 또는 절대 경로. docs-site.json(원본 주소)은 이미 있거나 기획 repo · 워크스페이스 루트일 때만 만든다 (그 밖은 --write-config). repo 를 안 주면 workspace.json 의 기획 repo(kind: docs) 전부. 옛 출력 폴더 html/ 은 docs-site/ 로 한 번 옮긴다 (git mv)
  *   check [repo|폴더]                          md 와 docs-site/ 가 어긋났는지 (어긋나면 exit 1). 정의 없는 ID 는 ⚠ 만
  *   serve [repo|폴더] [--port 8000] [--open]     docs-site/ 를 이 PC 에서 웹 주소로 보기 (Ctrl+C 로 끝). file:// 로도 열리지만 쪽 이동이 새로고침이 되고 전체 인쇄가 안 된다
  *   pages [on|off] [repo|폴더]                 Pages 로 올리기 켜고 끄기 · 상태. on = 원격(GitLab · GitHub)에 맞는 CI 파일을 두고 docs-site/ 를 커밋 대상으로, off = .gitignore 에 /docs-site/
@@ -44,8 +44,20 @@ const MANIFEST = 'assets/site.json';
 const OUT = 'docs-site';   // 출력 폴더 (0.59.0 전에는 html/)
 const OLD_OUT = 'html';
 /** 이 repo 의 출력 폴더: 아직 옛 html/ 만 있으면 그것 (check · hook 은 옮기지 않고 그대로 본다) */
-const outOf = (dir) => opt('out') || (!fs.existsSync(path.join(dir, OUT, MANIFEST)) && fs.existsSync(path.join(dir, OLD_OUT, MANIFEST)) ? OLD_OUT : OUT);
+const outOf = (dir) => outArg(dir) || (!fs.existsSync(path.join(dir, OUT, MANIFEST)) && fs.existsSync(path.join(dir, OLD_OUT, MANIFEST)) ? OLD_OUT : OUT);
 const SKIP = new Set(['.git', 'node_modules']);
+/**
+ * --out 값 → 대상 폴더 기준 상대 경로 (안이면) 또는 절대 경로 (밖이면). 절대 경로는 그대로 쓴다 (대상 폴더 안으로 이어 붙이지 않는다).
+ * 표시(outLabel)는 안이면 「repo/폴더/」, 밖이면 절대 경로
+ */
+function outArg(dir) {
+  const o = opt('out');
+  if (!o) return null;
+  const abs = path.resolve(dir, o);
+  const rel = path.relative(dir, abs);
+  return rel && !rel.startsWith('..') && !path.isAbsolute(rel) ? rel.split(path.sep).join('/') : abs;
+}
+const outLabel = (t, out) => (path.isAbsolute(out) ? out : `${t.name}/${out}`);
 
 function loadWs() {
   // 이 도구가 놓인 워크스페이스 (기획 repo 의 pre-commit 처럼 다른 폴더에서 불려도 같은 변수를 쓴다)
@@ -189,6 +201,25 @@ function prefixesOf(ws) {
 }
 
 const CONFIG = 'docs-site.json';
+/** docs-site.json 을 알아서 만들어도 되는 곳: 파일이 이미 있거나, 기획 repo(kind: docs)거나, 워크스페이스 루트 */
+function configHome(t) {
+  if (fs.existsSync(path.join(t.dir, CONFIG)) || t.kind === 'docs') return true;
+  const real = (x) => { try { return fs.realpathSync(x); } catch { return path.resolve(x); } };
+  return real(t.dir) === real(path.resolve(PACKS, '..')) && fs.existsSync(path.join(t.dir, 'workspace.json'));
+}
+
+/** git 이 무시하는 폴더면 한 줄 (만든 파일 · 정의서가 조용히 커밋에서 빠진다). git repo 가 아니면 조용히 */
+function ignoredLines(t, dirs) {
+  const out = [];
+  for (const d of new Set(dirs)) {
+    const abs = path.resolve(t.dir, d);
+    const rel = path.relative(t.dir, abs).split(path.sep).join('/');
+    if (rel.startsWith('..') || path.isAbsolute(rel) || !fs.existsSync(abs)) continue;
+    const r = require('child_process').spawnSync('git', ['-C', t.dir, 'check-ignore', '-q', '--', `${abs}/`], { stdio: 'ignore' });
+    if (r.status === 0) out.push(`⚠ ${rel ? `${t.name}/${rel}` : t.name}/ 는 git 이 무시하는 폴더라 정의서가 커밋되지 않습니다 (어느 줄인지: git -C ${t.dir} check-ignore -v ${abs}/)`);
+  }
+  return out;
+}
 function readConfig(dir) {
   try { return JSON.parse(fs.readFileSync(path.join(dir, CONFIG), 'utf8')); } catch (e) {
     if (fs.existsSync(path.join(dir, CONFIG))) throw new Error(`${CONFIG} 를 읽지 못했습니다: ${e.message}`);
@@ -401,7 +432,7 @@ function generate(t, ws, out) {
   const cellFold = Number(((ws && ws.vars && ws.vars.docs) || {}).cellFold) || undefined;
   const res = build(files, { cellFold, title: titleOf(t.dir, ws, t.name), prefixes: prefixesOf(ws), assets: assets(t.dir), mermaid: mermaidAssets(), config, erd: erdOpts(ws), sheetTheme: sheetTheme(ws), ...(sc.srcOf ? { srcOf: sc.srcOf } : {}) });
   res.plan = sc.plan;
-  const moved = movedPages(path.join(t.dir, out), res.pages);
+  const moved = movedPages(path.resolve(t.dir, out), res.pages);
   res.moved = moved;
   const list = Object.keys(res.pages).sort();
   res.files = files;
@@ -694,19 +725,20 @@ function sizeLines(res, out) {
 async function cmdBuild(ws) {
   for (const t of targets(ws, argv[1] && !argv[1].startsWith('--') ? argv[1] : null)) {
     migrate(t);
-    const out = opt('out') || OUT;
-    const outDir = path.join(t.dir, out);
+    const out = outArg(t.dir) || OUT;
+    const outDir = path.resolve(t.dir, out);
     if (fs.existsSync(outDir) && fs.readdirSync(outDir).length && !ours(outDir) && !has('force')) {
-      throw new Error(`${t.name}/${out}/ 에 다른 생성기가 만든 파일이 있습니다. 덮지 않습니다 (다른 폴더: --out <폴더>, 덮기: --force)`);
+      throw new Error(`${outLabel(t, out)}/ 에 다른 생성기가 만든 파일이 있습니다. 덮지 않습니다 (다른 폴더: --out <폴더>, 덮기: --force)`);
     }
-    // 원본 보기 주소: docs-site.json 에 없으면 origin 으로 한 번 채워 둔다 (그 뒤로는 파일 값만 쓰므로 PC 마다 결과가 같다)
+    // 원본 보기 주소: docs-site.json 에 없으면 origin 으로 한 번 채워 둔다 (그 뒤로는 파일 값만 쓰므로 PC 마다 결과가 같다).
+    // 파일이 이미 있거나 기획 repo · 워크스페이스 루트일 때만 쓴다. 일반 제품 repo 의 docs/ 등에는 --write-config 로 요청할 때만
     const config = readConfig(t.dir);
     if (!config.source && !has('no-source')) {
       const src = sourceOf(t.dir);
-      if (src) {
+      if (src && (configHome(t) || has('write-config'))) {
         fs.writeFileSync(path.join(t.dir, CONFIG), `${JSON.stringify({ ...config, source: src }, null, 2)}\n`);
         console.log(`  ${CONFIG} 에 원본 주소를 적었습니다: ${src} (같이 커밋한다)`);
-      }
+      } else if (src) console.log(`  원본 보기 주소를 사이트에 넣으려면: --write-config (${t.name}/${CONFIG} 를 만든다)`);
     }
     const res = generate(t, ws, out);
     if ((res.collisions || []).length) {
@@ -732,7 +764,8 @@ async function cmdBuild(ws) {
     const sheets = res.docs.filter((d) => d.kind === 'sheets').length;
     const erd = (res.erds || []).map((e) => `ERD ${e.page} (테이블 ${e.model.tables.length})`).join(' · ');
     const mv = Object.keys(res.moved || {}).length;
-    console.log(`✔ ${t.name}/${out}/ 문서 ${res.docs.length - sheets}${sheets ? ` · 화면설계서 ${sheets}` : ''}${erd ? ` · ${erd}` : ''} · ID ${Object.keys(res.index.ids).length} · 바뀐 파일 ${wrote}${stale.length ? ` · 지운 파일 ${stale.length}` : ''}${mv ? ` · 옮겨진 문서 안내 ${mv}` : ''}`);
+    console.log(`✔ ${outLabel(t, out)}/ 문서 ${res.docs.length - sheets}${sheets ? ` · 화면설계서 ${sheets}` : ''}${erd ? ` · ${erd}` : ''} · ID ${Object.keys(res.index.ids).length} · 바뀐 파일 ${wrote}${stale.length ? ` · 지운 파일 ${stale.length}` : ''}${mv ? ` · 옮겨진 문서 안내 ${mv}` : ''}`);
+    for (const l of ignoredLines(t, ['.', ...(res.erds || []).map((e) => e.dir)])) console.log(`  ${l}`);
     for (const l of await mermaidLines(res)) console.log(`  ${l}`);
     for (const l of artLines(res)) console.log(`  ${l}`);
     for (const l of unlistedLines(res)) console.log(`  ${l}`);
@@ -747,7 +780,7 @@ async function cmdCheck(ws, dirArg, quietIfNone) {
   let bad = 0;
   for (const t of targets(ws, dirArg)) {
     const out = outOf(t.dir);
-    const outDir = path.join(t.dir, out);
+    const outDir = path.resolve(t.dir, out);
     if (!ours(outDir)) { if (!quietIfNone) console.log(`- ${t.name}: 문서 사이트를 만든 적 없음 (kedovi docs build)`); continue; }
     const res = generate(t, ws, out);
     const changed = diff(outDir, res.pages);
@@ -818,7 +851,7 @@ async function main() {
     if (cmd === 'trace') return cmdTrace(ws);
     if (cmd === 'pages') return cmdPages(ws);
     if (cmd === 'serve') return cmdServe(ws);
-    console.log('사용법: kedovi docs build [repo|폴더] [--out docs-site] [--force] · pages [on|off] [repo|폴더] · check [repo|폴더] · serve [repo|폴더] [--port 8000] [--open] · show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs] · refs-quote <md 파일…> [--dry] · trace [--ids FN] [--all] [--strict] [--md] [--new]');
+    console.log('사용법: kedovi docs build [repo|폴더] [--out docs-site] [--force] [--write-config] · pages [on|off] [repo|폴더] · check [repo|폴더] · serve [repo|폴더] [--port 8000] [--open] · show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs] · refs-quote <md 파일…> [--dry] · trace [--ids FN] [--all] [--strict] [--md] [--new]');
     process.exitCode = cmd ? 1 : 0;
   } catch (e) {
     console.error(`✖ ${e.message}`);
@@ -827,4 +860,4 @@ async function main() {
 }
 
 if (require.main === module) main();
-module.exports = { generate, diff, assets, siteAssets, mermaidAssets, EXTRA, MANIFEST, OUT, OLD_OUT, pagesState, ciLine, oldRefs };
+module.exports = { generate, ignoredLines, configHome, diff, assets, siteAssets, mermaidAssets, EXTRA, MANIFEST, OUT, OLD_OUT, pagesState, ciLine, oldRefs };

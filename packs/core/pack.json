@@ -37,6 +37,10 @@
       "default": "",
       "desc": "로드맵 \"이번에 생긴 것\" 에서 셀 ID 접두사 (쉼표로, 예: REQ,TC). 단계 시작 이후 git 기록에 새로 나온 ID 수를 센다. 비우면 커밋·새 파일 수만"
     },
+    "plan.external": {
+      "default": "",
+      "desc": "일정 정본이 밖(GitLab 마일스톤 · 이슈 보드 등)이면 그 위치 한 줄 (예: GitLab 마일스톤 https://gitlab.example.com/grp/app/-/milestones). 적으면 handoffs/PLAN.md 의 「기본 단계 그대로」 등 로드맵 경고를 내지 않고 이 위치를 안내한다. kedovi plan external <위치> | off"
+    },
     "docs.forbid": {
       "default": "",
       "desc": "문서에 남으면 안 되는 표시 (정규식, 쉼표로. 예: \\[TODO-[^\\]]*\\]). check-docs.js 가 오류로 잡는다. 비우면 보지 않는다"
@@ -88,6 +92,14 @@
     "issue.forbid": {
       "default": [],
       "desc": "이슈 · 댓글 본문에 나가면 안 되는 낱말 배열(고객사 · 사내 이름 등). 등록 전 검사(issue-check.js)가 잡는다. 영문은 낱말 단위, 한글은 포함 여부로 본다"
+    },
+    "git.cleanupMerged": {
+      "default": false,
+      "choices": [
+        false,
+        true
+      ],
+      "desc": "머지가 확인된 로컬 브랜치 · worktree 를 에이전트가 머지 직후 정리할지. false(기본) = 지우지도 제안하지도 않는다. true = git status 와 merge-base 로 잃을 것이 없음을 보인 뒤 지운다 (원격 브랜치 삭제는 건마다 승인)"
     }
   },
   "secrets": [

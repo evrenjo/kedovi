@@ -105,6 +105,20 @@ assert.ok(!/^ALTER/m.test(ddl(two, two.schemas, { fkInDb: false })), 'fkInDb fal
 assert.match(ddl(two, two.schemas, { dialect: 'mysql' }), /email varchar\(254\) NOT NULL COMMENT '이메일: 로그인 ID'/);
 assert.match(ddl(two, two.schemas, { dialect: 'oracle' }), /COMMENT ON TABLE shop\.member IS '회원: 회원 계정';/);
 
+// SQLite: 외래키는 CREATE TABLE 안(스키마 없는 테이블 이름), ALTER 없음, 주석은 SQL 주석
+const lite = ddl(two, two.schemas, { dialect: 'sqlite' });
+assert.match(lite, /SQLite DDL/);
+assert.match(lite, /CONSTRAINT fk_receipt_order_id FOREIGN KEY \(order_id\) REFERENCES orders \(id\)/);
+assert.ok(!/^ALTER/m.test(lite), 'SQLite 는 ALTER TABLE 로 외래키를 더하지 않는다');
+assert.ok(!/CREATE SCHEMA|COMMENT ON/.test(lite));
+assert.match(lite, /^  -- 이메일: 로그인 ID\n  email varchar\(254\) NOT NULL/m);
+// SQLite 타입 검사: dialect sqlite 일 때만
+const liteModel = DM.model({ 'main.md': '### main.note 메모\n기능: 없음\n\n| 컬럼 | 논리명 | 타입 | 널 | 키 | 참조 | 설명 |\n|---|---|---|---|---|---|---|\n| id | ID | INTEGER | N | PK | | |\n| body | 본문 | varchar(200) | N | | | |\n| created_at | 생성 일시 | TEXT | N | | | |\n' });
+const liteWarn = DM.check(liteModel, { dialect: 'sqlite' }).warns;
+assert.ok(liteWarn.some((w) => /main\.note\.body: SQLite 타입/.test(w)), 'varchar 는 SQLite 타입이 아니다');
+assert.ok(!liteWarn.some((w) => /\.(id|created_at): SQLite 타입/.test(w)), 'INTEGER · TEXT 는 통과');
+assert.ok(!DM.check(liteModel, {}).warns.some((w) => /SQLite 타입/.test(w)), 'dialect 가 없으면 보지 않는다');
+
 // 임시 기획 repo: build → ERD 쪽 · 개요 블록 · 메뉴 ▶ · 뷰어 파일, 검사 exit 코드
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kedovi-datamodel-'));
 const put = (f, c) => { fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }); fs.writeFileSync(path.join(dir, f), c); };

@@ -192,4 +192,31 @@ assert.match(msgs[0], /로드맵 갱신 \(kim\)\n로드맵 완료 2\/5/);
 assert.ok(msgs[0].includes('```'));
 assert.strictEqual(n.teamMessages({ chat: '1', token: 't', events: ['settings'] }, { project: 'p', plan: { author: 'kim', text } }).length, 0, 'handoff 알림을 끈 팀은 보내지 않는다');
 
+// 외부 일정 정본(vars.plan.external): 「기본 단계 그대로」 안내 대신 그 위치, check 경고 없음, kedovi plan external 로 적고 지운다
+{
+  const preset = P.parse(P.template('enhancement'));
+  assert.match(P.shortLine(preset), /기본 단계 그대로/);
+  const ext = 'GitLab 마일스톤 https://gitlab.example.com/grp/app/-/milestones';
+  assert.ok(!/기본 단계 그대로/.test(P.shortLine(preset, ext)) && P.shortLine(preset, ext).includes(`일정 정본: ${ext}`));
+  assert.strictEqual(P.externalOf({ vars: { plan: { external: ` ${ext} ` } } }), ext);
+  assert.strictEqual(P.externalOf({}), '');
+  const fs = require('fs'); const os = require('os'); const path = require('path'); const { spawnSync } = require('child_process');
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'kedovi-plan-ext-'));
+  spawnSync('git', ['-C', d, 'init', '-q']);
+  fs.writeFileSync(path.join(d, 'workspace.json'), JSON.stringify({ project: { name: 'p', type: 'enhancement' }, packs: ['core'], repos: [] }, null, 2));
+  fs.mkdirSync(path.join(d, 'handoffs'));
+  fs.writeFileSync(path.join(d, 'handoffs', 'PLAN.md'), `${P.template('enhancement')}\n`);
+  const tool = (...a) => spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'plan.js'), ...a], { cwd: d, encoding: 'utf8' });
+  assert.match(tool('check').stdout, /⚠ 로드맵: 로드맵이 기본 단계 그대로입니다/);
+  assert.match(tool('external', ext).stdout, /✔ 일정 정본: /);
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(d, 'workspace.json'), 'utf8')).vars.plan.external, ext);
+  const c = tool('check').stdout;
+  assert.ok(!c.includes('⚠'), 'check 경고 없음');
+  assert.ok(c.includes(`· 로드맵: 일정 정본은 ${ext}`), '위치 한 줄');
+  assert.ok(tool('--short').stdout.includes(`일정 정본: ${ext}`));
+  assert.match(tool('external', 'off').stdout, /지웠습니다/);
+  assert.match(tool('check').stdout, /기본 단계 그대로/);
+  fs.rmSync(d, { recursive: true, force: true });
+}
+
 console.log('plan.test.js ✔');

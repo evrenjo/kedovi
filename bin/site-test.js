@@ -236,6 +236,34 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     ok(/\.sql$/.test(dl.suggestedFilename()), dl.suggestedFilename());
     return `표 ${await p.evaluate(() => document.querySelectorAll('#vp .tb').length)}`;
   });
+  await check('ERD 선 고르기 · 논리 참조 배치 힌트', async () => {
+    // 관계 배치 + 논리 참조 켬: 배치를 다시 계산하고(캐시 키에 lrefs), 논리 참조 선은 한 번씩만 그린다
+    const lay = await p.evaluate(async () => {
+      const E = window.ERD, st = E.st;
+      st.arrange = 'rel'; st.overview = false; st.lrefs = false; await E.layout();
+      const n0 = st.cache.size; st.lrefs = true; await E.layout();
+      const want = E.lrels.filter((r) => r.from !== r.to && st.pos.has(r.from) && st.pos.has(r.to)).length;
+      return { grew: st.cache.size > n0, lg: document.querySelectorAll('#vp path.ed.lg').length, want };
+    });
+    ok(lay.grew, '논리 참조를 켜도 배치를 다시 계산하지 않음');
+    ok(lay.lg === lay.want, `논리 참조 선 ${lay.lg}개 (기대 ${lay.want}, 이중 표시 없어야 함)`);
+    // 선 누르기: 두 테이블 · 컬럼 · 그 선만 진하게, 나머지 흐리게
+    await p.evaluate(() => { const h = [...document.querySelectorAll('#vp path.edhit')].find((x, i, a) => a.length); h.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    await p.waitForTimeout(200);
+    const s1 = await p.evaluate(() => ({ rsel: document.querySelectorAll('#vp .tb.rsel').length, dim: document.querySelectorAll('#vp .tb.dim').length, on: document.querySelectorAll('#vp path.ed.on').length, hl: document.querySelectorAll('#vp .hlc').length, tb: document.querySelectorAll('#vp .tb').length }));
+    ok(s1.rsel === 2 && s1.on === 1 && s1.hl >= 1 && s1.dim === s1.tb - 2, JSON.stringify(s1));
+    // 테이블을 누르면 관계 선택이 풀리고 표 선택
+    await p.evaluate(() => document.querySelector('#vp .tb').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await p.waitForTimeout(200);
+    ok(await p.evaluate(() => !document.querySelector('#vp .tb.rsel') && !!document.querySelector('#vp .tb.sel')), '테이블 누르기로 관계 선택이 안 풀림');
+    // 선을 다시 고른 뒤 빈 곳을 누르면 모두 풀린다
+    await p.evaluate(() => document.querySelector('#vp path.edhit').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await p.waitForTimeout(150);
+    await p.evaluate(() => { const st = document.querySelector('#stage'); const o = { bubbles: true, pointerId: 9, clientX: 5, clientY: 300, button: 0, pointerType: 'mouse' }; st.dispatchEvent(new PointerEvent('pointerdown', o)); st.dispatchEvent(new PointerEvent('pointerup', o)); });
+    await p.waitForTimeout(200);
+    ok(await p.evaluate(() => !document.querySelector('#vp .tb.rsel, #vp .tb.sel, #vp .tb.dim')), '빈 곳 누르기로 안 풀림');
+    return `선 고르기 · 논리 참조 ${lay.lg}`;
+  });
   await check('화면설계서 뷰어 (썸네일 · 넘기기 · 내부 정보 · 근거 패널 · 발표)', async () => {
     await p.goto(`${F.url}02-screens/web.html`); await p.waitForSelector('.sb-thumb');
     const st = () => p.evaluate(() => ({ count: document.querySelector('.sb-count').textContent, thumbs: document.querySelectorAll('.sb-thumb').length, dev: document.body.classList.contains('sb-dev-on'), panel: document.body.classList.contains('sb-panel-on'), present: document.body.classList.contains('sb-present') }));

@@ -10,7 +10,8 @@
  *   init [--type t] [--switch]  PLAN.md 가 없으면 종류 · 진행 방식 · 스택별 기본 단계로 만든다. 기본 단계 그대로(kedovi:preset)면 스택에 맞게 단계를 더하고,
  *                       진행 방식이 바뀌어 단계가 다르면(아직 끝낸 단계가 없을 때만) 새 뼈대로 바꾼다 (사람이 고친 것은 그대로).
  *                       이슈형으로 바꿀 때(--switch: kedovi approach · type)는 고친 로드맵이어도 맨 앞에 `## 이슈` 절을 끼운다 (단계 표는 남기고 읽지 않는다)
- *   check               갱신 누락 경고 (⚠ 줄. 항상 exit 0)
+ *   check               갱신 누락 경고 (⚠ 줄. 항상 exit 0). vars.plan.external(외부 일정 정본)이 있으면 경고 대신 그 위치 한 줄
+ *   external <위치> | off  일정 정본이 밖(GitLab 마일스톤 등)이면 그 위치를 workspace.json vars.plan.external 에 적는다 (off = 지운다)
  * 숫자는 센 것만 쓴다: 커밋 · 새 파일 · ID(vars.plan.ids 접두사)는 단계 시작 날짜 이후 git 기록에서 센다. 시작 날짜가 없으면 세지 않는다.
  */
 'use strict';
@@ -108,14 +109,17 @@ function report(ws, plan) {
   out.push(`**다음** → ${P.nextLine(plan)}`);
   const skill = P.skillOf(stage);
   if (skill) out.push(`**스킬** → \`${skill}\` (이 단계를 시작할 때 그 스킬을 따른다. 「진행 방식 합의」 가 있으면 거기부터)`);
-  if (plan.preset) out.push('', `⚠ 기본 단계 그대로입니다. ${P.presetHint(plan)}.`);
-  for (const w of P.missingStages(plan, layersOf(ws), (ws.project || {}).type, (ws.project || {}).approach)) out.push('', `⚠ ${w}`);
+  const ext = P.externalOf(ws);
+  if (ext) out.push('', `일정 정본: ${ext} (이 로드맵은 참고용)`);
+  else if (plan.preset) out.push('', `⚠ 기본 단계 그대로입니다. ${P.presetHint(plan)}.`);
+  if (!ext) for (const w of P.missingStages(plan, layersOf(ws), (ws.project || {}).type, (ws.project || {}).approach)) out.push('', `⚠ ${w}`);
   return out.join('\n');
 }
 
 /** 갱신 누락 경고 */
 function check(ws, plan, root) {
   const warn = [];
+  if (P.externalOf(ws)) return []; // 일정 정본이 밖: PLAN.md 를 갱신하지 않으니 경고하지 않는다 (위치는 externalLine)
   if (!plan) return ['로드맵(handoffs/PLAN.md)이 없거나 단계 표가 없습니다. kedovi plan init 으로 만든다'];
   if (plan.issues) return issueCheck(plan);
   // 아이디어 단계 중이면 로드맵을 고칠지는 그 대화가 끝난 뒤에 묻는다 (첫 질문이 겹치지 않게)
@@ -149,10 +153,29 @@ function check(ws, plan, root) {
   return warn;
 }
 
+/** 외부 일정 정본 안내 한 줄 (없으면 null) */
+const externalLine = (ws) => (P.externalOf(ws) ? `일정 정본은 ${P.externalOf(ws)} (vars.plan.external). handoffs/PLAN.md 경고는 내지 않는다` : null);
+
+/** kedovi plan external <위치> | off: workspace.json vars.plan.external 을 고친다 (다른 값 · 순서는 그대로) */
+function setExternal(root, value) {
+  const f = path.join(root, 'workspace.json');
+  const ws = JSON.parse(fs.readFileSync(f, 'utf8'));
+  ws.vars = ws.vars || {};
+  ws.vars.plan = ws.vars.plan || {};
+  const off = !value || /^(off|none|없음)$/i.test(value);
+  ws.vars.plan.external = off ? '' : value;
+  fs.writeFileSync(f, `${JSON.stringify(ws, null, 2)}\n`);
+  console.log(off ? '✔ 외부 일정 정본을 지웠습니다. handoffs/PLAN.md 가 다시 정본이고 로드맵 경고가 다시 나온다' : `✔ 일정 정본: ${value} (workspace.json vars.plan.external). 로드맵 「기본 단계 그대로」 등 PLAN.md 경고를 내지 않는다. workspace.json 을 커밋한다`);
+}
+
 function main() {
   const ws = load();
   const root = ws.root;
   const file = path.join(root, P.FILE);
+  if (argv[0] === 'external') {
+    if (!argv[1]) return console.log(externalLine(ws) || '일정 정본: handoffs/PLAN.md (밖에 있으면: kedovi plan external "<위치, 예: GitLab 마일스톤 주소>")');
+    return setExternal(root, argv.slice(1).join(' '));
+  }
   if (argv[0] === 'init') {
     const type = opt('type') || (ws.project || {}).type || 'new';
     const approach = (ws.project || {}).approach;
@@ -204,10 +227,12 @@ function main() {
   }
   const plan = P.read(root);
   if (argv[0] === 'check') {
+    if (externalLine(ws)) console.log(`· 로드맵: ${externalLine(ws)}`);
     for (const w of check(ws, plan, root)) console.log(`⚠ 로드맵: ${w}`);
     return;
   }
   if (!plan) {
+    if (externalLine(ws)) return console.log(externalLine(ws));
     console.log(`로드맵이 없습니다 (${P.FILE}). 만들기: kedovi plan init`);
     process.exitCode = has('json') ? 1 : 0;
     return;
@@ -221,9 +246,9 @@ function main() {
     const from = ds[0] || new Date(Date.parse(to) - 6 * 86400000).toISOString().slice(0, 10);
     return console.log(P.issueReport(plan, from, to));
   }
-  if (has('short')) return console.log(P.shortLine(plan));
+  if (has('short')) return console.log(P.shortLine(plan, P.externalOf(ws)));
   console.log(report(ws, plan));
 }
 
 if (require.main === module) main();
-module.exports = { check, created, layersOf };
+module.exports = { check, externalLine, created, layersOf };

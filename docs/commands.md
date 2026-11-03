@@ -41,8 +41,8 @@
 | `kedovi reset` | 이 PC 설정을 처음 상태로 되돌릴 때 | 이 PC 설정(`.agents/local.json`) · 텔레그램 채널 · 세션 임시 기록 · 개인 지침 · 텔레그램 토큰 중 골라서 지운다. 팀 설정 · repos · 핸드오프는 그대로. 워크스페이스를 통째로 지우는 것은 `kedovi remove` |
 | `kedovi notify` · `notify my …` · `notify team …` | 화면 없이 (AI 에게 시킬 때) | 알림 상태 · 개인 봇 연결과 켜고 끄기 · 팀 봇 연결과 팀 방 지정 · 공지 ([알림](notify.md)) |
 | `kedovi handoff find <티켓·기능>` · `check` · `index` · `archive` · `organize` | 지난 기록을 찾을 때 · 기록이 커졌을 때 | 모든 사람의 핸드오프 기록에서 파일:줄로 찾기 · 크기 검사 · 색인 · 보관 · 정리 후보 |
-| `kedovi plan` · `--short` · `--json` · `--report [시작 [끝]]` · `init` · `check` | 진행 정도를 볼 때 · 단계를 끝냈을 때 · 주간 보고 | 로드맵(`handoffs/PLAN.md`): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것(커밋 · 새 파일 · ID) · 다음. 이슈형은 이슈 보드: 상태별 건수 · 진행 중 이슈 표 · 멈춘 이슈 ⚠ · 개선 후보. `--report` 는 이슈형 기간 보고(기본 오늘까지 7일: 운영 반영 · 진행 중 · 새 접수 · 보류 · 멈춘 이슈). `--json` 은 다른 도구(전광판 등)용, `check` 는 갱신 누락 경고 |
-| `kedovi docs build [repo]` · `check` | 기획 문서 · 화면설계서 · 테이블 정의서를 고쳤을 때 | 기획 repo 의 md · 화면설계서 장 → `docs-site/` (정의 ID 앵커 · 근거 색인 `ids.json` · 뷰어 파일 · 정의서 폴더마다 ERD `erd.html`). `check` 는 md 와 `docs-site/` 가 어긋났는지 (기획 repo 의 pre-commit 도 막는다). 둘 다 문서 점검 경고(큰 문서 · 머리말 이력 · 같은 문장 · 긴 표 칸 · 문단형 표 · 칸 안 경위 · 그림 없는 큰 문서 · 메뉴 「기타」 · 규모 문서 없음)를 낸다 |
+| `kedovi plan` · `--short` · `--json` · `--report [시작 [끝]]` · `init` · `check` | 진행 정도를 볼 때 · 단계를 끝냈을 때 · 주간 보고 | 로드맵(`handoffs/PLAN.md`): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것(커밋 · 새 파일 · ID) · 다음. 이슈형은 이슈 보드: 상태별 건수 · 진행 중 이슈 표 · 멈춘 이슈 ⚠ · 개선 후보. `--report` 는 이슈형 기간 보고(기본 오늘까지 7일: 운영 반영 · 진행 중 · 새 접수 · 보류 · 멈춘 이슈). `--json` 은 다른 도구(전광판 등)용, `check` 는 갱신 누락 경고. `external "<위치>"` · `external off` 는 일정 정본이 밖(GitLab 마일스톤 등)일 때 그 위치를 적어 PLAN.md 경고를 끈다 |
+| `kedovi docs build [repo]` · `check` | 기획 문서 · 화면설계서 · 테이블 정의서를 고쳤을 때 | 기획 repo 의 md · 화면설계서 장 → `docs-site/` (정의 ID 앵커 · 근거 색인 · 뷰어 · 정의서 폴더마다 ERD). `check` 는 md 와 `docs-site/` 가 어긋났는지 (기획 repo pre-commit 도 막는다). 옵션 · 경고는 아래 「docs build 자세히」 |
 | `kedovi delegate watch [id]` · `status [id]` · `list` | 다른 도구에 맡긴 리뷰 · 작업(Claude Code ↔ Codex)이 지금 무엇을 하는지 볼 때 | `watch` = 상대 에이전트가 읽은 파일 · 찾기 · 실행한 명령 · 고친 파일 · 중간에 한 말을 생기는 대로 한 줄씩(다른 터미널에서), 끝나면 요약. `status` = 경과 · 개수 · 최근 동작을 한 번. id 를 빼면 마지막 실행 중 작업 |
 | `kedovi debate list` · `watch [id] [--once]` · `status [id]` · `models [--task code\|design\|docs]` | 토론 모드(여러 모델이 따로 보고 서로 반박)를 볼 때. 시작은 채팅에서 "토론해줘" | `watch` = 다른 터미널에서 모델별 주장 · 판정 · 회차 정리를 실시간으로 (끝나면 닫힘). `--once` = 지금까지만 보여 주고 끝 (채팅에서 물을 때). `models` = 이 PC 에서 쓸 수 있는 모델과 강점 점수, 작업에 맞춘 패널 예시. `status` = 지금 회차 · 모델별 상태 |
 | `kedovi docs serve [repo]` | Pages 없이 이 PC 에서 문서 사이트를 볼 때 | `docs-site/` 를 `http://127.0.0.1:8000/` 로 연다 (`--port` · `--open`). `file://` 로 열면 쪽 이동이 새로고침이 되고 전체 인쇄가 안 된다 |
@@ -52,14 +52,15 @@
 | `kedovi docs trace` `[--md] [--new]` | 기획대로 만들었는지 볼 때 | 기획 ID(`vars.docs.traceIds`, 예: FN,SCR,API,AC)와 코드의 `@spec` 주석을 대조. ⚠ 코드에 표시 없는 ID · ⚠ 테스트에 없는 수용 기준(AC-) · ✖ 기획에 정의 없는 ID(오타 · 지운 기능), 각각 파일:줄. `--md` = 추적표(ID · 정의 · 코드 · 테스트), `--new` = 새로 만들거나 고친 진입 파일(컨트롤러 · 화면 · 라우트 등) 중 기획 ID 가 없는 것 (커밋 전) |
 | `kedovi gitlab pipeline` | MR · 배포 뒤 파이프라인을 볼 때 | 최근 파이프라인 목록과 맨 위(또는 `--id`) 파이프라인의 단계별 작업 상태. `--ref <브랜치>` · `--mr <번호>`(MR 파이프라인이 없으면 머지 커밋의 것) · `--log`(실패한 작업의 로그 끝부분) · `--json`. 읽기만 한다 (gitlab 팩, `GITLAB_TOKEN`) |
 | `kedovi gitlab pipeline --id <ID> --play <작업> --yes` · `--retry <작업> --yes` | 수동 작업(배포 등)을 실행하거나 실패한 작업을 다시 돌릴 때 | `--play` 는 앞 작업이 끝나 manual 이 될 때까지 기다린 뒤 실행하고(created 일 때 눌러 생기는 `400 Unplayable Job` 을 피한다), 끝날 때까지 상태가 바뀔 때마다 한 줄. 앞 작업이 실패해 skipped 면 멈춘다. `--retry` 는 failed · canceled · success 작업만. `--yes` 가 없으면 실행할 내용과 「운영 배포 · 데이터를 바꾸는 작업은 사용자 승인 뒤에만」 확인 문구만 보이고 끝 코드 3. `--timeout 분`(기본 30) |
-| `kedovi gitlab wait --mr <번호>` · `--id <ID>` · `--ref <브랜치>` | MR · 머지 뒤 파이프라인이 끝나길 기다릴 때 | 지금 커밋(MR 머리 · 머지 커밋 · 브랜치 머리)의 파이프라인이 생길 때까지 먼저 기다리고(다시 push 했으면 옛 파이프라인이 아니라 새 것), 끝날 때까지 상태가 바뀔 때마다 한 줄. 끝 코드: 성공 0 · 실패 · 취소 1 · 시간 초과 4 · 파이프라인이 안 생김 5. 수동 작업에서 멈추면 0 과 `play` 명령 |
-| `kedovi gitlab merge <번호> --yes` | 지시받은 MR 을 머지할 때 | 충돌 · 초안 · 토론 · 승인을 확인하고, 파이프라인이 돌고 있으면 끝날 때까지 기다린 뒤 MR 머리 커밋으로 머지한다(그사이 push 가 있으면 거부). 머지 커밋 SHA(`merge_commit_sha=…`, `--json`)를 낸다. 이미 머지됐으면 결과만. `vars.gitlab.agentMerge` 가 true 이거나 사람이 터미널에서 칠 때만 한다 |
+| `kedovi gitlab wait --mr <번호>` · `--id <ID>` · `--ref <브랜치 · 태그> [--sha <커밋>]` | MR · 머지 · push 뒤 파이프라인이 끝나길 기다릴 때 | 지금 커밋(MR 머리 · 머지 커밋 · 브랜치 · 태그 머리, 짧은 SHA 도 된다)의 파이프라인이 이미 있으면 바로 잡고, 없으면 생길 때까지 먼저 기다리고(다시 push 했으면 옛 파이프라인이 아니라 새 것), 끝날 때까지 상태가 바뀔 때마다 한 줄. 끝 코드: 성공 0 · 실패 · 취소 1 · 시간 초과 4 · 파이프라인이 안 생김 5. 수동 작업에서 멈추면 0 과 `play` 명령 |
+| `kedovi gitlab merge <번호> --yes` | 지시받은 MR 을 머지할 때 | 충돌 · 초안 · 토론 · 승인을 확인하고(막 만든 MR 이라 판정 중이거나 파이프라인이 아직 안 생겼으면 몇 초 간격으로 다시 본다), 파이프라인이 돌고 있으면 끝날 때까지 기다린 뒤 MR 머리 커밋으로 머지한다(그사이 push 가 있으면 거부). 머지 커밋 SHA(`merge_commit_sha=…`, `--json`)를 낸다. 이미 머지됐으면 결과만. `vars.gitlab.agentMerge` 가 true 이거나 사람이 터미널에서 칠 때만 한다 |
 | `kedovi gitlab create … --json` | 배포 연쇄에서 MR 을 만들 때 | 같은 source→target 의 열린 MR 이 있으면 새로 만들지 않고 그것을 쓴다 (`{iid, url, reused}`) |
 | `kedovi gitlab play` · `retry` · `cancel` | 수동 작업 실행 · 다시 실행 · 겹친 파이프라인 취소 | `play --id <ID> --job <작업>` = `pipeline --play`. `retry --id <ID>` 는 `--job` 이 없으면 실패한 작업 전부. `cancel --ref <브랜치> [--sha <커밋>]` 은 도는 파이프라인만 (agentMerge 가 true 일 때). 모두 `--yes` 가 없으면 확인 문구만 (끝 코드 3) |
 | `kedovi board` | 팀 · 프로젝트 현황을 한눈에 볼 때 | 워크스페이스 현황판(로드맵 · 팀원별 마지막 핸드오프 · 미완 작업 · 공지)과 기록 쪽을 이 PC 의 `.agents/board/` 에 만들어 연다. 보기 전용 |
 | `kedovi screens compare <화면 ID>` | 프로토타입이 있는 화면을 구현한 뒤 | 프로토타입과 구현을 같은 폭(`--widths`, 기본 PC 1280 · 폰 390)으로 찍어 나란히 보는 `compare.html` 을 만든다 (screens 팩, Playwright). 프로토타입 = `--proto` · 화면 목록의 「프로토타입」 칸 · `prototype/` 아래 이름에 화면 ID 가 든 파일. 구현 = `--impl <주소 · /경로>` · 화면 진입점 `@spec` 줄의 `@route /경로` (앞부분 `vars.screens.appUrl`). 로그인은 `--storage <상태.json>`, `--find` 는 찍지 않고 찾은 것만. 다른 곳은 「프로토타입 요소 · 구현 · 다른 이유」 표로 보고 · MR 에 남긴다 |
 | `kedovi screens check [repo]` | 화면설계서를 쓴 뒤 | 근거 ID 가 색인에 있는지 · 화면 ID 중복 · Description 줄이 결론 한 줄인지(60자 넘음 · 날짜 · 결정 경위는 ⚠) · 기능 ID 누락(`vars.screens.functionIds`, 화면 목록의 「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |
 | `kedovi datamodel check [repo]` | 테이블 정의서를 쓴 뒤 | ✖ 참조 대상 없음 · 기본키 없음 · 테이블 · 컬럼 중복 · 표 형식. ⚠ 논리명 없음 · 컨벤션 위반(`vars.datamodel`) · 기능 ID 없는 테이블 · 테이블 없는 기능(「없음」 으로 적은 것은 뺀다) |
+| `kedovi archrules spring\|react\|fastapi [--repo R] [--dry-run]` | 패키지 구조를 정했을 때 · 구조 규칙을 문장 대신 검사로 지키게 할 때 | 구조 검사 템플릿을 repo 에 쓴다 (있는 파일은 덮지 않고, 넣을 의존성 · 실행 명령을 알려 준다). 무엇이 들어가는지는 아래 「archrules 자세히」 |
 | `kedovi rules [list \| off <ID> \| on <ID>]` `[--repo <이름,…>]` | 규칙이 팀에 맞지 않을 때 | 킷이 넣은 규칙을 켜고 끈다 (필수 규칙 제외). `--repo` 는 스택 · 언어 규칙을 그 repo 에서만. 바꾸기는 `packs/project/rules` 에 `replaces` (`repos:` 를 더하면 그 repo 만) |
 | `kedovi rules ondemand\|always <ID…\|repo-tasks>` | AGENTS.md 가 Codex 한도를 넘을 때 | 상시 규칙을 필요할 때만 읽게 한다 (`rules.onDemand`). `repo-tasks` 는 「repo 별 작업 규칙」의 작업별 표를 `.agents/rules/repo-tasks.md` 로 뺀다. sync 경고가 큰 절을 알려 준다 |
 | `kedovi repo add [주소·폴더·이름]` | repo 를 더할 때 | clone · 링크(원격 없는 로컬 repo 도), 또는 이름만 주면 `repos/<이름>` 에 원격 없이 새로 만든다. 인자 없이 = 화면에서 방식(clone · 기존 로컬 폴더 · 새로 만들기)을 먼저 고른다 (레거시 제외. 기획 repo 면 뼈대는 `kedovi init-docs`) → 스택 확인 → sync |
@@ -76,6 +77,23 @@
 | `kedovi sync` · `check` · `doctor` · `packs` | 필요할 때 | 생성 · 생성물 검사 · 환경 진단 · 팩 목록 |
 | `kedovi upgrade [--add 팩]` | 킷 새 버전 후 | 워크스페이스의 `bin/kit.js` 와 팩을 이 킷 버전으로 (project 팩은 그대로). 몇 버전 뒤져도 한 번에 올라가고 그 사이 변경 기록을 모두 보여 준다. 저절로 켜지 않는 것은 한 줄씩 알린다: 그 유형의 기본 팩인데 꺼진 팩(`--add` 로 켬) · 진행 방식 · 새로 감지되는 스택 |
 | `kedovi upgrade --all` `[--scan <폴더>] [--yes]` | `npm i -g` 로 새 버전을 받은 뒤 이 PC 의 워크스페이스를 모두 올릴 때 | `kedovi list` 의 워크스페이스(`--scan` 이면 그 폴더 아래에서 찾아 더함)를 버전과 함께 보이고, 옛 버전만 묻고 올린다. 팀장 아님 · 원격에 받지 않은 커밋(팀원이 먼저 올렸을 수 있음) · 커밋 안 한 변경이 있으면 건너뛴다. 끝나면 워크스페이스마다 commit · push 명령을 보여 준다. 새 버전을 받은 뒤 첫 kedovi 명령이 옛 버전 워크스페이스 수를 한 번 알린다 |
+
+### docs build 자세히
+
+- `--out` 은 대상 폴더 기준 상대 경로 또는 절대 경로.
+- 원본 주소 파일 `docs-site.json` 은 이미 있거나 기획 repo · 워크스페이스 루트일 때만 만든다. 그 밖(제품 repo 의 `docs/` 등)은 `--write-config` 를 줄 때만.
+- 정의서 폴더가 git 무시 대상이면 ⚠ 한 줄.
+- 문서 점검 경고: 큰 문서 · 머리말 이력 · 같은 문장 · 긴 표 칸 · 문단형 표 · 칸 안 경위 · 그림 없는 큰 문서 · 메뉴 「기타」 · 규모 문서 없음.
+
+### archrules 자세히
+
+| 스택 | 쓰는 파일 | 검사 |
+|---|---|---|
+| Spring | ArchUnit 테스트 (`src/test/java/<기준 패키지>/archrules/`) | 패키지 배치 · 접미사 → 계층 · 기능 경계 · static 은 Logger 만 · 중첩 타입 금지 · 인스턴스 필드 private |
+| React | `eslint.boundaries.config.js` | FSD 레이어 방향 · 다른 slice 는 index 로만 · 생성 API 값은 api 세그먼트에서만 |
+| FastAPI | `.importlinter` + `tools/check_role_files.py` | 기능 안 계층 방향 · config · shared → feature 금지 · 파일 허용 목록 · 역할 파일 클래스 · 상수 |
+
+구조는 `vars.spring.packageLayout` · `vars.react.packageLayout` · `vars.fastapi.packageLayout` 으로 고른다. 역할 클래스 도우미 0개 검사는 `vars.cleanCode.helperMethods` 가 `none` 일 때만 켜진다.
 
 AI 연결 방식과 시작 도구는 **워크스페이스마다** 정하고 `.agents/local.json` 에 저장한다 (이 PC 전용, git 공유 안 함). 구독·게이트웨이는 사람마다 다르기 때문이다.
 

@@ -5,7 +5,7 @@
   const { byId, rels, lrels } = E;
 
   /** 표 하나 */
-  function Table(n, cls, onPick, onPeek) {
+  function Table(n, cls, onPick, onPeek, hl) {
     const t = byId.get(n.id);
     const big = st.level === 'concept';
     const hh = big ? E.CH() : E.HEAD;
@@ -20,7 +20,8 @@
         x += 19;
       }
       const [ca, cb] = E.label(c.logical, c.name);
-      return html`${keys}<text class="cn" x=${Math.max(x + 2, 46)} y=${y}>${ca}${cb ? html`<tspan class="cp" dx="6">${cb}</tspan>` : null}</text><text class="ct" x=${n.width - 8} y=${y} text-anchor="end">${c.type + (c.nullable ? '?' : '')}</text>`;
+      const mark = hl && hl.has(c.name) ? html`<rect class="hlc" x="1" y=${E.HEAD + i * E.ROW} width=${n.width - 2} height=${E.ROW} />` : null;
+      return html`${mark}${keys}<text class="cn" x=${Math.max(x + 2, 46)} y=${y}>${ca}${cb ? html`<tspan class="cp" dx="6">${cb}</tspan>` : null}</text><text class="ct" x=${n.width - 8} y=${y} text-anchor="end">${c.type + (c.nullable ? '?' : '')}</text>`;
     });
     const rest = t.columns.length - sc.length;
     const out = E.outside(t);
@@ -39,8 +40,11 @@
   }
 
   /** 그림 전체 (scene · 고른 표 · 검색이 바뀔 때만 다시 만든다) */
-  function drawing(sc, sel, hit, onPick, onPeek) {
+  function drawing(sc, sel, hit, onPick, onPeek, rsel) {
     const near = sel ? E.neighbors(sel) : null;
+    // 고른 관계(선): 두 테이블 · 두 컬럼 · 그 선만 진하게
+    const ends = rsel ? new Set([rsel.from, rsel.to]) : null;
+    const hlOf = (id) => (!rsel ? null : new Set([...(rsel.from === id && rsel.fromCol ? [rsel.fromCol] : []), ...(rsel.to === id && rsel.toCol ? [rsel.toCol] : [])]));
     const visT = (key) => M.tables.filter((t) => E.visible(t) && E.chunkOf(t) === key);
     const groups = sc.groups.map((grp) => {
       const c = E.color(grp.schema);
@@ -74,20 +78,24 @@
     });
     const tables = sc.nodes.map((n) => {
       const id = n.id;
-      const cls = `${id === sel ? ' sel' : ''}${hit && hit.has(id) && id !== sel ? ' hit' : ''}${(near && !near.has(id)) || (!near && hit && !hit.has(id)) ? ' dim' : ''}`;
-      return Table(n, cls, onPick, onPeek);
+      const cls = ends
+        ? (ends.has(id) ? ' rsel' : ' dim')
+        : `${id === sel ? ' sel' : ''}${hit && hit.has(id) && id !== sel ? ' hit' : ''}${(near && !near.has(id)) || (!near && hit && !hit.has(id)) ? ' dim' : ''}`;
+      return Table(n, cls, onPick, onPeek, hlOf(id));
     });
     // 선: 고른 표의 선은 맨 위에
-    const ed = sc.edges.map((e, i) => ({ e, i, on: !!sel && (e.r.from === sel || e.r.to === sel) })).sort((x, y) => x.on - y.on);
+    const ed = sc.edges.map((e, i) => ({ e, i, on: rsel ? e.r === rsel : !!sel && (e.r.from === sel || e.r.to === sel) })).sort((x, y) => x.on - y.on);
     const edges = ed.map(({ e, i, on }) => {
       const r = e.r;
-      const dim = (sel && !on) || (!sel && hit && !(hit.has(r.from) && hit.has(r.to)));
+      const dim = rsel ? !on : (sel && !on) || (!sel && hit && !(hit.has(r.from) && hit.has(r.to)));
       return html`<path key=${`e${i}`} class=${`ed${e.cls}${on ? ' on' : ''}${dim ? ' dim' : ''}`} d=${`M${e.pts.map((q) => `${q.x} ${q.y}`).join(' L')}`} marker-start="url(#one)" marker-end="url(#many)" stroke-dasharray=${r.nullable ? '5 3' : undefined}>
         <title>${`${r.from}${r.fromCol ? `.${r.fromCol}` : ''} 1 ─ N ${r.to}.${r.toCol}${r.nullable ? ' (선택)' : ''}${r.logical ? ' · 논리 참조 (DB 외래키 없음)' : e.cls === ' x' ? ' · 스키마 사이' : e.cls === ' hub' ? ' · 숨긴 선 (참조 많은 표)' : ''}`}</title></path>`;
     });
+    // 누르기 쉬운 넓은 투명 선 (숨긴 선은 보일 때만)
+    const hits = ed.filter(({ e, on }) => e.cls !== ' hub' || on).map(({ e, i }) => html`<path key=${`h${i}`} class="edhit" d=${`M${e.pts.map((q) => `${q.x} ${q.y}`).join(' L')}`} onClick=${(ev) => { ev.stopPropagation(); E.selectRel(e.r); }} />`);
     const sums = sc.sums.map((s, i) => html`<path key=${`s${i}`} class=${`sum${s.p.fk ? '' : ' lg'}`} d=${`M${s.s0.x} ${s.s0.y} L${s.t0.x} ${s.t0.y}`} style=${`stroke-width:${Math.min(8, 1.5 + Math.sqrt(s.p.fk + s.p.lg))}px`}><title>${`${s.p.a.replace('/', ' · ')} ↔ ${s.p.b.replace('/', ' · ')}: ${s.txt}`}</title></path>`);
     const sumTexts = sc.sums.map((s, i) => html`<text key=${`t${i}`} class="sumt" x=${(s.s0.x + s.t0.x) / 2} y=${(s.s0.y + s.t0.y) / 2 + s.f / 3} text-anchor="middle" style=${`font-size:${s.f}px`}>${s.txt}</text>`);
-    return html`<g>${groups}</g><g>${edges}${sums}</g><g>${cards}${tables}</g><g>${sumTexts}</g>`;
+    return html`<g>${groups}</g><g>${edges}${sums}${hits}</g><g>${cards}${tables}</g><g>${sumTexts}</g>`;
   }
 
   /** 돋보기: 축소해서 글자가 작을 때 카드에 마우스를 올리면 읽기 좋은 크기로 띄운다 (늘 전체 컬럼) */
@@ -168,7 +176,7 @@
     }, []);
     const onPick = H.useCallback((id) => E.select(id), []);
     const hit = E.matches();
-    const body = H.useMemo(() => (sc ? drawing(sc, st.sel, hit, onPick, onPeek) : null), [sc, st.sel, st.q, st.lrefs]);
+    const body = H.useMemo(() => (sc ? drawing(sc, st.sel, hit, onPick, onPeek, st.selRel) : null), [sc, st.sel, st.selRel, st.q, st.lrefs]);
     /* 손 · 마우스로 움직이기: 한 손가락(마우스) 끌기 = 이동, 두 손가락 = 확대 · 축소 + 이동, 휠 = 확대 · 축소.
        캔버스에만 touch-action: none 을 걸어 브라우저(iPad Safari)의 화면 확대 · 스크롤 대신 이 그림이 움직인다. 표 · 카드 위에서 시작해도 움직이고, 움직였으면 누르기로 치지 않는다 */
     const pts = H.useRef(new Map()), pinch = H.useRef(null), moved = H.useRef(false);
@@ -203,7 +211,7 @@
         }
         if (pts.current.size) return;
         const d = drag.current;
-        if (d && !d.moved && !e.target.closest('.tb, .card, .at')) E.select(null);
+        if (d && !d.moved && !e.target.closest('.tb, .card, .at, .edhit')) E.select(null);
         drag.current = null; pinch.current = null; el.classList.remove('drag');
       };
       /* Safari 의 화면 확대 제스처를 캔버스에서는 쓰지 않는다 */

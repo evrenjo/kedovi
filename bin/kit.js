@@ -678,6 +678,14 @@ function collect(root, ws, packs, errors, warnings, repoMap = {}) {
       if (load === 'on-demand' && !meta.when) errors.push(`${src}: on-demand 룰에는 when(언제 읽는지)이 필요합니다`);
       const agents = meta.agents || 'all';
       if (!['all', 'claude'].includes(agents)) errors.push(`${src}: agents 는 all | claude`);
+      // if: vars.a.b=값 | vars.a.b!=값 (설정값으로 고르는 규칙. 값이 없으면 빈 문자열로 본다)
+      if (meta.if) {
+        const m = /^\s*([A-Za-z0-9_.-]+)\s*(!?=)\s*(.*?)\s*$/.exec(String(meta.if));
+        if (!m) { errors.push(`${src}: if 는 <키>=<값> 또는 <키>!=<값> (예: if: vars.gitlab.branchMode=trunk)`); continue; }
+        const v = lookup(ws, m[1]);
+        const same = String(v === undefined || v === null ? '' : v) === m[3];
+        if (m[2] === '=' ? !same : same) continue;
+      }
       const out = `.agents/rules/${pack.name}--${rel.replace(/\//g, '--')}`;
       // repo 스택으로 붙은 layer·stack 팩만 repo 단위. packs 에 직접 적은 옛 방식은 워크스페이스 전체에 적용
       // repos: a,b (project 팩 규칙) = 그 repo 에만 거는 규칙
@@ -1096,6 +1104,7 @@ function generate(root) {
   const repoMap = repoPacks(root, ws, catalog, warnings, languages);
   const packs = loadPacks(root, ws, errors, Object.keys(repoMap).filter((pk) => !ws.packs.includes(pk)));
   applyPackVarDefaults(ws, packs.map((pk) => pk.dir)); // 메모리에서만 — 새로 붙은 스택 팩 변수가 비어 sync 가 멈추지 않게
+  checkVarChoices(ws, packs, warnings);
   validateProject(ws, errors, warnings);
   const detectLib = path.join(root, 'packs', 'core', 'lib', 'detect.js');
   if (ws.stackHints !== undefined && exists(detectLib)) {
@@ -2009,7 +2018,13 @@ function cmdCheck(root) {
   const prev = exists(path.join(root, MANIFEST)) ? JSON.parse(read(path.join(root, MANIFEST))).files : [];
   for (const rel of prev) if (!files.has(rel) && exists(path.join(root, rel))) drift.push(`${rel} (정본에서 사라짐)`);
 
-  warnings.forEach((w) => console.warn(`⚠ ${String(w).replace(/\n/g, '\n   ')}`));
+  // 커밋 훅 안에서는 지난 커밋 때와 같은 경고 묶음을 한 줄로 줄인다 (새 경고가 생기면 다시 전부)
+  const seenFile = process.env.GIT_INDEX_FILE && isDir(path.join(root, '.git')) ? path.join(root, '.git', 'kedovi-warned') : null;
+  const sig = require('crypto').createHash('sha1').update(warnings.join('\n')).digest('hex');
+  let quiet = false;
+  if (seenFile && warnings.length) { try { quiet = read(seenFile).trim() === sig; } catch { /* 처음 */ } try { fs.writeFileSync(seenFile, `${sig}\n`); } catch { /* 못 쓰면 그냥 보인다 */ } }
+  if (quiet) console.warn(`⚠ 경고 ${warnings.length}건은 지난 커밋 때와 같아 줄였습니다 (다시 보기: node bin/kit.js check)`);
+  else warnings.forEach((w) => console.warn(`⚠ ${String(w).replace(/\n/g, '\n   ')}`));
   errors.forEach((e) => console.error(`✖ ${e}`));
   if (drift.length) {
     console.error(`✖ 생성물이 정본과 다릅니다 (${drift.length}개). 생성 파일을 직접 고쳤거나 sync 를 안 돌렸습니다:`);
@@ -2461,6 +2476,17 @@ function applyPackVarDefaults(ws, packDirs) {
     }
   }
   return added;
+}
+
+/** pack.json 변수의 choices(고를 수 있는 값)에 없는 값이면 알린다. 그 값으로 고르는 규칙(if:)이 하나도 안 걸리는 일을 막는다 */
+function checkVarChoices(ws, packs, warnings) {
+  for (const pk of packs) {
+    for (const [key, def] of Object.entries((pk.meta && pk.meta.vars) || {})) {
+      if (!def || !Array.isArray(def.choices)) continue;
+      const v = lookup(ws.vars, key);
+      if (v !== undefined && !def.choices.includes(v)) warnings.push(`workspace.json vars.${key} = ${JSON.stringify(v)} 는 고를 수 있는 값이 아닙니다 (${def.choices.map((c) => JSON.stringify(c)).join(' | ')}). 기본값 ${JSON.stringify(def.default)} 처럼 동작하지 않을 수 있습니다`);
+    }
+  }
 }
 
 function kitRoot() { return path.resolve(__dirname, '..'); }

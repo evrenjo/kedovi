@@ -2,6 +2,28 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.82.0
+
+| 구분 | 내용 |
+|---|---|
+| 설정 | `vars.gitlab.branchMode`: `feature`(기본, 작업 브랜치 → MR) · `trunk`(작업 브랜치 · worktree 없이 통합 브랜치 직접 커밋 · push, 운영 배포만 MR). trunk 면 팀원의 새 브랜치 · worktree 를 훅이 막음 |
+| 수정 | mr 스킬: 통합 → 운영 MR 뒤 운영 브랜치로 옮겨 가던 것. source 가 영구 브랜치면 그대로 남음 |
+| 설정 | `vars.git.cleanupMerged` (기본 false): 켜면 머지 확인된 로컬 브랜치 · worktree 를 머지 직후 정리 (원격 삭제는 건마다 승인) |
+| 규칙 | 팀원은 커밋까지(지시서 「커밋: 허용」일 때), push 는 리더. 종료 응답 형식(shutdown_response 객체) 안내, 응답이 없으면 1분 뒤 TaskStop |
+| 규칙 | clean-code 「private 함수」를 「도우미 메서드(접근 제한자 무관)」로. `vars.cleanCode.helperMethods`: few(기본) · none(0개) |
+| 명령 | `kedovi archrules spring\|react\|fastapi`: 구조 검사 템플릿(ArchUnit · eslint-plugin-boundaries · import-linter + 역할 파일 검사)을 repo 에 씀 |
+| 설정 | 패키지 구조 선택: `vars.spring.packageLayout`(layer-first · feature-first, jOOQ 안내 포함) · `vars.react.packageLayout`(fsd) · `vars.fastapi.packageLayout`(feature) |
+| 기능 | 팩 규칙 머리말 `if: vars.키=값` (설정값으로 규칙 고르기) · 변수 `choices` 에 없는 값은 sync 가 경고 |
+| 수정 | `kedovi gitlab wait --ref`: 짧은 SHA · 이미 끝난 파이프라인 · 태그 ref 를 못 찾던 것. `merge`: 막 만든 MR(판정 중 · 파이프라인 아직 없음)에서 바로 실패하던 것 |
+| 수정 | secret-guard: 라우팅 키 · 큐 이름 · 설정 키 · 경로(ROUTING_KEY= · *_KEY= · PATH=)를 비밀값으로 알리던 것 |
+| 기능 | ERD: 선을 누르면 그 관계의 두 테이블 · 두 컬럼 · 선만 진하게. 「관계」 배치가 논리 참조도 배치 힌트로 씀 |
+| 기능 | datamodel DB 종류에 sqlite (타입 INTEGER · TEXT · REAL · BLOB · NUMERIC 검사) · 정의서 폴더가 git 무시 대상이면 경고 |
+| 수정 | `kedovi docs build --out` 절대 경로가 대상 폴더 안으로 붙던 것. `docs-site.json` 은 기획 repo · 이미 있을 때만 (그 밖은 `--write-config`) |
+| 수정 | 핸드오프 작업명 후보 등 한글 경로가 8진수로 깨지던 것 (git quotepath) |
+| 명령 | `kedovi plan external <위치>\|off`: GitLab 마일스톤 등 외부 일정이 정본이면 로드맵 경고 대신 그 위치를 안내 |
+| 변경 | 커밋 훅: 지난 커밋 때와 같은 경고는 한 줄로 줄임. `kedovi doctor`: 1M 모델이 아닌 별칭(옛 Haiku 등)에 `[1m]` 이 붙어 있으면 알림 (웹 문서 읽기 실패 원인) |
+| 적용 | `kedovi upgrade` 뒤 sync. trunk 운영이면 workspace.json `vars.gitlab.branchMode` 를 `"trunk"` 로 (project 팩의 대체 규칙은 지워도 된다) |
+
 ## 0.81.0
 
 | 구분 | 내용 |

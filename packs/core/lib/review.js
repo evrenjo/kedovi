@@ -19,7 +19,7 @@ const SKIP_TTL = 60 * 60 * 1000; // 생략 표시는 1시간 안에 한 번만 �
 const REVIEW_ROLE = /review/i;
 
 function git(dir, args, env) {
-  try { return execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 20000, maxBuffer: 64 * 1024 * 1024, env: env ? { ...process.env, ...env } : process.env }).trim(); } catch { return null; }
+  try { return execFileSync('git', ['-C', dir, '-c', 'core.quotepath=false', ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 20000, maxBuffer: 64 * 1024 * 1024, env: env ? { ...process.env, ...env } : process.env }).trim(); } catch { return null; }
 }
 const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
 

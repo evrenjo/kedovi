@@ -43,6 +43,8 @@ node packs/core/bin/repo-activity.js              # workspace.json repos + 워�
 - 예: 그 repo 의 브랜치 규칙을 따라 작업 브랜치를 쓴다. 기본 브랜치(main·develop 등)에 직접 push 하지 않는다. 미커밋 변경은 사용자가 승인한 것만 커밋한다.
 - 아니오: push 하지 않고 "이 PC 에만 있음" 으로 적는다.
 
+브랜치 운영이 통합 브랜치 직접(`workspace.json` `vars.gitlab.branchMode` 가 `trunk`)이면 작업 브랜치를 만들지 않는다. 묻는 말도 바꾼다: 검사를 통과한 커밋만 "통합 브랜치에 push 할까요?" 로 묻고, 통과하지 못한 변경은 push 하지 않고 "이 PC 에만 있음 · push 안 함 이유" 로 적는다.
+
 ## 2. 작업별 기록 (`topics/<작업>.md`)
 
 ```bash

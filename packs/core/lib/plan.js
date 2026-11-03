@@ -379,14 +379,17 @@ function detailTable(stage) {
   return lines.join('\n');
 }
 
-/** 한 줄 요약: 세션 브리핑 · resume · 알림 */
-function shortLine(plan) {
+/** 외부 일정 정본(vars.plan.external: GitLab 마일스톤 등)의 위치. 비었으면 '' (PLAN.md 가 정본) */
+const externalOf = (ws) => String((((ws || {}).vars || {}).plan || {}).external || '').trim();
+
+/** 한 줄 요약: 세션 브리핑 · resume · 알림. ext = 외부 일정 정본 위치 (있으면 「기본 단계 그대로」 안내 대신 그 위치) */
+function shortLine(plan, ext = '') {
   if (plan.issues) {
     const s = issueSummary(plan);
     const by = Object.entries(s.counts).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`);
     return [`이슈 진행 ${s.active.length}${by.length ? ` (${by.join(' · ')})` : ''}`, `이번 달 ${s.doneState || '완료'} ${s.month.length}`,
       ...(s.hold.length ? [`보류 ${s.hold.length}`] : []), ...(s.stale.length ? [`⚠ 멈춤 ${s.stale.length} (${s.staleDays}일 넘게 안 바뀜)`] : []),
-      ...(plan.backlog ? [`개선 후보 ${plan.backlog.length}`] : []), ...(plan.preset ? ['상태 목록이 기본값 그대로 (프로젝트 흐름에 맞게 고칠지 사용자에게 묻는다)'] : [])].join(' · ');
+      ...(plan.backlog ? [`개선 후보 ${plan.backlog.length}`] : []), ...(ext ? [`일정 정본: ${ext}`] : plan.preset ? ['상태 목록이 기본값 그대로 (프로젝트 흐름에 맞게 고칠지 사용자에게 묻는다)'] : [])].join(' · ');
   }
   const cur = current(plan);
   const parts = [`로드맵 완료 ${doneCount(plan)}/${plan.stages.length}`];
@@ -394,7 +397,8 @@ function shortLine(plan) {
   parts.push(`다음 ${nextLine(plan)}`);
   if (plan.sprint && plan.sprint.goal) parts.splice(1, 0, `스프린트 목표 「${plan.sprint.goal}」${plan.sprint.end ? ` (끝 ${plan.sprint.end})` : ''}`);
   if (plan.backlog) parts.push(`백로그 ${plan.backlog.length}`);
-  if (plan.preset) parts.push(`기본 단계 그대로 (${presetHint(plan)})`);
+  if (ext) parts.push(`일정 정본: ${ext}`);
+  else if (plan.preset) parts.push(`기본 단계 그대로 (${presetHint(plan)})`);
   return parts.join(' · ');
 }
 
@@ -509,4 +513,4 @@ function issueSection() {
   return ['## 이슈', '', `상태: ${ISSUE_STATES.join(' · ')}`, '', '| 이슈 | 제목 | 상태 | 브랜치 | 시작 | 갱신 | 운영 반영 |', '|---|---|---|---|---|---|---|', ''].join('\n');
 }
 
-module.exports = { presetHint, isIdea, IDEA_STAGE, OLD_ENHANCEMENT, ISSUE_STATES, issueSummary, issueTable, issueReport, issueTemplate, issueSection, latest, FILE, PRESETS, presetOf, STACK_STAGES, STAGE_SKILLS, UI_LAYERS, skillOf, stagesFor, missingStages, upgradePreset, STATE, LABEL, parse, read, current, doneCount, nextCell, nextLine, width, flow, detailTable, shortLine, toJson, template, bar };
+module.exports = { externalOf, presetHint, isIdea, IDEA_STAGE, OLD_ENHANCEMENT, ISSUE_STATES, issueSummary, issueTable, issueReport, issueTemplate, issueSection, latest, FILE, PRESETS, presetOf, STACK_STAGES, STAGE_SKILLS, UI_LAYERS, skillOf, stagesFor, missingStages, upgradePreset, STATE, LABEL, parse, read, current, doneCount, nextCell, nextLine, width, flow, detailTable, shortLine, toJson, template, bar };

@@ -166,4 +166,38 @@ fs.rmSync(g, { recursive: true, force: true });
   assert.strictEqual(run('build', d, '--no-source').status, 0);
   assert.ok(fs.existsSync(path.join(d, 'docs-site', 'AS-IS', '30-sidecar.html')), '다음 build 에도 남는다');
 }
+// --out 절대 경로는 그대로 (대상 폴더 안으로 이어 붙이지 않는다) · docs-site.json 은 기획 repo · 이미 있을 때만 · 무시 폴더 경고
+{
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'kedovi-out-'));
+  const g2 = (...a) => spawnSync('git', ['-C', d, ...a], { encoding: 'utf8' });
+  g2('init', '-q');
+  g2('remote', 'add', 'origin', 'https://gitlab.example.com/grp/product.git');
+  fs.writeFileSync(path.join(d, '.gitignore'), 'data/\n');
+  fs.mkdirSync(path.join(d, 'docs', 'data'), { recursive: true });
+  fs.writeFileSync(path.join(d, 'docs', 'README.md'), '# 제품 문서\n');
+  fs.writeFileSync(path.join(d, 'docs', 'data', 'main.md'), '# 데이터\n\n### main.note 메모\n\n| 컬럼 | 논리명 | 타입 | 널 | 키 | 참조 | 설명 |\n|---|---|---|---|---|---|---|\n| id | ID | INTEGER | N | PK | | |\n');
+  const outAbs = fs.mkdtempSync(path.join(os.tmpdir(), 'kedovi-out-site-'));
+  fs.rmSync(outAbs, { recursive: true });
+  const run = (...a) => spawnSync(process.execPath, [path.join(__dirname, 'docs-site.js'), ...a], { encoding: 'utf8' });
+  const r = run('build', path.join(d, 'docs'), '--out', outAbs);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.ok(fs.existsSync(path.join(outAbs, 'index.html')), '절대 경로에 만든다');
+  assert.ok(!fs.existsSync(path.join(d, 'docs', outAbs.replace(/^\//, ''))), '대상 폴더 안으로 이어 붙이지 않는다');
+  assert.ok(r.stdout.includes(`✔ ${outAbs}/`), '표시도 절대 경로');
+  assert.ok(!r.stdout.includes('//'), '「data//tmp」 같은 표시 없음');
+  // 일반 제품 repo 의 docs/: docs-site.json 을 만들지 않고 안내만
+  assert.ok(!fs.existsSync(path.join(d, 'docs', 'docs-site.json')), '알리지 않고 만들지 않는다');
+  assert.match(r.stdout, /원본 보기 주소를 사이트에 넣으려면: --write-config/);
+  // 정의서 폴더가 git 무시 대상이면 경고
+  assert.match(r.stdout, /docs\/data\/ 는 git 이 무시하는 폴더라 정의서가 커밋되지 않습니다|data\/ 는 git 이 무시하는 폴더라 정의서가 커밋되지 않습니다/);
+  // --write-config 로 요청하면 쓴다
+  const w = run('build', path.join(d, 'docs'), '--out', outAbs, '--write-config');
+  assert.match(w.stdout, /docs-site\.json 에 원본 주소를 적었습니다/);
+  assert.ok(fs.existsSync(path.join(d, 'docs', 'docs-site.json')));
+  // 상대 경로는 지금처럼 대상 폴더 기준
+  assert.strictEqual(run('build', path.join(d, 'docs'), '--out', 'site2', '--no-source').status, 0);
+  assert.ok(fs.existsSync(path.join(d, 'docs', 'site2', 'index.html')));
+  fs.rmSync(d, { recursive: true, force: true });
+  fs.rmSync(outAbs, { recursive: true, force: true });
+}
 console.log('docs-site.test.js ✔');

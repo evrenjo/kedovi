@@ -37,8 +37,8 @@
  *   kedovi notify my channel on [--new]|off|status   양방향 텔레그램 (기본 꺼짐, 프로젝트마다 전용 봇 · Claude Code). 켜면 kedovi start 가 --channels 를 붙인다
  *   kedovi notify team setup [--new] · chat <그룹방 ID|off> · announce "<내용>" · test   팀 방 알림 (chat 은 팀 설정)
  *   kedovi handoff find <티켓·기능> [--all] [--id <id>] · check · index · archive [--weeks N] · organize   핸드오프 기록 찾기·검사·보관
- *   kedovi plan [--short | --json | --stage <번호>] · init · check   로드맵(handoffs/PLAN.md): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것 · 다음
- *   kedovi docs build [repo|폴더] [--out docs-site] [--force] [--no-source] · check [repo|폴더]   문서 사이트: 기획 repo 의 md · 화면설계서 장 → docs-site/ (가이드와 같은 화면 틀 · 근거 색인 ids.json · 묶음은 docs-site.json) · 어긋남 검사 · 문서 점검 경고
+ *   kedovi plan [--short | --json | --stage <번호>] · init · check · external <위치>|off   로드맵(handoffs/PLAN.md): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것 · 다음
+ *   kedovi docs build [repo|폴더] [--out docs-site] [--force] [--no-source] [--write-config] · check [repo|폴더]   문서 사이트: 기획 repo 의 md · 화면설계서 장 → docs-site/ (가이드와 같은 화면 틀 · 근거 색인 ids.json · 묶음은 docs-site.json) · 어긋남 검사 · 문서 점검 경고
  *   kedovi docs show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs]   기획 문서를 ID 단위로: 정의 부분만 출력 · 그 ID 가 나오는 곳(기획 · 코드 · 이슈 repo, 파일:줄)
  *   kedovi docs refs-quote <md 파일…> [--dry]   본문 괄호 속 근거(파일:줄)를 그 문단 · 목록 · 표 아래 「> 근거:」 인용구로 옮긴다
  *   kedovi docs trace [--ids FN] [--all] [--strict] [--md] [--new]   기획 ID 와 코드의 @spec 주석 대조: 코드에 없는 ID · 테스트에 없는 수용 기준 · 기획에 정의 없는 ID. --md 추적표 · --new 새 진입 파일 중 ID 없는 것 (커밋 전)
@@ -50,9 +50,10 @@
  *   kedovi screens check [repo|폴더]   화면설계서 검사: 근거 ID 가 색인에 있는지 · 화면 ID 중복 · 기능 ID 누락 (screens 팩)
  *   kedovi screens compare <화면 ID> [--proto 파일|주소] [--impl 주소|/경로] [--widths 1280,390] [--storage 상태.json] [--find]   프로토타입과 구현 화면을 같은 폭(PC · 폰)으로 찍어 나란히 보는 compare.html (screens 팩, Playwright). 구현 주소는 @spec 줄의 @route
  *   kedovi datamodel check [repo|폴더]   데이터 설계 검사: 참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조 (datamodel 팩)
+ *   kedovi archrules spring|react|fastapi [--repo R] [--dir 모듈 경로] [--dry-run] [--json]   구조 검사 템플릿을 repo 에 넣는다: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사. 구조 · 기준 패키지 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다
  *   kedovi secret set <이름> [--global] · list [--all] · test <이름> · rm <이름> [--global] · import [--global|--project] · exec [--only A,B] -- <명령>   비밀값(토큰): OS 저장소(키체인 · 자격 증명 팀장 · libsecret)에 프로젝트별 · 전역으로. 값은 숨김 입력, 어디에도 출력하지 않는다
  *   kedovi gitlab pipeline [--repo R] [--ref 브랜치 | --mr 번호 | --id ID] [--limit N] [--log [줄 수]] [--json]   GitLab 파이프라인 조회 (gitlab 팩, 읽기만): 최근 목록 · 단계별 작업 상태 · 실패한 작업의 로그 끝부분. MR 은 머지 커밋의 파이프라인도 찾는다
- *   kedovi gitlab wait [--repo R] --mr 번호 | --id ID | --ref 브랜치 [--sha 커밋] [--timeout 분] [--json]   파이프라인이 끝날 때까지 대기: 지금 커밋(MR 머리 · 머지 커밋 · 브랜치 머리)의 파이프라인이 생길 때까지 먼저 기다린다. 성공 0 · 실패 1 · 수동 작업에서 멈추면 0
+ *   kedovi gitlab wait [--repo R] --mr 번호 | --id ID | --ref 브랜치·태그 [--sha 커밋(짧은 SHA 가능)] [--timeout 분] [--json]   파이프라인이 끝날 때까지 대기: 지금 커밋(MR 머리 · 머지 커밋 · 브랜치 · 태그 머리)의 파이프라인이 이미 있으면 바로 잡고, 없으면 생길 때까지 먼저 기다린다. 성공 0 · 실패 1 · 수동 작업에서 멈추면 0
  *   kedovi gitlab merge <MR 번호> [--repo R] --yes [--json]   MR 머지: 충돌 · 초안 · 토론 · 승인 확인, 도는 파이프라인은 끝날 때까지 기다린 뒤 머지, 머지 커밋 SHA. vars.gitlab.agentMerge 가 true 이거나 사람이 터미널에서 칠 때만
  *   kedovi gitlab create --repo R --source S [--target T] --title … --description-file F [--json]   MR 생성: 같은 source→target 의 열린 MR 이 있으면 그것을 쓴다
  *   kedovi gitlab play --id ID --job 작업 --yes · retry --id ID [--job 작업] --yes · cancel --ref 브랜치 [--sha 커밋] --yes   수동 작업 실행 · 실패한 작업 다시 실행 · 도는 파이프라인 취소 (취소는 agentMerge 를 켰을 때만). --yes 없으면 확인 문구만
@@ -3557,7 +3558,7 @@ function upgradeSummary(root, from) {
     for (const [k, v] of c.rows) console.log(`   ${padTo(k, w)}${v}`);
   }
   // 바뀐 파일 — 워크스페이스 git 기준으로 묶어서
-  const st = spawnSync('git', ['-C', root, 'status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' }).stdout || '';
+  const st = spawnSync('git', ['-C', root, '-c', 'core.quotepath=false', 'status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' }).stdout || '';
   const rows = st.split('\n').filter((l) => l.length > 3);
   // 생성 사이트(kedovi docs build 의 docs-site/)를 아직 커밋한 적이 없으면 git add -A 에 섞이지 않게 따로 안내한다
   const site = rows.filter((l) => /^(docs-site|html)\//.test(l.slice(3)));
@@ -3579,7 +3580,7 @@ function upgradeSummary(root, from) {
 const HELP_GROUPS = [
   ['시작 · 설치', '워크스페이스 만들기 · 받기 · 작업 시작 · 킷 새 버전', ['init', 'init-docs', 'install', 'start', 'upgrade', 'list', 'remove', 'help']],
   ['AI · 모델', '연결 방식 · 메인 에이전트 · 모델 프로필 · 응답 언어 · 대화 스타일', ['agent', 'ai', 'models', 'prefs', 'timestamp']],
-  ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'sync', 'check', 'doctor', 'packs', 'reset']],
+  ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
   ['팀 규칙 점검', '리뷰 확인 · 훅이 알리거나 막는 수준', ['review', 'team-mode enforce']],
   ['진행 · 기록', '로드맵 · 핸드오프 · 현황판 · 위임 · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'board', 'delegate', 'debate', 'import', 'tidy']],
@@ -3814,6 +3815,7 @@ async function main() {
     case 'tidy': return runWsTool('tidy.js', rest);
     case 'screens': return rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
     case 'datamodel': return runWsTool('check-datamodel.js', rest.filter((x) => x !== 'check'), 'datamodel');
+    case 'archrules': return runWsTool('archrules.js', rest);
     case 'team-mode': return cmdTeamMode(rest);
     case 'approach': return cmdApproach(rest);
     case 'type': return cmdType(rest);

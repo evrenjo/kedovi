@@ -29,7 +29,7 @@ description: 데이터 설계(테이블 정의서 · ERD)를 킷 양식으로 �
 
 | 질문 (하나씩) | 권장안 (관례가 없을 때) | 저장할 곳 `vars.datamodel.` |
 |---|---|---|
-| DB 종류 | 프로젝트 스택의 DB | `dialect` (postgresql · mysql · mariadb · oracle · mssql) |
+| DB 종류 | 프로젝트 스택의 DB | `dialect` (postgresql · mysql · mariadb · oracle · mssql · sqlite. sqlite 면 타입을 INTEGER · TEXT · REAL · BLOB · NUMERIC 으로 검사) |
 | 이름: 대소문자 · 단수/복수 · 접두어 | snake_case · 단수 · 접두어 없음 | `naming` · `tablePrefix` |
 | 기본키 타입 | 64비트 정수 대리키 (외부 노출 · 여러 곳에서 만들면 UUID) | `pkType` |
 | 공통 감사 컬럼 | 생성 · 수정 일시 (주체 컬럼은 요구가 있을 때) | `auditColumns` |

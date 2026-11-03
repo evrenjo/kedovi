@@ -1,6 +1,7 @@
 ---
 title: 브랜치·MR·머지 원칙
 load: always
+if: vars.gitlab.branchMode!=trunk
 ---
 
 ## 브랜치 · MR · 머지 (GitLab)

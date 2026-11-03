@@ -77,7 +77,7 @@ function cmdTopic() {
     const m = branch.match(/^(?:feature|feat|fix|bugfix|hotfix|refactor)\/(.+)$/);
     if (m && !(m[1].match(TICKET_RE) || []).length) add(m[1], `${repoRel(r)} 브랜치 ${branch}`);
     // 오늘 바꾼 파일의 화면·모듈 경로 (가장 많이 나온 폴더 2개)
-    const files = (git(r.dir, ['log', '--since=midnight', '--name-only', '--pretty=']) || '').split('\n').concat((git(r.dir, ['status', '--porcelain']) || '').split('\n').map((l) => l.slice(3))).filter(Boolean);
+    const files = (git(r.dir, ['log', '--since=midnight', '--name-only', '--pretty=']) || '').split('\n').concat((git(r.dir, ['status', '--porcelain']) || '').split('\n').map((l) => l.replace(/^[ MADRCTU?!]{1,2} /, '').replace(/^.* -> /, ''))).filter(Boolean); // git() 이 앞 공백을 잘라 첫 줄은 상태 글자가 한 칸일 수 있다. 한글 경로는 git() 이 quotepath 를 꺼서 그대로
     const counts = {};
     for (const f of files) { const parts = f.split('/').filter((x) => !/^(src|main|java|kotlin|resources|app|lib|components|pages|test|tests|com|org)$/.test(x) && !x.includes('.')); const key = parts.slice(-2).join('-'); if (key) counts[key] = (counts[key] || 0) + 1; }
     for (const [k] of Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 2)) add(k, `${repoRel(r)} 오늘 바꾼 경로`);
@@ -139,7 +139,8 @@ function cmdCheck() {
   const oldWeeks = ls(d).filter((e) => e.isFile() && WEEK_RE.test(e.name) && weeksAgo(e.name) > 8).length;
   if (oldWeeks) warn(`8주 지난 주간 기록 ${oldWeeks}개: kedovi handoff archive`);
   // 로드맵(팀 공용 handoffs/PLAN.md): 단계 상태 갱신을 잊었는지
-  const { check: planCheck } = require('./plan');
+  const { check: planCheck, externalLine } = require('./plan');
+  if (externalLine(ws) && !has('json')) console.log(`· 로드맵: ${externalLine(ws)}`);
   for (const m of planCheck(ws, require('../lib/plan').read(ROOT), ROOT)) warn(`로드맵: ${m}`);
   if (has('json')) return console.log(JSON.stringify({ id: ID, findings: out.map(([k, m]) => ({ level: k === '✖' ? 'error' : 'warn', message: m })) }, null, 2));
   if (!out.length) console.log(`✔ 핸드오프 기록 크기 정상 (${ID})`);

@@ -8,7 +8,7 @@
   // 화면 비율: 덩어리 · 카드를 바둑판으로 놓을 때 이 비율에 맞춰 열 수가 정해진다
   E.aspect = () => { const s = E.stageEl; const b = s ? s.getBoundingClientRect() : { width: 1600, height: 900 }; return Math.max(0.8, Math.min(3, (b.width || 1600) / (b.height || 900))); };
   const chunks = (vis) => M.schemas.filter((s) => !st.hidden.has(s)).map((s) => ({ s, areas: E.AREAS.map((a) => ({ a, key: `${s}/${a}`, kids: vis.filter((t) => t.schema === s && t.listArea === a) })).filter((x) => x.kids.length) })).filter((x) => x.areas.length);
-  const cacheKey = () => [st.level, st.level === 'concept' ? st.cf : 0, st.names, st.arrange, st.overview, E.areaMode() ? E.aspect().toFixed(1) : '', [...st.hidden].sort().join(','), st.hideHub, E.areaOn() ? [...st.areas].sort().join(',') : ''].join('|');
+  const cacheKey = () => [st.level, st.level === 'concept' ? st.cf : 0, st.names, st.arrange, st.overview, E.areaMode() ? E.aspect().toFixed(1) : '', [...st.hidden].sort().join(','), st.hideHub, st.lrefs, E.areaOn() ? [...st.areas].sort().join(',') : ''].join('|');
 
   /** 배치하고 다시 그린다 (화면에 반영된 뒤 풀린다) */
   E.layout = async function layout() {
@@ -71,6 +71,12 @@
     const edge = (r, i) => ({ id: `e${i}`, sources: [portOf(r.from, r.fromCol, 'e')], targets: [portOf(r.to, r.toCol, 'w')], rel: r });
     const ix = visRels.map((r, i) => [r, i]);
     const schemaOf = (id) => byId.get(id).schema;
+    // 논리 참조(켰을 때)는 배치 힌트로만: 테이블끼리 잇는 선을 배치에 넣되 rel 이 없어 그리지 않는다 (선은 scene 의 route 가 그린다).
+    // FK 가 없고 논리 참조만 있는 정의서도 관계 있는 표가 붙게 한다. FK 와 같은 쌍 · 자기 참조는 뺀다
+    const fkPair = new Set(visRels.map((r) => `${r.from}\u0000${r.to}`));
+    const hints = (keep) => (!st.lrefs ? [] : lrels
+      .filter((r) => r.from !== r.to && visIds.has(r.from) && visIds.has(r.to) && !fkPair.has(`${r.from}\u0000${r.to}`) && keep(r))
+      .map((r, i) => ({ id: `l${i}:${r.from}>${r.to}`, sources: [r.from], targets: [r.to] })));
     const pack = (extra) => ({ 'elk.algorithm': 'rectpacking', 'elk.aspectRatio': String(E.aspect()), 'elk.hierarchyHandling': 'SEPARATE_CHILDREN', ...extra });
     let graph;
     if (area && st.overview) {
@@ -93,11 +99,11 @@
       // 스키마 묶기: 스키마마다 따로 배치해 상자로 나란히 놓는다. 스키마 사이 관계선은 scene 이 직접 잇는다
       graph = { id: 'root', layoutOptions: { 'elk.algorithm': 'rectpacking', 'elk.aspectRatio': '1.6', 'elk.spacing.nodeNode': '80', 'elk.hierarchyHandling': 'SEPARATE_CHILDREN' }, edges: [], children: M.schemas.filter((s) => !st.hidden.has(s)).map((s) => {
         const kids = vis.filter((t) => t.schema === s);
-        return { id: `g:${s}`, layoutOptions: { ...opts(kids), 'elk.padding': '[top=44,left=26,bottom=26,right=26]' }, children: kids.map(node), edges: ix.filter(([r]) => schemaOf(r.from) === s && schemaOf(r.to) === s).map(([r, i]) => edge(r, i)) };
+        return { id: `g:${s}`, layoutOptions: { ...opts(kids), 'elk.padding': '[top=44,left=26,bottom=26,right=26]' }, children: kids.map(node), edges: [...ix.filter(([r]) => schemaOf(r.from) === s && schemaOf(r.to) === s).map(([r, i]) => edge(r, i)), ...hints((r) => schemaOf(r.from) === s && schemaOf(r.to) === s)] };
       }) };
     } else {
       // 관계 중심(기본, 영역이 없을 때): 묶음 없이 배치해 관계있는 테이블이 붙는다
-      graph = { id: 'root', layoutOptions: { ...opts(vis), 'elk.spacing.componentComponent': '80', 'elk.hierarchyHandling': 'INCLUDE_CHILDREN' }, children: vis.map(node), edges: visRels.map(edge) };
+      graph = { id: 'root', layoutOptions: { ...opts(vis), 'elk.spacing.componentComponent': '80', 'elk.hierarchyHandling': 'INCLUDE_CHILDREN' }, children: vis.map(node), edges: [...visRels.map(edge), ...hints(() => true)] };
     }
     const edges = [];
     const collect = (n) => { edges.push(...(n.edges || [])); for (const c of n.children || []) collect(c); };

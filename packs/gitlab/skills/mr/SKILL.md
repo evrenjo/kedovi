@@ -20,13 +20,17 @@ argument-hint: "<source 브랜치> [target 브랜치]"
 | `mr feature/ABC-12-login-fix` | target 생략 = `{{ws:vars.branch.develop}}` |
 | 인자 없음 | 실행하지 않고 사용법만 안내 |
 
-인자는 위치 기준이다 — 첫째 source, 둘째 target. 사용자가 "QA MR" 처럼 환경으로만 말하면 아래 표로 방향을 잡고 미리보기에서 확인받는다.
+인자는 위치 기준이다 — 첫째 source, 둘째 target. 사용자가 "QA MR" 처럼 환경으로만 말하면 브랜치 운영 방식(`branchMode = {{ws:vars.gitlab.branchMode}}`)에 맞는 아래 표로 방향을 잡고 미리보기에서 확인받는다.
+
+**feature** (작업 브랜치)
 
 | 목적 | 방향 |
 |---|---|
 | 개발 서버 | `feature/*`·`fix/*` → `{{ws:vars.branch.develop}}` |
 | QA | **`{{ws:vars.branch.develop}}` → `{{ws:vars.branch.release}}`** (작업 브랜치를 직접 올리지 않는다) |
 | 운영 긴급 | `hotfix/*` → `{{ws:vars.branch.release}}` **그리고** `hotfix/*` → `{{ws:vars.branch.develop}}` (MR 2건) |
+
+**trunk** (통합 브랜치 직접): 개발은 `{{ws:vars.branch.develop}}` 에 직접 커밋 · push 하므로 MR 이 없다. MR 은 운영 배포(긴급 포함) `{{ws:vars.branch.develop}}` → `{{ws:vars.branch.release}}` 하나뿐이다. 인자 없이 "배포 MR" 이면 이 방향으로 미리보기를 만든다.
 
 ## 절대 규칙
 
@@ -84,8 +88,9 @@ argument-hint: "<source 브랜치> [target 브랜치]"
    ```
 
    임시파일은 세션 임시 폴더에 둔다. 4xx/5xx 면 응답을 그대로 보고하고 반복 재시도하지 않는다.
-7. **작업 브랜치를 떠난다** — 미커밋 변경이 없으면 `git switch <target>` + `git pull --ff-only origin <target>`.
-   있으면 옮기지 말고 보고한다(임의 stash 금지). 머지되면 원격 source 가 지워지므로 그 위에서 다음 작업을 시작하지 않기 위함이다.
+7. **작업 브랜치를 떠난다** (source 가 작업 브랜치일 때만) — source 가 영구 · 상시 브랜치(`{{ws:vars.branch.develop}}` · `{{ws:vars.branch.release}}` · `vars.gitlab.persistentBranches`)면 이 단계를 건너뛰고 그 브랜치에 남는다 (`{{ws:vars.branch.develop}}` → `{{ws:vars.branch.release}}` MR 뒤 `{{ws:vars.branch.release}}` 로 옮겨 가지 않게).
+   작업 브랜치면: 미커밋 변경이 없을 때 통합 브랜치(`{{ws:vars.branch.develop}}`, hotfix 는 target)로 `git switch` + `git pull --ff-only`. 있으면 옮기지 말고 보고한다(임의 stash 금지). 머지되면 원격 source 가 지워지므로 그 위에서 다음 작업을 시작하지 않기 위함이다.
+   브랜치 정리 설정(`vars.git.cleanupMerged`)이 `true` 면 머지가 확인된 뒤 core 「git 기본」 대로 그 작업 브랜치 · worktree 를 지운다.
 8. **팀 배포 안내** — 아래 §배포 안내. MR 을 실제로 만들었을 때만 낸다.
 
 ## 배포 안내 (MR 생성 후 마지막에)
@@ -125,6 +130,8 @@ kedovi gitlab merge <번호> --repo <r> --yes
 kedovi gitlab wait --repo <r> --ref {{ws:vars.branch.release}}   # 머지 커밋의 배포 파이프라인 (수동 작업에서 멈추면 끝 코드 0 + 수동 작업 이름)
 kedovi gitlab play --repo <r> --id <파이프라인> --job <배포 작업> --yes   # 운영 배포는 이 단계 직전에 사용자에게 한 번 더 묻는다
 ```
+
+trunk 워크스페이스는 앞 세 줄(작업 브랜치 MR)이 없다. push 한 커밋의 개발 배포는 `kedovi gitlab wait --repo <r> --ref {{ws:vars.branch.develop}} --sha <커밋>` 으로 보고, 그 뒤 `{{ws:vars.branch.develop}}` → `{{ws:vars.branch.release}}` MR 부터 이어 간다. `--ref` 는 브랜치 · 태그 모두 되고 `--sha` 는 짧은 SHA 도 된다 (이미 끝난 파이프라인도 잡는다).
 
 - 실패한 작업: `kedovi gitlab pipeline --id <파이프라인> --log` 로 원인을 보고, 고칠 수 없는 일시 오류면 `retry --id <파이프라인> [--job <작업>] --yes`.
 - 같은 브랜치의 낡은 파이프라인이 겹치면 `cancel --ref <브랜치> [--sha <커밋>] --yes` (agentMerge 가 true 일 때만, 사용자 지시 뒤).

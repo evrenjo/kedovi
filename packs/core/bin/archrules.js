@@ -1,0 +1,162 @@
+#!/usr/bin/env node
+/**
+ * 구조 검사 템플릿을 repo 에 넣는다 (kedovi archrules).
+ *
+ *   kedovi archrules spring|react|fastapi [--repo R] [--dir 모듈 경로] [--dry-run] [--json]
+ *
+ * spring : ArchUnit 규칙 묶음 → <repo>/src/test/java/<기준 패키지>/archrules/ (ArchitectureTest 하나로 돈다)
+ * react  : eslint-plugin-boundaries 설정 → <repo>/eslint.boundaries.config.js (FSD 레이어 · slice 공개 API · 생성 API 경계)
+ * fastapi: import-linter 계약 → <repo>/.importlinter, 역할 파일 검사 → <repo>/tools/check_role_files.py
+ *
+ * 값은 workspace.json vars 에서 읽는다 (spring.basePackage · spring.packageLayout · react.srcDir · react.generatedApiDir ·
+ * fastapi.package · fastapi.sourceDir · cleanCode.helperMethods). 있는 파일은 덮지 않는다. Node 기본 모듈만 쓴다.
+ */
+'use strict';
+const fs = require('fs');
+const path = require('path');
+
+const PACKS = path.resolve(__dirname, '..', '..');
+
+const STACKS = {
+  spring: {
+    pack: 'stack-spring',
+    deps: [
+      'Gradle: testImplementation("com.tngtech.archunit:archunit:<최신>")  (JUnit 5 는 spring-boot-starter-test 에 있다)',
+      'Maven : <dependency> com.tngtech.archunit:archunit:<최신> <scope>test</scope>',
+    ],
+    run: '빌드 도구의 test (예: ./gradlew test --tests "*ArchitectureTest")',
+    files(v) {
+      const dir = path.posix.join(v.dir, 'src/test/java', ...v.basePackage.split('.'), 'archrules');
+      return fs.readdirSync(path.join(PACKS, 'stack-spring', 'assets', 'archrules', 'java')).filter((f) => f.endsWith('.java')).sort()
+        .map((f) => ({ from: path.join('stack-spring', 'assets', 'archrules', 'java', f), to: path.posix.join(dir, f) }));
+    },
+    tokens: (v) => ({ __BASE_PACKAGE__: v.basePackage, __FEATURE_FIRST__: String(v.layout === 'feature-first'), __NO_HELPER_METHODS__: String(v.noHelpers) }),
+  },
+  react: {
+    pack: 'stack-react',
+    deps: ['npm i -D eslint-plugin-boundaries@^7 eslint-import-resolver-typescript', 'eslint.config.js 에 ...boundaries 를 더한다 (파일 머리 주석)'],
+    run: 'npx eslint .',
+    files: (v) => [{ from: path.join('stack-react', 'assets', 'archrules', 'eslint.boundaries.config.js'), to: path.posix.join(v.dir, 'eslint.boundaries.config.js') }],
+    tokens: (v) => ({ __SRC_DIR__: v.srcDir, __GENERATED_API_DIR__: v.generatedApiDir }),
+  },
+  fastapi: {
+    pack: 'stack-fastapi',
+    deps: ['pip install import-linter  (개발 의존성에 넣는다)'],
+    run: 'lint-imports && python tools/check_role_files.py',
+    files: (v) => [
+      { from: path.join('stack-fastapi', 'assets', 'archrules', 'importlinter.ini'), to: path.posix.join(v.dir, '.importlinter') },
+      { from: path.join('stack-fastapi', 'assets', 'archrules', 'check_role_files.py'), to: path.posix.join(v.dir, 'tools', 'check_role_files.py') },
+    ],
+    tokens: (v) => ({ __PACKAGE__: v.package, __SOURCE_DIR__: v.sourceDir || '.', __NO_HELPER_FUNCTIONS__: v.noHelpers ? 'True' : 'False' }),
+  },
+};
+
+function parse(argv) {
+  const a = { _: [] };
+  for (let i = 0; i < argv.length; i++) {
+    const x = argv[i];
+    if (x.startsWith('--')) {
+      const k = x.slice(2);
+      if (['dry-run', 'json', 'help'].includes(k)) a[k] = true;
+      else a[k] = argv[++i];
+    } else a._.push(x);
+  }
+  return a;
+}
+
+const get = (obj, key) => key.split('.').reduce((c, k) => (c && typeof c === 'object' ? c[k] : undefined), obj);
+
+/** 스택에 맞는 repo: --repo · vars.<스택>.repo · stack 에 스택 이름이 든 첫 코드 repo */
+function pickRepo(ws, stack, name) {
+  const want = name || get(ws.vars, `${stack}.repo`);
+  const code = (ws.repos || []).filter((r) => (r.kind || 'code') === 'code');
+  if (want) {
+    const r = code.find((x) => x.name === want);
+    if (!r) throw new Error(`workspace.json repos 에 코드 repo '${want}' 가 없습니다`);
+    return r;
+  }
+  const stackOf = (r) => (Array.isArray(r.stack) ? r.stack.join(',') : String(r.stack || ''));
+  const r = code.find((x) => new RegExp(`(^|[^a-z])${stack}([^a-z]|$)`, 'i').test(stackOf(x)));
+  if (!r) throw new Error(`stack 에 ${stack} 가 든 repo 가 없습니다. --repo <이름> 으로 지정합니다`);
+  return r;
+}
+
+/** 템플릿 값 (workspace.json vars + 인자) */
+function values(ws, stack, a) {
+  const vars = ws.vars || {};
+  const v = { dir: a.dir ? String(a.dir).replace(/\/$/, '') : '.', noHelpers: get(vars, 'cleanCode.helperMethods') === 'none' };
+  if (stack === 'spring') {
+    v.basePackage = a.package || get(vars, 'spring.basePackage') || 'com.example.app';
+    v.layout = a.layout || get(vars, 'spring.packageLayout') || 'layer-first';
+    if (!['layer-first', 'feature-first'].includes(v.layout)) throw new Error(`spring.packageLayout 은 layer-first | feature-first 입니다 (지금 ${v.layout})`);
+    if (!/^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*$/.test(v.basePackage)) throw new Error(`spring.basePackage 가 Java 패키지 이름이 아닙니다: ${v.basePackage}`);
+  } else if (stack === 'react') {
+    v.srcDir = get(vars, 'react.srcDir') || 'src';
+    v.generatedApiDir = get(vars, 'react.generatedApiDir') || `${v.srcDir}/shared/api/generated`;
+  } else if (stack === 'fastapi') {
+    v.package = a.package || get(vars, 'fastapi.package') || 'app';
+    v.sourceDir = get(vars, 'fastapi.sourceDir') || '.';
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(v.package)) throw new Error(`fastapi.package 는 최상위 패키지 이름 하나입니다: ${v.package}`);
+  }
+  return v;
+}
+
+function render(text, tokens) {
+  return Object.entries(tokens).reduce((t, [k, val]) => t.split(k).join(val), text);
+}
+
+/** 쓸 파일 목록: [{ to(repo 기준), path(절대), content, exists }] */
+function plan(stack, repoDir, v) {
+  const s = STACKS[stack];
+  const tokens = s.tokens(v);
+  return s.files(v).map((f) => {
+    const content = render(fs.readFileSync(path.join(PACKS, f.from), 'utf8'), tokens);
+    const abs = path.join(repoDir, f.to);
+    return { to: f.to, path: abs, content, exists: fs.existsSync(abs) };
+  });
+}
+
+function write(items) {
+  for (const it of items.filter((x) => !x.exists)) {
+    fs.mkdirSync(path.dirname(it.path), { recursive: true });
+    fs.writeFileSync(it.path, it.content);
+  }
+}
+
+function usage() {
+  return '사용법: kedovi archrules spring|react|fastapi [--repo R] [--dir 모듈 경로] [--dry-run] [--json]\n'
+    + '  spring : ArchUnit 규칙 (패키지 배치 · 접미사 → 계층 · 기능 경계 · 역할 클래스) → src/test/java/<기준 패키지>/archrules/\n'
+    + '  react  : eslint-plugin-boundaries 설정 (FSD 레이어 · slice 공개 API · 생성 API 경계) → eslint.boundaries.config.js\n'
+    + '  fastapi: import-linter 계약 + 역할 파일 검사 → .importlinter · tools/check_role_files.py\n'
+    + '  값은 workspace.json vars (spring.basePackage · spring.packageLayout · react.srcDir · react.generatedApiDir · fastapi.package · cleanCode.helperMethods). 있는 파일은 덮지 않는다';
+}
+
+function main(argv) {
+  const a = parse(argv);
+  const stack = a._[0];
+  if (a.help || !stack) { console.log(usage()); return stack || a.help ? 0 : 2; }
+  if (!STACKS[stack]) { console.error(`모르는 스택: ${stack}\n${usage()}`); return 2; }
+  const ws = require('../lib/workspace').load();
+  let repo, v;
+  try { repo = pickRepo(ws, stack, a.repo); v = values(ws, stack, a); } catch (e) { console.error(`✖ ${e.message}`); return 1; }
+  if (!fs.existsSync(repo.dir)) { console.error(`✖ ${repo.name}: 폴더가 없습니다 (${repo.dir}). kedovi install 뒤 다시`); return 1; }
+  const items = plan(stack, repo.dir, v);
+  if (!a['dry-run']) write(items);
+  const s = STACKS[stack];
+  if (a.json) {
+    console.log(JSON.stringify({ stack, repo: repo.name, dryRun: !!a['dry-run'], values: v, files: items.map((x) => ({ path: x.to, written: !x.exists && !a['dry-run'], exists: x.exists })), next: s.deps, run: s.run }, null, 2));
+    return 0;
+  }
+  const opt = stack === 'spring' ? ` · 구조 ${v.layout} · 기준 패키지 ${v.basePackage}` : stack === 'react' ? ` · 소스 ${v.srcDir} · 생성 API ${v.generatedApiDir}` : ` · 패키지 ${v.package}`;
+  console.log(`${a['dry-run'] ? '미리보기 (쓰지 않음)' : '구조 검사 템플릿'}: ${repo.name}${opt} · 도우미 ${v.noHelpers ? '0개 검사 켬' : '검사 끔 (cleanCode.helperMethods = few)'}`);
+  for (const it of items) console.log(`  ${it.exists ? '· 있음 (덮지 않음)' : a['dry-run'] ? '+ 만들 파일' : '✔ 만듦'} ${it.to}`);
+  console.log('다음');
+  for (const d of s.deps) console.log(`  ${d}`);
+  console.log(`  실행: ${s.run}`);
+  console.log('  기존 코드가 규칙을 어기면 한꺼번에 고치지 말고 위반 목록을 보고 범위를 사용자와 정한다');
+  return 0;
+}
+
+if (require.main === module) process.exit(main(process.argv.slice(2)));
+
+module.exports = { STACKS, parse, pickRepo, values, render, plan, write, main };

@@ -9,7 +9,7 @@
   "vars": {
     "datamodel.dialect": {
       "default": "",
-      "desc": "DB 종류: postgresql · mysql · mariadb · oracle · mssql. ERD 의 Export SQL DDL 문법. 비우면 PostgreSQL"
+      "desc": "DB 종류: postgresql · mysql · mariadb · oracle · mssql · sqlite (sqlite 면 검사가 타입을 INTEGER · TEXT · REAL · BLOB · NUMERIC 으로 본다). ERD 의 Export SQL DDL 문법. 비우면 PostgreSQL"
     },
     "datamodel.naming": {
       "default": "",

@@ -111,6 +111,14 @@ function entropy(s) {
   return Object.values(n).reduce((a, v) => a - (v / s.length) * Math.log2(v / s.length), 0);
 }
 
+// 식별자 · 경로 모양 값 (라우팅 키 · 큐 이름 · 캐시 키 · 설정 키 · 경로): 낱말을 . _ : / - 로 이은 것. 낱말 = 한 가지 대소문자 영어(+숫자 4자리까지) · v숫자 · 숫자 4자리까지
+// 무작위 비밀값은 이렇게 생기지 않는다 (대소문자 · 숫자가 한 낱말에 섞인다)
+const WORD = /^(?:[a-z]+|[A-Z]+|[A-Z][a-z]+)\d{0,4}$|^v\d+$|^\d{1,4}$/;
+function identLike(v) {
+  const words = String(v).split(/[._:/-]+/).filter(Boolean);
+  return /[._:/-]/.test(v) && words.length >= 2 && words.every((w) => WORD.test(w));
+}
+
 /** 출력 → 찾은 비밀값 종류 목록 (값은 담지 않는다) */
 function scanOutput(text) {
   const s = String(text || '');
@@ -122,6 +130,7 @@ function scanOutput(text) {
     const secretName = /PASS|PWD|SECRET|TOKEN|KEY|AUTH|CRED|PRIVATE|SALT/.test(key);
     const mixed = /[A-Za-z]/.test(v) && /\d/.test(v) && entropy(v) >= 3.5;
     const hexOnly = /^[0-9a-f]+$/i.test(v);
+    if (identLike(v)) continue;
     if ((secretName && v.length >= 12 && !/^(true|false|null|undefined|changeme|placeholder|your[_-]?\w+|x+|\*+)$/i.test(v)) || (mixed && !hexOnly)) { found.add(`${key}= 값`); if (found.size > 6) break; }
   }
   // .pgpass 줄 (호스트:포트:DB:사용자:비밀번호)
@@ -163,4 +172,4 @@ if (require.main === module) {
   try { main(); } catch { /* 훅은 세션을 깨지 않는다 */ }
   process.exit(0);
 }
-module.exports = { isSecretFile, bashLeak, scanOutput };
+module.exports = { identLike, isSecretFile, bashLeak, scanOutput };

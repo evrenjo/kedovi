@@ -2,7 +2,7 @@
   "name": "stack-fastapi",
   "title": "FastAPI 스택",
   "summary": "FastAPI 라우터 · Pydantic 모델 · 의존성 · async · 설정",
-  "description": "FastAPI: 얇은 라우터 · Pydantic 모델 분리 · Annotated 의존성 · async 안 블로킹 금지 · 설정 의존성. 서버 공통은 backend 팩",
+  "description": "FastAPI: 얇은 라우터 · Pydantic 모델 분리 · Annotated 의존성 · async 안 블로킹 금지 · 설정 의존성, 기능 폴더 구조 선택 + import-linter 계약 · 역할 파일 검사 템플릿(kedovi archrules fastapi). 서버 공통은 backend 팩",
   "category": "stack",
   "layer": "backend",
   "stacks": [
@@ -10,5 +10,23 @@
   ],
   "requires": [
     "core"
-  ]
+  ],
+  "vars": {
+    "fastapi.repo": {
+      "default": "",
+      "desc": "FastAPI repo 이름 (workspace.json repos[].name). 비우면 stack 에 fastapi 가 들어간 첫 repo"
+    },
+    "fastapi.package": {
+      "default": "app",
+      "desc": "최상위 Python 패키지 이름 (import 이름)"
+    },
+    "fastapi.sourceDir": {
+      "default": ".",
+      "desc": "패키지 폴더가 있는 곳 (repo 기준, 예: src)"
+    },
+    "fastapi.packageLayout": {
+      "default": "existing",
+      "desc": "폴더 구조: existing(프로젝트 관례, 기본) | feature(<패키지>/feature/<기능>/{router,schemas,models,service,repository,mapper,…}.py · config · shared)"
+    }
+  }
 }

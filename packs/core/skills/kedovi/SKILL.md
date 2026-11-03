@@ -17,6 +17,7 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 진행 방식 보기 · 바꾸기 | `kedovi approach` (지금 값) · `kedovi approach sprint\|full\|issue` (MVP · 스프린트: 최소 기능부터 기능 단위 스프린트 · 데모 · 회고, 워터폴 · 전체: 전체 설계 뒤 구축, 이슈형: 운영 · 유지보수의 이슈 보드). 기본 단계 그대로인 로드맵은 새 뼈대로 바뀐다. "작게 시작하자" · "스프린트로" · "이슈 단위로 관리" 같은 말에 쓴다 | 팀 (팀장) |
 | 유형 바꾸기 | `kedovi type <new\|modernization\|enhancement\|consulting> [--approach a] [--code 이름,…]` (분석·설계 → 구축 · 고도화 등. 현행 repo 중 고칠 것을 개발 repo 로 · 진행 방식 · 로드맵 새 뼈대, 지난 로드맵은 남김). 바꾸기 전에 무엇이 바뀌는지 보여 주고 확인받는다 | 팀 (팀장) |
 | 로드맵 보기 · 점검 | `kedovi plan` (흐름도 · 지금 단계 표 · 다음, 이슈형은 이슈 보드) · `kedovi plan --short` (한 줄) · `kedovi plan check` (갱신 누락 ⚠) · `kedovi plan --report [시작 [끝]]` (이슈형 주간 보고) | 보기 |
+| 일정 정본을 밖에 둘 때 (GitLab 마일스톤 · 외부 일정표) | `kedovi plan external "<위치>"` (workspace.json `vars.plan.external` 에 적고 handoffs/PLAN.md 갱신 경고를 내지 않는다) · `kedovi plan external off` (PLAN.md 를 다시 정본으로) · `kedovi plan external` (지금 값). "일정은 GitLab 마일스톤에서 관리해" 같은 말에 쓴다 | 팀 |
 | 팀 구성 바꾸기 | `kedovi team-mode auto\|fixed` · `prefer <역할> <claude\|codex>:<모델>` (`--team` 은 팀 기본값, 팀장) | 이 PC · 팀 |
 | 훅 강제 수준 (팀 모드에서 이름 없는 역할 에이전트 · 구성표 알림) | `kedovi team-mode enforce name off\|warn\|block [--team]` (기본 막기) · `kedovi team-mode enforce roster off\|warn [--team]` (한 요청의 첫 역할 에이전트 때 실행 방식 · 구성표를 알렸는지 한 줄, 기본 알림). 이 PC 값은 팀 값보다 세게만, 낮추려면 팀장이 `--team`. 지금 값은 `kedovi team-mode` | 이 PC · 팀 |
 | 대기 팀원 점검 (Claude Code 팀 모드에서 일을 마치고 오래 남은 팀원) | `kedovi team-mode enforce idle off\|warn\|block [--after <분>] [--remind <분>] [--team]`. 막기(기본): 멈출 때 한 번 막고 팀원 이름 · 대기 시간을 알림 · 알림: 요청 시작 때 한 줄 · 끔. 대기 상한(기본 10분) · 같은 팀원을 다시 알리는 간격(기본 30분)은 팀 값(`--team`, 팀장) | 이 PC · 팀 |
@@ -95,6 +96,7 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 화면 비교 (프로토타입 ↔ 구현) | `kedovi screens compare <화면 ID> [--impl <주소\|/경로>] [--proto <파일\|주소>] [--widths 1280,390] [--storage <상태.json>] [--find]` (같은 폭으로 두 장씩 찍어 `compare.html`. 구현 주소는 진입점 `@spec` 줄의 `@route`, screens 팩 · Playwright). "프로토타입이랑 비교해 줘" · "디자인 맞게 됐어?" 같은 말에 쓴다. 다른 곳은 「프로토타입 요소 · 구현 · 다른 이유」 표로 | 보기 |
 | 화면설계서 검사 | `kedovi screens check [기획 repo]` (근거 ID · 화면 ID 중복 · 기능 ID 누락). 화면설계서 작성 절차는 `screens` 스킬 | 보기 |
 | 데이터 설계 검사 | `kedovi datamodel check [기획 repo]` (참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조). 작성 절차는 `datamodel` 스킬 | 보기 |
+| 구조 검사 넣기 (패키지 구조 · 계층 경계를 테스트 · 린트로) | `kedovi archrules spring\|react\|fastapi [--repo <이름>] [--dry-run]` (Spring ArchUnit · React eslint-plugin-boundaries · FastAPI import-linter + 역할 파일 검사. 있는 파일은 덮지 않는다). "구조 검사 넣어줘" · "패키지 규칙 테스트로" 같은 말에 쓴다. 먼저 `--dry-run` 으로 만들 파일을 보이고, 기존 코드 위반은 범위를 사용자와 정한다 | 코드 repo |
 | 팩 켜기 (upgrade 가 「꺼져 있음」 이라 알린 기본 팩 · 다른 유형의 screens · datamodel 등) | `kedovi upgrade --add <팩,팩>` | 팀 |
 | 킷 새 버전 반영 | `kedovi upgrade` | 팀 |
 | 이 PC 의 워크스페이스 모두 새 버전으로 | `kedovi upgrade --all [--scan <폴더>] [--yes]` (목록 · 건너뛸 것을 보인 뒤 묻고 올림. 팀장 아님 · 원격에 받지 않은 커밋 · 커밋 안 한 변경이면 건너뜀. 채팅에서는 목록을 보여 주고 승인받은 뒤 `--yes`) | 팀 |

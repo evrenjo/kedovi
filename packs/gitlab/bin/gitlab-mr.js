@@ -10,7 +10,7 @@
  *     MR 을 만든다. 같은 source→target 의 열린 MR 이 있으면 새로 만들지 않고 그 MR 을 쓴다 (--json: {iid, url, reused}).
  * pipeline [--repo R] [--ref 브랜치 | --mr 번호 | --id 파이프라인ID] [--limit N] [--log [줄 수]] [--json]
  *     최근 파이프라인 목록(기본 5개)과 맨 위(또는 --id) 파이프라인의 단계별 작업 상태. 읽기만 한다. --log 는 실패한 작업의 로그 끝부분(기본 40줄).
- * wait     [--repo R] --mr 번호 | --id 파이프라인ID | --ref 브랜치 [--sha 커밋] [--timeout 분] [--json]
+ * wait     [--repo R] --mr 번호 | --id 파이프라인ID | --ref 브랜치·태그 [--sha 커밋(짧은 SHA 가능)] [--timeout 분] [--json]
  *     파이프라인이 끝날 때까지 기다린다. --mr · --ref 는 지금 커밋(MR 머리 · 머지 커밋 · 브랜치 머리)의 파이프라인이 생길 때까지 먼저 기다린다.
  *     끝 코드: 성공 0 · 실패 · 취소 1 · 시간 초과 4 · 파이프라인이 안 생김 5. 수동 작업에서 멈추면 0 과 수동 작업 이름.
  * merge    <MR 번호> [--repo R] [--yes] [--timeout 분] [--json]
@@ -257,7 +257,7 @@ async function cmdPipeline(ws, a) {
   } else {
     const ref = a.ref && a.ref !== true ? a.ref : null;
     list = await api(ws, r, 'GET', `/pipelines?per_page=${limit}&order_by=id&sort=desc${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`);
-    if (ref) scope = `브랜치 ${ref}`;
+    if (ref) scope = `ref ${ref}`;
   }
   const id = asked || (list[0] && list[0].id);
   let detail = null;
@@ -360,6 +360,10 @@ async function cmdJobRun(ws, a) {
 }
 
 const WAITING = new Set(['created', 'waiting_for_resource', 'preparing', 'pending', 'running', 'scheduled']);
+// 머지 판정이 아직인 상태 · 파이프라인을 기다리는 상태 (막 만든 MR · 새 push 직후)
+const TRANSIENT = new Set(['checking', 'unchecked', 'preparing', 'approvals_syncing', 'cannot_be_merged_recheck']);
+const CI_PENDING = new Set(['ci_must_pass', 'ci_still_running']);
+const SETTLE_MS = () => Math.max(1000, Number(process.env.KEDOVI_MERGE_SETTLE_MS) || 120000);
 const pollMs = () => Math.max(200, Number(process.env.KEDOVI_POLL_MS) || 5000);
 const deadline = (a, def = 30) => Date.now() + Math.max(1, Number(a.timeout) || def) * 60000;
 
@@ -407,12 +411,34 @@ function finish(r, { p, jobs }, json) {
   return code;
 }
 
-/** 이 커밋의 파이프라인 (가장 새것). mr 이 있으면 MR 파이프라인도 본다 */
-async function pipelineFor(ws, r, { sha, ref, mr }) {
+/** 짧은 SHA · 태그 · 브랜치 이름 → 전체 SHA (+ 그 커밋의 마지막 파이프라인). pipelines API 의 sha 필터는 전체 SHA 만 맞춘다. 못 풀면 그대로 */
+async function resolveCommit(ws, r, sha) {
+  if (/^[0-9a-f]{40}$/i.test(sha)) return { sha, last: null };
+  try {
+    const c = await api(ws, r, 'GET', `/repository/commits/${encodeURIComponent(sha)}`);
+    return { sha: c.id || sha, last: c.last_pipeline || null };
+  } catch { return { sha, last: null }; }
+}
+
+/** ref → { kind: 'branch' | 'tag', sha }. 브랜치에 없으면 태그에서 찾는다 */
+async function refHead(ws, r, ref) {
+  try { return { kind: 'branch', sha: (await api(ws, r, 'GET', `/repository/branches/${encodeURIComponent(ref)}`)).commit.id }; } catch (e) { if (e.status !== 404) throw e; }
+  try { return { kind: 'tag', sha: (await api(ws, r, 'GET', `/repository/tags/${encodeURIComponent(ref)}`)).commit.id }; } catch (e) { if (e.status !== 404) throw e; }
+  die(`브랜치 · 태그 '${ref}' 가 ${r.name} 에 없습니다`);
+}
+
+/** 이 커밋의 파이프라인 (가장 새것, 이미 시작 · 끝난 것 포함). ref 가 맞는 것을 먼저, 없으면 sha 가 맞는 아무것. mr 이 있으면 MR 파이프라인도 본다 */
+async function pipelineFor(ws, r, { sha, ref, mr, last }) {
   const list = [];
   if (mr) list.push(...await api(ws, r, 'GET', `/merge_requests/${encodeURIComponent(mr)}/pipelines?per_page=20`));
-  list.push(...await api(ws, r, 'GET', `/pipelines?per_page=20&order_by=id&sort=desc${sha ? `&sha=${encodeURIComponent(sha)}` : ''}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`));
-  return list.filter((x) => !sha || x.sha === sha || String(x.sha || '').startsWith(sha)).sort((x, y) => y.id - x.id)[0] || null;
+  if (sha) {
+    list.push(...await api(ws, r, 'GET', `/pipelines?per_page=20&order_by=id&sort=desc&sha=${encodeURIComponent(sha)}`));
+    // 짧은 SHA 를 못 풀었으면 sha 필터가 빈 목록을 준다: ref 목록에서 앞자리로 찾는다
+    if (ref && !/^[0-9a-f]{40}$/i.test(sha)) list.push(...await api(ws, r, 'GET', `/pipelines?per_page=50&order_by=id&sort=desc&ref=${encodeURIComponent(ref)}`));
+    if (last) list.push(last);
+  } else list.push(...await api(ws, r, 'GET', `/pipelines?per_page=20&order_by=id&sort=desc${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`));
+  const hit = list.filter((x) => !sha || x.sha === sha || String(x.sha || '').startsWith(sha)).sort((x, y) => y.id - x.id);
+  return (ref && hit.find((x) => x.ref === ref)) || hit[0] || null;
 }
 
 async function cmdWait(ws, a) {
@@ -434,16 +460,20 @@ async function cmdWait(ws, a) {
       if (merged) { ref = m.target_branch; mr = null; }
       what = `MR !${m.iid} ${merged ? `머지 커밋 (${m.target_branch})` : `머리 커밋 (${m.source_branch})`} ${String(sha).slice(0, 7)}`;
     } else if (a.ref && a.ref !== true) {
-      ref = a.ref;
-      if (!sha) sha = (await api(ws, r, 'GET', `/repository/branches/${encodeURIComponent(ref)}`)).commit.id;
-      what = `브랜치 ${ref} 커밋 ${String(sha).slice(0, 7)}`;
-    } else die('--mr <번호> · --id <파이프라인ID> · --ref <브랜치> 중 하나가 필요합니다');
+      ref = String(a.ref);
+      const head = sha ? null : await refHead(ws, r, ref);
+      if (head) sha = head.sha;
+      what = `${head && head.kind === 'tag' ? '태그' : head ? '브랜치' : 'ref'} ${ref} 커밋 ${String(sha).slice(0, 7)}`;
+    } else die('--mr <번호> · --id <파이프라인ID> · --ref <브랜치 | 태그> 중 하나가 필요합니다');
+    let last = null;
+    if (sha) ({ sha, last } = await resolveCommit(ws, r, sha));
     say(`repo: ${r.name} · ${what}`);
     const appear = Date.now() + Math.max(1, Number(a.appear) || 5) * 60000;
     let shown = false;
     for (;;) {
-      const p = await pipelineFor(ws, r, { sha, ref, mr });
+      const p = await pipelineFor(ws, r, { sha, ref, mr, last });
       if (p) { id = p.id; break; }
+      last = null; // 다음 바퀴는 새로 조회
       if (!shown) { say(`  ${clock()} 이 커밋의 파이프라인이 생기길 기다림`); shown = true; }
       if (Date.now() > Math.min(appear, until)) { console.log(`✖ 이 커밋(${String(sha).slice(0, 7)})의 파이프라인이 생기지 않았습니다. CI 규칙상 없을 수 있습니다 ([skip ci] · rules). 확인: kedovi gitlab pipeline --repo ${r.name}${ref ? ` --ref ${ref}` : ''}`); process.exit(5); }
       await sleep(pollMs());
@@ -483,13 +513,24 @@ async function cmdMerge(ws, a) {
   if (m.state === 'merged') return done(m);
   if (m.state !== 'opened') die(`MR !${iid} 은(는) ${m.state} 입니다`);
   allowWrite(ws, '머지');
-  const pipe = m.head_pipeline || m.pipeline;
+  let pipe = m.head_pipeline || m.pipeline;
   say(`⚠ 머지: ${r.name} !${m.iid} ${m.title}`);
   say(`  ${m.source_branch} → ${m.target_branch} · 상태 ${m.detailed_merge_status || m.merge_status} · 파이프라인 ${pipe ? `#${pipe.id} ${pipe.status}` : '없음'} · 머지 뒤 source ${m.force_remove_source_branch || m.should_remove_source_branch ? '지움' : '남김'}`);
   const blocked = () => (m.has_conflicts ? MERGE_BLOCK.conflict : (m.draft || m.work_in_progress) ? MERGE_BLOCK.draft_status : MERGE_BLOCK[m.detailed_merge_status]);
-  if (blocked()) die(`머지할 수 없습니다: ${blocked()} (${m.web_url})`);
+  // 막 만든 MR 은 판정(checking · preparing …) 중이라 충돌 · 막힘 여부가 아직 없다. 확실히 막힌 것만 여기서 멈춘다
+  if (!TRANSIENT.has(m.detailed_merge_status) && blocked()) die(`머지할 수 없습니다: ${blocked()} (${m.web_url})`);
   if (!a.yes) { console.log('  머지하지 않았습니다. 사용자가 이 MR 의 머지를 지시했으면 같은 명령에 --yes 를 붙여 다시 실행합니다'); process.exit(3); }
   const until = deadline(a);
+  const settle = Date.now() + SETTLE_MS();
+  const tick = () => sleep(Math.min(5000, pollMs()));
+  // 판정이 끝나고 파이프라인이 생길 때까지 (파이프라인 필수 프로젝트는 막 만든 MR 에 head_pipeline 이 늦게 붙는다)
+  let shown = false;
+  while ((TRANSIENT.has(m.detailed_merge_status) || (!pipe && CI_PENDING.has(m.detailed_merge_status))) && Date.now() < Math.min(settle, until)) {
+    if (!shown) { say(`  ${clock()} 머지 판정 · 파이프라인을 기다림 (${m.detailed_merge_status || m.merge_status})`); shown = true; }
+    await tick();
+    m = await get();
+    pipe = m.head_pipeline || m.pipeline;
+  }
   // 파이프라인이 돌고 있으면 끝날 때까지
   if (pipe && WAITING.has(pipe.status)) {
     say(`  ${clock()} 파이프라인 #${pipe.id} 이(가) 끝나길 기다림`);
@@ -497,14 +538,25 @@ async function cmdMerge(ws, a) {
     if (res.p.status !== 'success' && res.p.status !== 'manual' && res.p.status !== 'skipped') { finish(r, res, false); die(`파이프라인이 ${res.p.status} 라 머지하지 않습니다`); }
     m = await get();
   } else if (pipe && (pipe.status === 'failed' || pipe.status === 'canceled')) die(`파이프라인 #${pipe.id} 이(가) ${pipe.status} 라 머지하지 않습니다. 다시 실행: kedovi gitlab retry --repo ${r.name} --id ${pipe.id} --yes`);
-  // 머지 가능 판정이 아직이면 잠깐 기다린다 (그래도 머지 요청은 보낸다: 서버가 판정한다)
-  for (let i = 0; i < 6 && ['checking', 'unchecked', 'preparing', 'approvals_syncing'].includes(m.detailed_merge_status); i++) { await sleep(Math.min(5000, pollMs())); m = await get(); }
+  // 파이프라인이 끝난 뒤 머지 가능 판정이 다시 도는 동안
+  const after = Date.now() + SETTLE_MS();
+  while ((TRANSIENT.has(m.detailed_merge_status) || CI_PENDING.has(m.detailed_merge_status)) && Date.now() < Math.min(after, until)) { await tick(); m = await get(); }
   if (blocked()) die(`머지할 수 없습니다: ${blocked()} (${m.web_url})`);
-  try {
-    m = await api(ws, r, 'PUT', `/merge_requests/${encodeURIComponent(iid)}/merge`, { sha: m.sha });
-  } catch (e) {
-    const why = { 405: `지금 머지할 수 없는 상태입니다 (${m.detailed_merge_status})`, 406: '충돌이 있거나 머지할 수 없습니다', 409: 'MR 커밋이 바뀌었습니다 (새 push). kedovi gitlab wait --mr 로 새 파이프라인을 본 뒤 다시', 401: '권한이 없습니다', 403: '이 계정은 대상 브랜치에 머지할 권한이 없습니다' }[e.status];
-    die(`머지 실패: ${why || e.message}`);
+  // 머지 요청: 판정이 아직 덜 끝나 405 · 406 · 422 가 오면 상태가 일시적인 동안 다시 보낸다
+  let quick = 0; // 판정은 끝났는데(mergeable) 거부되면 잠깐만 (서버 쪽 판정이 따라오는 몇 초)
+  for (;;) {
+    try {
+      m = await api(ws, r, 'PUT', `/merge_requests/${encodeURIComponent(iid)}/merge`, { sha: m.sha });
+      break;
+    } catch (e) {
+      const cur = await get().catch(() => m);
+      const retry = [405, 406, 422].includes(e.status) && cur.state === 'opened' && (TRANSIENT.has(cur.detailed_merge_status) || CI_PENDING.has(cur.detailed_merge_status) || (cur.detailed_merge_status === 'mergeable' && quick++ < 3)) && Date.now() < Math.min(after + SETTLE_MS(), until);
+      if (cur.state === 'merged') { m = cur; break; }
+      if (retry) { m = cur; say(`  ${clock()} 머지 판정 중이라 다시 요청 (HTTP ${e.status}, ${cur.detailed_merge_status})`); await tick(); m = await get(); continue; }
+      m = cur;
+      const why = { 405: `지금 머지할 수 없는 상태입니다 (${m.detailed_merge_status})`, 406: '충돌이 있거나 머지할 수 없습니다', 409: 'MR 커밋이 바뀌었습니다 (새 push). kedovi gitlab wait --mr 로 새 파이프라인을 본 뒤 다시', 422: `머지할 수 없습니다 (${m.detailed_merge_status})`, 401: '권한이 없습니다', 403: '이 계정은 대상 브랜치에 머지할 권한이 없습니다' }[e.status];
+      die(`머지 실패: ${(blocked() || why) || e.message}`);
+    }
   }
   say(`  ${clock()} ▶ 머지 요청`);
   while (m.state !== 'merged') {

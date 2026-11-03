@@ -451,7 +451,7 @@ function teamMessages(cfg, changes) {
   if (cfg.events.includes('handoff') && changes.plan) {
     const P = require('./plan');
     const plan = P.parse(changes.plan.text);
-    if (plan) out.push(`🗺 [${p}] 로드맵 갱신 (${changes.plan.author})\n${P.shortLine(plan)}\n\`\`\`\n${P.flow(plan, 40)}\n\`\`\``);
+    if (plan) out.push(`🗺 [${p}] 로드맵 갱신 (${changes.plan.author})\n${P.shortLine(plan, changes.external || '')}\n\`\`\`\n${P.flow(plan, 40)}\n\`\`\``);
   }
   if (cfg.events.includes('settings') && (changes.settings || []).length) {
     const s = changes.settings;

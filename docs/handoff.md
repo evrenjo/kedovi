@@ -78,5 +78,6 @@ handoff(기록) · resume(내 작업 재개) · takeover(남의 작업 인수) �
 - **보이는 곳**: `kedovi start` 세션 브리핑에 흐름도 · 지금 단계 표, 재개 보고 · 팀 현황에 한 줄, 단계를 끝낸 보고에 전체 블록(흐름도 · 표 · 이번에 생긴 것 · 다음), 핸드오프가 끝나면 「로드맵을 볼까요?」 를 선택지 질문(보기 · 안 보기)으로 묻고 보기면 전체 블록, PLAN.md 가 바뀐 push 는 팀 방 알림.
 - **갱신 누락**: `kedovi handoff check`(핸드오프 때 돈다)가 기본 단계 그대로 · 진행 단계 없음 · 하위 작업이 다 끝났는데 단계가 그대로 · 스택에 맞는 단계 없음 같은 것을 ⚠ 로 알린다.
 - ID 를 세려면 `workspace.json` 의 `vars.plan.ids` 에 접두사를 둔다 (예: `REQ,TC`).
+- **일정 정본이 밖이면** (GitLab 마일스톤 · 이슈 보드 등) `kedovi plan external "<위치>"` 로 `vars.plan.external` 에 적는다. 그 뒤로는 「기본 단계 그대로」 등 PLAN.md 경고를 내지 않고 브리핑 · `handoff check` 가 그 위치를 한 줄로 알린다. 되돌리기: `kedovi plan external off`.
 - 설정 잠금이어도 팀원이 `handoffs/PLAN.md` 는 커밋할 수 있다.
 - 모두가 고치는 공용 요약 파일은 두지 않는다 (push 충돌 원인). 예전 `handoffs/INDEX.md` 는 더 쓰지 않는다.

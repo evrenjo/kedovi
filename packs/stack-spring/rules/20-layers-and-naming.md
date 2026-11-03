@@ -1,11 +1,13 @@
 ---
-title: Spring 패키지 구조·이름·Javadoc
+title: Spring 패키지 구조 (계층 먼저)
 load: on-demand
-when: Spring 백엔드에 클래스·패키지를 새로 만들거나, 메서드 이름을 짓거나, Javadoc 을 달 때
+when: Spring 백엔드에 클래스·패키지를 새로 만들거나 옮길 때
+if: vars.spring.packageLayout!=feature-first
 ---
 
-계층·소유자 이름·주석 분량 원칙은 backend 팩 「백엔드 계층·이름·주석」. 여기는 Spring 에서의 기본 모양이다.
-**프로젝트가 이미 다른 구조·이름을 쓰면 그것이 우선이다** — 이 표에 맞추려고 기존 코드를 옮기지 않는다.
+계층·소유자 이름·주석 분량 원칙은 backend 팩 「백엔드 계층·이름·주석」. 여기는 Spring 에서의 기본 모양이다 (`vars.spring.packageLayout = layer-first`).
+**프로젝트가 이미 다른 구조·이름을 쓰면 그것이 우선이다.** 이 표에 맞추려고 기존 코드를 옮기지 않는다.
+메서드 이름 · MapStruct · Javadoc 은 「Spring 이름·MapStruct·Javadoc」.
 
 ## 패키지 구조 (`{{ws:vars.spring.basePackage}}`)
 
@@ -23,27 +25,7 @@ when: Spring 백엔드에 클래스·패키지를 새로 만들거나, 메서드
 | `model/type/{도메인}/` | enum 상수 | `*Type` |
 | `config/{역할}/` | 설정 (`jpa`·`security`·`web` …) | `*Config` |
 
-- 엔티티 연관은 `@ManyToOne`/`@OneToMany` 대신 **plain FK 필드**(`UUID orderId`)로 두고, 조인은 QueryDSL `on()` 으로 명시한다 — 지연 로딩·N+1·순환 참조가 조회 코드에서 보이게 한다. 프로젝트가 연관 매핑을 쓰고 있으면 그대로 따른다.
-- 엔티티 필드·컬럼은 풀네임 — `descriptionContent` ↔ `@Column(name = "description_content")`.
-
-## MapStruct
-
-- 엔티티 ↔ DTO 변환은 `@Mapper(componentModel = "spring")` 인터페이스로, `mapper/{도메인}/` 에 둔다. 서비스에서 필드를 손으로 옮기지 않는다.
-- 이름이 다른 필드·파생 값은 `@Mapping(target, source | expression)`, 채우지 않을 필드는 `ignore = true` 로 **명시**한다 — 빌드 경고(unmapped target)를 무시하지 않는다.
-
-## 메서드 이름 — 레이어별 기본
-
-| 레이어 | 등록 | 수정 | 삭제 | 단건 | 목록 |
-|---|---|---|---|---|---|
-| Controller | `create{도메인}` | `modify{도메인}` | `delete{도메인}` | `find{도메인}` | `page{도메인}` / `cursor{도메인}` |
-| Service | `create` | `modify` | `delete` | `get` + 용도 (`getDetail`) | `getPage` |
-| Query | — | — | — | `find` + 용도·조건 (`findDetail`) | `findPage`, `findCursorList` |
-| Repository | Spring Data 규칙 (`findBy`·`existsBy`·`countBy`·`deleteBy`) | | | | |
-
-## Javadoc
-
-- 모든 public 클래스·메서드에 Javadoc, 분량은 backend 팩 상한. **평문**으로 — `{@link}`·`@see`·`<p>`·`@param`·`@return`·`@throws` 를 쓰지 않는다.
-- 애너테이션이 있는 클래스는 **첫 애너테이션 앞**에 둔다.
-
-Java 일반 규칙(import·명명·선언 순서·포매터)은 `packs/stack-spring/docs/java-convention.md`.
-버전을 올리거나 변경 기록을 쓸 때는 `packs/stack-spring/docs/versioning.md`.
+- 엔티티 연관은 `@ManyToOne`/`@OneToMany` 대신 **plain FK 필드**(`UUID orderId`)로 두고, 조인은 QueryDSL `on()` 으로 명시한다. 지연 로딩·N+1·순환 참조가 조회 코드에서 보이게 한다. 프로젝트가 연관 매핑을 쓰고 있으면 그대로 따른다.
+- 엔티티 필드·컬럼은 풀네임: `descriptionContent` ↔ `@Column(name = "description_content")`.
+- 기능 단위로 묶는 구조를 쓰려면 `workspace.json` `vars.spring.packageLayout` 을 `feature-first` 로 (「Spring 패키지 구조 (기능 먼저)」).
+- **검사는 장치로:** 접미사 → 패키지 · 역할 클래스 규칙은 `kedovi archrules spring` 이 ArchUnit 테스트로 넣는다. 룰 문장만으로 지키게 하지 않는다.

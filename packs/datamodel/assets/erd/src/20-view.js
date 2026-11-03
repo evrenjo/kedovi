@@ -145,7 +145,14 @@
     // 영역 개요에서 표를 고르면(목록 · 검색 · 주소) 영역 배치로 바꿔 그 표로 간다
     if (id && center && st.overview && E.areaMode()) { st.overview = false; E.layout().then(() => select(id, center)); return; }
     st.sel = id;
+    st.selRel = null;
     E.update().then(() => { if (id && center) centerOn(id); });
+  };
+  /** 관계(선) 고르기: 그 관계의 두 테이블 · 두 컬럼 · 선만 진하게. 표를 고르거나 빈 곳을 누르면 풀린다 */
+  E.selectRel = function selectRel(r) {
+    st.sel = null;
+    st.selRel = r || null;
+    E.update();
   };
   /** 근거 패널: 기능 ID · 결정 ID · 정의서 */
   E.openRef = (label, hrefs) => { st.ref = { label, hrefs, i: 0 }; E.update(); };

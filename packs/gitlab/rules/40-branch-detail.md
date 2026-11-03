@@ -2,6 +2,7 @@
 title: 브랜치 전략 상세
 load: on-demand
 when: 브랜치를 새로 따거나, MR 방향(source→target)·hotfix·브랜치 이름을 정할 때
+if: vars.gitlab.branchMode!=trunk
 ---
 
 ## 브랜치 전략 상세

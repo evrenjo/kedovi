@@ -50,7 +50,7 @@ function allRepos(ws) {
 /** git 동기 실행. 실패하면 null (예외를 던지지 않는다) */
 function git(cwd, args, timeoutMs = 8000) {
   try {
-    return execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 }).trim();
+    return execFileSync('git', ['-C', cwd, '-c', 'core.quotepath=false', ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 }).trim();
   } catch { return null; }
 }
 
@@ -59,7 +59,7 @@ function gitAsync(cwd, args, timeoutMs = 10000) {
   return new Promise((resolve) => {
     let out = '';
     let done = false;
-    const p = spawn('git', ['-C', cwd, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const p = spawn('git', ['-C', cwd, '-c', 'core.quotepath=false', ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
     const t = setTimeout(() => { if (!done) { done = true; try { p.kill('SIGKILL'); } catch { /* 이미 끝남 */ } resolve({ ok: false, out: 'timeout' }); } }, timeoutMs);
     p.stdout.on('data', (d) => { out += d; });
     p.on('error', () => { if (!done) { done = true; clearTimeout(t); resolve({ ok: false, out: 'spawn error' }); } });

@@ -67,5 +67,16 @@ assert.ok(deny(hook(bash('git -C repos/app push'), { KEDOVI_DELEGATED: '1' })), 
 assert.ok(!deny(hook(bash('git -C repos/app commit -m x', { agent_id: 'a1' }))), '맡은 repo 커밋 통과');
 assert.strictEqual(hook(bash('git commit -am x', { agent_id: 'a1' })).status, 0);
 
+// 통합 브랜치 직접 운영(trunk): 팀원의 새 브랜치 · worktree 는 막고, feature 운영이면 통과
+assert.deepStrictEqual(kinds('git -C repos/app switch -c feat/x && git -C repos/app worktree add ../w && git -C repos/app checkout -b y && git -C repos/app branch z'), ['newbranch:switch', 'newbranch:worktree', 'newbranch:checkout', 'newbranch:branch']);
+assert.deepStrictEqual(kinds('git -C repos/app branch -d old && git -C repos/app switch develop && git -C repos/app branch'), []);
+assert.ok(!deny(hook(bash('git -C repos/app switch -c feat/x', { agent_id: 'a1' }))), 'feature 운영: 팀원 브랜치 생성 통과');
+fs.writeFileSync(path.join(ws, 'workspace.json'), '{"repos":[],"vars":{"gitlab":{"branchMode":"trunk"}}}');
+const tb = hook(bash('git -C repos/app worktree add ../w', { agent_id: 'a1' }));
+assert.ok(deny(tb) && /trunk/.test(tb.stdout), 'trunk: 팀원 worktree 막음');
+assert.ok(!deny(hook(bash('git -C repos/app commit -m x', { agent_id: 'a1' }))), 'trunk: 팀원 커밋은 통과');
+const tl = hook(bash('git -C repos/app switch -c feat/x'));
+assert.ok(!deny(tl) && /리더라 막지 않음/.test(tl.stdout), 'trunk: 리더는 경고만');
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('git-guard ok');

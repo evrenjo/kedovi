@@ -802,6 +802,38 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   record('규칙 끄기·바꾸기 (rules.off · replaces · 필수)', ok1 && offOk && reqOk, `끄기·대체 ${ok1 && offOk} · 필수 막기 ${reqOk}`);
 }
 
+// 설정값으로 고르는 규칙 (if:) · 고를 수 있는 값(choices) 경고 · 커밋 훅의 같은 경고 줄이기
+{
+  const dir = path.join(tmp, 'if-ws');
+  run(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dir, '--type', 'new', '--code', 'new:api'], tmp);
+  const wsFile = path.join(dir, 'workspace.json');
+  const ws = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+  if (!ws.packs.includes('gitlab')) ws.packs.push('gitlab');
+  fs.writeFileSync(wsFile, JSON.stringify(ws, null, 2));
+  const s1 = run(process.execPath, ['bin/kit.js', 'sync'], dir);
+  const md1 = fs.readFileSync(path.join(dir, 'AGENTS.md'), 'utf8');
+  const featureOk = s1.ok && md1.includes('작업은 **작업 브랜치**') && !md1.includes('통합 브랜치 직접') && !md1.includes('gitlab--41-branch-trunk-detail') && md1.includes('gitlab--40-branch-detail');
+  const ws2 = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+  ws2.vars = ws2.vars || {};
+  ws2.vars.gitlab = { ...(ws2.vars.gitlab || {}), branchMode: 'trunk' };
+  fs.writeFileSync(wsFile, JSON.stringify(ws2, null, 2));
+  const s2 = run(process.execPath, ['bin/kit.js', 'sync'], dir);
+  const md2 = fs.readFileSync(path.join(dir, 'AGENTS.md'), 'utf8');
+  const trunkOk = s2.ok && md2.includes('통합 브랜치 직접') && !md2.includes('작업은 **작업 브랜치**') && md2.includes('gitlab--41-branch-trunk-detail') && !md2.includes('gitlab--40-branch-detail');
+  ws2.vars.gitlab.branchMode = 'trnuk';
+  fs.writeFileSync(wsFile, JSON.stringify(ws2, null, 2));
+  const s3 = run(process.execPath, ['bin/kit.js', 'check'], dir);
+  const choiceOk = /vars\.gitlab\.branchMode = "trnuk" 는 고를 수 있는 값이 아닙니다/.test(s3.out);
+  // 커밋 훅 안(GIT_INDEX_FILE)에서 두 번째부터 같은 경고는 한 줄
+  run(process.execPath, ['bin/kit.js', 'sync'], dir);
+  fs.mkdirSync(path.join(dir, '.git'), { recursive: true });
+  const hookEnv = { ...process.env, GIT_INDEX_FILE: path.join(dir, '.git', 'index') };
+  const c1 = spawnSync(process.execPath, ['bin/kit.js', 'check'], { cwd: dir, encoding: 'utf8', env: hookEnv });
+  const c2 = spawnSync(process.execPath, ['bin/kit.js', 'check'], { cwd: dir, encoding: 'utf8', env: hookEnv });
+  const quietOk = /고를 수 있는 값이 아닙니다/.test(c1.stderr) && !/고를 수 있는 값이 아닙니다/.test(c2.stderr) && /지난 커밋 때와 같아 줄였습니다/.test(c2.stderr);
+  record('설정값으로 고르는 규칙 (if: · choices · 커밋 훅 경고 줄이기)', featureOk && trunkOk && choiceOk && quietOk, `feature ${featureOk} · trunk ${trunkOk} · 잘못된 값 경고 ${choiceOk} · 같은 경고 한 줄 ${quietOk}`);
+}
+
 // 팀원 설정 수정 불가 — 관리자 아닌 사람은 자기 handoffs/ 밖 커밋 거부, Claude 편집 금지, 허용으로 바꾸면 모두 걷힘
 {
   const dir = path.join(tmp, 'lock-ws');

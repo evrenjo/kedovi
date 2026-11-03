@@ -1,8 +1,8 @@
 /* ERD 뷰어 Export · SQL DDL: 정의서 모델 → CREATE 문 (검토용). 브라우저(window.ERD_DDL)와 Node(require) 둘 다 쓴다 */
 (function (root, f) { if (typeof module === 'object' && module.exports) module.exports = f(); else root.ERD_DDL = f(); })(this, function () {
   'use strict';
-  var NAMES = { postgresql: 'PostgreSQL', mysql: 'MySQL', mariadb: 'MariaDB', oracle: 'Oracle', mssql: 'SQL Server' };
-  var ALIAS = { postgres: 'postgresql', pg: 'postgresql', sqlserver: 'mssql', 'sql server': 'mssql', maria: 'mariadb' };
+  var NAMES = { postgresql: 'PostgreSQL', mysql: 'MySQL', mariadb: 'MariaDB', oracle: 'Oracle', mssql: 'SQL Server', sqlite: 'SQLite' };
+  var ALIAS = { postgres: 'postgresql', pg: 'postgresql', sqlserver: 'mssql', 'sql server': 'mssql', maria: 'mariadb', sqlite3: 'sqlite' };
   var REF = /^(\w+)\.(\w+)\.(\w+)$/;
   var LREF = /^(\w+)\.(\w+)(?:\.(\w+))?$/;
 
@@ -20,6 +20,7 @@
     o = o || {};
     var d = dialectOf(o.dialect);
     var my = d === 'mysql' || d === 'mariadb';
+    var lite = d === 'sqlite';
     var q = function (s) { return String(s).replace(/'/g, "''"); };
     var note = function (a, b) { return [a, b].filter(Boolean).join(': '); };
     var tabs = M.tables.filter(function (t) { return schemas.indexOf(t.schema) >= 0; });
@@ -33,6 +34,7 @@
       if (d === 'postgresql') out.push('CREATE SCHEMA IF NOT EXISTS ' + s + ';');
       else if (my) out.push('CREATE DATABASE IF NOT EXISTS ' + s + ';');
       else if (d === 'mssql') out.push("IF SCHEMA_ID(N'" + q(s) + "') IS NULL EXEC('CREATE SCHEMA " + s + "');");
+      else if (lite) out.push('-- 스키마 ' + s + ': SQLite 는 main 이거나 ATTACH DATABASE 로 붙인 DB 이름이다');
       else out.push('-- 스키마(사용자) ' + s + ' 는 DBA 가 만든다 (CREATE USER)');
     });
     out.push('');
@@ -43,11 +45,15 @@
       if (t.partition || t.retention) out.push('-- ' + [t.partition ? '파티션: ' + t.partition : '', t.retention ? '보존: ' + t.retention : ''].filter(Boolean).join(' · ') + ' (파티션 · 보존은 마이그레이션에서 정한다)');
       var lines = t.columns.map(function (c) {
         var cm = my && (c.logical || c.desc) ? " COMMENT '" + q(note(c.logical, c.desc)) + "'" : '';
+        // SQLite 는 주석 문법이 없어 컬럼 위에 SQL 주석으로 남긴다
+        if (lite && (c.logical || c.desc)) return '  -- ' + note(c.logical, c.desc).replace(/\n/g, ' ') + '\n  ' + c.name + ' ' + c.type + (c.nullable ? '' : ' NOT NULL');
         return '  ' + c.name + ' ' + c.type + (c.nullable ? '' : ' NOT NULL') + cm;
       });
       var pk = t.columns.filter(function (c) { return c.pk; }).map(function (c) { return c.name; });
       if (pk.length) lines.push('  CONSTRAINT pk_' + t.name + ' PRIMARY KEY (' + pk.join(', ') + ')');
       t.columns.filter(function (c) { return c.uk && !c.pk; }).forEach(function (c) { lines.push('  CONSTRAINT uk_' + t.name + '_' + c.name + ' UNIQUE (' + c.name + ')'); });
+      // SQLite 는 ALTER TABLE 로 외래키를 더할 수 없어 CREATE TABLE 안에 둔다 (참조 대상은 스키마 없이 테이블 이름만)
+      if (lite && o.fkInDb !== false) t.columns.filter(function (c) { return c.fk && REF.test(c.ref); }).forEach(function (c) { var m = REF.exec(c.ref); lines.push('  CONSTRAINT fk_' + t.name + '_' + c.name + ' FOREIGN KEY (' + c.name + ') REFERENCES ' + m[2] + ' (' + m[3] + ')'); });
       out.push('CREATE TABLE ' + t.id + ' (', lines.join(',\n'), ')' + (my && (t.logical || t.desc) ? " COMMENT='" + q(note(t.logical, t.desc)) + "'" : '') + ';');
       if (d === 'postgresql' || d === 'oracle') {
         if (t.logical || t.desc) out.push('COMMENT ON TABLE ' + t.id + " IS '" + q(note(t.logical, t.desc)) + "';");
@@ -58,7 +64,7 @@
         t.columns.forEach(function (c) { if (c.logical || c.desc) out.push(prop(note(c.logical, c.desc), c.name)); });
       }
       out.push('');
-      t.columns.filter(function (c) { return c.fk; }).forEach(function (c) {
+      if (!lite || o.fkInDb === false) t.columns.filter(function (c) { return c.fk; }).forEach(function (c) {
         var m = REF.exec(c.ref);
         if (m) fks.push({ t: t, c: c, ref: m[1] + '.' + m[2], rc: m[3], inScope: schemas.indexOf(m[1]) >= 0 });
       });

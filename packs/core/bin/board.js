@@ -58,7 +58,7 @@ function dashboard(t, plan) {
     `> 기준: ${t.source}. 보기 전용 (다시 만들기: kedovi board)`, ''];
   L.push('## 로드맵', '');
   if (plan) {
-    L.push(P.shortLine(plan), '', '```', P.flow(plan, 100), '```', '');
+    L.push(P.shortLine(plan, P.externalOf(ws)), '', '```', P.flow(plan, 100), '```', '');
     const cur = P.current(plan);
     if (cur) L.push(`### 지금 단계: ${cur.no}. ${cur.name}`, '', P.detailTable(cur), '');
     L.push('자세히: [로드맵](handoffs/PLAN.md)', '');

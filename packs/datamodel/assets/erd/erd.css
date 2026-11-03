@@ -66,6 +66,9 @@ main { flex: 1; display: grid; grid-template-columns: 200px 1fr; min-height: 0; 
 .ed { fill: none; stroke: var(--edge); stroke-width: 1.5; }
 .ed.on { stroke: var(--hi); stroke-width: 2.2; }
 .dim { opacity: .14; }
+.tb.rsel .box { stroke: var(--hi); stroke-width: 3; }
+.tb .hlc { fill: color-mix(in srgb, var(--hi) 22%, transparent); }
+.edhit { fill: none; stroke: transparent; stroke-width: 14; cursor: pointer; pointer-events: stroke; }
 :fullscreen #stage, #stage:fullscreen { background-color: var(--bg); }
 @media (max-width: 900px) {
   main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }

@@ -40,7 +40,7 @@ const mr30 = () => ({ iid: 30, title: 'feat: [develop] 주문', state: flow.merg
 flow.list = (q) => {
   if (q.get('sha') === 'h30') return [pipe(30, flow.p30 >= 2 ? 'success' : 'running', 'feature/x', 'h30')];
   if (q.get('sha') === 'h31new') return flow.appear41++ < 2 ? [] : [pipe(41, 'running', 'feature/y', 'h31new')];
-  if (q.get('ref') === 'release' && q.get('sha') === 'r50') return [pipe(50, 'manual', 'release', 'r50')];
+  if (q.get('sha') === 'r50') return [pipe(50, 'manual', 'release', 'r50')];
   if (q.get('ref') === 'feature/x' && !q.get('sha')) return [pipe(60, 'running', 'feature/x', 'h30'), pipe(59, 'success', 'feature/x', 'h29')];
   return null;
 };
@@ -60,7 +60,42 @@ Object.assign(routes, {
   '/projects/7/pipelines/50': () => pipe(50, 'manual', 'release', 'r50'),
   '/projects/7/pipelines/50/jobs': () => [{ id: 501, stage: 'build', name: 'build', status: 'success' }, { id: 502, stage: 'deploy', name: 'deploy-prod', status: 'manual' }],
 });
+// 짧은 SHA · 태그 · 이미 끝난 파이프라인 (wait --ref --sha), 막 만든 MR 의 판정 대기 (merge)
+const FULL70 = 'd70a'.padEnd(40, '0');
+const TAG72 = 'e72b'.padEnd(40, '1');
+const m33 = { gets: 0, puts: 0, p73: 0 };
+const mr33 = () => {
+  m33.gets += 1;
+  const settled = m33.gets > 2;
+  const merged = m33.puts >= 2;
+  return { iid: 33, title: 'fix: [develop] 새 MR', state: merged ? 'merged' : 'opened', source_branch: 'fix/new', target_branch: 'develop', sha: 'n33', merge_commit_sha: merged ? 'm33full000' : null,
+    detailed_merge_status: !settled ? 'preparing' : m33.puts === 1 && m33.gets % 2 ? 'checking' : 'mergeable', has_conflicts: false,
+    head_pipeline: settled ? { id: 73, status: m33.p73 >= 2 ? 'success' : 'running' } : null, web_url: 'http://git.test/mr/33' };
+};
+Object.assign(routes, {
+  '/projects/7/repository/commits/d70a': () => ({ id: FULL70, last_pipeline: null }),
+  '/projects/7/repository/branches/develop': () => ({ name: 'develop', commit: { id: FULL70 } }),
+  '/projects/7/repository/tags/v0.4.0': () => ({ name: 'v0.4.0', commit: { id: TAG72 } }),
+  '/projects/7/pipelines/70': () => pipe(70, 'success', 'develop', FULL70),
+  '/projects/7/pipelines/70/jobs': () => [{ id: 701, stage: 'test', name: 'unit', status: 'success' }],
+  '/projects/7/pipelines/71': () => pipe(71, 'success', 'develop', 'f71c'.padEnd(40, '2')),
+  '/projects/7/pipelines/71/jobs': () => [],
+  '/projects/7/pipelines/72': () => pipe(72, 'success', 'v0.4.0', TAG72),
+  '/projects/7/pipelines/72/jobs': () => [],
+  '/projects/7/merge_requests/33': () => mr33(),
+  '/projects/7/pipelines/73': () => { m33.p73 += 1; return pipe(73, m33.p73 >= 2 ? 'success' : 'running', 'fix/new', 'n33'); },
+  '/projects/7/pipelines/73/jobs': () => [{ id: 731, stage: 'test', name: 'unit', status: m33.p73 >= 2 ? 'success' : 'running' }],
+});
+const listBefore = flow.list;
+flow.list = (q) => {
+  if (q.get('sha') === FULL70) return [pipe(70, 'success', 'develop', FULL70)]; // 이미 끝난 파이프라인. 짧은 sha 로는 빈 목록 (전체 SHA 만 맞춘다)
+  if (q.get('sha') === TAG72) return [pipe(72, 'success', 'v0.4.0', TAG72)];
+  if (q.get('sha') && /^(d70a|f71c)$/.test(q.get('sha'))) return [];
+  if (q.get('ref') === 'develop' && !q.get('sha')) return [pipe(71, 'success', 'develop', 'f71c'.padEnd(40, '2')), pipe(70, 'success', 'develop', FULL70)];
+  return listBefore(q);
+};
 const puts = {
+  '/projects/7/merge_requests/33/merge': () => { m33.puts += 1; if (m33.puts === 1) return [405, { message: '405 Method Not Allowed' }]; return [200, mr33()]; },
   '/projects/7/merge_requests/30/merge': (body) => { if (body.sha !== 'h30' || flow.p30 < 2) return [405, { message: '405 Method Not Allowed' }]; flow.merged30 = true; return [200, mr30()]; },
 };
 const posts = {
@@ -185,6 +220,20 @@ server.listen(0, '127.0.0.1', async () => {
     assert.ok(r.code === 0 && /수동 작업에서 멈춤: deploy-prod/.test(r.out) && /play --repo api --id 50 --job deploy-prod --yes/.test(r.out), r.out);
     r = await run(['wait', '--id', '50', '--json'], one);
     assert.ok(r.code === 0 && JSON.parse(r.out).manual[0] === 'deploy-prod', r.out);
+    // wait --ref --sha <짧은 SHA>: 이미 끝난 파이프라인도 잡는다 (전체 SHA 로 풀어 조회)
+    r = await run(['wait', '--ref', 'develop', '--sha', 'd70a'], one);
+    assert.ok(r.code === 0 && /파이프라인 #70/.test(r.out) && /✔ 파이프라인 #70 성공/.test(r.out) && !/생기지 않았습니다/.test(r.out), r.out);
+    // 짧은 SHA 를 못 풀어도(commit API 404) ref 목록에서 앞자리로 찾는다
+    r = await run(['wait', '--ref', 'develop', '--sha', 'f71c'], one);
+    assert.ok(r.code === 0 && /파이프라인 #71/.test(r.out), r.out);
+    // 태그 ref: 브랜치에 없으면 태그 머리 커밋
+    r = await run(['wait', '--ref', 'v0.4.0'], one);
+    assert.ok(r.code === 0 && /태그 v0\.4\.0 커밋 e72b/.test(r.out) && /파이프라인 #72/.test(r.out), r.out);
+    r = await run(['wait', '--ref', 'nope-ref'], one);
+    assert.ok(r.code === 1 && /브랜치 · 태그 'nope-ref'/.test(r.out), r.out);
+    // merge: 막 만든 MR (preparing · 파이프라인 없음 → 파이프라인 생김 → 머지 요청이 한 번 405) 은 기다렸다 다시 요청
+    r = await run(['merge', '33', '--yes'], three);
+    assert.ok(r.code === 0 && /머지 판정 · 파이프라인을 기다림 \(preparing\)/.test(r.out) && /파이프라인 #73/.test(r.out) && /다시 요청 \(HTTP 405/.test(r.out) && /merge_commit_sha=m33full000/.test(r.out) && m33.puts === 2, r.out);
     // play 는 pipeline --play 와 같다 (--yes 없으면 3)
     r = await run(['play', '--id', '20', '--job', 'deploy'], one);
     assert.ok(r.code === 3 && /수동 작업/.test(r.out), r.out);

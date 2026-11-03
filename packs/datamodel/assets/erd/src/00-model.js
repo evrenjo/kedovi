@@ -15,7 +15,7 @@
   /* 상태: 그림 · 화면 위치 · 고른 것. 바꾼 뒤 E.update() 로 다시 그린다 (화면 이동 · 확대는 다시 그리지 않고 E.applyView) */
   const st = E.st = {
     cf: 24, hidden: new Set(), fold: new Set(), areas: null, hideHub: load('erd.hub', 'off') === 'on', level: 'compact', mode: 'auto', switching: false,
-    cache: new Map(), arrange: 'rel', overview: false, lrefs: false, xarea: false, names: load('erd.names', 'both'), sel: null, q: '',
+    cache: new Map(), arrange: 'rel', overview: false, lrefs: false, xarea: false, names: load('erd.names', 'both'), sel: null, selRel: null, q: '',
     k: 1, x: 0, y: 0, W: 0, H: 0, pos: new Map(), boxes: new Map(), scene: null, busy: true, err: '', ref: null,
   };
   const byId = E.byId = new Map(M.tables.map((t) => [t.id, t]));

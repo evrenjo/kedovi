@@ -46,7 +46,7 @@ function parseArgs(argv) {
 const { findCli } = require('../lib/cli');
 const which = (bin) => !!findCli(bin);
 const git = (cwd, args) => {
-  const r = spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync('git', ['-C', cwd, '-c', 'core.quotepath=false', ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   return r.status === 0 ? r.stdout : null;
 };
 
