@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="kedovi docs">
+<title>쓰기 보고서 · kedovi 문서</title>
+<script>try { var t = localStorage.getItem('kedovi-docs-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="stylesheet" href="../assets/site.css?v=428a6722">
+<link rel="icon" href="data:,">
+</head>
+<body data-root="../">
+<div id="ds-app">
+<header>
+  <div class="left"><button class="menu-btn" id="menu" type="button" aria-label="메뉴" aria-expanded="false" aria-controls="side-nav">☰</button><a class="brand" href="../index.html"><span class="logo">ai</span>kedovi 문서</a></div>
+  <div class="search"><input id="q" placeholder="검색 (제목 · 본문 · ID)" autocomplete="off"><kbd>⌘K</kbd><div class="results" id="results"></div></div>
+  <div class="tools"><span>v0.83.0</span><button id="ink" type="button" title="펜 필기 (끝내기: Esc)" aria-label="펜 필기" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 21h8"/><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg></button><button id="print" type="button" title="인쇄 (이 문서 · 전체 문서)" aria-label="인쇄" aria-haspopup="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg></button><button id="theme" type="button" title="테마" aria-label="테마"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg></button></div>
+</header>
+<div class="layout">
+  <nav class="side" id="side-nav" data-page="docs/write-report.html"><noscript><a class="nav-link" href="../index.html">문서 목록</a></noscript></nav><div class="nav-backdrop" id="nav-backdrop"></div>
+  <main id="main"><article class="page">
+<div class="page-head"><div><div class="crumb">쓰는 법</div><h1>쓰기 보고서</h1></div><a class="src" href="https://github.com/evrenjo/kedovi/blob/main/docs/write-report.md" title="원본 md">원본 write-report.md</a></div>
+<div class="ds-body">
+
+<p>시험이 DB 에 무엇을 어떻게 썼는지 DB 화면처럼 테이블 · 행으로 보고, 핵심 테이블은 기대값(승인본)으로 고정한다. 저장 로직을 바꿨을 때 &quot;어느 컬럼에 무슨 값이 들어갔는가&quot; 를 코드를 읽지 않고 확인하는 도구다.</p>
+<div class="diagram"><div class="diagram-tools"><button class="mm-zoom" type="button" title="크게 보기">확대</button><button class="mm-open" type="button" title="새 창에서 보기">새 창</button></div><pre class="mermaid">flowchart LR
+  T[시험 실행] --&gt; R[기록기&lt;br&gt;스택별]
+  R --&gt; Y[시험별 원본&lt;br&gt;yaml]
+  R --&gt; I[색인 index.json&lt;br&gt;화면 index.html]
+  Y --&gt; A{승인본과 같은가}
+  A -- 같음 --&gt; P[통과]
+  A -- 다름 --&gt; F[실패 · received/ 에 받은 값]
+  F --&gt; U[사용자 확인 뒤 승인 모드로 갱신]
+  I --&gt; C[kedovi writes check&lt;br&gt;기능 문서 저장 표와 대조]
+  I --&gt; S[문서 사이트&lt;br&gt;저장 데이터]</pre></div>
+<blockquote><p>형식 정본: 킷의 <code>packs/core/assets/write-report/FORMAT.md</code>. 스택별 기록기 · 화면 · 검사는 모두 그 형식만 읽고 쓴다.</p></blockquote>
+<h2 id="스택별-기록기">스택별 기록기<a class="anchor" href="#스택별-기록기" aria-label="이 절 주소">#</a></h2>
+<div class="table"><table><thead><tr><th>스택</th><th>명령</th><th>잡는 쓰기</th></tr></thead><tbody><tr><td>Java · jOOQ</td><td><code>kedovi writes add jooq</code></td><td>jOOQ 로 실행한 문장</td></tr><tr><td>Java · Spring JDBC</td><td><code>kedovi writes add jdbc</code></td><td>JdbcTemplate · JPA 등 JDBC 를 거치는 문장</td></tr><tr><td>Python · SQLAlchemy</td><td><code>kedovi writes add sqlalchemy</code></td><td>엔진을 거치는 문장 (pytest)</td></tr><tr><td>Node · pg</td><td><code>kedovi writes add node-pg</code></td><td>pg 풀 · 클라이언트 문장</td></tr></tbody></table></div>
+<ul><li>repo 는 스택으로 고른다 (jooq · jdbc = spring, sqlalchemy = fastapi · django · flask, node-pg = express · nestjs). 다르면 <code>--repo</code>, 여러 모듈이면 <code>--dir &lt;모듈&gt;</code>.</li><li>있는 파일은 덮지 않는다. 설정 파일은 없는 키만 더한다. 먼저 <code>--dry-run</code> 으로 넣을 파일을 본다.</li><li>끝에 넣을 의존성 · 시험 연결 · 실행 · 기대값 고정 명령이 나온다. 기준 패키지 · 패키지 이름은 <code>workspace.json</code> 의 <code>vars</code>(<code>spring.basePackage</code> · <code>fastapi.package</code>).</li></ul>
+<h2 id="보는-화면">보는 화면<a class="anchor" href="#보는-화면" aria-label="이 절 주소">#</a></h2>
+<p>시험을 끝까지 돌리면 출력 폴더에 <code>index.html</code> 하나가 생긴다. <code>kedovi writes open</code> 이 경로를 찍고 연다.</p>
+<div class="table"><table><thead><tr><th>출력 폴더</th><th>스택</th></tr></thead><tbody><tr><td><code>build/write-report</code></td><td>Gradle</td></tr><tr><td><code>target/write-report</code></td><td>Maven</td></tr><tr><td><code>.write-report</code></td><td>Python · Node</td></tr></tbody></table></div>
+<div class="table"><table><thead><tr><th>화면에서 보는 것</th><th>뜻</th></tr></thead><tbody><tr><td>시험 목록</td><td>시험마다 결과(통과 · 실패 · 건너뜀)와 기능 ID</td></tr><tr><td>테이블별 쓰기</td><td>INSERT · UPDATE · DELETE · UPSERT 를 실행 순서로, 행은 DB 화면처럼 표</td></tr><tr><td>미기록</td><td>그 문장이 쓰지 않은 컬럼 (DB 기본값 · 트리거가 채운다)</td></tr><tr><td>롤백</td><td>롤백된 트랜잭션 안의 쓰기</td></tr><tr><td>컬럼 타입</td><td>처음 쓴 연결에서 읽은 테이블 정의</td></tr></tbody></table></div>
+<h2 id="기대값-고정">기대값 고정<a class="anchor" href="#기대값-고정" aria-label="이 절 주소">#</a></h2>
+<p>승인본은 <strong>핵심 테이블만</strong> 고정한다. 그 시험이 지키려는 테이블만 고르면 상관없는 변경에 깨지지 않는다.</p>
+<div class="table"><table><thead><tr><th>고정 범위</th><th>시험 하나의 승인본 크기 (측정 예)</th></tr></thead><tbody><tr><td>그 시험이 쓴 테이블 전부</td><td>1,500~2,000줄</td></tr><tr><td>핵심 테이블만</td><td>약 220줄</td></tr></tbody></table></div>
+<div class="table"><table><thead><tr><th>단계</th><th>하는 일</th></tr></thead><tbody><tr><td>처음</td><td>승인 모드로 한 번 돌려 승인본을 만든다. 승인본은 repo 에 커밋한다</td></tr><tr><td>평소</td><td>승인본과 다르면 시험이 실패하고 받은 값이 <code>received/</code> 에 남는다 (메시지에 두 경로와 차이 앞부분)</td></tr><tr><td>의도한 변경</td><td>차이를 사람이 확인한 뒤 승인 모드로 다시 돌린다. Java 는 시스템 속성 <code>writeReport.approve=true</code>, Python · Node 는 환경 변수 <code>WRITE_REPORT_APPROVE=1</code></td></tr></tbody></table></div>
+<blockquote><p>에이전트는 시험을 통과시키려고 승인본을 혼자 바꾸지 않는다. 차이를 보이고 사용자 확인 뒤에만 갱신한다 (backend 팩 「백엔드 쓰기 보고서」 규칙).</p></blockquote>
+<h2 id="정규화">정규화<a class="anchor" href="#정규화" aria-label="이 절 주소">#</a></h2>
+<p>실행마다 바뀌는 값은 비교 전에 같은 글로 바꾼다.</p>
+<div class="table"><table><thead><tr><th>대상</th><th>바뀌는 글</th></tr></thead><tbody><tr><td>DB 가 만든 숫자 ID</td><td><code>&lt;컬럼-n&gt;</code> (그 시험 안에서 원값 오름차순 번호)</td></tr><tr><td>UUID 모양 문자열</td><td><code>&lt;uuid&gt;</code></td></tr><tr><td>지금 시각 컬럼 (<code>created_at</code> · <code>updated_at</code> 등) · <code>now()</code></td><td><code>&lt;now&gt;</code></td></tr><tr><td>JSON 문자열</td><td>키 이름순으로 다시 쓴 것</td></tr><tr><td>오류 메시지의 「Detail:」 이후</td><td>지움</td></tr></tbody></table></div>
+<p>설정 파일(Java <code>src/test/resources/write-report.properties</code>, Python · Node <code>write-report.json</code>)의 <code>ids</code> · <code>now</code> · <code>replace</code> 로 더하거나 바꾼다.</p>
+<h2 id="마스킹">마스킹<a class="anchor" href="#마스킹" aria-label="이 절 주소">#</a></h2>
+<div class="table"><table><thead><tr><th>대상</th><th>규칙</th></tr></thead><tbody><tr><td>이름에 password · token · secret · api_key 등이 든 컬럼</td><td>값을 <code>&quot;***&quot;</code> 로</td></tr><tr><td>컬럼을 모르는 바인드 값</td><td>기본은 모양만 (<code>&lt;text:12&gt;</code> · <code>&lt;number&gt;</code> · <code>&lt;time&gt;</code>)</td></tr><tr><td>SQL 로 남기는 문장</td><td>바인드 · 인라인 값 모두 <code>?</code></td></tr></tbody></table></div>
+<h2 id="제외">제외<a class="anchor" href="#제외" aria-label="이 절 주소">#</a></h2>
+<div class="table"><table><thead><tr><th>설정</th><th>기본</th><th>뜻</th></tr></thead><tbody><tr><td><code>exclude.tables</code></td><td>배치 메타 · 스케줄러 · 마이그레이션 기록 · 잠금 테이블</td><td>통째로 기록하지 않는다</td></tr><tr><td><code>exclude.updatesOnly</code></td><td>없음</td><td>그 테이블에서 정한 컬럼만 바꾸는 UPDATE 는 개수만 센다 (스케줄러의 다음 실행 시각 등)</td></tr></tbody></table></div>
+<h2 id="저장-표-대조">저장 표 대조<a class="anchor" href="#저장-표-대조" aria-label="이 절 주소">#</a></h2>
+<p>기획 repo 의 기능 문서는 기능마다 「저장」 표를 둔다. 그 기능이 쓰는 것만 적고, 컬럼 타입 · 설명은 데이터 설계에만 둔다.</p>
+<div class="table"><table><thead><tr><th>스키마.테이블.컬럼</th><th>값 출처</th><th>조건</th><th>기본값</th></tr></thead><tbody><tr><td>shop.daily_sales.avg_price</td><td>shop.orders.amount 의 평균</td><td>행 없음이면 0</td><td>0</td></tr></tbody></table></div>
+<p>행 삭제는 <code>스키마.테이블.*</code>, 저장이 없는 기능은 표 대신 「없음」. <code>kedovi writes check</code> 가 보고서와 기능 ID 별로 대조한다. 시험의 기능 ID(수용 기준 ID 포함, 시험 이름 · 태그 · <code>@spec</code>)로 기능 절에 묶는다.</p>
+<div class="table"><table><thead><tr><th>결과</th><th>뜻</th><th>판정</th></tr></thead><tbody><tr><td>표에 없는 쓰기</td><td>시험이 썼는데 저장 표에 없는 테이블.컬럼</td><td>위반</td></tr><tr><td>타입 범위 위험 ✖</td><td>쓴 값이 numeric(p,s) 자릿수 · varchar(n) 길이를 넘음, 값 출처 컬럼이 대상보다 넓음, DB 오류 22003 · 22001</td><td>위반</td></tr><tr><td>타입 범위 위험 ⚠</td><td>한도에 닿음 · 소수 반올림</td><td>경고</td></tr><tr><td>안 쓴 컬럼</td><td>저장 표에 있는데 시험이 쓰지 않음 (시험하지 않은 분기일 수 있다)</td><td>경고</td></tr></tbody></table></div>
+<p><code>--strict</code> 면 위반이 있을 때 실패로 끝나 CI 에 걸 수 있다. 저장 표와 코드 중 무엇이 맞는지는 기획 문서 규칙의 판정(정본이 맞음 · 구현이 맞음 · 판단 불가)을 따른다.</p>
+<h2 id="문서-사이트의-저장-데이터">문서 사이트의 저장 데이터<a class="anchor" href="#문서-사이트의-저장-데이터" aria-label="이 절 주소">#</a></h2>
+<p><code>kedovi docs build</code> 는 저장 표가 있는 기획 repo 에 메뉴 「저장 데이터」 를 만든다. 기능마다 저장 표 · 시험이 쓴 예시 행 · 보고서 화면 링크가 한 쪽에 모인다.</p>
+<div class="table"><table><thead><tr><th>상황</th><th>쪽 내용</th></tr></thead><tbody><tr><td>코드 repo 에 보고서가 있음</td><td>저장 표 + 예시 행 + 보고서 화면 사본(<code>write-report/&lt;repo&gt;/</code>)</td></tr><tr><td>보고서 없음</td><td>저장 표 + 「보고서 없음: kedovi writes add …」</td></tr></tbody></table></div>
+<blockquote><p>보고서는 build 때만 새로 읽는다. check · pre-commit 은 사이트에 넣은 사본으로 비교하므로 시험을 다시 돌려도 기획 repo 커밋이 막히지 않는다. Pages 로 올리는 사이트면 시험 데이터(정규화 · 마스킹된 값)도 함께 올라간다. 싫으면 <code>docs-site.json</code> 에 <code>&quot;writeReport&quot;: false</code>.</p></blockquote>
+<h2 id="한계">한계<a class="anchor" href="#한계" aria-label="이 절 주소">#</a></h2>
+<div class="table"><table><thead><tr><th>한계</th><th>대신</th></tr></thead><tbody><tr><td>시험이 지나간 경로만 보인다</td><td>안 쓴 컬럼 경고를 보고 시험을 더한다</td></tr><tr><td>INSERT SELECT · MERGE · UPDATE FROM · 직접 쓴 SQL 은 행이 아니라 문장으로 남는다</td><td>화면에서 문장을 직접 본다 (check 는 「컬럼을 모르는 문장」 으로 센다)</td></tr><tr><td>병렬 시험은 기록하지 않는다 (구간이 겹치면 실패)</td><td>기록하는 시험 묶음만 직렬로</td></tr><tr><td>DB 트리거 · 프로시저 안의 쓰기는 안 보인다</td><td>그 결과를 조회하는 시험을 둔다</td></tr><tr><td>기록기가 거치지 않는 연결(다른 풀 · 외부 프로세스)은 빠진다</td><td>시험 문맥의 연결을 쓰게 한다</td></tr></tbody></table></div>
+</div>
+</article>
+  <div class="pager"><a class="prev" href="docs-site.html"><small>이전 · 쓰는 법</small>문서 사이트 · 화면설계서 · 데이터 설계</a><a class="next" href="notify.html"><small>다음 · 쓰는 법</small>메신저 알림 (텔레그램)</a></div></main>
+  <aside class="toc"><div class="toc-title">이 페이지</div><div id="toc"><a class="l2" href="#스택별-기록기" data-id="스택별-기록기">스택별 기록기</a><a class="l2" href="#보는-화면" data-id="보는-화면">보는 화면</a><a class="l2" href="#기대값-고정" data-id="기대값-고정">기대값 고정</a><a class="l2" href="#정규화" data-id="정규화">정규화</a><a class="l2" href="#마스킹" data-id="마스킹">마스킹</a><a class="l2" href="#제외" data-id="제외">제외</a><a class="l2" href="#저장-표-대조" data-id="저장-표-대조">저장 표 대조</a><a class="l2" href="#문서-사이트의-저장-데이터" data-id="문서-사이트의-저장-데이터">문서 사이트의 저장 데이터</a><a class="l2" href="#한계" data-id="한계">한계</a></div></aside>
+</div>
+</div>
+<script type="application/json" id="ds-page">{"page":"docs/write-report.html","kind":"doc","title":"쓰기 보고서","head":"쓰기 보고서 · kedovi 문서","crumb":"쓰는 법","status":"","h1":"쓰기 보고서","lead":"","src":{"href":"https://github.com/evrenjo/kedovi/blob/main/docs/write-report.md","name":"write-report.md"},"toc":[{"lvl":2,"sid":"스택별-기록기","text":"스택별 기록기"},{"lvl":2,"sid":"보는-화면","text":"보는 화면"},{"lvl":2,"sid":"기대값-고정","text":"기대값 고정"},{"lvl":2,"sid":"정규화","text":"정규화"},{"lvl":2,"sid":"마스킹","text":"마스킹"},{"lvl":2,"sid":"제외","text":"제외"},{"lvl":2,"sid":"저장-표-대조","text":"저장 표 대조"},{"lvl":2,"sid":"문서-사이트의-저장-데이터","text":"문서 사이트의 저장 데이터"},{"lvl":2,"sid":"한계","text":"한계"}],"prev":{"p":"docs/docs-site.html","t":"문서 사이트 · 화면설계서 · 데이터 설계","g":"쓰는 법"},"next":{"p":"docs/notify.html","t":"메신저 알림 (텔레그램)","g":"쓰는 법"},"site":{"title":"kedovi 문서","logo":"ai","version":"v0.83.0","ink":true}}</script>
+<script src="../assets/search.js?v=f771af65"></script>
+<script src="../assets/nav.js?v=db7a90fe"></script>
+<script src="../assets/vendor.js?v=93f62565"></script>
+<script src="../assets/site.js?v=d425b1d1"></script>
+</body>
+</html>

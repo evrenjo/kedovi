@@ -2,6 +2,19 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.83.0
+
+| 구분 | 내용 |
+|---|---|
+| 명령 | `kedovi writes add jooq\|jdbc\|sqlalchemy\|node-pg`: 쓰기 보고서 기록기(시험 전용, 운영 코드 · 의존성 추가 없음)를 repo 에 씀 |
+| 기능 | 쓰기 보고서: 시험 본문이 DB 에 쓴 테이블 · 컬럼 · 값 · 결과(SQLState · 롤백 · savepoint)를 시험별 YAML 과 DB GUI 형 화면(index.html)으로 |
+| 기능 | 기대값 고정: `assertMatches` · `assert_writes` · `assertWrites` 로 핵심 테이블만 승인본과 비교. 갱신은 승인 속성 · 환경 변수를 켰을 때만 |
+| 기능 | 정규화(생성 ID · UUID · 시각 · JSON 키 · 로케일 메시지) · 마스킹(비밀 컬럼 · 모르는 바인드 · SQL 리터럴) · 소음 제외(updatesOnly) |
+| 명령 | `kedovi writes check`: 쓰기 보고서와 기능 문서 「저장」 표 대조 (표에 없는 쓰기 · 안 쓴 컬럼 · 타입 범위 위험). `kedovi writes open`: 화면 열기 |
+| 문서 | 기획 repo 기능 양식에 「저장」 표. 문서 사이트에 기능별 「저장 데이터」 페이지 (저장 표 · 예시 행 · 보고서 링크) |
+| 규칙 | 저장 로직을 바꾸면 쓰기 보고서 · 기대값을 함께 갱신 (승인본은 사용자 확인 뒤), 완료 보고에 그 테이블을 붙임 |
+| 적용 | `kedovi upgrade` 뒤 sync. 코드 repo 에 `kedovi writes add <스택> --dry-run` 으로 넣을 파일을 보고 붙임 |
+
 ## 0.82.0
 
 | 구분 | 내용 |

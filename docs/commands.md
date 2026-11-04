@@ -61,6 +61,9 @@
 | `kedovi screens check [repo]` | 화면설계서를 쓴 뒤 | 근거 ID 가 색인에 있는지 · 화면 ID 중복 · Description 줄이 결론 한 줄인지(60자 넘음 · 날짜 · 결정 경위는 ⚠) · 기능 ID 누락(`vars.screens.functionIds`, 화면 목록의 「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |
 | `kedovi datamodel check [repo]` | 테이블 정의서를 쓴 뒤 | ✖ 참조 대상 없음 · 기본키 없음 · 테이블 · 컬럼 중복 · 표 형식. ⚠ 논리명 없음 · 컨벤션 위반(`vars.datamodel`) · 기능 ID 없는 테이블 · 테이블 없는 기능(「없음」 으로 적은 것은 뺀다) |
 | `kedovi archrules spring\|react\|fastapi [--repo R] [--dry-run]` | 패키지 구조를 정했을 때 · 구조 규칙을 문장 대신 검사로 지키게 할 때 | 구조 검사 템플릿을 repo 에 쓴다 (있는 파일은 덮지 않고, 넣을 의존성 · 실행 명령을 알려 준다). 무엇이 들어가는지는 아래 「archrules 자세히」 |
+| `kedovi writes add jooq\|jdbc\|sqlalchemy\|node-pg [--repo R] [--dir 모듈] [--dry-run]` | 저장 로직을 시험으로 지키고 싶을 때 · 시험이 DB 에 무엇을 쓰는지 보고 싶을 때 | 쓰기 보고서 기록기를 repo 에 넣는다 (있는 파일은 덮지 않고, 설정 파일은 없는 키만 더한다. spring.factories 는 같은 키의 값 목록에 덧붙인다). 넣을 의존성 · 시험 연결 · 실행 · 기대값 고정 명령을 알려 준다. 아래 「writes 자세히」 |
+| `kedovi writes check [--repo R] [--report <index.json>] [--strict]` | 시험을 돌린 뒤 · 저장 로직 리뷰 때 | 쓰기 보고서와 기능 문서의 「저장」 표를 기능 ID 별로 대조: 표에 없는 쓰기 · 안 쓴 컬럼 · 타입 범위 위험. `--strict` 면 위반 시 exit 1 |
+| `kedovi writes open [--repo R]` | 보고서를 화면으로 볼 때 | 최신 보고서 화면(index.html) 경로를 찍고 연다 |
 | `kedovi rules [list \| off <ID> \| on <ID>]` `[--repo <이름,…>]` | 규칙이 팀에 맞지 않을 때 | 킷이 넣은 규칙을 켜고 끈다 (필수 규칙 제외). `--repo` 는 스택 · 언어 규칙을 그 repo 에서만. 바꾸기는 `packs/project/rules` 에 `replaces` (`repos:` 를 더하면 그 repo 만) |
 | `kedovi rules ondemand\|always <ID…\|repo-tasks>` | AGENTS.md 가 Codex 한도를 넘을 때 | 상시 규칙을 필요할 때만 읽게 한다 (`rules.onDemand`). `repo-tasks` 는 「repo 별 작업 규칙」의 작업별 표를 `.agents/rules/repo-tasks.md` 로 뺀다. sync 경고가 큰 절을 알려 준다 |
 | `kedovi repo add [주소·폴더·이름]` | repo 를 더할 때 | clone · 링크(원격 없는 로컬 repo 도), 또는 이름만 주면 `repos/<이름>` 에 원격 없이 새로 만든다. 인자 없이 = 화면에서 방식(clone · 기존 로컬 폴더 · 새로 만들기)을 먼저 고른다 (레거시 제외. 기획 repo 면 뼈대는 `kedovi init-docs`) → 스택 확인 → sync |
@@ -94,6 +97,17 @@
 | FastAPI | `.importlinter` + `tools/check_role_files.py` | 기능 안 계층 방향 · config · shared → feature 금지 · 파일 허용 목록 · 역할 파일 클래스 · 상수 |
 
 구조는 `vars.spring.packageLayout` · `vars.react.packageLayout` · `vars.fastapi.packageLayout` 으로 고른다. 역할 클래스 도우미 0개 검사는 `vars.cleanCode.helperMethods` 가 `none` 일 때만 켜진다.
+
+### writes 자세히
+
+| 스택 | 기록 방식 | 출력 · 승인본 |
+|---|---|---|
+| `jooq` | jOOQ 실행 리스너 (Spring 시험) | `build/write-report` · `target/write-report`, 승인본 `src/test/resources/write-report/approved` |
+| `jdbc` | DataSource 감싸기 (JdbcTemplate · JPA 의 JDBC) | 위와 같음 |
+| `sqlalchemy` | SQLAlchemy 엔진 이벤트 (pytest) | `.write-report`, 승인본 `tests/write-report/approved` |
+| `node-pg` | pg 풀 감싸기 | `.write-report`, 승인본 `test/write-report/approved` |
+
+`check` 판정: 표에 없는 쓰기 · ✖ 타입 범위(자릿수 · 길이 초과, 넓은 값 출처 · DB 오류 22003 · 22001)는 위반, 안 쓴 컬럼 · ⚠(한도에 닿음 · 소수 반올림)은 경고. 보고서 시험의 기능 ID(수용 기준 ID 포함)로 기능 절에 묶는다. 무엇을 · 어떻게는 [쓰기 보고서](write-report.md).
 
 AI 연결 방식과 시작 도구는 **워크스페이스마다** 정하고 `.agents/local.json` 에 저장한다 (이 PC 전용, git 공유 안 함). 구독·게이트웨이는 사람마다 다르기 때문이다.
 

@@ -45,6 +45,7 @@
   | `assets/nav.js` · `search.js` · `search-text.js` · `ids.json` | 메뉴 · 제목 색인 · 본문 색인 · 근거 색인 |
   | `assets/erd/erd.js` · `assets/storyboard/storyboard.js` | ERD 뷰어 · 화면설계서 뷰어. 같은 Preact 로 그리고, 원본은 킷의 `packs/datamodel/assets/erd/src/` · `packs/screens/assets/storyboard/src/` |
 - **포함 범위**: `docs-site.json` 의 `include` · `exclude`(glob, `폴더/**` 는 그 폴더 전체). 워크스페이스 루트를 만들면(`kedovi docs build .`) `repos/<이름>/` 을 repo 마다 `copy`(사본) · `link`(그 repo 로 가는 쪽 하나만) · `off`(뺌)로 넣는다. 기본은 종류별(legacy = off, 그 밖 = copy)이고 `"repos": { "docs": "link", "<이름>": { "mode": "copy" } }` 처럼 종류나 이름으로 바꾼다 (link 의 `url` 로 그 repo 의 Pages 주소).
+- **저장 데이터**: 기능 문서에 「저장」 표가 있으면 메뉴 「저장 데이터」 묶음을 만든다. 기능마다 저장 표 · 시험이 쓴 예시 행 · 쓰기 보고서 화면 사본(`write-report/<repo>/`) 링크. 보고서는 build 때만 코드 repo 에서 새로 읽고, check 와 pre-commit 은 사이트에 넣은 사본으로 비교한다 (시험을 다시 돌려도 커밋이 막히지 않는다). 끄려면 `docs-site.json` 에 `"writeReport": false`. 자세히는 [쓰기 보고서](write-report.md).
 - **원본 버튼**: 하위 repo 문서는 그 repo 의 원격(`workspace.json` 의 `repos[].url`, 없으면 그 repo 의 origin) + 기본 브랜치 + repo 안 경로로 간다. 원격이 없으면 버튼을 숨긴다.
 - **대소문자만 다른 경로**: 출력 경로가 대소문자만 다르면(같은 폴더의 `README.md` 와 `INDEX.md` 등) macOS · Windows 에서 서로 덮어쓰므로 build 가 ✖ 로 두 원본을 알리고 쓰지 않는다.
 - **크기**: build 가 「`docs-site/` n개 · 크기: 묶음별 내역」 과 repo 마다 넣은 방식을 한 줄씩 보이고, 20MB 를 넘으면 ⚠. `kedovi upgrade` 는 아직 커밋한 적 없는 `docs-site/` 를 `git add` 안내에서 빼고 따로 알린다 (Pages 로 올릴 때만 커밋).

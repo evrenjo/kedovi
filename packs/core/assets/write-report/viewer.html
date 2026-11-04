@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>쓰기 보고서</title>
+<!--
+  쓰기 보고서 보는 화면. 형식은 같은 폴더의 FORMAT.md.
+  기록기는 아래 스크립트의 DATA 자리 표시(주석 + null)를 index.json 내용으로 바꿔 index.html 한 파일을 만든다.
+  개발 중에는 sample/build-sample.js 가 만든 폴더를 로컬 서버로 열고 viewer.html?data=sample.json 처럼 데이터를 불러온다.
+-->
+<style>
+:root {
+  --bg: #ffffff; --bg2: #f6f7f9; --bg3: #eceff3; --fg: #1c2128; --fg2: #57606a; --fg3: #8c959f;
+  --line: #d8dde3; --line2: #e9ecef; --accent: #2563eb; --accent-bg: #e8f0fe;
+  --set-bg: #fff4c2; --set-fg: #6b5200; --where-bg: #e3efff; --where-fg: #1d4ed8;
+  --up-fg: #7c3aed; --bad: #c62828; --bad-bg: #fde8e8; --warn: #b45309; --warn-bg: #fff1dc;
+  --ok: #15803d; --mask: #6b21a8; --sel: #dbe8ff; --hover: #f2f6fc;
+  --op-insert: #15803d; --op-upsert: #0e7490; --op-ignore: #64748b; --op-update: #a16207; --op-delete: #c62828; --op-merge: #7c3aed; --op-sql: #475569;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15181d; --bg2: #1c2027; --bg3: #262b34; --fg: #e4e7eb; --fg2: #a3abb5; --fg3: #6e7681;
+    --line: #333a44; --line2: #262c35; --accent: #6ea8fe; --accent-bg: #1e2b44;
+    --set-bg: #3f3410; --set-fg: #f5d76e; --where-bg: #142c4f; --where-fg: #8ab8ff;
+    --up-fg: #c4a5ff; --bad: #ff8a80; --bad-bg: #3d1d1f; --warn: #fbbf24; --warn-bg: #3a2a0f;
+    --ok: #4ade80; --mask: #d8b4fe; --sel: #1f3358; --hover: #1f252e;
+    --op-insert: #4ade80; --op-upsert: #22d3ee; --op-ignore: #94a3b8; --op-update: #facc15; --op-delete: #ff8a80; --op-merge: #c4a5ff; --op-sql: #a3abb5;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15181d; --bg2: #1c2027; --bg3: #262b34; --fg: #e4e7eb; --fg2: #a3abb5; --fg3: #6e7681;
+  --line: #333a44; --line2: #262c35; --accent: #6ea8fe; --accent-bg: #1e2b44;
+  --set-bg: #3f3410; --set-fg: #f5d76e; --where-bg: #142c4f; --where-fg: #8ab8ff;
+  --up-fg: #c4a5ff; --bad: #ff8a80; --bad-bg: #3d1d1f; --warn: #fbbf24; --warn-bg: #3a2a0f;
+  --ok: #4ade80; --mask: #d8b4fe; --sel: #1f3358; --hover: #1f252e;
+  --op-insert: #4ade80; --op-upsert: #22d3ee; --op-ignore: #94a3b8; --op-update: #facc15; --op-delete: #ff8a80; --op-merge: #c4a5ff; --op-sql: #a3abb5;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 13px/1.45 var(--sans); display: flex; flex-direction: column; overflow: hidden; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+code, .mono { font-family: var(--mono); font-size: 12px; }
+
+header.top { flex: none; display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 44px; border-bottom: 1px solid var(--line); background: var(--bg2); }
+header.top h1 { font-size: 15px; margin: 0; white-space: nowrap; }
+header.top .meta { color: var(--fg2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.ibtn { flex: none; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; height: 28px; min-width: 30px; padding: 0 8px; }
+.ibtn:hover { background: var(--hover); }
+#menu { display: none; }
+
+.wrap { flex: 1; display: flex; min-height: 0; }
+aside { flex: none; width: 300px; border-right: 1px solid var(--line); background: var(--bg2); display: flex; flex-direction: column; min-height: 0; }
+aside .sec { padding: 10px 10px 6px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+aside .sec.tests { flex: 0 1 auto; max-height: 42%; }
+aside .sec.tables { flex: 1 1 auto; border-bottom: 0; }
+aside h2 { font-size: 12px; font-weight: 600; color: var(--fg2); margin: 0 0 6px; display: flex; justify-content: space-between; }
+aside h2 small { font-weight: 400; color: var(--fg3); }
+.search { width: 100%; height: 28px; border: 1px solid var(--line); border-radius: 6px; padding: 0 8px; background: var(--bg); outline: none; }
+.search:focus { border-color: var(--accent); }
+.chk { display: flex; align-items: center; gap: 6px; color: var(--fg2); margin: 6px 0 2px; user-select: none; font-size: 12px; }
+.list { overflow: auto; margin-top: 6px; min-height: 40px; }
+.item { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 5px; cursor: pointer; white-space: nowrap; min-width: 0; }
+.item:hover { background: var(--hover); }
+.item.on { background: var(--sel); }
+.item .nm { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.item .n { color: var(--fg3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.item.w .nm { font-weight: 650; }
+.item.w .n { color: var(--accent); font-weight: 600; }
+.item.dimmed { color: var(--fg3); }
+.grp { font-size: 11px; color: var(--fg3); padding: 6px 6px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grp.sch { color: var(--fg2); font-weight: 600; cursor: pointer; user-select: none; }
+.grp.sch::before { content: "▾ "; }
+.grp.sch.shut::before { content: "▸ "; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--ok); }
+.dot.failed { background: var(--bad); } .dot.skipped { background: var(--fg3); }
+.hint { color: var(--fg3); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+.item.sub { padding-left: 16px; }
+
+main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.head { flex: none; padding: 10px 14px 8px; border-bottom: 1px solid var(--line); }
+.head h2 { margin: 0; font-size: 16px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.head h2 .sub { font-size: 12px; font-weight: 400; color: var(--fg2); }
+.stats { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; color: var(--fg2); font-size: 12px; }
+.stats b { color: var(--fg); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; max-height: 58px; overflow: auto; }
+.chip { border: 1px dashed var(--line); color: var(--fg3); border-radius: 10px; padding: 0 7px; font-size: 11px; white-space: nowrap; }
+.excl { margin-top: 6px; color: var(--fg3); font-size: 11px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: 11px; color: var(--fg3); }
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+
+.grid { flex: 1; overflow: auto; min-height: 0; position: relative; }
+table.g { border-collapse: separate; border-spacing: 0; font-size: 12px; }
+table.g th, table.g td { border-right: 1px solid var(--line2); border-bottom: 1px solid var(--line2); padding: 3px 8px; text-align: left; vertical-align: top; white-space: nowrap; }
+table.g thead th { position: sticky; top: 0; z-index: 2; background: var(--bg2); border-bottom: 1px solid var(--line); font-weight: 400; }
+table.g thead th .cn { font-weight: 650; color: var(--fg); }
+table.g thead th .ct { color: var(--fg2); font-family: var(--mono); font-size: 11px; }
+table.g thead th .cf { color: var(--fg3); font-size: 11px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+table.g thead th.unused .cn { color: var(--fg3); font-weight: 400; }
+table.g thead th .pk { color: var(--warn); font-size: 10px; font-weight: 700; margin-left: 4px; }
+.fx { position: sticky; z-index: 1; background: var(--bg); }
+thead .fx { z-index: 3; background: var(--bg2); }
+.fx0 { left: 0; min-width: 56px; width: 56px; }
+.fx1 { left: 56px; min-width: 104px; width: 104px; border-right: 1px solid var(--line) !important; }
+tbody tr.r { cursor: pointer; }
+tbody tr.r:hover td { background: var(--hover); }
+tbody tr.r.open td { background: var(--sel); }
+td.seq { color: var(--fg3); font-variant-numeric: tabular-nums; font-size: 11px; }
+td.seq::before { content: "▸ "; }
+tr.open td.seq::before { content: "▾ "; }
+td.v { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+td.v .val { display: block; overflow: hidden; text-overflow: ellipsis; }
+.op { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; line-height: 16px; }
+.op.INSERT { color: var(--op-insert); } .op.UPSERT { color: var(--op-upsert); } .op.INSERT_IGNORE { color: var(--op-ignore); }
+.op.UPDATE { color: var(--op-update); } .op.DELETE { color: var(--op-delete); } .op.MERGE { color: var(--op-merge); } .op.SQL { color: var(--op-sql); }
+.nul { font-style: italic; color: var(--fg3); }
+.none { color: var(--fg3); opacity: .55; font-size: 11px; }
+.ph { color: var(--fg2); font-family: var(--mono); font-size: 11px; }
+.mask { color: var(--mask); font-family: var(--mono); letter-spacing: .1em; }
+.sqlx { font-family: var(--mono); font-size: 11px; color: var(--up-fg); }
+.bytes { color: var(--fg2); font-size: 11px; }
+td.set { background: var(--set-bg); }
+td.set .val { color: var(--set-fg); }
+.wh { display: block; color: var(--where-fg); background: var(--where-bg); border-radius: 3px; padding: 0 4px; margin: 1px -4px; }
+.up { display: block; color: var(--up-fg); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+td.risk { box-shadow: inset 0 0 0 2px var(--warn); }
+.rk { display: block; color: var(--warn); font-size: 10.5px; }
+td.test { max-width: 200px; overflow: hidden; text-overflow: ellipsis; color: var(--fg2); }
+td.test a { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--fg3); }
+td.test a:hover { color: var(--accent); }
+td.res { font-variant-numeric: tabular-nums; }
+.err { color: var(--bad); background: var(--bad-bg); border-radius: 3px; padding: 0 4px; font-weight: 600; }
+.rb { color: var(--warn); background: var(--warn-bg); border-radius: 3px; padding: 0 4px; font-size: 11px; margin-left: 4px; }
+td.sql { max-width: 360px; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 11px; color: var(--fg2); }
+tr.det td { background: var(--bg2); padding: 0; }
+tr.det .box { position: sticky; left: 0; padding: 8px 12px 10px; white-space: normal; width: var(--gridw, 800px); }
+.box dl { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; margin: 0; }
+.box dt { color: var(--fg3); }
+.box dd { margin: 0; min-width: 0; }
+.box pre { margin: 0; font-family: var(--mono); font-size: 11.5px; white-space: pre-wrap; word-break: break-all; }
+.more { display: flex; align-items: center; gap: 10px; padding: 10px 14px; position: sticky; left: 0; color: var(--fg2); }
+.more button { border: 1px solid var(--line); background: var(--bg2); border-radius: 6px; padding: 4px 14px; }
+.more button:hover { background: var(--hover); }
+
+.empty { padding: 40px 20px; color: var(--fg2); text-align: center; }
+.empty h3 { color: var(--fg); margin: 0 0 6px; font-size: 15px; }
+.over { padding: 14px; overflow: auto; }
+.over table { border-collapse: collapse; font-size: 12px; }
+.over th, .over td { border-bottom: 1px solid var(--line2); padding: 4px 12px 4px 0; text-align: left; white-space: nowrap; }
+.over th { color: var(--fg2); font-weight: 500; }
+.over td.num, .over th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.over a { color: var(--accent); text-decoration: none; }
+.over a:hover { text-decoration: underline; }
+.over h3 { font-size: 13px; margin: 18px 0 6px; }
+.over h3:first-child { margin-top: 0; }
+
+@media (max-width: 760px) {
+  #menu { display: inline-block; }
+  header.top .meta { display: none; }
+  header.top h1 { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  aside { position: fixed; top: 44px; bottom: 0; left: 0; z-index: 20; width: min(320px, 88vw); transform: translateX(-100%); transition: transform .18s; box-shadow: 0 0 24px rgba(0,0,0,.25); }
+  body.nav-open aside { transform: none; }
+  .scrim { display: none; position: fixed; inset: 44px 0 0 0; background: rgba(0,0,0,.3); z-index: 19; }
+  body.nav-open .scrim { display: block; }
+  .head { padding: 8px 10px; }
+  .fx0 { min-width: 44px; width: 44px; }
+  .fx1 { left: 44px; min-width: 96px; width: 96px; }
+  td.v { max-width: 180px; }
+  .legend { display: none; }
+  .chips { max-height: 22px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <button class="ibtn" id="menu" title="목록" aria-label="목록">☰</button>
+  <h1>쓰기 보고서</h1>
+  <div class="meta" id="meta"></div>
+  <button class="ibtn" id="theme" title="테마 바꾸기" aria-label="테마 바꾸기">◐</button>
+</header>
+<div class="wrap">
+  <aside id="side">
+    <div class="sec tests">
+      <h2>시험 <small id="testCount"></small></h2>
+      <input class="search" id="tq" type="search" placeholder="시험 검색 (이름 · 기획 ID)" autocomplete="off">
+      <div class="list" id="tests"></div>
+    </div>
+    <div class="sec tables">
+      <h2>테이블 <small id="tableCount"></small></h2>
+      <input class="search" id="q" type="search" placeholder="테이블 · 컬럼 검색" autocomplete="off">
+      <label class="chk"><input type="checkbox" id="onlyW" checked> 쓴 테이블만</label>
+      <div class="list" id="tables"></div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+  <main id="main"></main>
+</div>
+<script>
+'use strict';
+const DATA = /*__WRITE_REPORT_DATA__*/null;
+
+const PAGE = 300;
+const OP_LABEL = { INSERT: 'INSERT', UPSERT: 'UPSERT', INSERT_IGNORE: 'DO NOTHING', UPDATE: 'UPDATE', DELETE: 'DELETE', MERGE: 'MERGE', SQL: 'SQL' };
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = (n) => Number(n).toLocaleString('ko-KR');
+const has = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
+
+// ---------- 테마 ----------
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch { /* 저장 못 해도 화면은 된다 */ } } };
+(function theme() {
+  const t = store.get('wr-theme');
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  $('#theme').addEventListener('click', () => {
+    const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    const next = dark ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next; store.set('wr-theme', next);
+  });
+})();
+
+// ---------- 데이터 준비 ----------
+let D = null;       // 원본
+let tests = [];     // [{ id, group, name, status, specs, writes, i }]
+let tables = new Map(); // key → { key, schema, name, columns, pk, inCatalog }
+const S = { test: null, table: null, tq: '', q: '', onlyW: true, shown: PAGE, open: new Set(), shut: new Set() };
+
+function tableKey(schema, name) { return schema ? `${schema}.${name}` : name; }
+function splitKey(k) { const i = k.indexOf('.'); return i < 0 ? ['', k] : [k.slice(0, i), k.slice(i + 1)]; }
+
+function prepare(data) {
+  D = data;
+  tests = (data.tests || []).map((t, i) => ({ ...t, i, writes: t.writes || [], group: t.group || '', name: t.name || t.id }));
+  tables = new Map();
+  for (const [schema, tbs] of Object.entries(data.catalog || {})) {
+    for (const [name, t] of Object.entries(tbs || {})) {
+      tables.set(tableKey(schema, name), { key: tableKey(schema, name), schema, name, columns: (t.columns || []).slice(), pk: t.primaryKey || [], inCatalog: true });
+    }
+  }
+  // 카탈로그에 없는 테이블 · 컬럼: 쓴 것에서 모은다
+  for (const t of tests) {
+    for (const w of t.writes) {
+      if (!w.table) continue;
+      let tb = tables.get(w.table);
+      if (!tb) { const [schema, name] = splitKey(w.table); tb = { key: w.table, schema, name, columns: [], pk: [], inCatalog: false }; tables.set(w.table, tb); }
+      const names = new Set(tb.columns.map((c) => c.name));
+      for (const c of writtenCols(w).concat(Object.keys(w.where || {}))) {
+        if (!names.has(c)) { names.add(c); tb.columns.push({ name: c, type: '', nullable: null, default: null, missing: true }); }
+      }
+    }
+  }
+}
+function writtenCols(w) {
+  const s = new Set();
+  for (const r of w.rows || []) for (const k of Object.keys(r || {})) s.add(k);
+  for (const k of Object.keys(w.set || {})) s.add(k);
+  for (const k of w.sameAsInsert || []) s.add(k);
+  return [...s];
+}
+function selTests() { return S.test == null ? tests : tests.filter((t) => t.id === S.test); }
+/** 고른 시험들의 테이블별 쓴 행 수 (rows 하나 = 한 행, rows 없는 쓰기 = 한 행) */
+function counts() {
+  const m = new Map();
+  for (const t of selTests()) for (const w of t.writes) {
+    if (!w.table) continue;
+    m.set(w.table, (m.get(w.table) || 0) + (w.rows && w.rows.length ? w.rows.length : 1));
+  }
+  return m;
+}
+
+// ---------- 주소 해시 ----------
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  const t = p.get('t'); const tb = p.get('tbl');
+  S.test = t && tests.some((x) => x.id === t) ? t : null;
+  S.table = tb && tables.has(tb) ? tb : null;
+}
+function writeHash() {
+  const p = [];
+  if (S.test != null) p.push('t=' + encodeURIComponent(S.test));
+  if (S.table) p.push('tbl=' + encodeURIComponent(S.table));
+  const h = p.length ? '#' + p.join('&') : '';
+  if (h !== location.hash) history.replaceState(null, '', h || location.pathname + location.search);
+}
+
+// ---------- 왼쪽: 시험 ----------
+function renderTests() {
+  const q = S.tq.trim().toLowerCase();
+  const total = tests.reduce((a, t) => a + t.writes.length, 0);
+  let h = `<div class="item${S.test == null ? ' on' : ''}" data-t=""><span class="nm">전체</span><span class="n">${num(total)}</span></div>`;
+  let shown = 0; let last = null;
+  for (const t of tests) {
+    if (q && !(`${t.id} ${(t.specs || []).join(' ')}`.toLowerCase().includes(q))) continue;
+    shown++;
+    if (t.group !== last) { last = t.group; h += `<div class="grp" title="${esc(t.group)}">${esc(t.group || '(묶음 없음)')}</div>`; }
+    const st = t.status === 'failed' ? '실패' : t.status === 'skipped' ? '건너뜀' : '통과';
+    h += `<div class="item sub${S.test === t.id ? ' on' : ''}${t.writes.length ? '' : ' dimmed'}" data-t="${esc(t.id)}" title="${esc(t.id)}${t.specs && t.specs.length ? '\n' + esc(t.specs.join(', ')) : ''}">`
+      + `<span class="dot ${esc(t.status || '')}" title="${st}"></span><span class="nm">${esc(t.name)}</span>`
+      + (t.specs && t.specs.length ? `<span class="hint">${esc(t.specs[0])}${t.specs.length > 1 ? ' 외' : ''}</span>` : '')
+      + `<span class="n">${num(t.writes.length)}</span></div>`;
+  }
+  if (!shown && q) h += '<div class="hint" style="padding:6px">맞는 시험이 없습니다</div>';
+  $('#tests').innerHTML = h;
+  const failed = tests.filter((t) => t.status === 'failed').length;
+  $('#testCount').textContent = `${num(tests.length)}개${failed ? ` · 실패 ${failed}` : ''}`;
+}
+
+// ---------- 왼쪽: 테이블 트리 ----------
+function renderTables() {
+  const q = S.q.trim().toLowerCase();
+  const c = counts();
+  const bySchema = new Map();
+  let shown = 0; let written = 0;
+  for (const tb of tables.values()) {
+    const n = c.get(tb.key) || 0;
+    if (n) written++;
+    if (S.onlyW && !n) continue;
+    let hint = '';
+    if (q) {
+      if (!tb.key.toLowerCase().includes(q)) {
+        const col = tb.columns.find((x) => x.name.toLowerCase().includes(q));
+        if (!col) continue;
+        hint = col.name;
+      }
+    }
+    shown++;
+    if (!bySchema.has(tb.schema)) bySchema.set(tb.schema, []);
+    bySchema.get(tb.schema).push({ tb, n, hint });
+  }
+  let h = '';
+  for (const sch of [...bySchema.keys()].sort()) {
+    const list = bySchema.get(sch).sort((a, b) => a.tb.name.localeCompare(b.tb.name));
+    const shut = S.shut.has(sch) && !q;
+    h += `<div class="grp sch${shut ? ' shut' : ''}" data-s="${esc(sch)}">${esc(sch || '(스키마 없음)')} <span class="n">${list.length}</span></div>`;
+    if (shut) continue;
+    for (const { tb, n, hint } of list) {
+      h += `<div class="item sub${n ? ' w' : ''}${S.table === tb.key ? ' on' : ''}" data-k="${esc(tb.key)}" title="${esc(tb.key)}${tb.inCatalog ? '' : ' (카탈로그에 없음)'}">`
+        + `<span class="nm">${esc(tb.name)}${tb.inCatalog ? '' : ' ?'}</span>`
+        + (hint ? `<span class="hint">컬럼 ${esc(hint)}</span>` : '')
+        + `<span class="n">${n ? num(n) : ''}</span></div>`;
+    }
+  }
+  if (!shown) h = `<div class="hint" style="padding:6px">${q ? '맞는 테이블이 없습니다' : '이 시험이 쓴 테이블이 없습니다'}</div>`;
+  $('#tables').innerHTML = h;
+  $('#tableCount').textContent = `쓴 것 ${num(written)} / ${num(tables.size)}`;
+}
+
+// ---------- 값 표시 ----------
+const PH = /^<[^<>\s][^<>]*>$/;
+function fmt(v) {
+  if (v === null || v === undefined) return '<span class="nul">NULL</span>';
+  if (typeof v === 'object' && !Array.isArray(v)) {
+    if (has(v, '$sql')) return `<span class="sqlx">${esc(v.$sql)}</span>`;
+    if (has(v, '$bytes')) return `<span class="bytes">바이트 ${num(v.$bytes)}</span>`;
+    return `<span class="mono">${esc(JSON.stringify(v))}</span>`;
+  }
+  if (Array.isArray(v)) return esc(v.map(plain).join(', '));
+  if (v === '***') return '<span class="mask">***</span>';
+  if (typeof v === 'string' && PH.test(v)) return `<span class="ph">${esc(v)}</span>`;
+  if (typeof v === 'string' && v === '') return '<span class="nul">빈 문자열</span>';
+  return esc(String(v));
+}
+function plain(v) {
+  if (v === null || v === undefined) return 'NULL';
+  if (typeof v === 'object' && !Array.isArray(v)) return has(v, '$sql') ? v.$sql : has(v, '$bytes') ? `바이트 ${v.$bytes}` : JSON.stringify(v);
+  if (Array.isArray(v)) return v.map(plain).join(', ');
+  return String(v);
+}
+
+// ---------- 타입 범위 위험 ----------
+const typeCache = new Map();
+function typeInfo(type) {
+  if (typeCache.has(type)) return typeCache.get(type);
+  const t = String(type || '').toLowerCase().trim();
+  let m; let info = null;
+  if ((m = /^(?:numeric|decimal)\s*\(\s*(\d+)\s*(?:,\s*(-?\d+)\s*)?\)/.exec(t))) info = { k: 'num', p: +m[1], s: m[2] == null ? 0 : +m[2] };
+  else if ((m = /^(?:character varying|varchar|character|char|bpchar|nvarchar|nchar)\s*\(\s*(\d+)\s*\)/.exec(t))) info = { k: 'len', n: +m[1] };
+  else if (/^(smallint|int2)$/.test(t)) info = { k: 'int', max: 32767 };
+  else if (/^(integer|int|int4)$/.test(t)) info = { k: 'int', max: 2147483647 };
+  typeCache.set(type, info);
+  return info;
+}
+function numText(v) {
+  if (typeof v === 'number') {
+    if (!Number.isFinite(v)) return null;
+    const s = String(v);
+    return /e/i.test(s) ? v.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 20 }) : s;
+  }
+  if (typeof v === 'string' && /^[+-]?\d+(\.\d+)?$/.test(v)) return v;
+  return null;
+}
+/** 컬럼 타입에 안 맞을 수 있는 값이면 짧은 설명, 아니면 '' */
+function risk(col, v) {
+  if (!col || v == null) return '';
+  const ti = typeInfo(col.type);
+  if (!ti) return '';
+  if (ti.k === 'len') {
+    let n = -1;
+    if (typeof v === 'string') { const m = /^<text:(\d+)>$/.exec(v); n = m ? +m[1] : v === '***' || PH.test(v) ? -1 : [...v].length; }
+    return n > ti.n ? `길이 ${n} > ${ti.n}` : '';
+  }
+  const s = numText(v);
+  if (s == null) return '';
+  const [ip, fp = ''] = s.replace(/^[+-]/, '').split('.');
+  if (ti.k === 'int') return Math.abs(Number(s)) > ti.max || fp.replace(/0+$/, '') ? `${col.type} 범위 밖` : '';
+  const idg = ip.replace(/^0+/, '').length;
+  const fdg = fp.replace(/0+$/, '').length;
+  const out = [];
+  if (idg > ti.p - ti.s) out.push(`정수 ${idg}자리 > ${ti.p - ti.s}`);
+  if (fdg > ti.s) out.push(`소수 ${fdg}자리 > ${ti.s} (반올림)`);
+  return out.join(' · ');
+}
+
+// ---------- 행 만들기 ----------
+let rowsCache = { key: '', rows: [] };
+function rowsFor(key) {
+  const ck = `${S.test}\u0000${key}`;
+  if (rowsCache.key === ck) return rowsCache.rows;
+  const out = [];
+  for (const t of selTests()) for (const w of t.writes) {
+    if (w.table !== key) continue;
+    if (w.rows && w.rows.length) w.rows.forEach((r, i) => out.push({ t, w, r, i, n: w.rows.length }));
+    else out.push({ t, w, r: null, i: 0, n: 1 });
+  }
+  rowsCache = { key: ck, rows: out };
+  return out;
+}
+/** 머리 칸용 짧은 타입 (전체는 툴팁) */
+function shortType(t) {
+  return String(t || '').replace(/character varying/g, 'varchar').replace(/timestamp(\(\d\))? with time zone/g, 'timestamptz$1')
+    .replace(/timestamp(\(\d\))? without time zone/g, 'timestamp$1').replace(/time(\(\d\))? with time zone/g, 'timetz$1').replace(/^character\(/, 'char(').replace(/double precision/, 'float8');
+}
+/** 기본값 식에서 ::형 변환을 뺀다 ('NEW'::character varying → 'NEW') */
+function shortDefault(d) { return String(d).replace(/::[a-z_][a-z0-9_ ]*(\(\d+(,\d+)?\))?(\[\])?/gi, ''); }
+function whereText(v) { return Array.isArray(v) ? `∈ ${v.map(plain).join(', ')}` : `= ${plain(v)}`; }
+
+function cell(col, x) {
+  const { w, r } = x; const c = col.name;
+  const cls = ['v']; let main = ''; let extra = ''; let tip = '';
+  const inRow = r && has(r, c);
+  const inSet = w.set && has(w.set, c);
+  const same = (w.sameAsInsert || []).includes(c);
+  const inWhere = w.where && has(w.where, c);
+  let rk = '';
+  if (r) {
+    // VALUES 행 (INSERT · UPSERT · DO NOTHING · MERGE)
+    main = inRow ? fmt(r[c]) : '';
+    if (inRow) { tip = plain(r[c]); rk = risk(col, r[c]); }
+    if (same) extra += '<span class="up" title="충돌 때 같은 값으로 갱신">↻ 같은 값</span>';
+    else if (inSet) { extra += `<span class="up" title="충돌 때 갱신: ${esc(plain(w.set[c]))}">↻ ${fmt(w.set[c])}</span>`; rk = rk || risk(col, w.set[c]); }
+  } else {
+    if (inSet) { cls.push('set'); main = fmt(w.set[c]); tip = plain(w.set[c]); rk = risk(col, w.set[c]); }
+    if (inWhere) extra += `<span class="wh" title="WHERE ${esc(c)} ${esc(whereText(w.where[c]))}">${esc(whereText(w.where[c]))}</span>`;
+  }
+  if (!main && !extra) return '<td class="v"><span class="none">미기록</span></td>';
+  if (rk) { cls.push('risk'); extra += `<span class="rk">⚠ ${esc(rk)}</span>`; tip = `${tip}\n⚠ ${rk}`; }
+  return `<td class="${cls.join(' ')}"${tip ? ` title="${esc(tip)}"` : ''}>${main ? `<span class="val">${main}</span>` : ''}${extra}</td>`;
+}
+function resultHtml(w) {
+  const r = w.result || {};
+  let h = '';
+  if (r.error != null) h = `<span class="err" title="${esc(r.message || '')}">실패 ${esc(r.error)}</span>`;
+  else if (r.rows != null) h = `${num(r.rows)}행`;
+  else h = '<span class="none">결과 없음</span>';
+  if (w.rolledBack) h += '<span class="rb" title="롤백된 트랜잭션">롤백</span>';
+  return h;
+}
+function sqlText(w) {
+  const p = [];
+  if (w.whereSql) p.push(`WHERE … ${w.whereSql}`);
+  if (w.sql) p.push(w.sql);
+  return p.join('  ');
+}
+function rowHtml(x, idx, cols) {
+  const { t, w, i, n } = x;
+  const open = S.open.has(idx);
+  const seq = n > 1 ? `${w.seq}·${i + 1}` : `${w.seq == null ? '' : w.seq}`;
+  let h = `<tr class="r${open ? ' open' : ''}" data-i="${idx}"><td class="fx fx0 seq">${esc(seq)}</td>`
+    + `<td class="fx fx1"><span class="op ${esc(w.op)}">${esc(OP_LABEL[w.op] || w.op)}</span></td>`
+    + `<td class="test" title="${esc(t.id)}"><a href="#" data-t="${esc(t.id)}">${esc(t.name)}</a></td>`
+    + `<td class="res">${resultHtml(w)}</td>`;
+  for (const col of cols) h += cell(col, x);
+  const sq = sqlText(w);
+  h += `<td class="sql" title="${esc(sq)}">${esc(sq)}</td></tr>`;
+  if (open) h += detailHtml(x, cols.length + 5);
+  return h;
+}
+function detailHtml(x, span) {
+  const { t, w, i, n } = x;
+  const d = [['시험', `${esc(t.id)}${t.specs && t.specs.length ? ` <span class="hint">${esc(t.specs.join(', '))}</span>` : ''}`],
+    ['쓰기', `${w.seq == null ? '' : `#${esc(w.seq)} `}${esc(OP_LABEL[w.op] || w.op)}${n > 1 ? ` (행 ${i + 1} / ${n})` : ''}`]];
+  if (w.conflict && w.conflict.length) d.push(['충돌 대상', esc(w.conflict.join(', '))]);
+  if (w.sameAsInsert && w.sameAsInsert.length) d.push(['같은 값 갱신', esc(w.sameAsInsert.join(', '))]);
+  if (w.set && Object.keys(w.set).length) d.push([w.rows ? '충돌 때 SET' : 'SET', Object.entries(w.set).map(([k, v]) => `${esc(k)} = ${fmt(v)}`).join(', ')]);
+  if (w.where && Object.keys(w.where).length) d.push(['WHERE', Object.entries(w.where).map(([k, v]) => `${esc(k)} ${esc(whereText(v))}`).join(' AND ')]);
+  if (w.whereSql) d.push(['WHERE 나머지', `<pre>${esc(w.whereSql)}</pre>`]);
+  if (w.sql) d.push(['SQL', `<pre>${esc(w.sql)}</pre>`]);
+  const r = w.result || {};
+  if (r.error != null) d.push(['결과', `<span class="err">실패 ${esc(r.error)}</span> ${esc(r.message || '')}`]);
+  else if (r.rows != null) d.push(['결과', `${num(r.rows)}행${n > 1 ? ' (이 쓰기 전체)' : ''}`]);
+  if (w.rolledBack) d.push(['트랜잭션', '<span class="rb">롤백</span>']);
+  return `<tr class="det"><td colspan="${span}"><div class="box"><dl>${d.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl></div></td></tr>`;
+}
+
+// ---------- 오른쪽: 테이블 ----------
+function renderMain() {
+  const main = $('#main');
+  if (!S.table) { main.innerHTML = overview(); return; }
+  const tb = tables.get(S.table);
+  const rows = rowsFor(S.table);
+  const used = new Set();
+  const ops = {};
+  let fail = 0; let rb = 0;
+  const seenW = new Set();
+  for (const x of rows) {
+    if (seenW.has(x.w)) continue; seenW.add(x.w);
+    for (const c of writtenCols(x.w)) used.add(c);
+    ops[x.w.op] = (ops[x.w.op] || 0) + 1;
+    if (x.w.result && x.w.result.error != null) fail++;
+    if (x.w.rolledBack) rb++;
+  }
+  const cols = tb.columns;
+  const unused = cols.filter((c) => !used.has(c.name));
+  const ex = D.excluded || {};
+  const exMine = (ex.updatesOnly || []).filter((e) => e.table === tb.key);
+  const scope = S.test == null ? '전체 시험' : (tests.find((t) => t.id === S.test) || {}).name;
+  let h = `<div class="head"><h2>${esc(tb.key)}<span class="sub">${esc(scope)}${tb.pk.length ? ` · 기본 키 ${esc(tb.pk.join(', '))}` : ''}${tb.inCatalog ? '' : ' · 카탈로그에 없음'}</span></h2>`
+    + `<div class="stats"><span>컬럼 <b>${num(cols.length)}</b> 중 <b>${num(used.size)}</b> 씀</span><span>쓴 행 <b>${num(rows.length)}</b></span>`
+    + `<span>쓰기 ${Object.entries(ops).map(([o, n]) => `<span class="op ${esc(o)}">${esc(OP_LABEL[o] || o)}</span> ${num(n)}`).join(' ') || '0'}</span>`
+    + (fail ? `<span class="err">실패 ${num(fail)}</span>` : '') + (rb ? `<span class="rb">롤백 ${num(rb)}</span>` : '') + '</div>';
+  if (unused.length && rows.length) h += `<div class="chips" title="안 쓴 컬럼">${unused.map((c) => `<span class="chip" title="${esc(c.type || '')}${c.generated ? ' · 생성 컬럼' : ''}">${esc(c.name)}${c.generated ? ' (생성)' : ''}</span>`).join('')}</div>`;
+  h += excludedHtml(ex, exMine);
+  h += '<div class="legend"><span><span class="sw" style="background:var(--set-bg);outline:1px solid var(--set-fg)"></span>UPDATE SET</span><span><span class="sw" style="background:var(--where-bg);outline:1px solid var(--where-fg)"></span>WHERE</span><span style="color:var(--up-fg)">↻ 충돌 때 갱신</span><span><span class="sw" style="outline:2px solid var(--warn)"></span>타입 범위 위험</span><span class="none">미기록 = 그 문장이 안 쓴 컬럼</span></div></div>';
+  if (!rows.length) { main.innerHTML = h + `<div class="empty">${S.test == null ? '이 테이블에 쓴 시험이 없습니다' : '이 시험은 이 테이블에 쓰지 않았습니다'}</div>`; return; }
+  h += '<div class="grid" id="grid"><table class="g"><thead><tr><th class="fx fx0">#</th><th class="fx fx1">작업</th><th>시험</th><th>결과</th>';
+  for (const c of cols) {
+    const pk = tb.pk.includes(c.name);
+    const flags = [c.missing ? '카탈로그에 없음' : c.nullable === false ? 'NOT NULL' : c.nullable === true ? 'NULL 허용' : '', c.generated ? '생성' : '', c.default != null ? `기본 ${shortDefault(c.default)}` : ''].filter(Boolean).join(' · ');
+    h += `<th class="${used.has(c.name) ? '' : 'unused'}" title="${esc(`${c.name} ${c.type || ''}${c.default != null ? `\n기본 ${c.default}` : ''}`)}"><div class="cn">${esc(c.name)}${pk ? '<span class="pk">PK</span>' : ''}</div><div class="ct">${esc(shortType(c.type) || '?')}</div><div class="cf">${esc(flags || ' ')}</div></th>`;
+  }
+  h += '<th>SQL</th></tr></thead><tbody id="tb"></tbody></table><div class="more" id="more"></div></div>';
+  main.innerHTML = h;
+  S.shown = Math.min(Math.max(S.shown, PAGE), rows.length);
+  $('#tb').innerHTML = slice(rows, 0, S.shown, cols);
+  renderMore(rows);
+  sizeBox();
+}
+function slice(rows, a, b, cols) { let h = ''; for (let i = a; i < b && i < rows.length; i++) h += rowHtml(rows[i], i, cols); return h; }
+function renderMore(rows) {
+  const left = rows.length - S.shown;
+  $('#more').innerHTML = left > 0
+    ? `<span>${num(S.shown)} / ${num(rows.length)}행</span><button id="moreBtn">더 보기 (${num(Math.min(PAGE, left))})</button><button id="allBtn">모두 (${num(left)})</button>`
+    : `<span>${num(rows.length)}행 모두</span>`;
+}
+function excludedHtml(ex, mine) {
+  const p = [];
+  if (ex.tables && ex.tables.length) p.push(`제외 테이블 ${ex.tables.map(esc).join(', ')}`);
+  for (const e of mine || ex.updatesOnly || []) p.push(`${esc(e.table)} UPDATE (${esc((e.columns || []).join(', '))}) ${num(e.count || 0)}건 빠짐`);
+  return p.length ? `<div class="excl">${p.join(' · ')}</div>` : '';
+}
+function overview() {
+  const c = counts();
+  const t = S.test == null ? null : tests.find((x) => x.id === S.test);
+  const list = [...c.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  let h = `<div class="head"><h2>${t ? esc(t.name) : '전체 시험'}<span class="sub">${t ? esc(t.group) : `시험 ${num(tests.length)}개`}</span></h2>`;
+  if (t) h += `<div class="stats"><span>${t.status === 'failed' ? '<span class="err">시험 실패</span>' : t.status === 'skipped' ? '건너뜀' : '통과'}</span>${t.specs && t.specs.length ? `<span>기획 ${esc(t.specs.join(', '))}</span>` : ''}<span>쓰기 <b>${num(t.writes.length)}</b></span></div>`;
+  h += excludedHtml(D.excluded || {}, null) + '</div><div class="over">';
+  if (!list.length) return h + '<div class="empty">쓴 테이블이 없습니다</div></div>';
+  h += '<h3>쓴 테이블</h3><table><thead><tr><th>테이블</th><th class="num">쓴 행</th><th>작업</th><th class="num">실패</th></tr></thead><tbody>';
+  for (const [k] of list) {
+    const ops = {}; let fail = 0;
+    for (const x of selTests()) for (const w of x.writes) if (w.table === k) { ops[w.op] = (ops[w.op] || 0) + 1; if (w.result && w.result.error != null) fail++; }
+    h += `<tr><td><a href="#" data-k="${esc(k)}">${esc(k)}</a></td><td class="num">${num(c.get(k))}</td><td>${Object.entries(ops).map(([o, n]) => `<span class="op ${esc(o)}">${esc(OP_LABEL[o] || o)}</span> ${num(n)}`).join(' ')}</td><td class="num">${fail ? `<span class="err">${fail}</span>` : ''}</td></tr>`;
+  }
+  h += '</tbody></table>';
+  const failed = selTests().filter((x) => x.writes.some((w) => w.result && w.result.error != null));
+  if (failed.length) {
+    h += '<h3>실패한 쓰기</h3><table><thead><tr><th>시험</th><th>테이블</th><th>SQLState</th><th>메시지</th></tr></thead><tbody>';
+    for (const x of failed) for (const w of x.writes) if (w.result && w.result.error != null) h += `<tr><td><a href="#" data-t="${esc(x.id)}">${esc(x.name)}</a></td><td><a href="#" data-k="${esc(w.table)}">${esc(w.table)}</a></td><td><span class="err">${esc(w.result.error)}</span></td><td>${esc(w.result.message || '')}</td></tr>`;
+    h += '</tbody></table>';
+  }
+  return h + '</div>';
+}
+function sizeBox() { const g = $('#grid'); if (g) g.style.setProperty('--gridw', `${g.clientWidth - 2}px`); }
+
+// ---------- 동작 ----------
+function render() { renderTests(); renderTables(); renderMain(); writeHash(); }
+function pickTest(id) { S.test = id || null; S.shown = PAGE; S.open.clear(); render(); }
+function pickTable(k) { S.table = k; S.shown = PAGE; S.open.clear(); renderTables(); renderMain(); writeHash(); document.body.classList.remove('nav-open'); const g = $('#grid'); if (g) g.scrollTo(0, 0); }
+
+function wire() {
+  $('#tests').addEventListener('click', (e) => { const it = e.target.closest('.item'); if (it) { pickTest(it.dataset.t); document.body.classList.remove('nav-open'); } });
+  $('#tables').addEventListener('click', (e) => {
+    const s = e.target.closest('.grp.sch');
+    if (s) { const k = s.dataset.s; if (S.shut.has(k)) S.shut.delete(k); else S.shut.add(k); renderTables(); return; }
+    const it = e.target.closest('.item'); if (it) pickTable(it.dataset.k);
+  });
+  let tq; $('#tq').addEventListener('input', (e) => { clearTimeout(tq); tq = setTimeout(() => { S.tq = e.target.value; renderTests(); }, 80); });
+  let q; $('#q').addEventListener('input', (e) => { clearTimeout(q); q = setTimeout(() => { S.q = e.target.value; renderTables(); }, 80); });
+  $('#onlyW').addEventListener('change', (e) => { S.onlyW = e.target.checked; renderTables(); });
+  $('#menu').addEventListener('click', () => document.body.classList.toggle('nav-open'));
+  $('#scrim').addEventListener('click', () => document.body.classList.remove('nav-open'));
+  $('#main').addEventListener('click', (e) => {
+    const a = e.target.closest('a[data-t], a[data-k]');
+    if (a) { e.preventDefault(); e.stopPropagation(); if (a.dataset.k) pickTable(a.dataset.k); else pickTest(a.dataset.t); return; }
+    if (e.target.id === 'moreBtn' || e.target.id === 'allBtn') {
+      const rows = rowsFor(S.table); const a0 = S.shown;
+      S.shown = e.target.id === 'allBtn' ? rows.length : Math.min(rows.length, S.shown + PAGE);
+      $('#tb').insertAdjacentHTML('beforeend', slice(rows, a0, S.shown, tables.get(S.table).columns));
+      renderMore(rows); return;
+    }
+    const tr = e.target.closest('tr.r');
+    if (tr) {
+      if (getSelection && String(getSelection())) return; // 글자를 고르는 중이면 펼치지 않는다
+      const i = +tr.dataset.i; const rows = rowsFor(S.table); const cols = tables.get(S.table).columns;
+      if (S.open.has(i)) { S.open.delete(i); if (tr.nextElementSibling && tr.nextElementSibling.classList.contains('det')) tr.nextElementSibling.remove(); tr.classList.remove('open'); }
+      else { S.open.add(i); tr.classList.add('open'); tr.insertAdjacentHTML('afterend', detailHtml(rows[i], cols.length + 5)); }
+    }
+  });
+  addEventListener('hashchange', () => { readHash(); S.shown = PAGE; S.open.clear(); render(); });
+  addEventListener('resize', sizeBox);
+  addEventListener('keydown', (e) => {
+    if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); document.body.classList.add('nav-open'); $('#q').focus(); }
+    if (e.key === 'Escape') document.body.classList.remove('nav-open');
+  });
+}
+
+function start(data) {
+  if (!data || !Array.isArray(data.tests)) {
+    $('#main').innerHTML = '<div class="empty"><h3>보고서 데이터가 없습니다</h3>기록기가 시험 실행 끝에 이 화면에 데이터를 넣어 index.html 을 만듭니다.<br>시험을 기록과 함께 돌렸는지 확인하세요.</div>';
+    return;
+  }
+  prepare(data);
+  $('#meta').textContent = [data.repo, data.stack, data.generatedAt && `만든 때 ${data.generatedAt.replace('T', ' ').replace(/\.\d+/, '')}`].filter(Boolean).join(' · ');
+  readHash();
+  wire();
+  render();
+  document.documentElement.classList.add('wr-ready');
+}
+
+(function boot() {
+  if (DATA) return start(DATA);
+  const src = new URLSearchParams(location.search).get('data');
+  if (!src) return start(null);
+  fetch(src).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(start)
+    .catch((e) => { $('#main').innerHTML = `<div class="empty"><h3>데이터를 읽지 못했습니다</h3>${esc(src)} (${esc(e.message)})</div>`; });
+})();
+</script>
+</body>
+</html>

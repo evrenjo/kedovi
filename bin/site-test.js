@@ -6,7 +6,8 @@
  * 브라우저: 설치된 Google Chrome (channel chrome). 다른 Chromium 은 KEDOVI_CHROME=<실행 파일 경로>.
  * 보는 것: 새로고침 없는 이동 · 뒤로 가기 · 같은 쪽 다시 누름 · 본문 검색 · 그림 · 확대 · 테마 · 목차 · 전체 인쇄 · 좁은 화면 서랍 ·
  *          file:// · 필기(마우스 · 손가락 · 두 손가락 이동 · 펜 · 지우개 끌기 · 쪽마다 저장) · 근거 패널(iframe) ·
- *          ERD 뷰어(영역 개요 · 표 · 상세 · 검색 · 확대 · 스키마 · 내보내기) · 화면설계서 뷰어(썸네일 · 넘기기 · 내부 정보 · 근거 패널 · 발표)
+ *          ERD 뷰어(영역 개요 · 표 · 상세 · 검색 · 확대 · 스키마 · 내보내기) · 화면설계서 뷰어(썸네일 · 넘기기 · 내부 정보 · 근거 패널 · 발표) ·
+ *          쓰기 보고서 화면(표본으로 열기 · 테이블 고르기 · 행 수 · 더 보기 · 검색 · 시험 고르기 · 주소 유지 · 위험 표시 · 데이터 없음)
  */
 'use strict';
 
@@ -73,7 +74,7 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     await ctx.addInitScript(() => { window.print = () => { window.__printed = (window.__printed || 0) + 1; }; });
     const p = await ctx.newPage();
     const go = p.goto.bind(p);
-    p.goto = async (u) => { const r = await go(u); if (!/erd\.html|02-screens/.test(u)) await p.waitForSelector('html.ds-app'); return r; };
+    p.goto = async (u) => { const r = await go(u); if (!/erd\.html|02-screens|write-report/.test(u)) await p.waitForSelector('html.ds-app'); return r; };
     p.on('pageerror', (e) => errors.push(e.message));
     return p;
   };
@@ -283,6 +284,77 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     ok((await st()).present, '발표가 안 켜짐');
     await p.keyboard.press('Escape'); await p.waitForTimeout(300);
     ok(!(await st()).present, '발표가 안 끝남');
+  });
+  await check('쓰기 보고서 화면 (테이블 · 행 수 · 더 보기 · 검색 · 시험 고르기 · 주소 유지)', async () => {
+    const WR = path.join(KIT, 'packs', 'core', 'assets', 'write-report');
+    const dir = path.join(tmp, 'write-report');
+    fs.mkdirSync(dir, { recursive: true });
+    const data = require(path.join(WR, 'sample', 'make-sample.js')).makeSample();
+    fs.writeFileSync(path.join(dir, 'index.html'), require(path.join(WR, 'sample', 'build-sample.js')).render(fs.readFileSync(path.join(WR, 'viewer.html'), 'utf8'), data));
+    const url = `file://${dir}/index.html`;
+    await p.goto(url); await p.waitForSelector('html.wr-ready');
+    // 기대 행 수: rows 하나 = 한 행, rows 없는 쓰기 = 한 행
+    const want = (key, id) => data.tests.filter((t) => !id || t.id === id).flatMap((t) => t.writes).filter((w) => w.table === key).reduce((a, w) => a + (w.rows && w.rows.length ? w.rows.length : 1), 0);
+    const big = Object.keys(data.catalog).flatMap((s) => Object.keys(data.catalog[s]).map((t) => `${s}.${t}`)).sort((a, b) => want(b) - want(a))[0];
+    ok(want(big) > 600, `표본에 큰 테이블이 없음 (${big} ${want(big)})`);
+    const t0 = Date.now();
+    await p.click(`#tables .item[data-k="${big}"]`); await p.waitForSelector('#tb tr.r');
+    const ms = Date.now() - t0;
+    const nRows = () => p.evaluate(() => document.querySelectorAll('#tb tr.r').length);
+    ok(await nRows() === 300, `처음 300행이 아님 (${await nRows()})`);
+    const cols = await p.evaluate(() => document.querySelectorAll('#grid thead th').length);
+    const [sch, tb] = big.split('.');
+    ok(cols === data.catalog[sch][tb].columns.length + 5, `열 머리 ${cols} (컬럼 ${data.catalog[sch][tb].columns.length} + 5)`);
+    await p.click('#moreBtn'); ok(await nRows() === 600, `더 보기 뒤 ${await nRows()}`);
+    await p.click('#allBtn'); ok(await nRows() === want(big), `모두 ${await nRows()} (기대 ${want(big)})`);
+    ok(!(await p.$('#moreBtn')), '다 보였는데 더 보기가 남음');
+    // 머리 · 작업 열 고정: 오른쪽 끝으로 밀어도 작업 열이 왼쪽에 남는다
+    await p.evaluate(() => { const g = document.querySelector('#grid'); g.scrollLeft = g.scrollWidth; g.scrollTop = 2000; });
+    const fx = await p.evaluate(() => { const g = document.querySelector('#grid').getBoundingClientRect(); const a = document.querySelector('#tb tr.r td.fx1').getBoundingClientRect(); const h = document.querySelector('#grid thead th').getBoundingClientRect(); return [Math.round(a.left - g.left), Math.round(h.top - g.top)]; });
+    ok(fx[0] < 80 && fx[1] <= 1, `고정 열 · 머리가 밀림 (${fx})`);
+    // 행 펼치기
+    await p.click('#tb tr.r >> nth=0'); ok(await p.evaluate(() => !!document.querySelector('#tb tr.det')), '행을 눌러도 안 펼쳐짐');
+    // 주소 유지 (새로고침)
+    ok(await p.evaluate(() => location.hash) === `#tbl=${encodeURIComponent(big)}`, `주소 ${await p.evaluate(() => location.hash)}`);
+    await p.reload(); await p.waitForSelector('#tb tr.r');
+    ok(await p.evaluate(() => document.querySelector('#tables .item.on').dataset.k) === big, '새로고침 뒤 테이블이 안 남음');
+    // 테이블 검색 (컬럼 이름으로도) · 쓴 테이블만
+    await p.fill('#q', 'avg_price'); await p.waitForTimeout(200);
+    const hit = await p.evaluate(() => [...document.querySelectorAll('#tables .item')].map((x) => x.dataset.k));
+    ok(hit.length >= 1 && hit.every((k) => { const [s, t] = k.split('.'); return k.includes('avg_price') || data.catalog[s][t].columns.some((c) => c.name.includes('avg_price')); }), `검색 결과 ${hit}`);
+    await p.fill('#q', ''); await p.waitForTimeout(150);
+    const nAll = Object.values(data.catalog).reduce((a, s) => a + Object.keys(s).length, 0);
+    const w0 = await p.evaluate(() => document.querySelectorAll('#tables .item').length);
+    await p.click('#onlyW');
+    const w1 = await p.evaluate(() => document.querySelectorAll('#tables .item').length);
+    ok(w1 === nAll && w0 < nAll, `쓴 테이블만 ${w0} → 전체 ${w1} (카탈로그 ${nAll})`);
+    await p.click('#onlyW');
+    // 시험 고르기 → 그 시험의 행만 · 주소에 시험
+    // 22003 = 숫자 넘침: 표본의 numeric 넘침 위험 행이 이 시험에 있다
+    const one = data.tests.find((t) => t.writes.some((w) => w.result && w.result.error === '22003' && w.rows));
+    ok(one, '표본에 숫자 넘침(22003) 시험이 없음');
+    const tk = one.writes.find((w) => w.result.error === '22003').table;
+    await p.fill('#tq', one.name); await p.waitForTimeout(200);
+    await p.click(`#tests .item[data-t="${one.id}"]`); await p.click(`#tables .item[data-k="${tk}"]`); await p.waitForSelector('#tb tr.r');
+    ok(await nRows() === want(tk, one.id), `시험별 행 ${await nRows()} (기대 ${want(tk, one.id)})`);
+    ok(await p.evaluate(() => document.querySelectorAll('#tb .err').length) > 0, '실패 표시가 없음');
+    await p.reload(); await p.waitForSelector('#tb tr.r');
+    ok(await p.evaluate(() => [document.querySelector('#tests .item.on').dataset.t, document.querySelector('#tables .item.on').dataset.k]).then((r) => r[0] === one.id && r[1] === tk), '새로고침 뒤 시험 · 테이블이 안 남음');
+    // 위험 표시 · 다크 전환 · 데이터 없음
+    const risky = await p.evaluate(() => document.querySelectorAll('#tb td.risk').length);
+    ok(risky > 0, '타입 범위 위험 표시가 없음');
+    // 좁은 화면: 왼쪽 패널은 서랍, 테이블을 고르면 닫힌다
+    await m.goto(`${url}#tbl=${encodeURIComponent(big)}`); await m.waitForSelector('#tb tr.r');
+    ok(await m.evaluate(() => document.querySelector('#side').getBoundingClientRect().right <= 0 && document.documentElement.scrollWidth <= innerWidth), '좁은 화면에서 패널이 가리거나 쪽이 넘침');
+    await m.click('#menu'); await m.waitForTimeout(250);
+    await m.click(`#tables .item[data-k="${tk}"]`); await m.waitForTimeout(250);
+    ok(await m.evaluate(() => !document.body.classList.contains('nav-open') && document.querySelector('#side').getBoundingClientRect().right <= 0), '고른 뒤 서랍이 안 닫힘');
+    await p.click('#theme'); ok(await p.evaluate(() => !!document.documentElement.dataset.theme), '테마 단추');
+    await p.click('#tests .item[data-t=""]'); ok(await p.evaluate(() => !/t=/.test(location.hash)), '전체로 돌아가도 주소에 시험이 남음');
+    fs.writeFileSync(path.join(dir, 'empty.html'), fs.readFileSync(path.join(WR, 'viewer.html')));
+    await p.goto(`file://${dir}/empty.html`); await p.waitForSelector('.empty h3');
+    ok(/보고서 데이터가 없습니다/.test(await p.textContent('.empty h3')), '데이터 없음 안내');
+    return `${big} ${want(big)}행 · 첫 화면 ${ms}ms · 위험 칸 ${risky}`;
   });
   await check('스크립트 오류 없음', async () => { ok(!errors.length, errors.slice(0, 3).join(' | ')); });
 

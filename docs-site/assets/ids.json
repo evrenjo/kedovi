@@ -20,6 +20,7 @@
   "docs/team-models.md": "docs/team-models.html",
   "docs/workflow.md": "docs/workflow.html",
   "docs/workspace.md": "docs/workspace.html",
+  "docs/write-report.md": "docs/write-report.html",
   "handoff.md": "docs/handoff.html",
   "kit-dev.md": "docs/kit-dev.html",
   "model-catalog.md": "docs/model-catalog.html",
@@ -30,7 +31,8 @@
   "rules.md": "docs/rules.html",
   "team-models.md": "docs/team-models.html",
   "workflow.md": "docs/workflow.html",
-  "workspace.md": "docs/workspace.html"
+  "workspace.md": "docs/workspace.html",
+  "write-report.md": "docs/write-report.html"
  },
  "ids": {
   "GPT-6": [

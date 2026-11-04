@@ -1,0 +1,17 @@
+{
+  "title": "쓰기 보고서 (SQLAlchemy + pytest)",
+  "files": [
+    { "from": "sqlalchemy/write_report.py", "to": "tests/write_report.py" },
+    { "from": "core:viewer.html", "to": "tests/write-report/viewer.html" },
+    { "from": "sqlalchemy/write-report.json", "to": "write-report.json" }
+  ],
+  "deps": ["의존성 추가 없음 (SQLAlchemy 1.4 · 2.x 와 pytest 는 이미 있다고 가정)"],
+  "after": [
+    "conftest.py(repo 최상위 또는 tests/) 에 pytest_plugins = [\"tests.write_report\"] 한 줄 (tests 가 패키지가 아니면 [\"write_report\"])",
+    "엔진을 만드는 fixture 에서 write_report.watch(engine) 를 부르면 그 엔진의 쓰기만 기록한다 (부르지 않으면 모든 엔진)",
+    "시험 본문에서 assert_writes(\"이름\", \"app.orders\") 로 승인본과 비교한다",
+    ".gitignore 에 .write-report/ 를 넣는다. 승인본 tests/write-report/approved/ 는 커밋한다"
+  ],
+  "run": "pytest",
+  "approve": "WRITE_REPORT_APPROVE=1 pytest"
+}

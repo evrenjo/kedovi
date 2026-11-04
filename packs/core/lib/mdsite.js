@@ -880,6 +880,7 @@ function mdPage(d, env) {
     if (/\.md$/i.test(target) && mdPages[target]) return relLink(page, mdPages[target]) + (hash ? `#${hash}` : '');
     if (/\.html?$/i.test(target) && docs.some((x) => x.page === target)) return relLink(page, target) + (hash ? `#${hash}` : '');
     if (img && IMG_EXT.test(target) && env.files[target] != null) return relLink(page, target);
+    if (opts.linkable && opts.linkable.has(target)) return relLink(page, target) + (hash ? `#${hash}` : ''); // 생성기가 따로 넣는 파일 (쓰기 보고서 사본 등)
     const dir = target.replace(/\/$/, '');
     if (!/\.\w+$/.test(dir) && docs.some((x) => x.md.startsWith(`${dir === '.' ? '' : `${dir}/`}`))) return relLink(page, dir === '.' ? 'index.html' : `${dir}/index.html`); // 폴더 → 그 폴더 목록 페이지
     return opts.fileUrl ? opts.fileUrl(target) : null; // 사이트 밖 파일: 주는 쪽이 있으면 그 주소 (킷 가이드 = repo 파일 보기)

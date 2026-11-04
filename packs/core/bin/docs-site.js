@@ -26,6 +26,7 @@
  *   원본 버튼은 그 repo 의 원격(workspace.json repos[].url, 없으면 그 repo 의 origin) + 기본 브랜치 + repo 안 경로. 원격이 없으면 버튼을 숨긴다.
  * docs-site/assets/site.json 이 이 도구로 만든 표시다. 그 표시가 없는데 docs-site/ 에 파일이 있으면 다른 생성기의 것이라 덮지 않는다 (--force 로 덮는다).
  * 화면설계서 장(class="sheet" 가 있는 .html)은 그대로 옮기고 뷰어(storyboard.css · js)를 docs-site/assets/storyboard/ 로 복사한다.
+ * 기능 문서에 「### 저장」 표가 있으면 「저장 데이터」 묶음(write-data/)을 만든다: 기능마다 저장 표 + 쓰기 보고서 예시 행 + 보고서 화면 사본(write-report/<repo>/) 링크. 보고서는 build 때만 코드 repo 에서 새로 읽는다 (docs-site.json "writeReport": false 로 끈다).
  * 데이터 설계 정의서(「### 스키마.테이블」 + 컬럼 표)가 든 폴더마다 ERD 뷰어 <폴더>/erd.html 을 만들고 뷰어(datamodel 팩)를 docs-site/assets/erd/ 로 복사한다 (datamodel 팩이 있을 때).
  */
 'use strict';
@@ -35,6 +36,7 @@ const { execFileSync } = require('child_process');
 const { build, globRe, wanted } = require('../lib/mdsite');
 const DR = require('../lib/docsref');
 const MC = require('../lib/mermaid-check');
+const WRL = require('../lib/writes');
 
 const PACKS = path.resolve(__dirname, '..', '..');
 const argv = process.argv.slice(2);
@@ -425,17 +427,101 @@ function scope(t, ws, config) {
   return { keep, srcOf, extra, plan };
 }
 
-function generate(t, ws, out) {
+/**
+ * 저장 데이터 쪽 (기능 문서의 「### 저장」 표 + 쓰기 보고서): write-data/README.md · write-data/<기능 ID>.md (생성 md) 와 보고서 사본 write-report/<repo>/index.html · index.json.
+ * 보고서는 build(live) 때 워크스페이스 코드 repo 의 출력 폴더(lib/writes.js REPORT_DIRS)에서 읽고, check · hook 은 사이트에 이미 넣은 사본만 본다
+ * (시험을 다시 돌려도 기획 repo 의 pre-commit 이 어긋남으로 막지 않게). 코드 repo 가 없는 PC 에서 build 해도 남은 사본은 지키고, 워크스페이스에서 빠진 repo 의 사본만 뺀다.
+ * docs-site.json 의 "writeReport": false 면 만들지 않는다. 반환 { md, raw, linkable, group } | null
+ */
+const WD = 'write-data';
+const WR = 'write-report';
+function writePages(t, ws, files, outDir, config, live) {
+  if (config.writeReport === false) return null;
+  const feats = WRL.features(Object.fromEntries(Object.entries(files).filter(([k, v]) => /\.md$/i.test(k) && typeof v === 'string' && !k.startsWith(`${WD}/`))));
+  const saved = feats.filter((f) => f.save && (f.save.rows.length || f.save.none));
+  if (!saved.some((f) => f.save.rows.length)) return null;
+  const reports = new Map(); // 사이트 안 이름 → { name, json, html }
+  const known = new Set(((ws && ws.repos) || []).map((r) => r.name));
+  const snap = path.join(outDir, WR);
+  if (fs.existsSync(snap)) {
+    for (const k of fs.readdirSync(snap).sort()) {
+      const j = path.join(snap, k, 'index.json');
+      if (!fs.existsSync(j) || (ws && !known.has(k.split('--')[0]))) continue;
+      try { reports.set(k, { name: k, json: JSON.parse(fs.readFileSync(j, 'utf8')), raw: fs.readFileSync(j), html: fs.existsSync(path.join(snap, k, 'index.html')) ? fs.readFileSync(path.join(snap, k, 'index.html')) : null }); } catch { /* 깨진 사본은 뺀다 */ }
+    }
+  }
+  if (live) {
+    for (const r of ((ws && ws.repos) || []).filter((x) => (x.kind || 'code') === 'code')) {
+      for (const x of WRL.findReports(r.dir)) {
+        const k = x.module === '.' ? r.name : `${r.name}--${x.module}`;
+        if (reports.has(k) && reports.get(k).live) continue; // 같은 이름이면 최근 것 (findReports 가 최근 것 먼저)
+        try { const raw = fs.readFileSync(x.index); reports.set(k, { name: k, json: WRL.loadReport(x.index), raw, html: x.html ? fs.readFileSync(x.html) : null, live: true }); } catch (e) { console.log(`  ⚠ 쓰기 보고서를 읽지 못했습니다: ${e.message}`); }
+      }
+    }
+  }
+  const md = {}, raw = {}, linkable = new Set();
+  for (const [k, r] of reports) {
+    raw[`${WR}/${k}/index.json`] = r.raw;
+    if (r.html) { raw[`${WR}/${k}/index.html`] = r.html; linkable.add(`${WR}/${k}/index.html`); }
+  }
+  const esc = (v) => String(v).replace(/\|/g, '\\|').replace(/\n/g, ' ');
+  const cut = (v, n = 160) => { const x = esc(v); return x.length > n ? `${x.slice(0, n - 1)}…` : x; };
+  const repLink = (k, r, from) => (r.html ? `[${k} 화면](${path.posix.relative(from, `${WR}/${k}/index.html`)})` : `${k} (화면 없음)`);
+  const repList = [...reports];
+  const none = '보고서 없음: 코드 repo 에 `kedovi writes add jooq|jdbc|sqlalchemy|node-pg` 로 기록기를 넣고 시험을 돌린 뒤 `kedovi docs build`';
+  const overview = ['# 저장 데이터', '', '> 생성물: kedovi docs build 가 기능 문서의 「저장」 표와 쓰기 보고서로 만든다. 고칠 곳은 기능 문서다.', '',
+    '기능마다 그 기능이 쓰는 컬럼 · 값 출처 · 조건과, 시험이 실제로 쓴 예시 행을 모았다. 대조는 개발 워크스페이스의 `kedovi writes check`.', '',
+    '| 기능 | ID | 저장 | 시험 예시 |', '|---|---|---|---|'];
+  for (const f of saved) {
+    const ex = repList.flatMap(([, r]) => WRL.examples(r.json, [...f.ids], 1000));
+    overview.push(`| [${esc(f.title || f.id)}](${f.id}.md) | ${f.id} | ${f.save.none && !f.save.rows.length ? '없음' : `컬럼 ${f.save.rows.length}`} | ${ex.length ? `쓰기 ${ex.length}` : '없음'} |`);
+    const page = [`# 저장 데이터 · ${f.title || f.id}`, '', `기능 ${f.id} 가 쓰는 것. 정본: [기능 문서](${path.posix.relative(WD, f.doc)})`, '', '## 저장 표', ''];
+    if (f.save.rows.length) {
+      page.push('| 스키마.테이블.컬럼 | 값 출처 | 조건 | 기본값 |', '|---|---|---|---|');
+      for (const r of f.save.rows) page.push(`| ${esc(r.target)} | ${esc(r.source)} | ${esc(r.cond)} | ${esc(r.def)} |`);
+    } else page.push('없음');
+    page.push('', '## 시험이 쓴 예시', '');
+    if (!repList.length) page.push(none);
+    else {
+      const rows = repList.flatMap(([k, r]) => WRL.examples(r.json, [...f.ids], 8).map((e) => ({ ...e, k })));
+      if (!rows.length) page.push(`이 기능 ID(${f.id} · 수용 기준 ID)가 붙은 시험이 보고서에 없다. 시험 이름 · 태그 · @spec 에 ID 를 붙인다.`);
+      else {
+        page.push('| 시험 | 동작 | 테이블 | 값 | 결과 |', '|---|---|---|---|---|');
+        for (const e of rows.slice(0, 8)) {
+          const vals = e.row ? Object.entries(e.row).map(([c, v]) => `${c}=${WRL.showValue(v)}`).join(' · ') : '';
+          const res = e.result ? (e.result.error ? `오류 ${e.result.error}` : `${e.result.rows} 행`) : '';
+          page.push(`| ${cut(e.name, 60)} | ${esc(e.op || '')} | ${esc(e.table || '')} | ${cut(vals)}${e.more ? ` (외 ${e.more}행)` : ''} | ${esc(res)}${e.rolledBack ? ' · 롤백' : ''} |`);
+        }
+      }
+      page.push('', `> 보고서: ${repList.map(([k, r]) => `${repLink(k, r, WD)}${r.json.generatedAt ? ` (${r.json.generatedAt})` : ''}`).join(' · ')}`);
+    }
+    md[`${WD}/${f.id}.md`] = `${page.join('\n')}\n`;
+  }
+  overview.push('', '## 쓰기 보고서', '');
+  if (repList.length) {
+    overview.push('| repo | 만든 때 | 시험 | 화면 |', '|---|---|---|---|');
+    for (const [k, r] of repList) overview.push(`| ${esc(k.replace('--', '/'))} | ${esc(r.json.generatedAt || '')} | ${(r.json.tests || []).length} | ${repLink(k, r, WD)} |`);
+  } else overview.push(none);
+  md[`${WD}/README.md`] = `${overview.join('\n')}\n`;
+  return { md, raw, linkable, group: { group: '저장 데이터', icon: '▤', files: [`${WD}/README.md`, `${WD}/*.md`], collapsed: true } };
+}
+
+function generate(t, ws, out, live = false) {
   const config = readConfig(t.dir);
   const sc = scope(t, ws, config);
-  const files = { ...readTree(t.dir, out, sc.keep), ...sc.extra };
+  const real = { ...readTree(t.dir, out, sc.keep), ...sc.extra };
+  const wp = writePages(t, ws, real, path.resolve(t.dir, out), config, live);
+  const files = wp ? { ...real, ...wp.md } : real;
+  const cfg = wp && Array.isArray(config.groups) && config.groups.length && !config.groups.some((g) => (g.files || []).some((x) => String(x).startsWith(`${WD}/`))) ? { ...config, groups: [...config.groups, wp.group] } : config;
   const cellFold = Number(((ws && ws.vars && ws.vars.docs) || {}).cellFold) || undefined;
-  const res = build(files, { cellFold, title: titleOf(t.dir, ws, t.name), prefixes: prefixesOf(ws), assets: assets(t.dir), mermaid: mermaidAssets(), config, erd: erdOpts(ws), sheetTheme: sheetTheme(ws), ...(sc.srcOf ? { srcOf: sc.srcOf } : {}) });
+  const res = build(files, { cellFold, title: titleOf(t.dir, ws, t.name), prefixes: prefixesOf(ws), assets: assets(t.dir), mermaid: mermaidAssets(), config: cfg, erd: erdOpts(ws), sheetTheme: sheetTheme(ws), ...(sc.srcOf ? { srcOf: sc.srcOf } : {}), ...(wp ? { linkable: wp.linkable } : {}) });
+  if (wp) Object.assign(res.pages, wp.raw);
+  res.writes = wp ? { pages: Object.keys(wp.md).length - 1, reports: Object.keys(wp.raw).filter((p) => p.endsWith('index.json')).length } : null;
   res.plan = sc.plan;
   const moved = movedPages(path.resolve(t.dir, out), res.pages);
   res.moved = moved;
   const list = Object.keys(res.pages).sort();
-  res.files = files;
+  res.files = real; // 문서 점검 · mermaid 검사는 원본 md 만 (생성한 저장 데이터 쪽은 빼고)
   res.pages[MANIFEST] = `${JSON.stringify({ generator: 'kedovi docs', note: '이 폴더는 kedovi docs build 가 만든다. 손으로 고치지 않는다 (다시 만들면 사라진다)', files: list, ...(Object.keys(moved).length ? { moved } : {}) }, null, 1)}\n`;
   return res;
 }
@@ -740,7 +826,7 @@ async function cmdBuild(ws) {
         console.log(`  ${CONFIG} 에 원본 주소를 적었습니다: ${src} (같이 커밋한다)`);
       } else if (src) console.log(`  원본 보기 주소를 사이트에 넣으려면: --write-config (${t.name}/${CONFIG} 를 만든다)`);
     }
-    const res = generate(t, ws, out);
+    const res = generate(t, ws, out, true);
     if ((res.collisions || []).length) {
       // 대소문자만 다른 출력 경로는 나중에 쓴 쪽이 이겨 쪽이 사라진다: 쓰지 않고 멈춘다
       for (const c of res.collisions) console.log(`✖ ${t.name}: 대소문자를 구분하지 않는 PC 에서 같은 파일이 되는 경로: ${c}. 한쪽 이름을 바꾼다`);
@@ -764,7 +850,7 @@ async function cmdBuild(ws) {
     const sheets = res.docs.filter((d) => d.kind === 'sheets').length;
     const erd = (res.erds || []).map((e) => `ERD ${e.page} (테이블 ${e.model.tables.length})`).join(' · ');
     const mv = Object.keys(res.moved || {}).length;
-    console.log(`✔ ${outLabel(t, out)}/ 문서 ${res.docs.length - sheets}${sheets ? ` · 화면설계서 ${sheets}` : ''}${erd ? ` · ${erd}` : ''} · ID ${Object.keys(res.index.ids).length} · 바뀐 파일 ${wrote}${stale.length ? ` · 지운 파일 ${stale.length}` : ''}${mv ? ` · 옮겨진 문서 안내 ${mv}` : ''}`);
+    console.log(`✔ ${outLabel(t, out)}/ 문서 ${res.docs.length - sheets}${sheets ? ` · 화면설계서 ${sheets}` : ''}${erd ? ` · ${erd}` : ''} · ID ${Object.keys(res.index.ids).length} · 바뀐 파일 ${wrote}${stale.length ? ` · 지운 파일 ${stale.length}` : ''}${mv ? ` · 옮겨진 문서 안내 ${mv}` : ''}${res.writes ? ` · 저장 데이터 ${res.writes.pages}기능 (쓰기 보고서 ${res.writes.reports || '없음: kedovi writes add'})` : ''}`);
     for (const l of ignoredLines(t, ['.', ...(res.erds || []).map((e) => e.dir)])) console.log(`  ${l}`);
     for (const l of await mermaidLines(res)) console.log(`  ${l}`);
     for (const l of artLines(res)) console.log(`  ${l}`);

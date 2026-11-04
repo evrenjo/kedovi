@@ -1,0 +1,13 @@
+{
+  "output": ".write-report",
+  "approved": "test/write-report/approved",
+  "viewer": "test/write-report/viewer.html",
+  "ids": [],
+  "now": ["created_at", "updated_at", "inserted_at", "modified_at"],
+  "replace": [],
+  "mask": { "unknownBinds": "type" },
+  "exclude": {
+    "tables": ["batch_*", "qrtz_*", "flyway_schema_history", "databasechangelog*", "shedlock"],
+    "updatesOnly": []
+  }
+}

@@ -1,0 +1,3 @@
+# 쓰기 보고서 (kedovi writes add jooq). 이 파일이 이미 있으면 아래 두 키의 값만 기존 값 뒤에 쉼표로 이어 붙인다.
+org.springframework.test.context.TestExecutionListener=__BASE_PACKAGE__.writereport.WriteReportListener
+org.springframework.test.context.ContextCustomizerFactory=__BASE_PACKAGE__.writereport.WriteReportJooq

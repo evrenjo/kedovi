@@ -1,0 +1,18 @@
+{
+  "title": "쓰기 보고서 (Node pg + node:test · vitest · jest)",
+  "files": [
+    { "from": "node-pg/write-report.cjs", "to": "test/write-report.cjs" },
+    { "from": "core:viewer.html", "to": "test/write-report/viewer.html" },
+    { "from": "node-pg/write-report.json", "to": "write-report.json" }
+  ],
+  "deps": ["의존성 추가 없음 (pg 는 이미 있다고 가정)"],
+  "after": [
+    "시험 함수를 recordWrites 로 감싼다: test('FN-ORD-003 저장', recordWrites(async () => { ... }))",
+    "풀을 만드는 곳에서 watch(pool) 을 부르면 그 풀의 쓰기만 기록한다 (부르지 않으면 모든 연결)",
+    "시험 본문에서 assertWrites('이름', 'app.orders') 로 승인본과 비교한다",
+    "vitest 는 시험 파일이 ESM 이어도 된다: import { recordWrites } from './write-report.cjs'",
+    ".gitignore 에 .write-report/ 를 넣는다. 승인본 test/write-report/approved/ 는 커밋한다"
+  ],
+  "run": "npm test",
+  "approve": "WRITE_REPORT_APPROVE=1 npm test"
+}

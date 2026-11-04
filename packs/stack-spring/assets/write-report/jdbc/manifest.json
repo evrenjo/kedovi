@@ -1,0 +1,75 @@
+{
+  "title": "쓰기 보고서 (Spring JDBC · JPA, DataSource 프록시)",
+  "files": [
+    {
+      "from": "common/WriteReport.java",
+      "to": "src/test/java/__BASE_PATH__/writereport/WriteReport.java"
+    },
+    {
+      "from": "common/WriteReportCatalog.java",
+      "to": "src/test/java/__BASE_PATH__/writereport/WriteReportCatalog.java"
+    },
+    {
+      "from": "common/WriteReportConfig.java",
+      "to": "src/test/java/__BASE_PATH__/writereport/WriteReportConfig.java"
+    },
+    {
+      "from": "common/WriteReportConnections.java",
+      "to": "src/test/java/__BASE_PATH__/writereport/WriteReportConnections.java"
+    },
+    {
+      "from": "common/WriteReportListener.java",
+      "to": "src/test/java/__BASE_PATH__/writereport/WriteReportListener.java"
+    },
+    {
+      "from": "common/WriteReportNormalizer.java",
+      "to": "src/test/java/__BASE_PATH__/writereport/WriteReportNormalizer.java"
+    },
+    {
+      "from": "common/WriteReportRecorder.java",
+      "to": "src/test/java/__BASE_PATH__/writereport/WriteReportRecorder.java"
+    },
+    {
+      "from": "common/WriteReportSql.java",
+      "to": "src/test/java/__BASE_PATH__/writereport/WriteReportSql.java"
+    },
+    {
+      "from": "common/WriteReportText.java",
+      "to": "src/test/java/__BASE_PATH__/writereport/WriteReportText.java"
+    },
+    {
+      "from": "common/WriteReportWrite.java",
+      "to": "src/test/java/__BASE_PATH__/writereport/WriteReportWrite.java"
+    },
+    {
+      "from": "jdbc/WriteReportJdbc.java",
+      "to": "src/test/java/__BASE_PATH__/writereport/WriteReportJdbc.java"
+    },
+    {
+      "from": "jdbc/spring.factories",
+      "to": "src/test/resources/META-INF/spring.factories",
+      "merge": "properties"
+    },
+    {
+      "from": "common/write-report.properties",
+      "to": "src/test/resources/write-report.properties"
+    },
+    {
+      "from": "core:viewer.html",
+      "to": "src/test/resources/write-report/viewer.html"
+    }
+  ],
+  "deps": [
+    "의존성 추가 없음: JUnit 5 · spring-test · spring-jdbc (이미 쓰는 것만). Java 17 이상"
+  ],
+  "after": [
+    "Gradle Kotlin DSL: tasks.test { systemProperty(\"writeReport.approve\", System.getProperty(\"writeReport.approve\") ?: \"false\") }",
+    "Gradle Groovy: test { systemProperty 'writeReport.approve', System.getProperty('writeReport.approve', 'false') }",
+    "Maven: 따로 할 것 없음 (mvn test -DwriteReport.approve=true 가 surefire 로 넘어간다)",
+    "src/test/resources/META-INF/spring.factories 가 이미 있었으면 두 키(TestExecutionListener · ContextCustomizerFactory)를 이어 붙였는지 확인",
+    "고정할 시험에서 WriteReport.assertMatches(\"이름\", \"스키마.테이블\", ...) 를 부른다",
+    ".gitignore 에 build/write-report/ (Maven target/) 는 이미 build 로 빠진다. 승인본 src/test/resources/write-report/approved/ 는 커밋한다"
+  ],
+  "run": "./gradlew test",
+  "approve": "./gradlew test -DwriteReport.approve=true"
+}

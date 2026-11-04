@@ -97,6 +97,8 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 화면설계서 검사 | `kedovi screens check [기획 repo]` (근거 ID · 화면 ID 중복 · 기능 ID 누락). 화면설계서 작성 절차는 `screens` 스킬 | 보기 |
 | 데이터 설계 검사 | `kedovi datamodel check [기획 repo]` (참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조). 작성 절차는 `datamodel` 스킬 | 보기 |
 | 구조 검사 넣기 (패키지 구조 · 계층 경계를 테스트 · 린트로) | `kedovi archrules spring\|react\|fastapi [--repo <이름>] [--dry-run]` (Spring ArchUnit · React eslint-plugin-boundaries · FastAPI import-linter + 역할 파일 검사. 있는 파일은 덮지 않는다). "구조 검사 넣어줘" · "패키지 규칙 테스트로" 같은 말에 쓴다. 먼저 `--dry-run` 으로 만들 파일을 보이고, 기존 코드 위반은 범위를 사용자와 정한다 | 코드 repo |
+| 쓰기 보고서 붙이기 (시험이 DB 에 쓴 것을 테이블로 보고 기대값으로 고정) | `kedovi writes add jooq\|jdbc\|sqlalchemy\|node-pg [--repo <이름>] [--dir <모듈>] [--dry-run]` (있는 파일은 덮지 않는다). "쓰기 보고서 붙여줘" · "DB 에 뭐 쓰는지 보이게" 같은 말에 쓴다. 먼저 `--dry-run` 으로 넣을 파일을 보이고, 출력된 의존성 · 시험 연결은 사용자 확인 뒤 | 코드 repo |
+| 저장 표 대조 · 보고서 보기 | `kedovi writes check [--repo <이름>] [--strict]` (기능 문서 「저장」 표와 대조: 표에 없는 쓰기 · 안 쓴 컬럼 · 타입 범위 위험) · `kedovi writes open [--repo <이름>]` (보고서 화면). 기대값(승인본) 갱신은 차이를 보이고 사용자 확인 뒤에만 | 코드 repo |
 | 팩 켜기 (upgrade 가 「꺼져 있음」 이라 알린 기본 팩 · 다른 유형의 screens · datamodel 등) | `kedovi upgrade --add <팩,팩>` | 팀 |
 | 킷 새 버전 반영 | `kedovi upgrade` | 팀 |
 | 이 PC 의 워크스페이스 모두 새 버전으로 | `kedovi upgrade --all [--scan <폴더>] [--yes]` (목록 · 건너뛸 것을 보인 뒤 묻고 올림. 팀장 아님 · 원격에 받지 않은 커밋 · 커밋 안 한 변경이면 건너뜀. 채팅에서는 목록을 보여 주고 승인받은 뒤 `--yes`) | 팀 |

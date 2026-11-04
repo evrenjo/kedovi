@@ -27,7 +27,7 @@
 <details>
 <summary><b>core</b> · 공통 코어: 소통·검증 규칙 · 핸드오프 · 로드맵 · 문서 사이트 · 진단</summary>
 
-협업 워크스페이스 기본: 팀 구성(자동: 리더가 작업마다 역할·모델 선택, 고정: 프로필대로), 커뮤니케이션·근거/검증 원칙·변경 영향 점검, 핸드오프/재개/작업 시작, 진행 방식(스프린트: 최소 기능부터 기능 단위 스프린트 · 데모 · 회고 · 백로그, 전체: 전체 설계 뒤 구축, 이슈형: 운영 · 유지보수의 이슈 보드 · 주간 보고), 유형 바꾸기(kedovi type), 신규 구축 아이디어 · 전체 그림(idea 스킬: 무엇을 왜 만드는지 대화 → 기능 지도 → MVP 범위), 로드맵(handoffs/PLAN.md: 종류 · 진행 방식별 기본 단계 · 단계 흐름도 · 영역 × 하위 작업 표 · 완료 보고 블록), 문서 사이트(kedovi docs build: 기획 repo 의 md → 같은 경로 구조의 HTML, 가이드와 같은 화면 틀 · 정의 ID 앵커 · 근거 색인 ids.json · docs-site.json 묶음), 워크스페이스 현황판(kedovi board), 컨텍스트 관리, 응답 언어 · 대화 스타일(kedovi prefs: 한국어 · English, 학습 · 일반 · 전문가, 요청마다 · 긴 작업 중 다시 한 줄 · Claude 출력 스타일 · 그림은 claude-mermaid 가 있으면 브라우저, 없으면 텍스트), 답변 첫 줄 시각 표시(요청 받은 시각, kedovi timestamp), 시간 예산(budget.js: 예산 1.5배를 넘으면 계속할지 묻게 함), 리뷰 위임 차수(같은 범위 차수 · 앞 차수 블로커 · 3차부터 경고), 리뷰 전 검사(지시서의 검사: 줄), 착수 전 확인(코드 첫 수정 전 머리말), 오래 일하는 팀원 · 위임 알림(기본 60분), 레포 업데이트·죽은 참조 검사·핸드오프 알림 훅 · 텔레그램 알림(개인: 알림 수준 · 양방향 대화 · 자리 비움, 팀: 핸드오프·설정 변경·공지)
+협업 워크스페이스 기본: 팀 구성(자동: 리더가 작업마다 역할·모델 선택, 고정: 프로필대로), 커뮤니케이션·근거/검증 원칙·변경 영향 점검, 핸드오프/재개/작업 시작, 진행 방식(스프린트: 최소 기능부터 기능 단위 스프린트 · 데모 · 회고 · 백로그, 전체: 전체 설계 뒤 구축, 이슈형: 운영 · 유지보수의 이슈 보드 · 주간 보고), 유형 바꾸기(kedovi type), 신규 구축 아이디어 · 전체 그림(idea 스킬: 무엇을 왜 만드는지 대화 → 기능 지도 → MVP 범위), 로드맵(handoffs/PLAN.md: 종류 · 진행 방식별 기본 단계 · 단계 흐름도 · 영역 × 하위 작업 표 · 완료 보고 블록), 문서 사이트(kedovi docs build: 기획 repo 의 md → 같은 경로 구조의 HTML, 가이드와 같은 화면 틀 · 정의 ID 앵커 · 근거 색인 ids.json · docs-site.json 묶음), 워크스페이스 현황판(kedovi board), 쓰기 보고서(시험이 DB 에 쓴 것: 형식 · 보는 화면 · kedovi writes check 로 기능 문서 「저장」 표 대조 · 문서 사이트 「저장 데이터」), 컨텍스트 관리, 응답 언어 · 대화 스타일(kedovi prefs: 한국어 · English, 학습 · 일반 · 전문가, 요청마다 · 긴 작업 중 다시 한 줄 · Claude 출력 스타일 · 그림은 claude-mermaid 가 있으면 브라우저, 없으면 텍스트), 답변 첫 줄 시각 표시(요청 받은 시각, kedovi timestamp), 시간 예산(budget.js: 예산 1.5배를 넘으면 계속할지 묻게 함), 리뷰 위임 차수(같은 범위 차수 · 앞 차수 블로커 · 3차부터 경고), 리뷰 전 검사(지시서의 검사: 줄), 착수 전 확인(코드 첫 수정 전 머리말), 오래 일하는 팀원 · 위임 알림(기본 60분), 레포 업데이트·죽은 참조 검사·핸드오프 알림 훅 · 텔레그램 알림(개인: 알림 수준 · 양방향 대화 · 자리 비움, 팀: 핸드오프·설정 변경·공지)
 
 | 항목 | 내용 |
 |---|---|
@@ -80,7 +80,7 @@
 
 **팀 에이전트 역할**: 분석 (`analyst`) · 설계 (`architect`) · 문서화 (`documenter`) · 구현 (`implementer`) · 리뷰 (`reviewer`) · 설계 문서 (`spec-writer`) · 테스트 (`tester`)
 
-**도구**: `bin/archrules.js` · `bin/board.js` · `bin/brief.js` · `bin/budget.js` · `bin/check-docs.js` · `bin/check-refs.js` · `bin/cross-review.js` · `bin/debate.js` · `bin/delegate.js` · `bin/docs-site.js` · `bin/doctor.js` · `bin/handoff.js` · `bin/import-scan.js` · `bin/issue-check.js` · `bin/notify.js` · `bin/plan.js` · `bin/rename-ref.js` · `bin/repo-activity.js` · `bin/repo-check.js` · `bin/review.js` · `bin/secret.js` · `bin/strip-ai-trailers.js` · `bin/team-status.js` · `bin/tidy.js`
+**도구**: `bin/archrules.js` · `bin/board.js` · `bin/brief.js` · `bin/budget.js` · `bin/check-docs.js` · `bin/check-refs.js` · `bin/cross-review.js` · `bin/debate.js` · `bin/delegate.js` · `bin/docs-site.js` · `bin/doctor.js` · `bin/handoff.js` · `bin/import-scan.js` · `bin/issue-check.js` · `bin/notify.js` · `bin/plan.js` · `bin/rename-ref.js` · `bin/repo-activity.js` · `bin/repo-check.js` · `bin/review.js` · `bin/secret.js` · `bin/strip-ai-trailers.js` · `bin/team-status.js` · `bin/tidy.js` · `bin/writes.js`
 
 **훅**: 세션 시작: `check-repo-updates.js` · 세션 시작: `check-context-sync.js` · 세션 시작: `handoff-brief.js` · 세션 시작: `session-brief.js` · 세션 시작: `model-profile.js` · 세션 시작: `team-mode.js` · 세션 시작: `channel-mode.js` · 세션 끝: `task-check.js` · 세션 끝: `decision-ask.js` · 세션 끝: `handoff-reminder.js` · 세션 끝: `agent-cleanup.js` · 세션 끝: `budget-check.js` · 세션 끝: `team-idle.js` · 세션 끝: `notify.js` · UserPromptSubmit: `agent-budget.js` · UserPromptSubmit: `task-focus.js` · UserPromptSubmit: `prompt-time.js` · UserPromptSubmit: `chat-prefs.js` · UserPromptSubmit: `settings-hint.js` · UserPromptSubmit: `budget-check.js` · UserPromptSubmit: `team-idle.js` · UserPromptSubmit: `decision-ask.js` · UserPromptSubmit: `plan-first.js` · UserPromptSubmit: `notify.js` · PreToolUse: `agent-budget.js` · PreToolUse: `notify.js` · PreToolUse: `decision-ask.js` · PreToolUse: `notify.js` · PreToolUse: `plan-first.js` · PreToolUse: `team-guard.js` · PreToolUse: `repo-guard.js` · PreToolUse: `git-guard.js` · PreToolUse: `secret-guard.js` · PreToolUse: `review-gate.js` · PreToolUse: `spec-commit.js` · PostToolUse: `channel-progress.js` · PostToolUse: `chat-prefs.js` · PostToolUse: `secret-guard.js` · PostToolUse: `notify.js` · PostToolUse: `notify.js` · Notification: `team-idle.js` · Notification: `notify.js` · SubagentStop: `agent-budget.js` · SubagentStop: `notify.js` · TeammateIdle: `team-idle.js` · TeammateIdle: `notify.js`
 
@@ -227,7 +227,7 @@ GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.
 <details>
 <summary><b>backend</b> · 백엔드 공통 원칙: 인가·검증·API 계약·데이터·외부 호출·로깅</summary>
 
-프레임워크와 무관한 백엔드 원칙: 기존 관례 따르기, 객체 단위 인가, 경계 입력 검증, 기존 API 계약·하위 호환, 페이지·멱등성, 트랜잭션 경계·동시 수정, 데이터 접근(파라미터 바인딩·N+1·대량 처리), 보안(비밀·SSRF·업로드·의존성), 외부 호출 타임아웃·재시도·설정·정상 종료, 구조화 로깅·추적 ID, 변경 동작 테스트. 근거 출처는 docs/SOURCES.md
+프레임워크와 무관한 백엔드 원칙: 기존 관례 따르기, 객체 단위 인가, 경계 입력 검증, 기존 API 계약·하위 호환, 페이지·멱등성, 트랜잭션 경계·동시 수정, 데이터 접근(파라미터 바인딩·N+1·대량 처리), 보안(비밀·SSRF·업로드·의존성), 외부 호출 타임아웃·재시도·설정·정상 종료, 구조화 로깅·추적 ID, 변경 동작 테스트, 저장 로직 변경 때 쓰기 보고서 · 기대값(kedovi writes add sqlalchemy · node-pg). 근거 출처는 docs/SOURCES.md
 
 | 항목 | 내용 |
 |---|---|
@@ -246,6 +246,7 @@ GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.
 | `backend--60-security` | 백엔드 보안: 인증·인가·비밀·외부 입력 | 필요할 때: 인증·인가·토큰·쿠키·CORS, 비밀값, 요청 한도, 파일 업로드, 사용자가 준 URL·경로·명령·XML·직렬화 데이터, 관리 엔드포인트, 의존성 추가를 다룰 때 |
 | `backend--70-resilience-and-config` | 백엔드 외부 호출·재시도·설정 | 필요할 때: 외부 API·다른 서비스·큐·캐시를 호출·소비하거나, 타임아웃·재시도·폴백·배경 작업, 설정값·헬스 체크·기동/종료 동작을 바꿀 때 |
 | `backend--80-testing` | 백엔드 테스트 | 필요할 때: 백엔드 동작을 바꾸거나 버그를 고쳐 테스트를 추가·수정할 때 |
+| `backend--85-write-report` | 백엔드 쓰기 보고서: 저장 로직 변경 | 필요할 때: DB 에 쓰는 코드(INSERT · UPDATE · DELETE · UPSERT · MERGE · 배치 저장 · 저장 쿼리 · 엔티티 저장)를 새로 쓰거나 고칠 때, 쓰기 보고서 · 기대값(approval) 시험이 실패할 때 |
 
 </details>
 
@@ -576,7 +577,7 @@ React + TypeScript + Vite + TanStack Query + React Router 구현 규약: 생성 
 <details>
 <summary><b>stack-spring</b> · Spring 백엔드 스택: Spring·JPA·QueryDSL 트랜잭션·쿼리 규칙</summary>
 
-Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked 예외 롤백 함정, 파생 쿼리/QueryDSL/네이티브 SQL 정책, 엔티티당 리포지토리, 복합 키 값 객체, 대량 처리 예외, MapStruct·Bean Validation, 패키지 구조 선택(계층 먼저 · 기능 먼저, jOOQ 안내) + 쿼리 술어 추출기·QueryDSL 런타임 오류 검사기·로깅 검사기·ArchUnit 구조 검사 템플릿(kedovi archrules spring). 계층·API 계약 원칙은 backend 팩
+Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked 예외 롤백 함정, 파생 쿼리/QueryDSL/네이티브 SQL 정책, 엔티티당 리포지토리, 복합 키 값 객체, 대량 처리 예외, MapStruct·Bean Validation, 패키지 구조 선택(계층 먼저 · 기능 먼저, jOOQ 안내) + 쿼리 술어 추출기·QueryDSL 런타임 오류 검사기·로깅 검사기·ArchUnit 구조 검사 템플릿(kedovi archrules spring) · 쓰기 보고서 기록기(kedovi writes add jooq · jdbc). 계층·API 계약 원칙은 backend 팩
 
 | 항목 | 내용 |
 |---|---|

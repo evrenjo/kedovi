@@ -51,6 +51,9 @@
  *   kedovi screens compare <화면 ID> [--proto 파일|주소] [--impl 주소|/경로] [--widths 1280,390] [--storage 상태.json] [--find]   프로토타입과 구현 화면을 같은 폭(PC · 폰)으로 찍어 나란히 보는 compare.html (screens 팩, Playwright). 구현 주소는 @spec 줄의 @route
  *   kedovi datamodel check [repo|폴더]   데이터 설계 검사: 참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조 (datamodel 팩)
  *   kedovi archrules spring|react|fastapi [--repo R] [--dir 모듈 경로] [--dry-run] [--json]   구조 검사 템플릿을 repo 에 넣는다: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사. 구조 · 기준 패키지 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다
+ *   kedovi writes add jooq|jdbc|sqlalchemy|node-pg [--repo R] [--dir 모듈] [--dry-run] [--json]   쓰기 보고서(시험이 DB 에 쓴 것을 DB 화면처럼 보고 기대값으로 고정) 기록기를 repo 에 넣는다: 스택 팩의 파일 · 설정(없는 키만 더함) · 의존성 · 실행 · 기대값 고정 명령 안내. 있는 파일은 덮지 않는다
+ *   kedovi writes check [--repo R] [--report <index.json>] [--json] [--strict]   쓰기 보고서 ↔ 기능 문서 「저장」 표 대조 (기능 ID 별): 표에 없는 쓰기 · 안 쓴 컬럼 · 타입 범위 위험(numeric · varchar 자릿수, 넓은 값 출처). --strict 면 위반 시 exit 1
+ *   kedovi writes open [--repo R] [--no-open]   최신 쓰기 보고서 화면(index.html) 경로를 찍고 연다
  *   kedovi secret set <이름> [--global] · list [--all] · test <이름> · rm <이름> [--global] · import [--global|--project] · exec [--only A,B] -- <명령>   비밀값(토큰): OS 저장소(키체인 · 자격 증명 팀장 · libsecret)에 프로젝트별 · 전역으로. 값은 숨김 입력, 어디에도 출력하지 않는다
  *   kedovi gitlab pipeline [--repo R] [--ref 브랜치 | --mr 번호 | --id ID] [--limit N] [--log [줄 수]] [--json]   GitLab 파이프라인 조회 (gitlab 팩, 읽기만): 최근 목록 · 단계별 작업 상태 · 실패한 작업의 로그 끝부분. MR 은 머지 커밋의 파이프라인도 찾는다
  *   kedovi gitlab wait [--repo R] --mr 번호 | --id ID | --ref 브랜치·태그 [--sha 커밋(짧은 SHA 가능)] [--timeout 분] [--json]   파이프라인이 끝날 때까지 대기: 지금 커밋(MR 머리 · 머지 커밋 · 브랜치 · 태그 머리)의 파이프라인이 이미 있으면 바로 잡고, 없으면 생길 때까지 먼저 기다린다. 성공 0 · 실패 1 · 수동 작업에서 멈추면 0
@@ -3580,7 +3583,7 @@ function upgradeSummary(root, from) {
 const HELP_GROUPS = [
   ['시작 · 설치', '워크스페이스 만들기 · 받기 · 작업 시작 · 킷 새 버전', ['init', 'init-docs', 'install', 'start', 'upgrade', 'list', 'remove', 'help']],
   ['AI · 모델', '연결 방식 · 메인 에이전트 · 모델 프로필 · 응답 언어 · 대화 스타일', ['agent', 'ai', 'models', 'prefs', 'timestamp']],
-  ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'sync', 'check', 'doctor', 'packs', 'reset']],
+  ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'writes', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
   ['팀 규칙 점검', '리뷰 확인 · 훅이 알리거나 막는 수준', ['review', 'team-mode enforce']],
   ['진행 · 기록', '로드맵 · 핸드오프 · 현황판 · 위임 · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'board', 'delegate', 'debate', 'import', 'tidy']],
@@ -3816,6 +3819,7 @@ async function main() {
     case 'screens': return rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
     case 'datamodel': return runWsTool('check-datamodel.js', rest.filter((x) => x !== 'check'), 'datamodel');
     case 'archrules': return runWsTool('archrules.js', rest);
+    case 'writes': return runWsTool('writes.js', rest.map((a, i) => (rest[i - 1] === '--report' ? path.resolve(a) : a))); // 도구는 워크스페이스 루트에서 돈다
     case 'team-mode': return cmdTeamMode(rest);
     case 'approach': return cmdApproach(rest);
     case 'type': return cmdType(rest);

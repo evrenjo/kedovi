@@ -200,4 +200,38 @@ fs.rmSync(g, { recursive: true, force: true });
   fs.rmSync(d, { recursive: true, force: true });
   fs.rmSync(outAbs, { recursive: true, force: true });
 }
+// 저장 데이터 쪽: 기능 문서의 「### 저장」 표 + 코드 repo 쓰기 보고서 → write-data/<기능 ID>.html · write-report/<repo>/ 사본. check 는 사본만 본다
+{
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'kedovi-docsite-writes-'));
+  const w = (f, c) => { fs.mkdirSync(path.dirname(path.join(d, f)), { recursive: true }); fs.writeFileSync(path.join(d, f), c); };
+  w('workspace.json', JSON.stringify({ project: { title: '시험' }, repos: [{ name: 'api', kind: 'code' }, { name: 'plans', kind: 'docs' }] }));
+  w('repos/plans/README.md', '# 기획\n');
+  w('repos/plans/docs-site.json', JSON.stringify({ groups: [{ group: '기능', files: ['README.md', '20-features/*.md'] }] }));
+  w('repos/plans/20-features/sales.md', '# 매출 기능\n\n## FN-SAL-003 일 매출 집계\n\n### 저장\n\n| 스키마.테이블.컬럼 | 값 출처 | 조건 | 기본값 |\n|---|---|---|---|\n| shop.daily_sales.avg_price | 평균 | 행 없음이면 0 | 0 |\n\n### 수용 기준\n\n| ID | 조건 | 결과 |\n|---|---|---|\n| AC-SAL-003-1 | 주문이 있으면 | 저장 |\n');
+  const report = (v) => JSON.stringify({ format: 1, generatedAt: v, repo: 'api', stack: 'jooq', tests: [{ id: 'T#saves', name: 'saves', specs: ['AC-SAL-003-1'], status: 'passed', writes: [{ seq: 1, op: 'INSERT', table: 'shop.daily_sales', rows: [{ avg_price: 12.5 }], result: { rows: 1 } }] }], catalog: {} });
+  w('repos/api/build/write-report/index.json', report('2026-11-05T10:00:00+09:00'));
+  w('repos/api/build/write-report/index.html', '<html>보고서</html>');
+  const wsW = require('../lib/workspace').load(d);
+  const t = { name: 'plans', dir: path.join(d, 'repos', 'plans'), kind: 'docs' };
+  const outDir = path.join(t.dir, 'docs-site');
+  const live = generate(t, wsW, 'docs-site', true);
+  const page = live.pages['write-data/FN-SAL-003.html'] || '';
+  assert.ok(page.includes('avg_price=12.5') && page.includes('href="../write-report/api/index.html"'), '예시 행 · 보고서 화면 링크');
+  assert.ok(String(live.pages['write-report/api/index.html']).includes('보고서') && live.pages['write-report/api/index.json'], '보고서 사본');
+  assert.ok(/"저장 데이터"/.test(live.pages['assets/nav.js']), '메뉴 묶음 「저장 데이터」 (docs-site.json groups 에 더한다)');
+  assert.ok(!(live.unlisted || []).some((x) => x.startsWith('write-data/')), '「기타」 경고에 들지 않는다');
+  assert.ok(!Object.keys(live.files).some((k) => k.startsWith('write-data/')), '문서 점검은 원본 md 만');
+  // 사본이 없으면 check(live 아님)는 「보고서 없음」 쪽
+  assert.ok(/보고서 없음/.test(generate(t, wsW, 'docs-site').pages['write-data/FN-SAL-003.html']), '보고서 없음 안내');
+  // build 결과를 디스크에 쓴 뒤: 시험을 다시 돌려 보고서가 바뀌어도 check 는 사본으로 같은 결과
+  for (const [p, c] of Object.entries(live.pages)) { fs.mkdirSync(path.dirname(path.join(outDir, p)), { recursive: true }); fs.writeFileSync(path.join(outDir, p), c); }
+  w('repos/api/build/write-report/index.json', report('2026-11-06T10:00:00+09:00'));
+  const { diff } = require('./docs-site');
+  assert.deepStrictEqual(diff(outDir, generate(t, wsW, 'docs-site').pages), [], 'check 는 사본만 본다');
+  assert.ok(String(generate(t, wsW, 'docs-site', true).pages['write-data/index.html']).includes('2026-11-06'), 'build 는 새 보고서');
+  // 끄기
+  w('repos/plans/docs-site.json', JSON.stringify({ writeReport: false }));
+  assert.ok(!Object.keys(generate(t, wsW, 'docs-site', true).pages).some((p) => p.startsWith('write-')), 'writeReport: false');
+  fs.rmSync(d, { recursive: true, force: true });
+}
 console.log('docs-site.test.js ✔');

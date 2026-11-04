@@ -4,6 +4,8 @@ load: on-demand
 when: Repository·QueryDSL·네이티브 SQL 로 DB 를 읽거나 쓰는 코드를 새로 쓰거나 고칠 때 (대량 수정·삭제·복제 포함)
 ---
 
+저장 경로(save · bulk · jOOQ · JdbcTemplate · 네이티브 SQL)를 바꾸면 쓰기 보고서 · 기대값을 같이 본다 (backend 팩 「백엔드 쓰기 보고서」, 붙이기 `kedovi writes add jooq|jdbc`).
+
 ## 수단 고르기
 
 | 케이스 | 수단 |

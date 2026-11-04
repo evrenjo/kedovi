@@ -402,6 +402,7 @@ flowchart TD
 | `kedovi screens check [repo]` | 화면설계서 검사 (screens 팩): 근거 ID 가 색인에 있는지 · 화면 ID 중복 · 기능 ID 누락(「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |
 | `kedovi datamodel check [repo]` | 데이터 설계 검사 (datamodel 팩): 참조 대상 · 기본키 · 중복 · 표 형식(✖), 논리명 · 컨벤션(`vars.datamodel`) · 기능 ID 대조 · 논리 참조 대상 · 고정 스키마 기본키(⚠). ERD 는 `kedovi docs build` 가 정의서 폴더마다 `erd.html` 로 만든다 |
 | `kedovi archrules spring\|react\|fastapi` | 구조 검사 템플릿을 repo 에: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사 (구조 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다) |
+| `kedovi writes add` · `kedovi writes check` · `kedovi writes open` | 쓰기 보고서: 기록기를 repo 에 넣기(jooq · jdbc · sqlalchemy · node-pg) · 기능 문서 「저장」 표와 대조(표에 없는 쓰기 · 안 쓴 컬럼 · 타입 범위) · 보고서 화면 열기 |
 | `kedovi packs` | 팩 목록 |
 | `kedovi init-docs [폴더]` | 기획자 repo 뼈대: 개요 · 아이디어 · 규모 → 시스템 구성(아키텍처) → 기능(요구 목록 · 기능 문서) → 화면(목록 · 정책 · 프로토타입) → 데이터 · API → 결정 · 미결 (메뉴 `docs-site.json` · 장 양식 · Pages CI 포함) |
 
