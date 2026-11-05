@@ -1431,6 +1431,77 @@ function window1m(name) {
 /** Claude Code 에 넘길 게이트웨이 이름: 1M 모델이면 [1m] (Claude Code 가 보낼 때 뗀다) */
 const claudeWindow = (name) => (name && !/\[1m\]$/i.test(name) && window1m(name) ? `${name}[1m]` : name);
 
+// ── 게이트웨이에 없는 모델을 가리키는 Claude Code 모델 환경변수 (doctor · 세션 시작 · kedovi ai gateway/refresh) ──
+const MODEL_ENV_KEYS = ['ANTHROPIC_DEFAULT_OPUS_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL', 'ANTHROPIC_DEFAULT_FABLE_MODEL', 'ANTHROPIC_MODEL', 'ANTHROPIC_SMALL_FAST_MODEL'];
+const CLAUDE_CODE_ALIASES = ['opus', 'sonnet', 'haiku', 'fable', 'default', 'best', 'opusplan'];
+
+/** Claude Code 모델 환경변수와 주소: 셸 환경변수가 먼저, 없으면 settings.json 의 env (CLAUDE_CONFIG_DIR 또는 ~/.claude). 읽기만 한다 */
+function claudeModelEnv({ env = process.env, home = require('os').homedir() } = {}) {
+  let file = {};
+  try { file = JSON.parse(read(path.join(env.CLAUDE_CONFIG_DIR || path.join(home, '.claude'), 'settings.json'))).env || {}; } catch { /* 없음 */ }
+  const out = {};
+  for (const k of [...MODEL_ENV_KEYS, 'ANTHROPIC_BASE_URL']) {
+    if (env[k]) out[k] = { value: String(env[k]), source: '셸 환경변수' };
+    else if (file[k]) out[k] = { value: String(file[k]), source: 'settings.json' };
+  }
+  return out;
+}
+
+const gatewayUrlKey = (u) => String(u || '').trim().toLowerCase().replace(/\/+$/, '').replace(/\/v1$/, '').replace(/\/+$/, '');
+const officialUrl = (u) => /(^|\.)anthropic\.com(:\d+)?(\/|$)/.test(String(u || '').replace(/^https?:\/\//i, ''));
+
+/** 모델 이름에 계열이 낱말로 있나: 마지막 / 뒤를 - _ . : @ 공백으로 나눈 토큰이 계열 · 계열+숫자일 때만 (octopus 는 opus 가 아니다) */
+function hasFamily(name, fam) {
+  const toks = String(name || '').toLowerCase().replace(/\[[^\]]*\]$/, '').split('/').pop().split(/[-_.:@\s]+/);
+  return toks.some((t) => t === fam || new RegExp(`^${fam}\\d+$`).test(t));
+}
+
+/** 계열의 최신 게이트웨이 모델 (버전 숫자가 가장 큰 것, 8자리 날짜는 뺀다). 1M 모델이면 [1m]. 없으면 null */
+function gatewayAliasFix(models, fam) {
+  const ver = (m) => (String(m).split('/').pop().match(/\d+/g) || []).filter((d) => d.length !== 8).map(Number);
+  const cmp = (a, b) => { for (let i = 0; i < Math.max(a.length, b.length); i++) { const d = (a[i] || 0) - (b[i] || 0); if (d) return d; } return 0; };
+  const best = (models || []).filter((m) => hasFamily(m, fam)).sort((a, b) => cmp(ver(b), ver(a)) || String(a).localeCompare(String(b)))[0];
+  return best ? claudeWindow(best) : null;
+}
+
+/**
+ * 게이트웨이 목록에 없는 모델 환경변수. 반환 { checked, problems: [{ key, value, source, fix }] }
+ * 검사 안 함: 게이트웨이 연결이 아님 · 목록 빔 · ANTHROPIC_BASE_URL 이 없거나 공식 주소 · 저장한 게이트웨이와 다른 주소. Claude Code 자체 별칭은 통과
+ */
+function gatewayAliasCheck(access, opts = {}) {
+  const none = { checked: false, problems: [] };
+  const gw = access && access.connection === 'gateway' ? access.gateway : null;
+  const models = (gw && gw.models) || [];
+  if (!models.length) return none;
+  const ce = opts.modelEnv || claudeModelEnv(opts);
+  const base = (ce.ANTHROPIC_BASE_URL || {}).value;
+  if (!base || officialUrl(base) || gatewayUrlKey(base) !== gatewayUrlKey(gw.url)) return none;
+  const have = new Set(models.map((m) => String(m).toLowerCase()));
+  const problems = [];
+  for (const key of MODEL_ENV_KEYS) {
+    const e = ce[key];
+    if (!e) continue;
+    const bare = e.value.trim().replace(/\[[^\]]*\]$/, '').trim();
+    if (!bare || CLAUDE_CODE_ALIASES.includes(bare.toLowerCase()) || have.has(bare.toLowerCase())) continue;
+    const fam = (/^ANTHROPIC_DEFAULT_(\w+)_MODEL$/.exec(key) || [])[1];
+    const family = fam ? fam.toLowerCase() : CLAUDE_FAMILIES.find((f) => hasFamily(bare, f)) || (key === 'ANTHROPIC_SMALL_FAST_MODEL' ? 'haiku' : null);
+    problems.push({ key, value: e.value, source: e.source, fix: family ? gatewayAliasFix(models, family) : null });
+  }
+  return { checked: true, problems };
+}
+
+/** 고칠 안내 한 줄: KEY='후보' · 후보가 없으면 목록에서 고르기 */
+const gatewayAliasHint = (problems) => problems.map((x) => (x.fix ? `${x.key}='${x.fix}'` : `${x.key}: 후보 없음, 목록에서 고르기(kedovi ai show)`)).join(' · ');
+
+/** 게이트웨이 목록 조회 직후 알림 줄: 조회 실패 · 별칭 문제를 따로 판단. 정상이면 빈 배열 */
+function gatewayFetchNotices(result, access, opts = {}) {
+  const out = [];
+  if (!result || !result.ok) out.push(`⚠ 모델 목록 조회 실패 (${(result && result.error) || '이유 모름'}). 킷 기본 모델 이름으로 진행합니다. 나중에 kedovi ai refresh`);
+  const c = gatewayAliasCheck(access, opts);
+  if (c.problems.length) out.push(`⚠ 게이트웨이 목록에 없는 모델을 Claude Code 가 쓰도록 되어 있습니다: ${c.problems.map((x) => `${x.key}=${x.value} (${x.source})`).join(' · ')}. 그 모델을 쓰는 도구(웹 문서 읽기 · 하위 에이전트)가 실패합니다. 고칠 값: ${gatewayAliasHint(c.problems)} (셸 설정 또는 settings.json 의 env, 자동으로 고치지 않음)`);
+  return out;
+}
+
 /** 킷 모델 ID → 게이트웨이 모델 ID. 목록에 없으면 null (호출한 쪽이 알린다) */
 function gatewayId(gw, tool, id) {
   if (!gw || !id || ['inherit', 'default', 'best'].includes(id)) return id;
@@ -2678,4 +2749,4 @@ function main() {
 
 main();
 
-module.exports = { scanGuides, fillGuides, guideChanges, GUIDE_MODES, isGuideMode, hintedCatalog, parseRepos, repoLanguages, labelLanguages, ruleRepos, projectRulesPinning, fillLanguages, loadLanguages, claudeKey, window1m, claudeWindow, SECRET_PATTERNS, secretHits, repoRel, repoSafe, ENFORCE_LEVELS, ENFORCE_DEFAULTS, APPROACHES, missingTypePacks, ensurePlan, roleGrades, teamOptions, teamSection, loadCatalogFor, loginPlanValues, detectPlans, vendorRooms, profileRank, profileLabel, profileNotice, countPicks, applyAccess, normalizeAccess, gatewayVendors, gatewayId, startToolOf, migrateTypes, lockState, generate, buildAgentFiles, splitModel, fillLocalRemotes, installRepos, effortOf, profileModels, fillStackPaths, setStackPaths, detectLine, addStackHint, HINT_HELP, auditModels, resolveModels, stacksLabel, stackLabel, loadLayers, LAYER_PACKS, folderState, HOSTS, inferHost, hostOf, detectRepos, loadCatalog, repoPacks, PROJECT_NAME, PROJECT_NAME_RULE, PROJECT_TYPES, TYPE_RULES, REPO_KINDS, REPOS_DIR, LOCAL_CONFIG, initWorkspace, cmdInstall, cmdSync, cmdCheck, loadWorkspace, findRoot, kitRoot, isGitUrl };
+module.exports = { claudeModelEnv, hasFamily, gatewayAliasFix, gatewayAliasCheck, gatewayAliasHint, gatewayFetchNotices, scanGuides, fillGuides, guideChanges, GUIDE_MODES, isGuideMode, hintedCatalog, parseRepos, repoLanguages, labelLanguages, ruleRepos, projectRulesPinning, fillLanguages, loadLanguages, claudeKey, window1m, claudeWindow, SECRET_PATTERNS, secretHits, repoRel, repoSafe, ENFORCE_LEVELS, ENFORCE_DEFAULTS, APPROACHES, missingTypePacks, ensurePlan, roleGrades, teamOptions, teamSection, loadCatalogFor, loginPlanValues, detectPlans, vendorRooms, profileRank, profileLabel, profileNotice, countPicks, applyAccess, normalizeAccess, gatewayVendors, gatewayId, startToolOf, migrateTypes, lockState, generate, buildAgentFiles, splitModel, fillLocalRemotes, installRepos, effortOf, profileModels, fillStackPaths, setStackPaths, detectLine, addStackHint, HINT_HELP, auditModels, resolveModels, stacksLabel, stackLabel, loadLayers, LAYER_PACKS, folderState, HOSTS, inferHost, hostOf, detectRepos, loadCatalog, repoPacks, PROJECT_NAME, PROJECT_NAME_RULE, PROJECT_TYPES, TYPE_RULES, REPO_KINDS, REPOS_DIR, LOCAL_CONFIG, initWorkspace, cmdInstall, cmdSync, cmdCheck, loadWorkspace, findRoot, kitRoot, isGitUrl };

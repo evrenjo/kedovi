@@ -97,13 +97,20 @@ try {
     // 게이트웨이 별칭(ANTHROPIC_DEFAULT_*_MODEL)이 1M 모델인데 [1m] 이 없으면 Claude Code 가 200k 로 보고 일찍 압축한다
     if (a.connection === 'gateway' && kitLib.window1m) {
       let env = {};
-      try { env = JSON.parse(fs.readFileSync(path.join(require('os').homedir(), '.claude', 'settings.json'), 'utf8')).env || {}; } catch { /* 없음 */ }
+      try { env = JSON.parse(fs.readFileSync(path.join(process.env.CLAUDE_CONFIG_DIR || path.join(require('os').homedir(), '.claude'), 'settings.json'), 'utf8')).env || {}; } catch { /* 없음 */ }
+      // 게이트웨이 목록에 없는 모델을 가리키는 값 (옛 모델 ID 등): 그 모델을 쓰는 도구 · 하위 에이전트가 「모델이 없다」로 실패한다
+      const missing = kitLib.gatewayAliasCheck ? kitLib.gatewayAliasCheck(a).problems : [];
+      const missKeys = new Set(missing.map((x) => x.key));
+      if (missing.length) add(FAIL, '게이트웨이 모델 이름', `${missing.map((x) => `${x.key}=${x.value} (${x.source})`).join(' · ')} 가 게이트웨이 목록에 없습니다. 그 모델을 쓰는 도구(웹 문서 읽기 · 하위 에이전트)가 「모델이 없다」로 실패합니다`,
+        `${kitLib.gatewayAliasHint(missing)} 로 바꾼다. 셸 설정 또는 Claude Code settings.json 의 env (자동으로 고치지 않는다)`);
       const short = ['OPUS', 'SONNET', 'HAIKU', 'FABLE'].map((f) => `ANTHROPIC_DEFAULT_${f}_MODEL`)
+        .filter((k) => !missKeys.has(k))
         .filter((k) => { const v = process.env[k] || env[k]; return v && !/\[1m\]$/i.test(v) && kitLib.window1m(v); });
       add(short.length ? WARN : OK, '컨텍스트 창 (게이트웨이)', short.length ? `${short.join(' · ')} 에 [1m] 이 없어 Claude Code 가 200k 로 봅니다` : '1M 모델에 [1m] 을 붙여 넘김',
         short.length ? `그 값 끝에 [1m] 을 붙인다 (예: ${short[0]}='<게이트웨이 모델>[1m]'). 셸 설정 또는 ~/.claude/settings.json 의 env` : undefined);
       // 반대로 1M 이 아닌 모델(옛 Haiku 등)에 [1m] 이 붙으면 그 모델을 쓰는 도구(웹 문서 읽기 · 요약)가 「모델이 없거나 권한 없음」으로 실패한다
       const over = ['OPUS', 'SONNET', 'HAIKU', 'FABLE'].map((f) => `ANTHROPIC_DEFAULT_${f}_MODEL`)
+        .filter((k) => !missKeys.has(k)) // 목록에 없는 값이면 위 FAIL 하나로 (고칠 값에 [1m] 판단이 들어 있다)
         .filter((k) => { const v = process.env[k] || env[k]; return v && /\[1m\]$/i.test(v) && kitLib.claudeKey && kitLib.claudeKey(v.replace(/\[1m\]$/i, '')) && !kitLib.window1m(v.replace(/\[1m\]$/i, '')); });
       if (over.length) add(WARN, '컨텍스트 창 (게이트웨이)', `${over.join(' · ')} 는 1M 모델이 아닌데 [1m] 이 붙어 있습니다. 그 모델을 쓰는 도구(웹 문서 읽기 등)가 「모델이 없거나 권한 없음」으로 실패합니다`,
         `그 값 끝의 [1m] 을 뗀다. 셸 설정 또는 ~/.claude/settings.json 의 env`);

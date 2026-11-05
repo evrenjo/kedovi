@@ -715,6 +715,7 @@ async function chooseAccess(root) {
       const models = await fetchGatewayModels(g);
       if (models) p.note(gatewayNote(models), `게이트웨이 모델 ${models.length}개`);
       else p.log.warn('모델 목록을 받지 못했습니다. 킷 기본 모델 이름으로 진행합니다. 나중에 kedovi ai refresh 로 다시 조회하세요.');
+      if (models) for (const line of kit.gatewayFetchNotices({ ok: true, models }, { connection: 'gateway', gateway: { url: g.url, models } })) p.log.warn(line.replace(/^⚠ /, ''));
       return { g, models: models || [] };
     }, set: (v) => { st.g = v.g; st.models = v.models; st.vendors = kit.gatewayVendors(v.models); } },
     // 게이트웨이 + 두 회사: 메인 모델 회사
@@ -2479,11 +2480,12 @@ async function cmdAi(argv = []) {
     }
     if (g.key && !gateway.safeUrl(g.url)) { console.warn(`⚠ 게이트웨이 주소가 https 가 아니라 키 없이 조회합니다: ${g.url}`); g = { ...g, key: null }; }
     const r = await gateway.listModels(g.url, g.key);
-    if (!r.ok) console.warn(`⚠ 모델 목록 조회 실패 (${r.error}). 킷 기본 모델 이름으로 진행합니다. 나중에 kedovi ai refresh`);
     next.connection = 'gateway';
     next.gateway = gateway.toSaved(g, r.ok ? r.models : ((raw.gateway || {}).models || []));
     delete next.vendors;
     if (r.ok) console.log(`✔ 게이트웨이 ${g.url}: 모델 ${r.models.length}개\n${gatewayNote(r.models)}`);
+    // 조회 실패 · Claude Code 모델 환경변수가 목록에 없는 모델을 가리키는지 (따로 판단, 문제 있을 때만)
+    for (const line of kit.gatewayFetchNotices(r, kit.normalizeAccess(next))) console.warn(line);
   } else if (sub === 'compose') {
     if (!['mix', 'vendor', 'single'].includes(arg)) fail('사용법: kedovi ai compose mix|vendor|single (섞기 · 한 회사만 · 단일 모델)');
     next.compose = arg;

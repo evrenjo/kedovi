@@ -164,6 +164,7 @@
 | 이름 모양 | 게이트웨이마다 다른 모양을 같은 모델로 알아본다: `claude/claude-opus-5-5` · `anthropic/Claude-Opus-5.5` · `us.anthropic.claude-opus-5-5-v1:0` · `claude-opus-5-5@날짜` · `opus-5-5` |
 | 1M 창 | 1M 창 모델이면 이름 끝에 `[1m]` 을 붙여 넘긴다. Claude Code 는 모르는 이름을 200k 로 보고 일찍 압축하기 때문이다 (보낼 때는 뗀다) |
 | 별칭 연결 | `ANTHROPIC_DEFAULT_*_MODEL` 값 끝에 `[1m]` 이 있어야 한다. 빠지면 `kedovi doctor` 가 알린다 |
+| 목록에 없는 모델 | Claude Code 모델 환경변수(`ANTHROPIC_DEFAULT_*_MODEL` · `ANTHROPIC_MODEL` · `ANTHROPIC_SMALL_FAST_MODEL`)가 게이트웨이 목록에 없는 모델(옛 ID 등)을 가리키면 그 모델을 쓰는 도구 · 하위 에이전트가 실패한다. `kedovi doctor` 가 실패로 알리고 같은 계열 최신 모델을 고칠 값으로 보인다 (`kedovi ai gateway` · `refresh` · 세션 시작에도 알림, 설정 파일은 고치지 않음) |
 
 ## 모델 버전 관리
 

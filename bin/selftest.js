@@ -980,6 +980,65 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   record('AI 연결 방식 (쓰는 AI · 구성 · 게이트웨이 · kedovi ai)', claudeOnly && gptOnly && single && native && win && gptMain && oldHaiku && direct && gwSaved && leaked.length === 0 && cmds, got.join(' · '));
 }
 
+// 게이트웨이 목록에 없는 모델을 가리키는 Claude Code 모델 환경변수 (doctor FAIL · 세션 시작 ⚠ · 조회 직후 알림)
+{
+  const kitLib = require('./kit.js');
+  const URL = 'https://gw.example.test';
+  const acc = (models, url = URL) => ({ connection: 'gateway', gateway: { url, models } });
+  const me = (o) => Object.fromEntries(Object.entries({ ANTHROPIC_BASE_URL: URL, ...o }).map(([k, v]) => [k, { value: v, source: '셸 환경변수' }]));
+  const probs = (models, o, url) => kitLib.gatewayAliasCheck(acc(models, url), { modelEnv: me(o) }).problems;
+  const one = (models, o) => { const p = probs(models, o); return p.length === 1 ? p[0] : null; };
+  // 접두사가 다른 게이트웨이 2종 · 임의 별명
+  const cl = ['claude/claude-opus-5-5', 'claude/claude-sonnet-5-5', 'claude/claude-haiku-5-5', 'claude/claude-haiku-4-5'];
+  const an = ['anthropic/claude-opus-5-5', 'anthropic/claude-haiku-5-5'];
+  const nick = ['team-fast', 'team-smart'];
+  const kinds = one(cl, { ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-4-5-20251001' }).fix === 'claude/claude-haiku-5-5[1m]'
+    && one(an, { ANTHROPIC_DEFAULT_OPUS_MODEL: 'anthropic/claude-opus-4-1' }).fix === 'anthropic/claude-opus-5-5[1m]'
+    && probs(cl, { ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude/claude-haiku-5-5', ANTHROPIC_DEFAULT_OPUS_MODEL: 'CLAUDE/Claude-Opus-5-5' }).length === 0
+    && probs(nick, { ANTHROPIC_MODEL: 'team-smart' }).length === 0 && one(nick, { ANTHROPIC_MODEL: 'team-old' }).fix === null;
+  // [1m] · [1M] 은 떼고 비교, 자체 별칭은 통과
+  const suffix = probs(cl, { ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude/claude-opus-5-5[1m]', ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude/claude-sonnet-5-5[1M]', ANTHROPIC_MODEL: 'sonnet[1m]', ANTHROPIC_SMALL_FAST_MODEL: 'haiku' }).length === 0;
+  // 검사 안 함: 목록 빔 · 공식 주소 · 다른 주소 · 주소 없음. /v1 · 끝 / 차이는 같은 주소
+  const bad = { ANTHROPIC_DEFAULT_HAIKU_MODEL: 'old-haiku' };
+  const skip = !kitLib.gatewayAliasCheck(acc([]), { modelEnv: me(bad) }).checked
+    && !kitLib.gatewayAliasCheck(acc(cl), { modelEnv: me({ ...bad, ANTHROPIC_BASE_URL: 'https://api.anthropic.com' }) }).checked
+    && !kitLib.gatewayAliasCheck(acc(cl), { modelEnv: me({ ...bad, ANTHROPIC_BASE_URL: 'https://other.example.test' }) }).checked
+    && !kitLib.gatewayAliasCheck(acc(cl), { modelEnv: { ANTHROPIC_DEFAULT_HAIKU_MODEL: { value: 'x', source: '셸 환경변수' } } }).checked
+    && probs(cl, { ...bad, ANTHROPIC_BASE_URL: `${URL}/v1/` }).length === 1;
+  // 후보 없음 → 안내 문구
+  const noFix = one(['claude/claude-opus-5-5'], bad).fix === null && /후보 없음, 목록에서 고르기\(kedovi ai show\)/.test(kitLib.gatewayAliasHint(probs(['claude/claude-opus-5-5'], bad)));
+  // 계열 오탐 방지: octopus-99 · sonnetary-9 · 접두사에만 계열 이름
+  const fam = one(['octopus-99', 'claude/claude-opus-5-5'], { ANTHROPIC_DEFAULT_OPUS_MODEL: 'old' }).fix === 'claude/claude-opus-5-5[1m]'
+    && one(['sonnetary-9'], { ANTHROPIC_DEFAULT_SONNET_MODEL: 'old' }).fix === null
+    && one(['opus-gw/llama-3'], { ANTHROPIC_DEFAULT_OPUS_MODEL: 'old' }).fix === null
+    && kitLib.hasFamily('vendor/opus5-fast', 'opus') && !kitLib.hasFamily('octopus-99', 'opus');
+  // 셸 환경변수가 설정 파일보다 우선 (CLAUDE_CONFIG_DIR)
+  const cfg = path.join(tmp, 'gw-claude-cfg');
+  fs.mkdirSync(cfg, { recursive: true });
+  fs.writeFileSync(path.join(cfg, 'settings.json'), JSON.stringify({ env: { ANTHROPIC_BASE_URL: URL, ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-4-5[1m]', ANTHROPIC_DEFAULT_OPUS_MODEL: 'file-opus' } }));
+  const ce = kitLib.claudeModelEnv({ env: { CLAUDE_CONFIG_DIR: cfg, ANTHROPIC_DEFAULT_OPUS_MODEL: 'shell-opus' }, home: tmp });
+  const order = ce.ANTHROPIC_DEFAULT_OPUS_MODEL.value === 'shell-opus' && ce.ANTHROPIC_DEFAULT_OPUS_MODEL.source === '셸 환경변수' && ce.ANTHROPIC_DEFAULT_HAIKU_MODEL.source === 'settings.json';
+  // 조회 직후 알림 3갈래: 실패 / 성공 + 정상(출력 없음) / 성공 + 문제
+  const n = (r, o) => kitLib.gatewayFetchNotices(r, acc(r.ok ? r.models : cl), { modelEnv: me(o) });
+  const fetched = n({ ok: false, error: 'HTTP 500' }, {}).length === 1 && /조회 실패/.test(n({ ok: false, error: 'HTTP 500' }, {})[0])
+    && n({ ok: true, models: cl }, { ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude/claude-haiku-5-5' }).length === 0
+    && (() => { const x = n({ ok: true, models: cl }, bad); return x.length === 1 && /ANTHROPIC_DEFAULT_HAIKU_MODEL='claude\/claude-haiku-5-5\[1m\]'/.test(x[0]); })();
+  // doctor · 세션 시작 훅 실제 실행: 목록에 없음 + [1m] 문제가 겹치면 FAIL 하나
+  const dir = path.join(tmp, 'gw-alias-ws');
+  run(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dir, '--type', 'new'], tmp);
+  const lp = path.join(dir, '.agents', 'local.json');
+  const local = fs.existsSync(lp) ? JSON.parse(fs.readFileSync(lp, 'utf8')) : {};
+  fs.mkdirSync(path.dirname(lp), { recursive: true });
+  fs.writeFileSync(lp, JSON.stringify({ ...local, agents: { ...(local.agents || {}), access: { connection: 'gateway', gateway: { url: URL, models: cl } } } }));
+  const env = { ...process.env, CLAUDE_CONFIG_DIR: cfg, ANTHROPIC_BASE_URL: '', ANTHROPIC_DEFAULT_OPUS_MODEL: '', ANTHROPIC_DEFAULT_HAIKU_MODEL: '', ANTHROPIC_DEFAULT_SONNET_MODEL: '', ANTHROPIC_DEFAULT_FABLE_MODEL: '', ANTHROPIC_MODEL: '', ANTHROPIC_SMALL_FAST_MODEL: '', KEDOVI_HOME: path.join(tmp, 'gw-alias-home') };
+  const doc = spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'doctor.js')], { cwd: dir, encoding: 'utf8', env }).stdout || '';
+  const failOne = (doc.match(/게이트웨이 모델 이름/g) || []).length === 1 && /ANTHROPIC_DEFAULT_HAIKU_MODEL='claude\/claude-haiku-5-5\[1m\]'/.test(doc) && /ANTHROPIC_DEFAULT_OPUS_MODEL='claude\/claude-opus-5-5\[1m\]'/.test(doc) && !/1M 모델이 아닌데 \[1m\]/.test(doc);
+  const hk = spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'hooks', 'model-profile.js')], { cwd: dir, encoding: 'utf8', env: { ...env, CLAUDE_PROJECT_DIR: dir }, input: JSON.stringify({ hook_event_name: 'SessionStart', cwd: dir }) });
+  const hook = hk.status === 0 && /게이트웨이에 없는 모델: ANTHROPIC_DEFAULT_OPUS_MODEL · ANTHROPIC_DEFAULT_HAIKU_MODEL \(kedovi doctor 로 확인\)/.test(hk.stdout);
+  record('게이트웨이에 없는 모델 환경변수 (doctor · 세션 시작 · 조회 직후)', kinds && suffix && skip && noFix && fam && order && fetched && failOne && hook,
+    `접두사 · 별명 ${kinds} · [1m] · 별칭 ${suffix} · 검사 안 함 ${skip} · 후보 없음 ${noFix} · 계열 오탐 ${fam} · 셸 우선 ${order} · 조회 직후 3갈래 ${fetched} · doctor FAIL 하나 ${failOne} · 훅 ${hook}`);
+}
+
 // 역할 에이전트 상한 — Claude 훅이 한 요청의 개수를 세고 넘으면 막는다. Codex 훅에는 넣지 않고 config.toml 동시 상한으로
 {
   const dir = path.join(tmp, 'ai-ws');
