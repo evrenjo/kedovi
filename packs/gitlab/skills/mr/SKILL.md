@@ -8,7 +8,7 @@ argument-hint: "<source 브랜치> [target 브랜치]"
 
 **source → target** MR 을 만든다. 기본은 **생성까지만**이고 머지는 사람이 GitLab 에서 한다. 에이전트 머지 설정 `agentMerge = {{ws:vars.gitlab.agentMerge}}` 가 `true` 면 사용자가 지시한 MR 만 아래 「배포 연쇄」로 머지까지 한다.
 
-도우미: `node packs/gitlab/bin/gitlab-mr.js` = `kedovi gitlab` (`preview` · `create` · `repos` · `pipeline` · `wait` · `merge` · `play` · `retry` · `cancel`, `--dry-run` 지원). 만든 뒤 파이프라인은 `pipeline --mr <번호>` 로 보고 `wait --mr <번호>` 로 끝까지 기다린다. 실행 · 다시 실행 · 머지 · 취소는 사용자 승인을 받은 뒤에만 `--yes` 를 붙인다 (운영 배포 작업은 반드시). 임시 스크립트를 짜지 않고 이 명령을 이어 부른다.
+도우미: `node packs/gitlab/bin/gitlab-mr.js` = `kedovi gitlab` (`preview` · `create` · `repos` · `pipeline` · `wait` · `merge` · `play` · `retry` · `cancel` · `busy`, `--dry-run` 지원), 운영 배포는 `node packs/gitlab/bin/release.js` = `kedovi release`. 만든 뒤 파이프라인은 `pipeline --mr <번호>` 로 보고 `wait --mr <번호>` 로 끝까지 기다린다. 실행 · 다시 실행 · 머지 · 취소는 사용자 승인을 받은 뒤에만 `--yes` 를 붙인다 (운영 배포 작업은 반드시). 임시 스크립트를 짜지 않고 이 명령을 이어 부른다.
 설정: `workspace.json` 의 `repos[].gitlab = {"host": "...", "projectId": 12}`, 토큰은 환경변수 `GITLAB_TOKEN`
 (이름은 `vars.gitlab.tokenEnv` 로 변경) 또는 `git credential fill`. 설정이 없으면 만들지 말고 무엇을 채워야 하는지 안내한다.
 
@@ -118,23 +118,34 @@ target 이 배포로 이어지는 영구 브랜치(`{{ws:vars.branch.develop}}` 
 
 ## 배포 연쇄 (agentMerge = true 인 워크스페이스)
 
-사용자가 "배포해줘" 처럼 머지 · 배포까지 지시했을 때만. 단계마다 결과(MR 링크 · 파이프라인 번호 · 머지 커밋)를 한 줄씩 보고하고, 실패하면 거기서 멈춘다. 각 명령은 끝까지 기다리고 끝 코드로 성공(0) · 실패(1) · 확인 필요(3) · 시간 초과(4)를 알린다.
+사용자가 "배포해줘" 처럼 머지 · 배포까지 지시했을 때만. 임시 스크립트를 짜지 않는다.
+
+**운영 배포(`{{ws:vars.branch.develop}}` → `{{ws:vars.branch.release}}`)는 `kedovi release` 한 명령이다.** 먼저 승인 없이 불러 계획과 판정을 보이고, 사용자 승인(운영 배포가 들어 있으면 선택지 질문으로)을 받은 뒤 `--yes` 로 다시 부른다.
+
+```bash
+kedovi release <r> --deploy                # 계획 · 배포 전 판정만 (끝 코드 3). --dry-run 은 같고 끝 코드 0
+kedovi release <r> --deploy --yes          # 승인 뒤: 판정 → MR(열린 것 다시 씀) → MR 파이프라인 → 머지 → release 파이프라인 → 배포 작업
+```
+
+- 배포 전 판정: develop 머리와 같은 트리의 develop 파이프라인이 성공했고 그 뒤 CI 설정(include 의 project · ref 파일)이 안 바뀌었는지, repo 의 확인 명령(`repos[].gitlab.releaseCheck`)까지. 실패면 develop 파이프라인부터 다시 돌리고 다시 판정한다.
+- MR 제목 · 본문 기본값은 `chore: [{{ws:vars.branch.release}}] {{ws:vars.branch.develop}} 반영 (커밋 N개)` 와 커밋 제목 목록이다. repo 의 언어 · 형식 규칙이 다르면 `--title "…" --description-file <파일>` 로 넣는다 (열린 MR 이 있으면 그것을 그대로 쓴다).
+- 배포 작업 이름은 `repos[].gitlab.deployJob` (없으면 `--job <이름>`, 계획에 최근 수동 작업 후보가 나온다).
+- 단계마다 「멈출 조건」과 결과 한 줄이 나온다. 실패하면 거기서 멈추고 그 줄을 그대로 보고한다. 끝 코드: 0 끝 · 1 실패 · 3 승인 · 선택 필요 · 4 시간 초과 · 5 파이프라인이 안 생김.
+- 파이프라인은 하나씩 돈다 (같은 repo · `runnerGroup` 에 도는 것이 있으면 기다림). 레지스트리 · 네트워크 일시 오류는 작업마다 `vars.gitlab.retryMax` 번까지 다시 실행, 그 밖의 실패는 멈춘다. 운영 배포 작업은 일시 오류여도 다시 돌리지 않고 멈춘다: 배포 상태를 사용자와 확인한 뒤 안내된 `kedovi gitlab retry … --yes` (자동으로 다시 돌리려면 `vars.gitlab.retryDeploy` 를 true).
+
+작업 브랜치 MR(feature 방식, 개발 배포)은 단계 명령을 잇는다. 각 명령은 끝까지 기다리고 끝 코드로 알린다.
 
 ```bash
 kedovi gitlab create --repo <r> --source <작업 브랜치> --title "…" --description-file <파일> --json   # 열린 MR 이 있으면 그것을 쓴다
 kedovi gitlab wait --repo <r> --mr <번호>              # 그 MR 의 지금 커밋 파이프라인이 생길 때까지 기다린 뒤 끝까지 (다시 push 했으면 새 파이프라인)
 kedovi gitlab merge <번호> --repo <r> --yes            # 머지할 수 있는지 확인 → 머지 → 머지 커밋 SHA
-kedovi gitlab create --repo <r> --source {{ws:vars.branch.develop}} --target {{ws:vars.branch.release}} --title "…" --description-file <파일> --json
-kedovi gitlab wait --repo <r> --mr <번호>              # release MR 파이프라인
-kedovi gitlab merge <번호> --repo <r> --yes
-kedovi gitlab wait --repo <r> --ref {{ws:vars.branch.release}}   # 머지 커밋의 배포 파이프라인 (수동 작업에서 멈추면 끝 코드 0 + 수동 작업 이름)
-kedovi gitlab play --repo <r> --id <파이프라인> --job <배포 작업> --yes   # 운영 배포는 이 단계 직전에 사용자에게 한 번 더 묻는다
 ```
 
-trunk 워크스페이스는 앞 세 줄(작업 브랜치 MR)이 없다. push 한 커밋의 개발 배포는 `kedovi gitlab wait --repo <r> --ref {{ws:vars.branch.develop}} --sha <커밋>` 으로 보고, 그 뒤 `{{ws:vars.branch.develop}}` → `{{ws:vars.branch.release}}` MR 부터 이어 간다. `--ref` 는 브랜치 · 태그 모두 되고 `--sha` 는 짧은 SHA 도 된다 (이미 끝난 파이프라인도 잡는다).
+trunk 워크스페이스는 작업 브랜치 MR 이 없다. push 한 커밋의 개발 배포는 `kedovi gitlab wait --repo <r> --ref {{ws:vars.branch.develop}} --sha <커밋>` 으로 보고, 운영 배포는 `kedovi release` 로 한다. `--ref` 는 브랜치 · 태그 모두 되고 `--sha` 는 짧은 SHA 도 된다 (이미 끝난 파이프라인도 잡는다).
 
-- 실패한 작업: `kedovi gitlab pipeline --id <파이프라인> --log` 로 원인을 보고, 고칠 수 없는 일시 오류면 `retry --id <파이프라인> [--job <작업>] --yes`.
+- 실패한 작업: `kedovi gitlab pipeline --id <파이프라인> --log` 로 원인을 보고, 고칠 수 없는 일시 오류면 `kedovi gitlab retry --id <파이프라인> [--job <작업>] --yes` (수동 작업이 이미 실패했으면 `kedovi gitlab play --id <파이프라인> --job <작업> --retry --yes` 도 같다).
 - 같은 브랜치의 낡은 파이프라인이 겹치면 `cancel --ref <브랜치> [--sha <커밋>] --yes` (agentMerge 가 true 일 때만, 사용자 지시 뒤).
+- 러너가 이 PC 면(`vars.gitlab.localRunner`) 로컬 장애 · 시간 시험 전에 `kedovi gitlab busy` 로 CI 가 도는지 본다.
 
 ## CI 스킵 요청
 

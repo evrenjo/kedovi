@@ -41,7 +41,9 @@
 | `kedovi notify setup` | 텔레그램 알림을 켜고 바꿀 때 | 설정 화면 하나에서 알림 수준 · 양방향 대화 · 자리 비움 · 개인 봇 · 팀 방 · 고급 · 시험 발송을 고른다. 이미 한 것은 바꾸기 · 제거 |
 | `kedovi reset` | 이 PC 설정을 처음 상태로 되돌릴 때 | 이 PC 설정(`.agents/local.json`) · 텔레그램 채널 · 세션 임시 기록 · 개인 지침 · 텔레그램 토큰 중 골라서 지운다. 팀 설정 · repos · 핸드오프는 그대로. 워크스페이스를 통째로 지우는 것은 `kedovi remove` |
 | `kedovi notify` · `notify my …` · `notify team …` | 화면 없이 (AI 에게 시킬 때) | 알림 상태 · 개인 봇 연결과 켜고 끄기 · 팀 봇 연결과 팀 방 지정 · 공지 ([알림](notify.md)) |
-| `kedovi handoff find <티켓·기능>` · `check` · `index` · `archive` · `organize` | 지난 기록을 찾을 때 · 기록이 커졌을 때 | 모든 사람의 핸드오프 기록에서 파일:줄로 찾기 · 크기 검사 · 색인 · 보관 · 정리 후보 |
+| `kedovi handoff find <티켓·기능>` · `check` · `index` · `archive` · `organize` | 지난 기록을 찾을 때 · 기록이 커졌을 때 | 모든 사람의 핸드오프 기록에서 파일:줄로 찾기 · 크기 검사 · 색인 · 보관 · 정리 후보. `check` 는 운영 결함 기록의 빈 칸(발견 · 분류 · 해소)도 막는다 |
+| `kedovi budget start\|extend "<작업>" <시간>` · `done` · `status` · `report [--month YYYY-MM]` | 작업 시간을 재고 돌아볼 때 | 시간 예산(1.5배 넘으면 계속할지 묻는다). `report` 는 월간 집계: 끝낸 작업 수 · 예산 초과율 · 1.5배 넘김 · 걸린 시간과 예산 대비 중앙값. 이력은 이 PC 의 `.agents/history/budget.jsonl` (커밋하지 않는다) |
+| `kedovi defects check` · `report [--month YYYY-MM]` | 운영 결함을 기록 · 회고할 때 | 작업별 기록 머리가 「종류: 운영 결함」 인 기록의 발견 · 분류 · 해소 칸 검사, 월간 집계(분류별 건수 · 잠복 = 원인 커밋부터 발견까지 · 해소 시간 = 발견부터 해소까지). 분류 목록은 `vars.defects.categories` |
 | `kedovi plan` · `--short` · `--json` · `--report [시작 [끝]]` · `init` · `check` | 진행 정도를 볼 때 · 단계를 끝냈을 때 · 주간 보고 | 로드맵(`handoffs/PLAN.md`): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것(커밋 · 새 파일 · ID) · 다음. 이슈형은 이슈 보드: 상태별 건수 · 진행 중 이슈 표 · 멈춘 이슈 ⚠ · 개선 후보. `--report` 는 이슈형 기간 보고(기본 오늘까지 7일: 운영 반영 · 진행 중 · 새 접수 · 보류 · 멈춘 이슈). `--json` 은 다른 도구(전광판 등)용, `check` 는 갱신 누락 경고. `external "<위치>"` · `external off` 는 일정 정본이 밖(GitLab 마일스톤 등)일 때 그 위치를 적어 PLAN.md 경고를 끈다 |
 | `kedovi docs build [repo]` · `check` | 기획 문서 · 화면설계서 · 테이블 정의서를 고쳤을 때 | 기획 repo 의 md · 화면설계서 장 → `docs-site/` (정의 ID 앵커 · 근거 색인 · 뷰어 · 정의서 폴더마다 ERD). `check` 는 md 와 `docs-site/` 가 어긋났는지 (기획 repo pre-commit 도 막는다). 옵션 · 경고는 아래 「docs build 자세히」 |
 | `kedovi delegate watch [id]` · `status [id]` · `list` | 다른 도구에 맡긴 리뷰 · 작업(Claude Code ↔ Codex)이 지금 무엇을 하는지 볼 때 | `watch` = 상대 에이전트가 읽은 파일 · 찾기 · 실행한 명령 · 고친 파일 · 중간에 한 말을 생기는 대로 한 줄씩(다른 터미널에서), 끝나면 요약. `status` = 경과 · 개수 · 최근 동작을 한 번. id 를 빼면 마지막 실행 중 작업 |
@@ -56,7 +58,10 @@
 | `kedovi gitlab wait --mr <번호>` · `--id <ID>` · `--ref <브랜치 · 태그> [--sha <커밋>]` | MR · 머지 · push 뒤 파이프라인이 끝나길 기다릴 때 | 지금 커밋(MR 머리 · 머지 커밋 · 브랜치 · 태그 머리, 짧은 SHA 도 된다)의 파이프라인이 이미 있으면 바로 잡고, 없으면 생길 때까지 먼저 기다리고(다시 push 했으면 옛 파이프라인이 아니라 새 것), 끝날 때까지 상태가 바뀔 때마다 한 줄. 끝 코드: 성공 0 · 실패 · 취소 1 · 시간 초과 4 · 파이프라인이 안 생김 5. 수동 작업에서 멈추면 0 과 `play` 명령 |
 | `kedovi gitlab merge <번호> --yes` | 지시받은 MR 을 머지할 때 | 충돌 · 초안 · 토론 · 승인을 확인하고(막 만든 MR 이라 판정 중이거나 파이프라인이 아직 안 생겼으면 몇 초 간격으로 다시 본다), 파이프라인이 돌고 있으면 끝날 때까지 기다린 뒤 MR 머리 커밋으로 머지한다(그사이 push 가 있으면 거부). 머지 커밋 SHA(`merge_commit_sha=…`, `--json`)를 낸다. 이미 머지됐으면 결과만. `vars.gitlab.agentMerge` 가 true 이거나 사람이 터미널에서 칠 때만 한다 |
 | `kedovi gitlab create … --json` | 배포 연쇄에서 MR 을 만들 때 | 같은 source→target 의 열린 MR 이 있으면 새로 만들지 않고 그것을 쓴다 (`{iid, url, reused}`) |
-| `kedovi gitlab play` · `retry` · `cancel` | 수동 작업 실행 · 다시 실행 · 겹친 파이프라인 취소 | `play --id <ID> --job <작업>` = `pipeline --play`. `retry --id <ID>` 는 `--job` 이 없으면 실패한 작업 전부. `cancel --ref <브랜치> [--sha <커밋>]` 은 도는 파이프라인만 (agentMerge 가 true 일 때). 모두 `--yes` 가 없으면 확인 문구만 (끝 코드 3) |
+| `kedovi gitlab play` · `retry` · `cancel` | 수동 작업 실행 · 다시 실행 · 겹친 파이프라인 취소 | `play --id <ID> --job <작업>` = `pipeline --play` (`--retry` 를 더하면 그 작업이 이미 실패 · 취소됐을 때 다시 실행). `retry --id <ID> --job <작업>` = `pipeline --retry <작업>`, 실패 안내에 나오는 다시 실행 명령도 이 꼴이다. `retry --id <ID>` 는 `--job` 이 없으면 실패한 작업 전부. `cancel --ref <브랜치> [--sha <커밋>]` 은 도는 파이프라인만 (agentMerge 가 true 일 때). 모두 `--yes` 가 없으면 확인 문구만 (끝 코드 3) |
+| `kedovi release [repo] [--deploy] [--job <작업>] [--yes] [--dry-run]` | develop 을 운영(release)에 올릴 때 | 배포 전 판정 → release MR(열린 것 다시 씀) → MR 파이프라인 → 머지 → release 파이프라인 → (`--deploy`) 배포 작업을 끝까지. `--yes` 없으면 계획과 판정만 (끝 코드 3). 아래 「release 자세히」 |
+| `kedovi gitlab busy [--repo R]` | 로컬 장애 · 시간 시험 전 · CI 가 느릴 때 | 같은 repo · 러너 그룹의 도는 파이프라인과 이 PC 의 무거운 프로세스. 러너가 이 PC 면(`vars.gitlab.localRunner`) 둘이 겹칠 때 경고하고 끝 코드 2. 읽기만 한다 |
+| `kedovi gitlab runner-watch add [--repo R] [--interval 초] [--dry-run]` · `check` · `status` | CI 러너 디스크가 차거나 대기열이 밀리는 것을 미리 알고 싶을 때 | 디스크 사용률 · 대기 작업 수와 대기 시간 · 작업 시간 급증(최근 중앙값 대비)을 텔레그램으로 알리고 docker 캐시를 상한에 맞춰 정리한다. 아래 「runner-watch 자세히」 |
 | `kedovi board` | 팀 · 프로젝트 현황을 한눈에 볼 때 | 워크스페이스 현황판(로드맵 · 팀원별 마지막 핸드오프 · 미완 작업 · 공지)과 기록 쪽을 이 PC 의 `.agents/board/` 에 만들어 연다. 보기 전용 |
 | `kedovi screens compare <화면 ID>` | 프로토타입이 있는 화면을 구현한 뒤 | 프로토타입과 구현을 같은 폭(`--widths`, 기본 PC 1280 · 폰 390)으로 찍어 나란히 보는 `compare.html` 을 만든다 (screens 팩, Playwright). 프로토타입 = `--proto` · 화면 목록의 「프로토타입」 칸 · `prototype/` 아래 이름에 화면 ID 가 든 파일. 구현 = `--impl <주소 · /경로>` · 화면 진입점 `@spec` 줄의 `@route /경로` (앞부분 `vars.screens.appUrl`). 로그인은 `--storage <상태.json>`, `--find` 는 찍지 않고 찾은 것만. 다른 곳은 「프로토타입 요소 · 구현 · 다른 이유」 표로 보고 · MR 에 남긴다 |
 | `kedovi screens check [repo]` | 화면설계서를 쓴 뒤 | 근거 ID 가 색인에 있는지 · 화면 ID 중복 · Description 줄이 결론 한 줄인지(60자 넘음 · 날짜 · 결정 경위는 ⚠) · 기능 ID 누락(`vars.screens.functionIds`, 화면 목록의 「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |
@@ -65,6 +70,12 @@
 | `kedovi writes add jooq\|jdbc\|sqlalchemy\|node-pg [--repo R] [--dir 모듈] [--dry-run]` | 저장 로직을 시험으로 지키고 싶을 때 · 시험이 DB 에 무엇을 쓰는지 보고 싶을 때 | 쓰기 보고서 기록기를 repo 에 넣는다 (있는 파일은 덮지 않고, 설정 파일은 없는 키만 더한다. spring.factories 는 같은 키의 값 목록에 덧붙인다). 넣을 의존성 · 시험 연결 · 실행 · 기대값 고정 명령을 알려 준다. 아래 「writes 자세히」 |
 | `kedovi writes check [--repo R] [--report <index.json>] [--strict]` | 시험을 돌린 뒤 · 저장 로직 리뷰 때 | 쓰기 보고서와 기능 문서의 「저장」 표를 기능 ID 별로 대조: 표에 없는 쓰기 · 안 쓴 컬럼 · 타입 범위 위험. `--strict` 면 위반 시 exit 1 |
 | `kedovi writes open [--repo R]` | 보고서를 화면으로 볼 때 | 최신 보고서 화면(index.html) 경로를 찍고 연다 |
+| `kedovi apiledger add node\|python\|java [--repo R] [--dir 모듈] [--dry-run]` | 외부 API 연동을 만들거나 고칠 때 · 장애 시험을 넣을 때 | 외부 API 동작 장부 예시 · 시뮬레이터 · 장부 대조 시험 · 실패 주입 세트 · CI 작업 예시를 repo 에 넣는다 (있는 파일은 덮지 않는다). 자세히는 「운영 검증」 |
+| `kedovi apiledger check [--repo R \| --file 장부] [--stale-days N] [--strict]` | 연동 코드를 고친 뒤 · 정기 점검 | 장부 형식 · 미확인 목록 · 확인일이 오래된 것 · timeout 근거 · 시험이 장부 항목을 다 다루는지. 형식 오류면 exit 1, `--strict` 면 오래된 것 · 안 다룬 것도 |
+| `kedovi extremes add postgres` · `check <집계.csv> [--against design] [--strict]` · `fixture <집계.csv> [--out 파일]` | 칸 길이 · 정밀도를 정하거나 바꿀 때 · 실데이터 모양 시험 | 운영 DB 집계 SQL(원문 없이 길이 · null · 최솟값 · 최댓값)을 repo 에 넣고, 칸 정의 대비 여유를 검사하고, 극값 fixture 를 만든다 |
+| `kedovi ops add lifecycle\|alerts\|preflight\|all [--repo R] [--dir compose 폴더] [--dry-run]` | compose 스택을 운영에 올리기 전 · 수명 결함(재시작 루프 · 누수 · 좀비)을 막을 때 | release 수명 시험 스크립트 + GitLab CI job · 운영 수명 지표 수집(cron) + Prometheus 경보 규칙 · 배포 전 확인 스크립트 + 설정을 repo 의 `ops/` 에 넣는다 (있는 파일은 덮지 않는다). 자세히는 아래 「ops 자세히」 |
+| `kedovi ops preflight [서비스...] [--repo R \| --dir 배포 폴더] [--force] [-- 명령]` | 배포 직전 · 서버에서 수동 작업 전 | 재생성될 컨테이너 · 그때 사라지는 상태 · 도는 배치를 보이고 위험하면 exit 1. 분 주기 작업만 돌면 끝나는 틈을 기다린 뒤 `--` 뒤 명령을 바로 실행 |
+| `kedovi ops lifecycle [서비스...] [--repo R \| --dir compose 폴더]` | 수명 시험을 이 PC 에서 먼저 볼 때 | 떠 있는 compose 스택에 release 수명 시험을 돌린다 (실패 있으면 exit 1) |
 | `kedovi rules [list \| off <ID> \| on <ID>]` `[--repo <이름,…>]` | 규칙이 팀에 맞지 않을 때 | 킷이 넣은 규칙을 켜고 끈다 (필수 규칙 제외). `--repo` 는 스택 · 언어 규칙을 그 repo 에서만. 바꾸기는 `packs/project/rules` 에 `replaces` (`repos:` 를 더하면 그 repo 만) |
 | `kedovi rules ondemand\|always <ID…\|repo-tasks>` | AGENTS.md 가 Codex 한도를 넘을 때 | 상시 규칙을 필요할 때만 읽게 한다 (`rules.onDemand`). `repo-tasks` 는 「repo 별 작업 규칙」의 작업별 표를 `.agents/rules/repo-tasks.md` 로 뺀다. sync 경고가 큰 절을 알려 준다 |
 | `kedovi repo add [주소·폴더·이름]` | repo 를 더할 때 | clone · 링크(원격 없는 로컬 repo 도), 또는 이름만 주면 `repos/<이름>` 에 원격 없이 새로 만든다. 인자 없이 = 화면에서 방식(clone · 기존 로컬 폴더 · 새로 만들기)을 먼저 고른다 (레거시 제외. 기획 repo 면 뼈대는 `kedovi init-docs`) → 스택 확인 → sync |
@@ -109,6 +120,40 @@
 | `node-pg` | pg 풀 감싸기 | `.write-report`, 승인본 `test/write-report/approved` |
 
 `check` 판정: 표에 없는 쓰기 · ✖ 타입 범위(자릿수 · 길이 초과, 넓은 값 출처 · DB 오류 22003 · 22001)는 위반, 안 쓴 컬럼 · ⚠(한도에 닿음 · 소수 반올림)은 경고. 보고서 시험의 기능 ID(수용 기준 ID 포함)로 기능 절에 묶는다. 무엇을 · 어떻게는 [쓰기 보고서](write-report.md).
+
+### release 자세히
+
+| 단계 | 하는 일 | 멈출 조건 |
+|---|---|---|
+| 1. 배포 전 확인 | develop 머리와 같은 트리의 develop 파이프라인이 성공했는지, 그 파이프라인 뒤로 CI 설정(include 의 다른 프로젝트 파일 · ref)이 바뀌지 않았는지, repo 확인 명령(`releaseCheck`)이 통과하는지 | 실패면 develop 파이프라인을 새로 돌리고 다시 판정. 그래도 실패면 멈춤 |
+| 2. release MR | develop → release MR. 열린 MR 은 다시 쓴다 | MR 을 만들 수 없음 |
+| 3. MR 파이프라인 | 끝까지 기다린다 | 실패 · 취소 · 시간 초과 |
+| 4. 머지 | 충돌 · 승인 · 파이프라인을 확인하고 머지 (`vars.gitlab.agentMerge`) | 머지할 수 없음 |
+| 5. release 파이프라인 | 머지 커밋의 파이프라인을 끝까지 | 실패 · 안 생김 |
+| 6. 운영 배포 (`--deploy`) | 배포 수동 작업을 실행하고 끝까지 | 작업 없음 · 배포 실패 |
+
+- 파이프라인은 하나씩: 같은 repo(`repos[].gitlab.runnerGroup` 이 같으면 그 repo 들까지)에 도는 파이프라인이 있으면 끝난 뒤 다음 단계로 간다.
+- 일시 오류: 실패한 작업 로그 끝부분이 레지스트리 · 네트워크 일시 오류 모양(i/o timeout · connection reset · TLS handshake timeout · proxyconnect · 레지스트리 502/503/504 · 러너 시스템 실패)이면 그 작업만 `vars.gitlab.retryMax`(기본 2)번까지 다시 실행한다. 모양은 `vars.gitlab.retryPatterns` 로 더한다. 그 밖의 실패는 바로 멈춘다. 운영 배포 작업은 일시 오류여도 다시 실행하지 않고 다시 실행 명령을 보이며 멈춘다 (반쯤 적용된 배포 보호, `vars.gitlab.retryDeploy` 를 켜면 다시 실행).
+- repo 설정(`workspace.json` 의 `repos[].gitlab`): `deployJob`(배포 작업 이름) · `releaseCheck`(확인 명령. 환경변수 `KEDOVI_RELEASE_SHA` · `KEDOVI_RELEASE_TREE` · `KEDOVI_RELEASE_PIPELINE` 을 받고 끝 코드 0 이면 통과) · `runnerGroup`.
+- 끝 코드: 0 끝 · 1 실패 · 3 승인 · 선택 필요 · 4 시간 초과 · 5 파이프라인이 안 생김. 쓰는 법은 [운영 검증](ops-verify.md) 의 「release 명령」.
+
+### runner-watch 자세히
+
+- `add` 는 설정(`runner-watch.json`) · macOS launchd plist(기본 600초) · Linux systemd service · timer 를 만들고 등록 명령을 보인다. 등록은 러너가 도는 머신에서 사람이 한다. 기본 폴더는 이 PC 의 `~/.config/kedovi/runner-watch/<프로젝트>/`, `--repo R` 이면 `repos/R/ops/runner-watch/` 에 스크립트까지 복사한다 (다른 머신으로 옮겨도 돈다).
+- `check` 는 새로 생기거나 풀린 경보만 알린다 (같은 경보는 `notify.repeatMin` 분마다). 알림 명령이 실패 코드를 내면 다음 주기에 다시 보낸다. `--dry-run` 은 알림 · 정리 없이 보이기만.
+- 캐시 상한: docker 빌드 캐시가 `cache.docker.builderKeepGB` 를 넘으면 그만큼만 남기고, 회수 가능한 이미지 중 `imageUntilHours` 지난 것을 지운다. 러너 캐시 폴더(`cache.dirs`)는 `maxGB` 를 넘으면 경보, `cache.clean` 을 켜면 오래된 것부터 지운다.
+- 토큰은 파일에 쓰지 않는다: 환경변수 → `kedovi secret` → git credential.
+
+### ops 자세히
+
+| 넣는 것 | 파일 (`<compose 폴더>/ops/`) | 도는 곳 |
+|---|---|---|
+| `lifecycle` | `lifecycle-test.sh` · `lifecycle.gitlab-ci.yml` | release 브랜치 CI (개발 루프 대기 0) · 이 PC (`kedovi ops lifecycle`) |
+| `alerts` | `container-metrics.sh` · `container-lifecycle.rules.yml` | 서버 cron 1분 → node_exporter textfile → Prometheus 경보 |
+| `preflight` | `preflight.sh` · `preflight.conf` | 배포 폴더 (서버에 kedovi 이 없어도 bash 로) · 이 PC (`kedovi ops preflight`) |
+
+- 스크립트는 docker CLI 와 bash 만 쓴다 (jq 없음). 값은 `workspace.json` vars: `ops.repo`(대상 repo) · `ops.dir`(기본 `ops`) · `ops.metricsPrefix`(지표 접두사) · `branch.release`(CI job 이 도는 브랜치).
+- `preflight` 끝 코드: 0 통과 · 1 위험해서 멈춤 · 2 설정 · 환경 오류. 강제는 `--force` 또는 `PREFLIGHT_FORCE=1`. 설정 형식과 판정은 [운영 검증](ops-verify.md) 의 「배포 전 확인」.
 
 AI 연결 방식과 시작 도구는 **워크스페이스마다** 정하고 `.agents/local.json` 에 저장한다 (이 PC 전용, git 공유 안 함). 구독·게이트웨이는 사람마다 다르기 때문이다.
 

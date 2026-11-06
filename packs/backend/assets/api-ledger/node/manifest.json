@@ -1,0 +1,52 @@
+{
+  "title": "외부 API 장부 · 실패 주입 (Node: node:test)",
+  "files": [
+    {
+      "from": "api-ledger.yaml",
+      "to": "api-ledger.yaml"
+    },
+    {
+      "from": "lib:yaml-lite.js",
+      "to": "test/api-ledger/yaml-lite.cjs"
+    },
+    {
+      "from": "lib:apiledger.js",
+      "to": "test/api-ledger/ledger.cjs",
+      "replace": {
+        "require('./yaml-lite')": "require('./yaml-lite.cjs')"
+      }
+    },
+    {
+      "from": "node/stub.cjs",
+      "to": "test/api-ledger/stub.cjs"
+    },
+    {
+      "from": "node/expectations.cjs",
+      "to": "test/api-ledger/expectations.cjs"
+    },
+    {
+      "from": "node/contract.test.cjs",
+      "to": "test/api-ledger/contract.test.cjs"
+    },
+    {
+      "from": "node/faults.cjs",
+      "to": "test-faults/api-ledger.cjs"
+    },
+    {
+      "from": "ci/api-faults.gitlab-ci.yml",
+      "to": "ci/api-faults.gitlab-ci.yml"
+    }
+  ],
+  "deps": [
+    "의존성 추가 없음 (Node 18+ 기본 모듈)"
+  ],
+  "after": [
+    "api-ledger.yaml 의 예시 API 를 실제 연동 API 로 바꾼다 (모르는 동작은 status: unverified + worst)",
+    "test/api-ledger/expectations.cjs 에 client · calls · behaviors · handled 를 채운다",
+    "vitest · jest 를 쓰면 contract.test.cjs 의 node:test 를 그 도구로 바꾸거나 node --test 를 test 스크립트에 더한다",
+    ".gitlab-ci.yml 에 include: - local: ci/api-faults.gitlab-ci.yml",
+    ".gitignore 에 .api-ledger/ 를 넣는다"
+  ],
+  "run": "node --test test/api-ledger/contract.test.cjs",
+  "faults": "node --test test-faults/api-ledger.cjs"
+}

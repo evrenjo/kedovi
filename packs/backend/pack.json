@@ -1,14 +1,31 @@
 {
   "name": "backend",
   "title": "백엔드 공통 원칙",
-  "summary": "인가·검증·API 계약·데이터·외부 호출·로깅",
-  "description": "프레임워크와 무관한 백엔드 원칙: 기존 관례 따르기, 객체 단위 인가, 경계 입력 검증, 기존 API 계약·하위 호환, 페이지·멱등성, 트랜잭션 경계·동시 수정, 데이터 접근(파라미터 바인딩·N+1·대량 처리), 보안(비밀·SSRF·업로드·의존성), 외부 호출 타임아웃·재시도·설정·정상 종료, 구조화 로깅·추적 ID, 변경 동작 테스트, 저장 로직 변경 때 쓰기 보고서 · 기대값(kedovi writes add sqlalchemy · node-pg). 근거 출처는 docs/SOURCES.md",
+  "summary": "인가·검증·API 계약·데이터·외부 호출·로깅·운영 검증",
+  "description": "프레임워크와 무관한 백엔드 원칙: 기존 관례 따르기, 객체 단위 인가, 경계 입력 검증, 기존 API 계약·하위 호환, 페이지·멱등성, 트랜잭션 경계·동시 수정, 데이터 접근(파라미터 바인딩·N+1·대량 처리), 보안(비밀·SSRF·업로드·의존성), 외부 호출 타임아웃·재시도·설정·정상 종료, 구조화 로깅·추적 ID, 변경 동작 테스트, 저장 로직 변경 때 쓰기 보고서 · 기대값(kedovi writes add sqlalchemy · node-pg), 호출 체인의 시간 예산(남은 예산 상대값 전달 · 엔드포인트별 timeout · 시간 초과 구간 시험), 외부 API 동작 장부(실측만 기대 · 미확인은 최악 응답 시뮬레이터 · 대조 시험 · 실패 주입 세트, kedovi apiledger), 실데이터 극값 fixture · 칸 여유 검사(kedovi extremes), 운영 결함 수정은 고치기 전 실패 → 고친 뒤 통과. 근거 출처는 docs/SOURCES.md",
   "category": "layer",
   "layer": "backend",
   "requires": [
     "core"
   ],
-  "vars": {},
+  "vars": {
+    "apiLedger.path": {
+      "default": "api-ledger.yaml",
+      "desc": "외부 API 동작 장부 위치 (코드 repo 기준). kedovi apiledger check 가 repo 마다 이 파일을 찾는다 (멀티 모듈은 한 단계 아래도)"
+    },
+    "apiLedger.staleDays": {
+      "default": 30,
+      "desc": "장부의 확인일(checked · p99Checked)이 이 일수보다 오래되면 재확인 목록에 올린다. 장부의 staleDays 가 먼저"
+    },
+    "timeBudget.header": {
+      "default": "X-Request-Budget-Ms",
+      "desc": "내부 HTTP 호출에 남은 시간 예산(밀리초 상대값)을 싣는 헤더 이름의 기본 예. 프로젝트에 이미 정한 헤더가 있으면 그것을 쓴다 (gRPC 는 deadline)"
+    },
+    "extremes.warnRatio": {
+      "default": 0.9,
+      "desc": "kedovi extremes check 의 경고 기준: 실데이터 최댓값이 칸 한도의 이 비율 이상이면 ⚠"
+    }
+  },
   "notes": [
     "스택 팩(stack-spring 등)은 이 원칙 위에 그 기술의 구체 규칙만 더한다. 같은 내용을 스택 팩에 반복하지 않는다."
   ]

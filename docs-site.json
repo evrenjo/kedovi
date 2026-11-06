@@ -20,6 +20,7 @@
         "docs/docs-site.md",
         "docs/write-report.md",
         "docs/notify.md",
+        "docs/ops-verify.md",
         "docs/team-models.md"
       ],
       "split": [

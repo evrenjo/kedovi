@@ -23,6 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const { load, devId, git, localDate, isoWeek, repoRel } = require('../lib/workspace');
 const { parseTopic } = require('../lib/topics');
+const defects = require('../lib/defects');
 
 const argv = process.argv.slice(2);
 const cmd = argv[0];
@@ -33,6 +34,7 @@ const ws = load();
 const ROOT = ws.root;
 const HROOT = path.join(ROOT, 'handoffs');
 const ID = opt('id') || devId(ROOT);
+const defectCfg = defects.settings(ws);
 const LIMIT = { latest: 4096, day: 3072, weekWarn: 60 * 1024, todoItems: 30, topicWarn: 40 * 1024 };
 const KNOWN = new Set(['LATEST.md', 'TODO.md', 'INDEX.md', 'topics', 'archive']);
 const WEEK_RE = /^\d{4}-W\d{2}\.md$/;
@@ -132,6 +134,9 @@ function cmdCheck() {
     else if (t.status === '진행 중' && !t.todo.length && !t.waiting.length && !t.later.length && !t.badSchedule.length) warn(`${name}: 완료 조건이 모두 [x] 다. 끝났으면 상태를 완료로 바꾼다`);
     // 날짜 예약 [>] YYYY-MM-DD: 날짜가 없거나 없는 날이면 언제 다시 볼지 알 수 없어 막는다. 지났으면 했는지 · 미룰지 정하게 알린다
     if (t.badSchedule && t.badSchedule.length) bad(`${name}: 날짜 예약 [>] 에 날짜(YYYY-MM-DD)가 없거나 잘못됐다: ${t.badSchedule.map((x) => x.raw).slice(0, 3).join(' / ')}. 「- [>] 2026-11-02 할 일」 꼴로 쓴다`);
+    // 운영 결함 기록(머리 「종류:」 가 vars.defects.kinds): 발견 · 분류 · 해소 칸이 없으면 월간 집계에서 빠지므로 막는다
+    const defect = defects.parseDefect(read(f), defectCfg);
+    if (defect) for (const p of defects.problems(defect, defectCfg)) bad(`${name}: 결함 기록 ${p}`);
     if (t.status === '진행 중' && t.overdue && t.overdue.length) warn(`${name}: 지난 예약 ${t.overdue.length}개 (${t.overdue.map((x) => `${x.date} ${x.text}`).slice(0, 2).join(' / ')}). 했으면 [x], 미루면 날짜를 고친다`);
   }
   const stray = ls(d).filter((e) => !KNOWN.has(e.name) && !(e.isFile() && WEEK_RE.test(e.name))).map((e) => e.name);

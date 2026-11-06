@@ -10,6 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const FR = require('./freshness');
 
 const SKIP_DIRS = new Set(['docs-site', 'html', 'originals', 'node_modules', '.git', '.github', '.gitlab']);
 const SKIP_ROOT = new Set(['AGENTS.md', 'CLAUDE.md', 'AGENTS.override.md', 'CLAUDE.local.md']);
@@ -389,6 +390,12 @@ function health(dir, opts = {}) {
   if (fr.length) warn.push(`파일:줄 참조 ${fr.reduce((a, x) => a + x.refs.length, 0)}곳: ${topList(fr, 5, (x) => `${x.rel}:${x.refs[0].line} 「${x.refs[0].text}」${x.refs.length > 1 ? ` 외 ${x.refs.length - 1}곳` : ''}`)}. 줄 번호는 코드가 바뀌면 틀린다. 기능 · 화면 이름이나 기획 ID 로`);
   const srcs = docs.map((d) => ({ rel: d.rel, list: sourceLines(d.text) })).filter((x) => x.list.length);
   if (srcs.length) warn.push(`본문에 쓴 근거 · 출처 ${srcs.reduce((a, x) => a + x.list.length, 0)}줄: ${topList(srcs, 5, (x) => `${x.rel}:${x.list[0].line}${x.list.length > 1 ? ` 외 ${x.list.length - 1}줄` : ''}`)}. 부가 설명 · 근거 · 출처는 본문을 가리지 않게 인용구로 (> 근거: …)`);
+  // 환경 사실 표(「확인일」 칸): 확인일이 factDays 일 넘은 행 · 확인일이 빈 행
+  const factDays = opts.factDays == null ? FR.DEFAULT_DAYS : opts.factDays;
+  const stale = factDays > 0 ? docs.flatMap((d) => FR.staleRows(d.text, factDays).map((r) => ({ rel: d.rel, ...r }))) : [];
+  if (stale.length) warn.push(`오래된 환경 사실 ${stale.length}행 (확인일 ${factDays}일 넘음, vars.docs.factDays): ${topList(stale.sort((a, b) => b.age - a.age), 5, (x) => `${x.rel}:${x.line} 「${cut(x.fact, 30)}」 ${x.date}`)}. 확인 명령을 다시 돌려 값 · 확인일을 고친다`);
+  const undated = docs.flatMap((d) => FR.undatedRows(d.text).map((r) => ({ rel: d.rel, ...r })));
+  if (undated.length) warn.push(`확인일 없는 환경 사실 ${undated.length}행: ${topList(undated, 5, (x) => `${x.rel}:${x.line} 「${cut(x.fact, 30)}」`)}. 확인 명령을 돌리고 그날 날짜(YYYY-MM-DD)를 적는다`);
   if (heavy.length) warn.push(`머리말에 변경 이력이 쌓인 문서 ${heavy.length}개: ${heavy.slice(0, 5).join(' · ')}${heavy.length > 5 ? ` 외 ${heavy.length - 5}개` : ''}. 이력은 git 에 맡기고(바꾼 이유가 결정이면 결정 기록 ID 를 건다) 머리말에서 지운다`);
   const seen = new Map();
   for (const d of docs) {

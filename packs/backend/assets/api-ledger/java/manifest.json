@@ -1,0 +1,42 @@
+{
+  "title": "외부 API 장부 · 실패 주입 (Java: JUnit 5)",
+  "files": [
+    {
+      "from": "api-ledger.yaml",
+      "to": "api-ledger.yaml"
+    },
+    {
+      "from": "java/ApiLedgerStub.java",
+      "to": "src/test/java/__BASE_PATH__/apiledger/ApiLedgerStub.java"
+    },
+    {
+      "from": "java/ApiLedgerExpectations.java",
+      "to": "src/test/java/__BASE_PATH__/apiledger/ApiLedgerExpectations.java"
+    },
+    {
+      "from": "java/ApiLedgerContractTest.java",
+      "to": "src/test/java/__BASE_PATH__/apiledger/ApiLedgerContractTest.java"
+    },
+    {
+      "from": "java/ApiLedgerFaultsTest.java",
+      "to": "src/test/java/__BASE_PATH__/apiledger/ApiLedgerFaultsTest.java"
+    },
+    {
+      "from": "ci/api-faults.gitlab-ci.yml",
+      "to": "ci/api-faults.gitlab-ci.yml"
+    }
+  ],
+  "deps": [
+    "SnakeYAML: Spring Boot 면 이미 있다. 아니면 testImplementation(\"org.yaml:snakeyaml:<최신>\")",
+    "JUnit 5 (spring-boot-starter-test 에 있다). Java 17+"
+  ],
+  "after": [
+    "api-ledger.yaml 의 예시 API 를 실제 연동 API 로 바꾼다 (모르는 동작은 status: unverified + worst)",
+    "ApiLedgerExpectations 에 CLIENT · CALLS · BEHAVIORS · handled 를 채운다",
+    "Gradle(Kotlin DSL): tasks.test { useJUnitPlatform { excludeTags(\"faults\") } } 와 tasks.register<Test>(\"faultTest\") { testClassesDirs = sourceSets.test.get().output.classesDirs; classpath = sourceSets.test.get().runtimeClasspath; useJUnitPlatform { includeTags(\"faults\") } } (Maven: surefire excludedGroups / groups)",
+    ".gitlab-ci.yml 에 include: - local: ci/api-faults.gitlab-ci.yml",
+    ".gitignore 에 .api-ledger/ 를 넣는다"
+  ],
+  "run": "./gradlew test --tests \"*ApiLedgerContractTest\"",
+  "faults": "./gradlew faultTest"
+}

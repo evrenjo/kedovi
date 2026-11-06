@@ -2,6 +2,21 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.85.0
+
+| 구분 | 내용 |
+|---|---|
+| 명령 | `kedovi release <repo> [--deploy]`: 배포 전 판정(같은 트리 develop 성공 · CI 설정 그대로 · repo 확인 명령) → release MR → 머지 → release 파이프라인 → 배포. 일시 오류 재시도 · 하나씩 실행 · 운영 배포는 자동 재실행 안 함(`gitlab.retryDeploy`) |
+| 명령 | `kedovi apiledger add\|check`: 외부 API 동작 장부 · 시뮬레이터(미확인은 최악 응답) · 대조 시험 · 실패 주입 세트(429 · 지연 · 빈 응답 · 일시 404 · 토큰 지연, CI 병렬 job) |
+| 명령 | `kedovi extremes add\|check\|fixture`: 운영 DB 집계(원문 없음)로 칸 길이 · 여유 검사와 극값 fixture |
+| 명령 | `kedovi ops add lifecycle\|alerts\|preflight` · `ops preflight` · `ops lifecycle`: compose release 수명 시험 · 수명 경보(anon/file/기동 시각) · 배포 전 확인 |
+| 명령 | `kedovi gitlab runner-watch` · `gitlab busy`: 러너 디스크 · 대기열 · 작업 시간 급증 알림, 캐시 상한, CI · 로컬 자원 경합 |
+| 명령 | `kedovi defects check\|report` · `kedovi budget report`: 운영 결함 필수 칸(발견 · 해소 · 분류) 검사와 월간 집계(잠복 · 해소 시간 · 예산 초과율) |
+| 기능 | 문서 신선도: 「확인일」 칸이 30일 지난 환경 사실을 읽으면 재확인 알림 · 문서 점검 경고. 환경 양식에 「확인 명령 · 확인일」 |
+| 규칙 | 백엔드: 호출 체인의 시간 예산 · 실측 범위만 가정 · 운영 결함 검증 표(고치기 전 실패 → 고친 뒤 통과) |
+| 수정 | `notify.js say` 등: 전송 실패 1 · 설정 없음 2 · 사용법 3 으로 끝남 (전에는 0). `kedovi gitlab play --retry` · 다시 실행 안내 문구 |
+| 적용 | `kedovi upgrade` 뒤 sync. 필요한 장치만 `--dry-run` 으로 보고 넣는다 (`kedovi ops add` · `apiledger add` · `gitlab runner-watch add`) |
+
 ## 0.84.1
 
 | 구분 | 내용 |

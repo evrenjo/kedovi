@@ -1,0 +1,70 @@
+# 외부 API 동작 장부. 형식: kedovi 킷 문서 「운영 검증 장치」 (킷 원본 packs/backend/assets/api-ledger/FORMAT.md)
+# 규칙: 코드는 status: measured 인 동작만 기대한다. unverified 는 시뮬레이터가 worst(최악)로 응답한다.
+# 새로 관찰하면 이 파일을 고친다 (checked 확인일 · evidence 근거). 검사: kedovi apiledger check
+version: 1
+staleDays: 30            # 확인일이 이보다 오래되면 재확인 목록에 (기본 30)
+apis:
+  - id: partner          # 외부 API 이름 (예시. 실제 API 로 바꾼다)
+    endpoints:
+      - id: token
+        method: POST
+        path: /oauth/token
+        auth: token        # 토큰 발급 엔드포인트 표시 → 실패 주입에 token-slow 가 붙는다
+        timeoutMs: 3000
+        p99Ms: 1200
+        p99Checked: 2026-11-01
+        p99Evidence: "접근 로그 7일 집계 (집계 명령은 runbook 참고)"
+        ok: { status: 200, body: '{"access_token":"t","expires_in":3600}' }
+        behaviors:
+          - id: refresh-slow
+            kind: token-slow
+            what: 만료 직전 동시 갱신이 몰리면 응답이 느려진다
+            status: unverified
+            worst: { status: 200, delayMs: 2700, body: '{"access_token":"t","expires_in":3600}' }
+      - id: items
+        method: GET
+        path: /v1/items/{id}
+        timeoutMs: 1500     # 공용 기본값이 아니라 이 엔드포인트 p99 근거
+        p99Ms: 820
+        p99Checked: 2026-11-01
+        p99Evidence: "접근 로그 7일 p99 (2026-10-25 ~ 10-31)"
+        ok: { status: 200, body: '{"id":"A1","price":"1200.50","updatedAt":"2026-11-01T09:00:00Z"}' }
+        behaviors:
+          - id: rate-limit
+            kind: rate-limit
+            what: 초당 20회를 넘으면 429 와 Retry-After(초)
+            status: measured
+            checked: 2026-11-01
+            evidence: "운영 로그 2026-10-30 14:02 429 312건, Retry-After: 1"
+            observed: { status: 429, headers: { Retry-After: "1" } }
+            worst: { status: 429 }
+          - id: empty-after-hours
+            kind: empty
+            what: 운영 시간 밖에는 본문 없이 200 이 올 수 있다
+            status: unverified
+            worst: { status: 200, body: "" }
+          - id: missing-briefly
+            kind: transient-404
+            what: 새로 만든 항목은 몇 초 동안 404
+            status: measured
+            checked: 2026-10-28
+            evidence: "실측: 생성 직후 조회 3회 중 1회 404 (명령: scripts/probe-items.sh)"
+            observed: { status: 404, failTimes: 1 }
+            worst: { status: 404, failTimes: 3 }
+          - id: price-as-string
+            kind: shape
+            what: price 는 문자열 십진수다 (숫자로 오지 않음)
+            status: measured
+            checked: 2026-11-01
+            evidence: "공급사 API 문서 v3 §4.2 와 응답 표본 20건"
+            observed: { status: 200, body: '{"id":"A1","price":"1200.50","updatedAt":"2026-11-01T09:00:00Z"}' }
+      - id: list
+        method: GET
+        path: /v1/items
+        timeoutMs: 2500
+        behaviors:
+          - id: order
+            kind: order
+            what: 목록이 updatedAt 순으로 오는지 모른다
+            status: unverified
+            worst: { status: 200, body: '[{"id":"B","updatedAt":"2026-11-01T09:00:00Z"},{"id":"A","updatedAt":"2026-11-01T10:00:00Z"}]' }

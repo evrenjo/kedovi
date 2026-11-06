@@ -193,6 +193,21 @@ server.listen(0, '127.0.0.1', async () => {
     // 다시 실행: 실패한 작업 → 새 작업을 끝까지 보고 실패면 끝 코드 1 · 로그 안내
     r = await run(['pipeline', '--id', '12', '--retry', 'publish', '--yes'], one);
     assert.ok(r.code === 1 && jobState.retried && /새 작업 104/.test(r.out) && /✖ publish failed/.test(r.out) && /--log/.test(r.out), r.out);
+    // 안내 문구의 다시 실행 명령은 그대로 쳐서 동작하는 꼴 (retry --id … --job …)
+    assert.ok(/다시 실행: kedovi gitlab retry --repo api --id 12 --job publish --yes/.test(r.out), r.out);
+    // play 로 실패한 작업을 부르면: --retry 없으면 안내만 (POST 없음), --retry 면 다시 실행
+    const jobRetries = () => seen.filter((x) => x.method === 'POST' && x.path.endsWith('/jobs/102/retry')).length;
+    let n0 = jobRetries();
+    r = await run(['play', '--id', '12', '--job', 'publish', '--yes'], one);
+    assert.ok(r.code === 1 && /이미 failed/.test(r.out) && /kedovi gitlab retry --repo api --id 12 --job publish --yes/.test(r.out) && jobRetries() === n0, r.out);
+    r = await run(['play', '--id', '12', '--job', 'publish', '--retry', '--yes'], one);
+    assert.ok(r.code === 1 && /다시 실행 요청 \(새 작업 104\)/.test(r.out) && jobRetries() === n0 + 1, r.out);
+    // 옛 안내 꼴 retry --retry <작업> 도 그 작업 하나만 (파이프라인 전체 다시 실행이 아니다)
+    r = await run(['retry', '--id', '12', '--retry', 'publish', '--yes'], one);
+    assert.ok(r.code === 1 && jobRetries() === n0 + 2 && !flow.retried12, r.out);
+    // retry --job 으로 아직 안 누른 수동 작업을 부르면 play 명령을 알려 준다
+    r = await run(['retry', '--id', '50', '--job', 'deploy-prod', '--yes'], one);
+    assert.ok(r.code === 1 && /kedovi gitlab play --repo api --id 50 --job deploy-prod --yes/.test(r.out), r.out);
 
     // 배포 연쇄 ─ 셋째 워크스페이스는 에이전트 머지를 켠다
     const three = path.join(tmp, 'three');

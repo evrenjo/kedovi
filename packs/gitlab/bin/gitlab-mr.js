@@ -15,10 +15,14 @@
  *     끝 코드: 성공 0 · 실패 · 취소 1 · 시간 초과 4 · 파이프라인이 안 생김 5. 수동 작업에서 멈추면 0 과 수동 작업 이름.
  * merge    <MR 번호> [--repo R] [--yes] [--timeout 분] [--json]
  *     머지할 수 있는지(충돌 · 초안 · 토론 · 승인 · 파이프라인) 확인하고, 파이프라인이 돌고 있으면 끝날 때까지 기다린 뒤 머지한다. 머지 커밋 SHA 를 낸다.
- * play     --id 파이프라인ID --job <작업> [--repo R] [--yes] [--timeout 분]     (= pipeline --id ID --play <작업>)
+ * play     --id 파이프라인ID --job <작업> [--retry] [--repo R] [--yes] [--timeout 분]     (= pipeline --id ID --play <작업>)
  *     수동 작업 실행: 앞 작업이 끝나 manual 이 될 때까지 기다린 뒤 실행하고 끝날 때까지 상태를 보인다.
- * retry    --id 파이프라인ID [--job <작업>] [--repo R] [--yes] [--timeout 분]
+ *     --retry: 그 작업이 이미 실패 · 취소됐으면 다시 실행한다 (없으면 안내만).
+ * retry    --id 파이프라인ID [--job <작업>] [--repo R] [--yes] [--timeout 분]     (= pipeline --id ID --retry <작업>)
  *     실패한 작업 다시 실행. --job 이 없으면 그 파이프라인의 실패한 작업 전부.
+ * busy     [--repo R] [--json]
+ *     자원 경합 확인 (읽기만): 이 repo · 같은 러너 그룹의 도는 파이프라인 · 작업, 이 PC 의 무거운 프로세스 (vars.gitlab.localRunner).
+ * runner-watch add | check | status | remove     러너 감시 (디스크 · 대기열 · 작업 시간 급증 → 알림, 캐시 상한). 자세히: runner-watch.js
  * cancel   --ref 브랜치 [--sha 커밋] | --id 파이프라인ID [--repo R] [--yes]
  *     도는 파이프라인 취소 (같은 브랜치의 낡은 파이프라인이 겹칠 때).
  *   play · retry · merge · cancel 은 --yes 가 없으면 무엇을 할지만 보이고 멈춘다 (끝 코드 3). 사용자 승인을 받은 뒤에만 --yes.
@@ -302,11 +306,14 @@ const clock = () => { const d = new Date(); return `${two(d.getHours())}:${two(d
 /** 수동 작업 실행(--play) · 다시 실행(--retry): 실행할 수 있을 때까지 기다리고, 실행한 뒤 끝날 때까지 상태를 보인다 */
 async function cmdJobRun(ws, a) {
   const r = repoOrOnly(ws, a.repo);
-  const act = a.play !== undefined ? 'play' : 'retry';
+  let act = a.play !== undefined ? 'play' : 'retry';
   const name = a[act];
+  const retryHint = (n) => `kedovi gitlab retry --repo ${r.name} --id ${id} --job ${n} --yes`;
   if (!name || name === true) die(`--${act} <작업 이름> 이 필요합니다`);
   const id = a.id && a.id !== true ? String(a.id).replace(/^#/, '') : null;
   if (!id) die(`--${act} 는 --id <파이프라인 ID> 와 함께 씁니다 (어느 파이프라인의 작업인지 정확히 정한다)`);
+  // play --retry: 이미 실패 · 취소된 작업이면 다시 실행으로
+  const retryOk = act === 'play' && a.retry !== undefined;
   const poll = Math.max(200, Number(process.env.KEDOVI_POLL_MS) || 5000);
   const until = Date.now() + Math.max(1, Number(a.timeout) || 30) * 60000;
   const detail = await api(ws, r, 'GET', `/pipelines/${encodeURIComponent(id)}`);
@@ -315,6 +322,7 @@ async function cmdJobRun(ws, a) {
   let jobs = await jobsOf();
   let job = pick(jobs);
   if (!job) die(`파이프라인 #${id} 에 '${name}' 작업이 없습니다. 있는 작업: ${[...new Set(jobs.map((j) => j.name))].join(', ') || '없음'}`);
+  if (retryOk && (job.status === 'failed' || job.status === 'canceled')) act = 'retry';
   console.log(`⚠ 작업 ${act === 'play' ? '실행 (수동 작업)' : '다시 실행'}: ${r.name} · 파이프라인 #${id} (${detail.ref} ${String(detail.sha || '').slice(0, 7)}) · ${job.stage}/${job.name} · 지금 ${job.status}`);
   console.log('  운영 배포 · 데이터를 바꾸는 작업은 사용자 승인을 받은 뒤에만 실행한다.');
   if (!a.yes) { console.log('  실행하지 않았습니다. 사용자 승인을 받았으면 같은 명령에 --yes 를 붙여 다시 실행합니다'); process.exit(3); }
@@ -335,10 +343,10 @@ async function cmdJobRun(ws, a) {
     if (job.status === 'manual') {
       job = await api(ws, r, 'POST', `/jobs/${job.id}/play`);
       console.log(`  ${clock()} ▶ 실행 요청 (작업 ${job.id})`);
-    } else if (DONE.has(job.status)) die(`${name} 은(는) 이미 ${job.status} 입니다${job.status === 'success' ? '' : `. 다시 실행: --retry ${name} --yes`}`);
+    } else if (DONE.has(job.status)) die(`${name} 은(는) 이미 ${job.status} 입니다${job.status === 'success' ? '' : `. 다시 실행: ${retryHint(name)}`}`);
     else console.log(`  ${clock()} 이미 시작됨 (${job.status}). 끝날 때까지 봅니다`);
   } else {
-    if (job.status === 'manual') die(`${name} 은(는) 아직 실행하지 않은 수동 작업입니다. --play ${name} --yes`);
+    if (job.status === 'manual') die(`${name} 은(는) 아직 실행하지 않은 수동 작업입니다. 실행: kedovi gitlab play --repo ${r.name} --id ${id} --job ${name} --yes`);
     if (!DONE.has(job.status) || job.status === 'skipped') die(`${name} 은(는) ${job.status} 라 다시 실행할 수 없습니다 (끝난 작업만: failed · canceled · success)`);
     job = await api(ws, r, 'POST', `/jobs/${job.id}/retry`);
     console.log(`  ${clock()} ▶ 다시 실행 요청 (새 작업 ${job.id})`);
@@ -355,7 +363,7 @@ async function cmdJobRun(ws, a) {
   }
   if (job.status === 'success') { console.log(`✔ ${name} 성공 (${took(job.duration)}) ${job.web_url || ''}`.trim()); return; }
   console.log(`✖ ${name} ${job.status} ${job.web_url || ''}`.trim());
-  console.log(`  로그 끝부분: kedovi gitlab pipeline --id ${id} --log${job.status === 'failed' ? ` · 다시 실행: --id ${id} --retry ${name} --yes` : ''}`);
+  console.log(`  로그 끝부분: kedovi gitlab pipeline --repo ${r.name} --id ${id} --log${job.status === 'failed' ? ` · 다시 실행: ${retryHint(name)}` : ''}`);
   process.exit(1);
 }
 
@@ -569,7 +577,9 @@ async function cmdMerge(ws, a) {
 }
 
 async function cmdRetry(ws, a) {
-  if (a.job && a.job !== true) return cmdJobRun(ws, { ...a, retry: a.job });
+  // 작업 하나: --job <이름> (옛 안내의 --retry <이름> 도 같은 뜻)
+  const one = [a.job, a.retry].find((x) => x && x !== true);
+  if (one) return cmdJobRun(ws, { ...a, play: undefined, retry: one });
   const r = repoOrOnly(ws, a.repo);
   const id = a.id && a.id !== true ? String(a.id).replace(/^#/, '') : null;
   if (!id) die('--id <파이프라인 ID> 가 필요합니다 (작업 하나만: --job <이름>)');
@@ -609,6 +619,9 @@ function cmdRepos(ws) {
 async function main() {
   const a = parseArgs(process.argv.slice(2));
   const cmd = a._[0];
+  // 다른 도구로 넘기는 명령 (같은 토큰 · repo 설정)
+  if (cmd === 'busy') return require('./ci-load.js').main(process.argv.slice(3));
+  if (cmd === 'runner-watch') return require('./runner-watch.js').main(process.argv.slice(3));
   if (!['preview', 'create', 'pipeline', 'repos', 'wait', 'merge', 'play', 'retry', 'cancel'].includes(cmd)) {
     const lines = fs.readFileSync(__filename, 'utf8').split('\n');
     const from = lines.indexOf('/*') + 1;
@@ -627,6 +640,11 @@ async function main() {
   return cmdCreate(ws, a);
 }
 
-if (require.main === module) main().catch((e) => die(e.message));
+module.exports = {
+  loadWs, parseArgs, die, token, api, apiRoot, apiBase, repoOf, repoOrOnly, defaultRemoveSource, pipelineFor,
+  // kedovi release · busy 가 다시 쓴다
+  follow, finish, resolveCommit, refHead, allowWrite, cmdMerge, cmdCreate, vars, WAITING, DONE, sleep, clock, mark, took, pollMs, when,
+};
 
-module.exports = { loadWs, parseArgs, die, token, api, apiRoot, apiBase, repoOf, repoOrOnly, defaultRemoveSource, pipelineFor };
+// 내보내기 뒤에 실행한다 (busy · runner-watch 가 이 파일을 다시 require 한다)
+if (require.main === module) main().catch((e) => die(e.message));

@@ -3,16 +3,30 @@
   "title": "인프라·배포 계층 원칙",
   "category": "layer",
   "layer": "infra",
-  "summary": "환경 확정 · plan/diff 먼저 · 반영 승인 · 비밀 출처만",
-  "description": "도구와 무관한 인프라·배포 원칙: 대상 환경(클러스터·컨텍스트·계정·워크스페이스) 확정, 운영 직접 반영 금지와 plan·diff·dry-run 근거, 파괴적 작업(destroy·삭제·state 조작) 건별 승인, 비밀은 출처만, 버전·이미지 태그 고정, 컨테이너 이미지(비루트·다단계·헬스체크), Kubernetes·Helm(리소스·프로브·보안 컨텍스트), IaC(원격 state·잠금·버전 고정·import), Ansible(check·diff·멱등), 배포 파이프라인(권한 최소·승인 단계). infra 역할(인프라 담당)을 더한다",
+  "summary": "환경 확정 · plan/diff 먼저 · 반영 승인 · 비밀 출처만 · compose 수명 시험 · 경보 · 배포 전 확인",
+  "description": "도구와 무관한 인프라·배포 원칙: 대상 환경(클러스터·컨텍스트·계정·워크스페이스) 확정, 운영 직접 반영 금지와 plan·diff·dry-run 근거, 파괴적 작업(destroy·삭제·state 조작) 건별 승인, 비밀은 출처만, 버전·이미지 태그 고정, 컨테이너 이미지(비루트·다단계·헬스체크), Kubernetes·Helm(리소스·프로브·보안 컨텍스트), IaC(원격 state·잠금·버전 고정·import), Ansible(check·diff·멱등), 배포 파이프라인(권한 최소·승인 단계), compose 스택 운영 검증 템플릿(kedovi ops: release 수명 시험 · 운영 수명 경보(메모리 anon/file 분리) · 배포 전 확인 preflight). infra 역할(인프라 담당)을 더한다",
   "requires": [
     "core"
   ],
-  "vars": {},
+  "vars": {
+    "ops.repo": {
+      "default": "",
+      "desc": "kedovi ops 가 템플릿을 넣고 실행할 코드 repo 이름 (비우면 compose 파일이 있는 repo 가 하나일 때 그 repo)"
+    },
+    "ops.dir": {
+      "default": "ops",
+      "desc": "kedovi ops 템플릿 폴더 (compose 폴더 기준 상대 경로)"
+    },
+    "ops.metricsPrefix": {
+      "default": "compose_container",
+      "desc": "운영 수명 지표 이름 접두사 (container-metrics.sh 와 경보 규칙이 같이 쓴다)"
+    }
+  },
   "notes": [
     "도구별 세부 문법은 공식 문서를 따른다. 이 팩은 어느 도구에나 통하는 원칙만 둔다.",
     "실제 환경 표(클러스터·컨텍스트·클라우드 계정·state 위치)는 이 팩이 아니라 project 팩 룰에 둔다. 양식은 packs/infra/docs/environment-table-template.md.",
     "비밀값은 어느 룰에도 적지 않는다. 출처(비밀 저장소 경로·CI 변수 이름)만 적는다.",
-    "근거와 룰별 대응표는 packs/infra/docs/SOURCES.md."
+    "근거와 룰별 대응표는 packs/infra/docs/SOURCES.md.",
+    "compose 스택 운영 검증 스크립트(수명 시험 · 지표 수집 · preflight)는 packs/infra/assets/ops/ 원본을 kedovi ops add 가 repo 에 복사한다. 서버에서 kedovi 없이 bash · docker CLI 로 돈다."
   ]
 }

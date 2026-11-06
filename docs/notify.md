@@ -65,4 +65,5 @@
 
 - 토큰과 개인 채팅 ID 는 repo 밖 `~/.config/kedovi/telegram.env`(권한 600)에 둔다. 팀 봇 토큰은 repo 에 올리지 않고 따로 전달한다.
 - 팀 알림은 워크스페이스의 `pre-push` 훅이 모으고, push 가 원격에 반영된 뒤 따로 보낸다. push 를 막거나 늦추지 않고, push 가 실패하면 보내지 않는다.
+- 스크립트가 부르는 보내기 명령(`notify.js say` · `ask` · `prompt` · `answered` · `announce` · `test`)은 종료 코드로 결과를 알린다: 0 보냄 · 1 전송 실패(텔레그램 API 거부 · 네트워크) · 2 설정 없음(봇 토큰 · 채팅 · 팀 방) · 3 사용법 오류. 훅과 push 뒤 팀 알림은 실패해도 세션 · push 를 막지 않는다.
 - Claude Code · Codex 모두 요청 결과를 알린다. 결정 대기(질문 · 권한 확인) 알림은 Claude Code 에만 있다. 오래 걸린 역할 위임(`delegate.js`)이 끝나도 알린다. 잠깐 끄려면 `KEDOVI_NOTIFY=0`.

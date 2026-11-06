@@ -2,8 +2,8 @@
   "name": "gitlab",
   "title": "GitLab 팀 워크플로",
   "category": "workflow",
-  "summary": "브랜치 전략 · MR 생성 · 이슈 등록 · 파이프라인 조회 · 배포 연쇄(대기 · 머지 · 수동 작업) · 커밋 규칙",
-  "description": "GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.branchMode 를 trunk 로 두면 통합 브랜치 직접 커밋 · 운영 배포만 MR. 머지는 사람만. vars.gitlab.agentMerge 를 켜면 지시받은 MR 만 에이전트가), 커밋 메시지, 이슈·MR 어조, MR 생성 스킬, 이슈 찾기 · 읽기 · 등록 · 조치 보고 댓글 스킬, 파이프라인 조회(kedovi gitlab pipeline) · 수동 작업 실행 · 다시 실행(--play · --retry: manual 이 될 때까지 기다린 뒤 실행하고 끝날 때까지 상태, --yes 없이는 확인 문구만), 배포 연쇄 명령(kedovi gitlab wait · merge · play · retry · cancel, create 는 열린 MR 을 다시 씀)",
+  "summary": "브랜치 전략 · MR 생성 · 이슈 등록 · 파이프라인 조회 · 배포 연쇄(대기 · 머지 · 수동 작업) · 운영 배포 명령(kedovi release) · 러너 감시 · 커밋 규칙",
+  "description": "GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.branchMode 를 trunk 로 두면 통합 브랜치 직접 커밋 · 운영 배포만 MR. 머지는 사람만. vars.gitlab.agentMerge 를 켜면 지시받은 MR 만 에이전트가), 커밋 메시지, 이슈·MR 어조, MR 생성 스킬, 이슈 찾기 · 읽기 · 등록 · 조치 보고 댓글 스킬, 파이프라인 조회(kedovi gitlab pipeline) · 수동 작업 실행 · 다시 실행(--play · --retry: manual 이 될 때까지 기다린 뒤 실행하고 끝날 때까지 상태, --yes 없이는 확인 문구만), 배포 연쇄 명령(kedovi gitlab wait · merge · play · retry · cancel, create 는 열린 MR 을 다시 씀), 운영 배포 한 번에(kedovi release: 같은 트리 develop 파이프라인 · CI 설정 변경 판정 → release MR → 머지 → release 파이프라인 → 배포 작업, 파이프라인은 하나씩 · 일시 오류만 다시 실행), 자원 경합 확인(kedovi gitlab busy), 러너 감시(kedovi gitlab runner-watch: 디스크 · 대기열 · 작업 시간 급증 알림, 캐시 상한)",
   "requires": [
     "core"
   ],
@@ -31,12 +31,33 @@
     "gitlab.commitNote": {
       "default": "",
       "desc": "커밋 메시지 추가 규칙 한 줄(선택). 비우면 아무것도 안 나온다. 예: \"- **고객사 repo 는 영어 한 줄만** — 괄호 부연·근거 금지\""
+    },
+    "gitlab.retryMax": {
+      "default": 2,
+      "desc": "kedovi release 가 일시 오류(레지스트리 · 네트워크: i/o timeout · connection reset · TLS handshake timeout · proxyconnect · 레지스트리 502/503/504 · 러너 시스템 실패)로 실패한 작업을 다시 실행하는 횟수 (작업마다, 0 이면 안 함). 그 밖의 실패는 바로 멈춘다"
+    },
+    "gitlab.retryPatterns": {
+      "default": [],
+      "desc": "일시 오류로 볼 로그 줄 모양(정규식, 대소문자 무시)을 더한다. 예: [\"toomanyrequests\", \"unexpected EOF\"]. 실패한 작업 로그 끝 80줄에서 찾는다"
+    },
+    "gitlab.retryDeploy": {
+      "default": false,
+      "desc": "kedovi release --deploy 의 운영 배포 작업도 일시 오류면 다시 실행할지. false(기본)면 반쯤 적용된 배포를 다시 돌리지 않게, 일시 오류로 보여도 다시 실행 명령을 보이고 멈춘다 (사람이 배포 상태를 확인한 뒤 kedovi gitlab retry). build · promote 같은 앞 작업은 이 값과 상관없이 다시 실행한다"
+    },
+    "gitlab.localRunner": {
+      "default": false,
+      "desc": "CI 러너가 이 PC 와 같은 머신이면 true. kedovi release 가 CI 를 기다리는 동안 로컬 무거운 작업(docker · gradle · 테스트 등 CPU 50% 이상)을 경고하고, kedovi gitlab busy 가 CI 와 로컬 작업이 겹치는지 알린다"
+    },
+    "gitlab.localHeavy": {
+      "default": "",
+      "desc": "무거운 로컬 프로세스 이름(정규식). 비우면 docker · qemu · java · gradle · node · python · cargo 등 기본 목록"
     }
   },
   "notes": [
     "MR 대상 repo 는 workspace.json repos[] 항목에 \"gitlab\": {\"host\": \"gitlab.example.com\", \"projectId\": 12} 를 적는다. 선택: \"apiBase\"(기본 https://<host>/api/v4).",
     "토큰은 환경변수 GITLAB_TOKEN (이름은 workspace.json vars.gitlab.tokenEnv 로 바꿀 수 있다) → 비밀값 저장소(kedovi secret set GITLAB_TOKEN, 프로젝트 > 전역) → 없으면 git credential fill 로 host 자격증명을 읽는다 (git 계정 비밀번호는 API 가 거부한다). 토큰은 출력하지 않는다.",
-    "머지 후에도 지우지 않을 상시 작업 브랜치가 있으면 vars.gitlab.persistentBranches 배열에 적는다 (remove_source_branch=false 로 등록)."
+    "머지 후에도 지우지 않을 상시 작업 브랜치가 있으면 vars.gitlab.persistentBranches 배열에 적는다 (remove_source_branch=false 로 등록).",
+    "운영 배포(kedovi release) 설정은 repos[] 항목의 gitlab 에 더한다: \"deployJob\": 배포 수동 작업 이름(없으면 --job), \"releaseCheck\": 배포 전 확인 명령(셸, repo 폴더에서 실행, 끝 코드 0 = 통과. 환경변수 KEDOVI_RELEASE_SHA · KEDOVI_RELEASE_TREE · KEDOVI_RELEASE_PIPELINE · KEDOVI_RELEASE_REF 를 받는다. 예: 레지스트리에 그 SHA 의 이미지 태그가 있는지), \"runnerGroup\": 같은 러너를 쓰는 repo 끼리 같은 이름(파이프라인을 하나씩 돌린다)."
   ],
   "secrets": [
     {

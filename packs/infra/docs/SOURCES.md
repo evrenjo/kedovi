@@ -25,6 +25,11 @@
 | P2 | GitLab, *CI/CD variables* | https://docs.gitlab.com/ci/variables/ | 마스킹 · 보호 변수 · 로그 노출 주의 |
 | P3 | GitLab, *Deployment safety* | https://docs.gitlab.com/ci/environments/deployment_safety/ | 보호 환경 · 배포 승인 · 동시 배포 막기 · 오래된 배포 작업 막기 |
 | G1 | The Twelve-Factor App, *Config* | https://12factor.net/config | 설정 · 비밀은 코드 밖(환경)에 |
+| O1 | Docker, *Start containers automatically* | https://docs.docker.com/engine/containers/start-containers-automatically/ | 재시작 정책 · 손으로 멈춘 컨테이너는 정책이 살리지 않음 (`docker kill` 도 그렇게 동작함을 2026-11 Docker 29 에서 실측: 그래서 수명 시험은 호스트 PID 로 SIGKILL) |
+| O2 | Docker, *Dockerfile reference: HEALTHCHECK* | https://docs.docker.com/reference/dockerfile/#healthcheck | interval · timeout · start period · retries 의 뜻 (유예 = start period + interval × retries) |
+| O3 | Docker, *Compose services: init* · *docker compose config* | https://docs.docker.com/reference/compose-file/services/#init | `init: true` 로 PID 1 이 자식(좀비)을 거둔다 · `config --hash` 가 서비스 설정 해시를 낸다 (컨테이너 라벨 `com.docker.compose.config-hash` 와 같음을 실측) |
+| O4 | Linux kernel, *Control Group v2* | https://docs.kernel.org/admin-guide/cgroup-v2.html | `memory.stat` 의 anon(익명 메모리) · file(page cache) · `pids.max` |
+| O5 | Prometheus, *node_exporter textfile collector* · *Metric and label naming* | https://github.com/prometheus/node_exporter#textfile-collector | `.prom` 을 원자적으로(임시 파일 → mv) 쓴다 · 카운터는 `_total` 접미사 (https://prometheus.io/docs/practices/naming/) |
 
 ## 룰별 근거
 
@@ -36,3 +41,4 @@
 | 30-kubernetes | 선언형 · 리소스 · 프로브 · 보안 컨텍스트 · 이미지 · 차트 | K1 ~ K5 · H1 |
 | 40-iac | 원격 state · 잠금 · plan 저장 · 버전 · import · Ansible check | T1 ~ T6 · A1 |
 | 50-pipelines | 권한 최소 · 비밀 · 고정 · 승인 · 동시 실행 | P1 ~ P3 |
+| 20-containers | 헬스체크 유예 · init · PIDS · compose 수명 시험 · 수명 경보(anon/file) · preflight | O1 ~ O5 |

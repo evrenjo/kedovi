@@ -1,0 +1,21 @@
+{
+  "title": "외부 API 장부 · 실패 주입 (Python: pytest)",
+  "files": [
+    { "from": "api-ledger.yaml", "to": "api-ledger.yaml" },
+    { "from": "python/api_ledger_stub.py", "to": "tests/api_ledger_stub.py" },
+    { "from": "python/api_ledger_expectations.py", "to": "tests/api_ledger_expectations.py" },
+    { "from": "python/test_api_ledger.py", "to": "tests/test_api_ledger.py" },
+    { "from": "ci/api-faults.gitlab-ci.yml", "to": "ci/api-faults.gitlab-ci.yml" }
+  ],
+  "deps": ["pip install pyyaml pytest  (개발 의존성에 넣는다)"],
+  "after": [
+    "api-ledger.yaml 의 예시 API 를 실제 연동 API 로 바꾼다 (모르는 동작은 status: unverified + worst)",
+    "tests/api_ledger_expectations.py 에 client · CALLS · BEHAVIORS · handled 를 채운다",
+    "pytest 설정(pyproject.toml [tool.pytest.ini_options])에 markers = [\"faults: 실패 주입 세트\"] 와 addopts = \"-m 'not faults'\"",
+    "tests 가 패키지가 아니면 rootdir 기준 import 가 되게 conftest.py 나 pythonpath = [\"tests\"] 를 둔다",
+    ".gitlab-ci.yml 에 include: - local: ci/api-faults.gitlab-ci.yml",
+    ".gitignore 에 .api-ledger/ 를 넣는다"
+  ],
+  "run": "pytest tests/test_api_ledger.py",
+  "faults": "pytest -m faults -o addopts='' tests/test_api_ledger.py"
+}

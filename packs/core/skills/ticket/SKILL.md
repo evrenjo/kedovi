@@ -8,6 +8,17 @@ description: 이슈·티켓 한 건(장애·결함·QA·UAT 지적·요청)을 �
 입력: 티켓 번호와 내용(현상·재현 조건·발생 시각). 없으면 먼저 묻는다.
 GitHub · GitLab 이슈 번호면 `github-issue` · `gitlab-issue` 스킬의 읽기로 본문 · 댓글을 먼저 읽는다 (그 팩이 켜져 있을 때).
 
+## 0. 결함 기록 머리 (운영 결함 · 장애)
+운영에서 난 결함이면 작업별 기록(`handoffs/<id>/topics/<티켓>.md`) 머리에 아래 칸을 쓴다. 월간 집계(`kedovi defects report`: 분류별 잠복 · 해소 시간)의 근거이고, `handoff.js check` · `kedovi defects check` 가 빈 칸을 막는다.
+```
+종류: 운영 결함
+분류: {{ws:vars.defects.categories}} 중 하나
+발견: YYYY-MM-DD HH:MM      (알게 된 시각)
+해소: YYYY-MM-DD HH:MM      (운영에서 더 나지 않게 된 시각. 상태가 완료면 필수)
+원인 커밋: <repo>@<커밋>     (선택. 원인을 넣은 커밋. 잠복 = 그 시각부터 발견까지. 커밋이 아니면 발생: YYYY-MM-DD HH:MM)
+```
+분류가 목록에 없으면 가장 가까운 것을 고르고 사용자에게 알린다 (목록을 바꾸려면 `workspace.json` 의 `vars.defects.categories`).
+
 ## 1. 영향 범위
 - 현상이 나타나는 화면·API·배치와, 같은 데이터를 쓰는 다른 경로를 찾는다 (`.agents/rules/core--30-change-impact.md` 의 전수 검색).
 - 운영 중인 시스템이면 운영 영향(몇 명·몇 건)을 조회로 확인한다. 운영 환경은 **조회만**.

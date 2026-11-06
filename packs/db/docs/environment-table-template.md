@@ -11,13 +11,14 @@ load: always
 
 ## DB 환경
 
-| 별칭 | DBMS | 인스턴스(호스트:포트/DB) | 스키마 | 계정 출처 | 비고 |
-|---|---|---|---|---|---|
-| local | PostgreSQL 16 | localhost:5432/app | public | 로컬 기본값 | 임베디드·도커 |
-| dev | PostgreSQL 16 | dev-db.internal:5432/app | app_dev | `.run/dev.run.xml` | 우리 개발 서버 |
-| qa | PostgreSQL 16 | … | app_qa | … | 조회만 |
-| prd | PostgreSQL 16 | … | app_prd | 키체인 `app-prd` | **직접 접속·변경 금지** |
+| 별칭 | DBMS | 인스턴스(호스트:포트/DB) | 스키마 | 계정 출처 | 비고 | 확인 명령 | 확인일 |
+|---|---|---|---|---|---|---|---|
+| local | PostgreSQL 16 | localhost:5432/app | public | 로컬 기본값 | 임베디드·도커 | `psql -c 'select version()'` | 2026-01-15 |
+| dev | PostgreSQL 16 | dev-db.internal:5432/app | app_dev | `.run/dev.run.xml` | 우리 개발 서버 | `psql -h dev-db.internal -c 'select version()'` | 2026-01-15 |
+| qa | PostgreSQL 16 | … | app_qa | … | 조회만 | … | … |
+| prd | PostgreSQL 16 | … | app_prd | 키체인 `app-prd` | **직접 접속·변경 금지** | 운영 담당자에게 확인 | 2026-01-15 |
 
+- 확인 명령 · 확인일: 그 행이 지금도 맞는지 다시 볼 명령과 마지막으로 본 날. 30일(vars.docs.factDays) 지나면 에이전트가 읽을 때 재확인 알림이 나온다. 칸이 없는 옛 표는 검사하지 않는다.
 - 모호한 "개발DB" = dev / 공유 개발DB 중 어느 것인지 확인받는다.
 - 스키마는 `<별칭>.<스키마>` 로 부른다 (예: `dev.app_dev`).
 - 스키마 이름 규칙이 환경마다 다르면(운영만 접두 없음 등) 여기 적는다 — 넘겨짚기 쉬운 곳이다.

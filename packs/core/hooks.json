@@ -48,6 +48,7 @@
     { "script": "hooks/channel-progress.js", "timeout": 10, "agents": "claude" },
     { "script": "hooks/chat-prefs.js", "timeout": 5, "agents": "all" },
     { "matcher": "Bash", "script": "hooks/secret-guard.js", "timeout": 5, "agents": "all" },
+    { "matcher": "Read|Bash", "script": "hooks/fact-freshness.js", "timeout": 5, "agents": "all" },
     { "matcher": "AskUserQuestion", "script": "hooks/notify.js", "timeout": 5, "agents": "claude" },
     { "matcher": "mcp__plugin_telegram.*reply", "script": "hooks/notify.js", "timeout": 5, "agents": "claude" }
   ],

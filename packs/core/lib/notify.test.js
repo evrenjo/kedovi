@@ -296,7 +296,7 @@ console.log('notify.test.js 결정 질문 · 음성 문장 ok');
   const server = http.createServer((req, res) => {
     const body = [];
     req.on('data', (c) => body.push(c));
-    req.on('end', () => { got.push({ url: req.url, type: req.headers['content-type'] || '', body: Buffer.concat(body).toString('utf8') }); res.setHeader('content-type', 'application/json'); res.end('{"ok":true,"result":{}}'); });
+    req.on('end', () => { got.push({ url: req.url, type: req.headers['content-type'] || '', body: Buffer.concat(body).toString('utf8') }); res.setHeader('content-type', 'application/json'); res.end(/\/botBAD\//.test(req.url) ? '{"ok":false,"description":"Bad Request: chat not found"}' : '{"ok":true,"result":{}}'); });
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   process.env.KEDOVI_TELEGRAM_API = `http://127.0.0.1:${server.address().port}`;
@@ -337,6 +337,37 @@ console.log('notify.test.js 결정 질문 · 음성 문장 ok');
   assert.deepStrictEqual(doneOnly.map((t) => t.split(' ')[0]), ['✅'], `리모트 연결 중 기본은 작업 끝만: ${JSON.stringify(doneOnly)}`);
   assert.deepStrictEqual(await runRemote('quiet'), [], 'remote quiet 면 아무것도');
   assert.strictEqual((await runRemote('send')).length, 3, 'remote send 면 모두');
+  // 명령의 종료 코드: 보냄 0 · 전송 실패 1 · 설정 없음 2 · 사용법 3 (스크립트가 실패를 알 수 있게)
+  const cli = (args, token, input) => {
+    const conf = path.join(wsr, `config-${token || 'none'}`);
+    fs.mkdirSync(conf, { recursive: true });
+    if (token) fs.writeFileSync(path.join(conf, 'telegram.env'), `TELEGRAM_BOT_TOKEN=${token}\n`);
+    // 같은 프로세스의 가짜 서버가 답해야 하므로 spawnSync 가 아니라 비동기로
+    return new Promise((resolve) => {
+      const c = require('child_process').spawn(process.execPath, [path.join(__dirname, '..', 'bin', 'notify.js'), ...args], { cwd: wsr, env: { ...process.env, CLAUDE_PROJECT_DIR: wsr, KEDOVI_CONFIG_DIR: conf } });
+      let stdout = ''; let stderr = '';
+      c.stdout.on('data', (d) => { stdout += d; });
+      c.stderr.on('data', (d) => { stderr += d; });
+      c.on('close', (status) => resolve({ status, stdout, stderr }));
+      c.stdin.end(input || '');
+    });
+  };
+  fs.writeFileSync(path.join(wsr, '.agents', 'local.json'), JSON.stringify({ notify: { level: 'decisions', chat: '42' } }));
+  assert.strictEqual((await cli(['say'], 'R', '# 끝\n- a')).status, 0, 'say 보냄 = 0');
+  const bad = await cli(['say'], 'BAD', '# 끝');
+  assert.strictEqual(bad.status, 1, `say 전송 실패 = 1: ${bad.stdout}${bad.stderr}`);
+  assert.match(bad.stderr, /전송 실패: Bad Request/);
+  assert.strictEqual((await cli(['say'], '', '# 끝')).status, 2, 'say 설정 없음 = 2');
+  assert.strictEqual((await cli(['say'], 'R', '')).status, 3, 'say 빈 입력 = 3');
+  assert.strictEqual((await cli(['answered', 'x'], 'BAD')).status, 1, 'answered 전송 실패 = 1');
+  assert.strictEqual((await cli(['prompt', '1'], 'BAD')).status, 1, 'prompt 전송 실패 = 1');
+  assert.strictEqual((await cli(['test'], 'BAD')).status, 1, 'test 전송 실패 = 1');
+  assert.strictEqual((await cli(['test'], '')).status, 2, 'test 설정 없음 = 2');
+  const askFile = path.join(wsr, 'ask.json');
+  fs.writeFileSync(askFile, JSON.stringify({ decisions: [{ title: 'A', options: [{ label: 'x' }] }] }));
+  assert.strictEqual((await cli(['ask', '--file', askFile], 'BAD')).status, 1, 'ask 전송 실패 = 1');
+  assert.strictEqual((await cli(['ask', '--file', askFile], 'R')).status, 0, 'ask 보냄 = 0');
+  assert.strictEqual((await cli(['announce', 'x'], 'R')).status, 2, 'announce 팀 방 없음 = 2');
   fs.rmSync(wsr, { recursive: true, force: true });
   server.close();
   delete process.env.KEDOVI_TELEGRAM_API;

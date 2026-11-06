@@ -1,0 +1,40 @@
+# release 수명 시험 job (kedovi ops add lifecycle 이 넣은 예시)
+#
+# 붙이는 법: .gitlab-ci.yml 에
+#   include:
+#     - local: __OPS_DIR__/lifecycle.gitlab-ci.yml
+# stage 는 프로젝트의 stages 에 맞춰 바꾼다. release 브랜치에서만 돌아 개발 루프(develop 커밋) 대기는 0 이다.
+#
+# 러너: docker 실행기 + docker:dind 서비스(privileged), 또는 Docker 가 있는 shell 러너.
+# SIGKILL · 좀비 검사는 도우미 컨테이너를 --pid=host 로 띄운다. 막혀 있으면 SIGKILL 은 docker kill + start 로 대신하고 경고한다.
+# 시험할 이미지: compose 파일이 release 이미지를 가리키게 한다 (예: 이미지 태그를 CI 변수로 받는 override 파일을 COMPOSE 에 더함).
+
+ops-lifecycle:
+  stage: test
+  image: docker:27-cli
+  services:
+    - name: docker:27-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    COMPOSE: "docker compose -f compose.yml"
+    WATCH_SEC: "60"
+    HEALTH_TIMEOUT: "180"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "__RELEASE_BRANCH__"'
+  before_script:
+    - apk add --no-cache bash
+    - $COMPOSE up -d --wait --wait-timeout 300
+  script:
+    - bash __OPS_DIR__/lifecycle-test.sh
+  after_script:
+    - $COMPOSE ps -a > lifecycle-ps.txt 2>&1 || true
+    - $COMPOSE logs --no-color --tail 300 > lifecycle-logs.txt 2>&1 || true
+    - $COMPOSE down -v || true
+  artifacts:
+    when: always
+    paths:
+      - lifecycle-ps.txt
+      - lifecycle-logs.txt
+    expire_in: 7 days
+  timeout: 30m

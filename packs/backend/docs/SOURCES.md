@@ -72,6 +72,12 @@ backend 팩 룰이 기대는 공개 문서 목록과, **룰별 근거**·**출�
 | R10 | The Twelve-Factor App — IV. Backing services | https://12factor.net/backing-services | DB·큐·캐시는 설정으로 바꿔 끼우는 연결 자원 |
 | R11 | Kubernetes — Liveness, Readiness, Startup Probes | https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/ | 살아 있음 검사는 외부 의존을 보지 말 것(연쇄 장애) |
 | R12 | Kubernetes — Pod Lifecycle (termination) | https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/ | SIGTERM → 유예(기본 30초) → SIGKILL, 엔드포인트 제거와 동시 진행 |
+| R13 | gRPC: Deadlines | https://grpc.io/docs/guides/deadlines/ | 모든 호출에 deadline, 서버는 넘긴 요청을 멈춤, 전파 때 시계 차이 때문에 경과 시간을 뺀 timeout 으로 바꿔 보냄 |
+| R14 | gRPC over HTTP/2 protocol | https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md | `grpc-timeout` 머리는 남은 시간 상대값(값 + 단위) |
+| R15 | Google SRE Book: Addressing Cascading Failures | https://sre.google/sre-book/addressing-cascading-failures/ | deadline 전파, 남은 시간이 부족한 요청은 처리하지 않기, 취소 전파, 재시도 증폭 |
+| R16 | Google SRE Book: Testing for Reliability | https://sre.google/sre-book/testing-reliability/ | 장애 상황을 시험으로 재현, 실패 경로 시험 |
+| R17 | JDK `HttpRequest.Builder.timeout` | https://docs.oracle.com/en/java/javase/21/docs/api/java.net.http/java/net/http/HttpRequest.Builder.html | 요청 timeout 은 응답(머리)을 받을 때까지. 본문 읽기 중 멈춤은 덮지 않는다 (킷이 2026-11 실측) |
+| R18 | Requests: Advanced Usage: Timeouts | https://requests.readthedocs.io/en/latest/user/advanced/ | 연결 · 읽기 timeout 따로, 읽기 timeout 은 서버가 보낸 바이트 사이 간격 (총시간 아님) |
 
 ### 관측
 
@@ -85,6 +91,7 @@ backend 팩 룰이 기대는 공개 문서 목록과, **룰별 근거**·**출�
 | ID | 제목 | URL | 한 줄 요지 |
 |---|---|---|---|
 | T1 | Martin Fowler / Ham Vocke — The Practical Test Pyramid | https://martinfowler.com/articles/practical-test-pyramid.html | 단위 많이·통합 일부·E2E 적게, 동작을 테스트, 실제 DB, 외부는 스텁, 계약 테스트, 중복 제거 |
+| T2 | Martin Fowler: ContractTest | https://martinfowler.com/bliki/ContractTest.html | 테스트 대역(스텁)은 실제 서비스와 어긋날 수 있다: 대역이 가정한 동작을 실제와 대조해 두어야 한다 |
 
 ### 공개 AGENTS.md (에이전트 규칙 사례)
 
@@ -170,10 +177,16 @@ backend 팩 룰이 기대는 공개 문서 목록과, **룰별 근거**·**출�
 | 70 외부 호출 | 설정 코드 밖·값별 설정·기동 때 실패 | R6, R10 |
 | 70 외부 호출 | 상태 없는 프로세스·정상 종료·빠른 기동 | R7, R8, R12 |
 | 70 외부 호출 | 살아 있음 검사에 외부 의존 금지 | R11 |
+| 70 외부 호출 | 외부 API 엔드포인트별 timeout · 실측 p99 근거 | R1 (백분위 기준), 킷 원 규칙(공용 기본값으로 운영 결함 실측) |
+| 70 외부 호출 | 남은 예산을 상대값으로 전파 · 받는 쪽이 대기 · 재시도까지 예산 안에서 · 취소 전파 | R13, R14, R15, R4 |
+| 70 외부 호출 | 시간 초과 구간(연결 · 머리 · 본문 중) 분류와 시험 고정 | R17, R18, R16 |
+| 70 외부 호출 | 외부 API 동작 장부: 실측만 기대 · 미확인은 최악 · 확인일 · 근거 | T2 (대역과 실제의 대조), R16, 킷 원 규칙(외부 API 가정이 운영 결함 비용 1위였던 실측) |
 | 80 테스트 | 바뀐 동작마다 실패하는 테스트, 기존 로직 테스트 추가 안 함 | G4 |
 | 80 테스트 | 층 나누기·중복 제거·동작 테스트·실제 DB·외부 스텁·계약 | T1 |
 | 80 테스트 | 인가 거부 케이스 | S2, S8 |
 | 80 테스트 | 시간 고정·로그 문자열 대조 금지·합성 데이터 | G4, G2 |
+| 80 테스트 | 실데이터 극값(집계만, 원문 없음) · 칸 여유 | S16 (개인정보 금지), G2 (고객 데이터를 픽스처에 넣지 않기), 킷 원 규칙 |
+| 80 테스트 | 실패 주입 세트를 CI 병렬 작업으로 · 운영 결함은 고치기 전 실패 → 고친 뒤 통과 | R16, G4 (그 변경 없이는 실패하는 테스트) |
 
 ## 3. 교차 검토 — 출처끼리 어긋나는 곳과 킷의 선택
 

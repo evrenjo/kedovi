@@ -37,6 +37,8 @@
  *   kedovi notify my channel on [--new]|off|status   양방향 텔레그램 (기본 꺼짐, 프로젝트마다 전용 봇 · Claude Code). 켜면 kedovi start 가 --channels 를 붙인다
  *   kedovi notify team setup [--new] · chat <그룹방 ID|off> · announce "<내용>" · test   팀 방 알림 (chat 은 팀 설정)
  *   kedovi handoff find <티켓·기능> [--all] [--id <id>] · check · index · archive [--weeks N] · organize   핸드오프 기록 찾기·검사·보관
+ *   kedovi budget start|extend "<작업>" <시간> · done ["<작업>"] · status · report [--month YYYY-MM] [--json]   시간 예산: 시작 · 늘림 · 끝 · 지금 · 월간 집계(끝낸 작업 수 · 예산 초과율 · 걸린 시간 중앙값, 이력은 이 PC 의 .agents/history/)
+ *   kedovi defects check [--id <id>] · report [--month YYYY-MM] [--json]   운영 결함 기록(작업별 기록 머리 「종류: 운영 결함」): 발견 · 분류 · 해소 칸 검사 · 월간 집계(분류별 잠복 · 해소 시간)
  *   kedovi plan [--short | --json | --stage <번호>] · init · check · external <위치>|off   로드맵(handoffs/PLAN.md): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것 · 다음
  *   kedovi docs build [repo|폴더] [--out docs-site] [--force] [--no-source] [--write-config] · check [repo|폴더]   문서 사이트: 기획 repo 의 md · 화면설계서 장 → docs-site/ (가이드와 같은 화면 틀 · 근거 색인 ids.json · 묶음은 docs-site.json) · 어긋남 검사 · 문서 점검 경고
  *   kedovi docs show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs]   기획 문서를 ID 단위로: 정의 부분만 출력 · 그 ID 가 나오는 곳(기획 · 코드 · 이슈 repo, 파일:줄)
@@ -54,12 +56,21 @@
  *   kedovi writes add jooq|jdbc|sqlalchemy|node-pg [--repo R] [--dir 모듈] [--dry-run] [--json]   쓰기 보고서(시험이 DB 에 쓴 것을 DB 화면처럼 보고 기대값으로 고정) 기록기를 repo 에 넣는다: 스택 팩의 파일 · 설정(없는 키만 더함) · 의존성 · 실행 · 기대값 고정 명령 안내. 있는 파일은 덮지 않는다
  *   kedovi writes check [--repo R] [--report <index.json>] [--json] [--strict]   쓰기 보고서 ↔ 기능 문서 「저장」 표 대조 (기능 ID 별): 표에 없는 쓰기 · 안 쓴 컬럼 · 타입 범위 위험(numeric · varchar 자릿수, 넓은 값 출처). --strict 면 위반 시 exit 1
  *   kedovi writes open [--repo R] [--no-open]   최신 쓰기 보고서 화면(index.html) 경로를 찍고 연다
+ *   kedovi apiledger add node|python|java [--repo R] [--dir 모듈] [--dry-run] [--json]   외부 API 동작 장부(backend 팩): 장부 예시 · 시뮬레이터(measured 는 실제로 본 응답, unverified 는 최악 응답) · 장부 대조 시험 · 실패 주입 세트(429 · 지연 · 빈 응답 · 일시 404 · 본문 멈춤 · 토큰 지연) · CI 작업 예시를 repo 에. 있는 파일은 덮지 않는다
+ *   kedovi apiledger check [--repo R | --file 장부] [--stale-days N] [--covered 파일] [--strict] [--json]   장부 검사: 형식 · 미확인 목록 · 확인일 오래된 것 · timeout 근거(p99) · 시험이 장부 항목을 다 다루는지. 형식 오류 exit 1, --strict 면 오래된 것 · 안 다룬 것도
+ *   kedovi extremes add postgres [--repo R] [--dry-run] · check <집계.csv> [--against design] [--strict] · fixture <집계.csv> [--out 파일]   실데이터 극값(backend 팩): 운영 DB 집계 SQL(원문 없이 길이 · null · 최솟값 · 최댓값) · 칸 길이 · 여유 검사(varchar · numeric · 정수, 데이터 설계와 비교) · 극값 fixture
+ *   kedovi ops add lifecycle|alerts|preflight|all [--repo R] [--dir compose 폴더] [--dry-run] [--json]   compose 스택 운영 검증 템플릿을 repo 에 넣는다 (infra 팩): release 수명 시험(restart 2회 · SIGKILL · stop/start → healthy · 재시작 루프 · PIDS · 좀비) + GitLab CI job · 운영 수명 지표(cron → node_exporter textfile: 재시작 · PIDS · 메모리 anon/file · 기동 시각) + Prometheus 경보 규칙 · 배포 전 확인 스크립트와 설정. 있는 파일은 덮지 않는다
+ *   kedovi ops preflight [서비스...] [--repo R | --dir 배포 폴더] [--force] [-- 통과하면 실행할 명령]   배포 전 확인 (infra 팩): 재생성될 컨테이너(설정 해시 · 같은 태그 새 이미지) · 그때 사라지는 상태 · 도는 배치(분 주기 작업은 끝나는 틈을 기다림) → 위험하면 exit 1. 강제 --force · PREFLIGHT_FORCE=1
+ *   kedovi ops lifecycle [서비스...] [--repo R | --dir compose 폴더]   release 수명 시험을 이 PC 의 떠 있는 compose 스택에 돌린다 (infra 팩). 실패 있으면 exit 1
  *   kedovi secret set <이름> [--global] · list [--all] · test <이름> · rm <이름> [--global] · import [--global|--project] · exec [--only A,B] -- <명령>   비밀값(토큰): OS 저장소(키체인 · 자격 증명 팀장 · libsecret)에 프로젝트별 · 전역으로. 값은 숨김 입력, 어디에도 출력하지 않는다
  *   kedovi gitlab pipeline [--repo R] [--ref 브랜치 | --mr 번호 | --id ID] [--limit N] [--log [줄 수]] [--json]   GitLab 파이프라인 조회 (gitlab 팩, 읽기만): 최근 목록 · 단계별 작업 상태 · 실패한 작업의 로그 끝부분. MR 은 머지 커밋의 파이프라인도 찾는다
  *   kedovi gitlab wait [--repo R] --mr 번호 | --id ID | --ref 브랜치·태그 [--sha 커밋(짧은 SHA 가능)] [--timeout 분] [--json]   파이프라인이 끝날 때까지 대기: 지금 커밋(MR 머리 · 머지 커밋 · 브랜치 · 태그 머리)의 파이프라인이 이미 있으면 바로 잡고, 없으면 생길 때까지 먼저 기다린다. 성공 0 · 실패 1 · 수동 작업에서 멈추면 0
  *   kedovi gitlab merge <MR 번호> [--repo R] --yes [--json]   MR 머지: 충돌 · 초안 · 토론 · 승인 확인, 도는 파이프라인은 끝날 때까지 기다린 뒤 머지, 머지 커밋 SHA. vars.gitlab.agentMerge 가 true 이거나 사람이 터미널에서 칠 때만
  *   kedovi gitlab create --repo R --source S [--target T] --title … --description-file F [--json]   MR 생성: 같은 source→target 의 열린 MR 이 있으면 그것을 쓴다
- *   kedovi gitlab play --id ID --job 작업 --yes · retry --id ID [--job 작업] --yes · cancel --ref 브랜치 [--sha 커밋] --yes   수동 작업 실행 · 실패한 작업 다시 실행 · 도는 파이프라인 취소 (취소는 agentMerge 를 켰을 때만). --yes 없으면 확인 문구만
+ *   kedovi gitlab play --id ID --job 작업 [--retry] --yes · retry --id ID [--job 작업] --yes · cancel --ref 브랜치 [--sha 커밋] --yes   수동 작업 실행(--retry: 이미 실패한 작업이면 다시 실행) · 실패한 작업 다시 실행 · 도는 파이프라인 취소 (취소는 agentMerge 를 켰을 때만). --yes 없으면 확인 문구만
+ *   kedovi gitlab busy [--repo R] [--json]   자원 경합 확인 (읽기만): 같은 repo · 러너 그룹의 도는 파이프라인과 이 PC 의 무거운 프로세스. 러너가 이 PC 면(vars.gitlab.localRunner) 겹칠 때 경고, 끝 코드 2
+ *   kedovi gitlab runner-watch add [--repo R] [--interval 초] [--standalone] [--dry-run] · check [--dry-run] · status   러너 감시: 디스크 · 대기열 · 작업 시간 급증 → 알림, docker 캐시 상한. launchd plist · systemd timer 를 만들고 등록 명령을 보인다
+ *   kedovi release [repo] [--deploy] [--job 작업] [--yes] [--dry-run] [--timeout 분]   운영 배포 연쇄 (gitlab 팩): 배포 전 확인(같은 트리 develop 파이프라인 성공 · 그 뒤 CI 설정 안 바뀜 · repo 확인 명령, 실패면 develop 부터 다시) → develop → release MR → MR 파이프라인 → 머지 → release 파이프라인 → (--deploy) 배포 작업. 파이프라인은 하나씩, 일시 오류는 다시 실행. --yes 없으면 계획만 (끝 코드 3)
  *   kedovi prefs [language ko|en|team · style learn|normal|expert|team] [--team] · mermaid [install] · setup   응답 언어 · 대화 스타일(학습 · 일반 · 전문가) · 그림 미리보기(claude-mermaid). 이 PC 값이 팀 값보다 먼저. 인자 없이 = 지금 값
  *   kedovi timestamp [on|off|team] [--team]   답변 첫 줄에 요청 받은 시각(yyyy-MM-dd HH:mm:ss) 표시 (Claude Code, 기본 켜짐). 이 PC 값이 팀 값보다 먼저, team = 이 PC 값 지우기. 인자 없이 = 지금 값
  *   kedovi type [유형] [--approach a] [--code 이름,…]   유형 바꾸기: 분석·설계 → 구축 · 고도화 등. 유형 팩 · 현행 repo 중 고칠 것(개발 repo 로) · 진행 방식 · 로드맵 새 뼈대 (팀장)
@@ -3587,12 +3598,12 @@ function upgradeSummary(root, from) {
 const HELP_GROUPS = [
   ['시작 · 설치', '워크스페이스 만들기 · 받기 · 작업 시작 · 킷 새 버전', ['init', 'init-docs', 'install', 'start', 'upgrade', 'list', 'remove', 'help']],
   ['AI · 모델', '연결 방식 · 메인 에이전트 · 모델 프로필 · 응답 언어 · 대화 스타일', ['agent', 'ai', 'models', 'prefs', 'timestamp']],
-  ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'writes', 'sync', 'check', 'doctor', 'packs', 'reset']],
+  ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
   ['팀 규칙 점검', '리뷰 확인 · 훅이 알리거나 막는 수준', ['review', 'team-mode enforce']],
-  ['진행 · 기록', '로드맵 · 핸드오프 · 현황판 · 위임 · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'board', 'delegate', 'debate', 'import', 'tidy']],
+  ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 위임 · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'delegate', 'debate', 'import', 'tidy']],
   ['문서', '문서 사이트 · ID 찾기 · 화면설계서 · 데이터 설계 검사', ['docs', 'screens', 'datamodel']],
-  ['알림 · 연동', '텔레그램 · 비밀값 · GitLab', ['notify', 'secret', 'gitlab']],
+  ['알림 · 연동', '텔레그램 · 비밀값 · GitLab · 운영 배포 · 운영 검증', ['notify', 'secret', 'gitlab', 'release', 'ops']],
 ];
 const HELP_COMMON = [['init', '새 워크스페이스 만들기'], ['install', '받은 워크스페이스 준비 (repos clone · 훅)'], ['start', '작업 시작'], ['upgrade', '킷 새 버전 반영'], ['doctor', '환경 점검']];
 
@@ -3814,6 +3825,8 @@ async function main() {
       if (rest[0] === 'setup' && rest.length === 1 && process.stdin.isTTY) return cmdNotifySetup();
       return runWsTool('notify.js', notifyArgs(rest));
     case 'handoff': return runWsTool('handoff.js', rest);
+    case 'budget': return runWsTool('budget.js', rest);
+    case 'defects': return runWsTool('defects.js', rest);
     case 'plan': return runWsTool('plan.js', rest);
     case 'docs': return runWsTool('docs-site.js', rest);
     case 'delegate': return runWsTool('delegate.js', rest.length ? rest : ['list']);
@@ -3824,12 +3837,16 @@ async function main() {
     case 'datamodel': return runWsTool('check-datamodel.js', rest.filter((x) => x !== 'check'), 'datamodel');
     case 'archrules': return runWsTool('archrules.js', rest);
     case 'writes': return runWsTool('writes.js', rest.map((a, i) => (rest[i - 1] === '--report' ? path.resolve(a) : a))); // 도구는 워크스페이스 루트에서 돈다
+    case 'apiledger': return runWsTool('apiledger.js', rest.map((a, i) => (['--file', '--covered'].includes(rest[i - 1]) ? path.resolve(a) : a)), 'backend');
+    case 'extremes': return runWsTool('extremes.js', rest.map((a, i) => (rest[i - 1] === '--out' || (i === 1 && ['check', 'fixture'].includes(rest[0])) ? path.resolve(a) : a)), 'backend');
     case 'team-mode': return cmdTeamMode(rest);
     case 'approach': return cmdApproach(rest);
     case 'type': return cmdType(rest);
     case 'timestamp': return cmdTimestamp(rest);
     case 'prefs': return cmdPrefs(rest);
     case 'gitlab': return runWsTool('gitlab-mr.js', rest, 'gitlab');
+    case 'release': return runWsTool('release.js', rest, 'gitlab');
+    case 'ops': return runWsTool('ops.js', rest.map((x, i) => (rest[i - 1] === '--dir' && !rest.includes('--repo') && fs.existsSync(path.resolve(x)) ? path.resolve(x) : x)), 'infra'); // --repo 없이 지금 폴더 기준으로 있는 --dir 이면 그 폴더, 아니면 repo 안 경로
     case 'review': return runWsTool('review.js', rest);
     case 'import': return runWsTool('import-scan.js', rest.map((a) => (a.startsWith('--') ? a : path.resolve(a)))); // 도구는 워크스페이스 루트에서 돈다
     case 'secret': case 'secrets': {

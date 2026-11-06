@@ -27,7 +27,7 @@
 <details>
 <summary><b>core</b> · 공통 코어: 소통·검증 규칙 · 핸드오프 · 로드맵 · 문서 사이트 · 진단</summary>
 
-협업 워크스페이스 기본: 팀 구성(자동: 리더가 작업마다 역할·모델 선택, 고정: 프로필대로), 커뮤니케이션·근거/검증 원칙·변경 영향 점검, 핸드오프/재개/작업 시작, 진행 방식(스프린트: 최소 기능부터 기능 단위 스프린트 · 데모 · 회고 · 백로그, 전체: 전체 설계 뒤 구축, 이슈형: 운영 · 유지보수의 이슈 보드 · 주간 보고), 유형 바꾸기(kedovi type), 신규 구축 아이디어 · 전체 그림(idea 스킬: 무엇을 왜 만드는지 대화 → 기능 지도 → MVP 범위), 로드맵(handoffs/PLAN.md: 종류 · 진행 방식별 기본 단계 · 단계 흐름도 · 영역 × 하위 작업 표 · 완료 보고 블록), 문서 사이트(kedovi docs build: 기획 repo 의 md → 같은 경로 구조의 HTML, 가이드와 같은 화면 틀 · 정의 ID 앵커 · 근거 색인 ids.json · docs-site.json 묶음), 워크스페이스 현황판(kedovi board), 쓰기 보고서(시험이 DB 에 쓴 것: 형식 · 보는 화면 · kedovi writes check 로 기능 문서 「저장」 표 대조 · 문서 사이트 「저장 데이터」), 컨텍스트 관리, 응답 언어 · 대화 스타일(kedovi prefs: 한국어 · English, 학습 · 일반 · 전문가, 요청마다 · 긴 작업 중 다시 한 줄 · Claude 출력 스타일 · 그림은 claude-mermaid 가 있으면 브라우저, 없으면 텍스트), 답변 첫 줄 시각 표시(요청 받은 시각, kedovi timestamp), 시간 예산(budget.js: 예산 1.5배를 넘으면 계속할지 묻게 함), 리뷰 위임 차수(같은 범위 차수 · 앞 차수 블로커 · 3차부터 경고), 리뷰 전 검사(지시서의 검사: 줄), 착수 전 확인(코드 첫 수정 전 머리말), 오래 일하는 팀원 · 위임 알림(기본 60분), 레포 업데이트·죽은 참조 검사·핸드오프 알림 훅 · 텔레그램 알림(개인: 알림 수준 · 양방향 대화 · 자리 비움, 팀: 핸드오프·설정 변경·공지)
+협업 워크스페이스 기본: 팀 구성(자동: 리더가 작업마다 역할·모델 선택, 고정: 프로필대로), 커뮤니케이션·근거/검증 원칙·변경 영향 점검, 핸드오프/재개/작업 시작, 진행 방식(스프린트: 최소 기능부터 기능 단위 스프린트 · 데모 · 회고 · 백로그, 전체: 전체 설계 뒤 구축, 이슈형: 운영 · 유지보수의 이슈 보드 · 주간 보고), 유형 바꾸기(kedovi type), 신규 구축 아이디어 · 전체 그림(idea 스킬: 무엇을 왜 만드는지 대화 → 기능 지도 → MVP 범위), 로드맵(handoffs/PLAN.md: 종류 · 진행 방식별 기본 단계 · 단계 흐름도 · 영역 × 하위 작업 표 · 완료 보고 블록), 문서 사이트(kedovi docs build: 기획 repo 의 md → 같은 경로 구조의 HTML, 가이드와 같은 화면 틀 · 정의 ID 앵커 · 근거 색인 ids.json · docs-site.json 묶음), 워크스페이스 현황판(kedovi board), 쓰기 보고서(시험이 DB 에 쓴 것: 형식 · 보는 화면 · kedovi writes check 로 기능 문서 「저장」 표 대조 · 문서 사이트 「저장 데이터」), 컨텍스트 관리, 응답 언어 · 대화 스타일(kedovi prefs: 한국어 · English, 학습 · 일반 · 전문가, 요청마다 · 긴 작업 중 다시 한 줄 · Claude 출력 스타일 · 그림은 claude-mermaid 가 있으면 브라우저, 없으면 텍스트), 답변 첫 줄 시각 표시(요청 받은 시각, kedovi timestamp), 시간 예산(budget.js: 예산 1.5배를 넘으면 계속할지 묻게 함 · 월간 집계 kedovi budget report), 운영 결함 측정(기록 머리의 발견 · 해소 시각 · 분류, kedovi defects report 로 분류별 잠복 · 해소 시간), 환경 사실 신선도(「확인일」 칸이 오래된 표를 읽으면 재확인 알림), 리뷰 위임 차수(같은 범위 차수 · 앞 차수 블로커 · 3차부터 경고), 리뷰 전 검사(지시서의 검사: 줄), 착수 전 확인(코드 첫 수정 전 머리말), 오래 일하는 팀원 · 위임 알림(기본 60분), 레포 업데이트·죽은 참조 검사·핸드오프 알림 훅 · 텔레그램 알림(개인: 알림 수준 · 양방향 대화 · 자리 비움, 팀: 핸드오프·설정 변경·공지)
 
 | 항목 | 내용 |
 |---|---|
@@ -80,9 +80,9 @@
 
 **팀 에이전트 역할**: 분석 (`analyst`) · 설계 (`architect`) · 문서화 (`documenter`) · 구현 (`implementer`) · 리뷰 (`reviewer`) · 설계 문서 (`spec-writer`) · 테스트 (`tester`)
 
-**도구**: `bin/archrules.js` · `bin/board.js` · `bin/brief.js` · `bin/budget.js` · `bin/check-docs.js` · `bin/check-refs.js` · `bin/cross-review.js` · `bin/debate.js` · `bin/delegate.js` · `bin/docs-site.js` · `bin/doctor.js` · `bin/handoff.js` · `bin/import-scan.js` · `bin/issue-check.js` · `bin/notify.js` · `bin/plan.js` · `bin/rename-ref.js` · `bin/repo-activity.js` · `bin/repo-check.js` · `bin/review.js` · `bin/secret.js` · `bin/strip-ai-trailers.js` · `bin/team-status.js` · `bin/tidy.js` · `bin/writes.js`
+**도구**: `bin/archrules.js` · `bin/board.js` · `bin/brief.js` · `bin/budget.js` · `bin/check-docs.js` · `bin/check-refs.js` · `bin/cross-review.js` · `bin/debate.js` · `bin/defects.js` · `bin/delegate.js` · `bin/docs-site.js` · `bin/doctor.js` · `bin/handoff.js` · `bin/import-scan.js` · `bin/issue-check.js` · `bin/notify.js` · `bin/plan.js` · `bin/rename-ref.js` · `bin/repo-activity.js` · `bin/repo-check.js` · `bin/review.js` · `bin/secret.js` · `bin/strip-ai-trailers.js` · `bin/team-status.js` · `bin/tidy.js` · `bin/writes.js`
 
-**훅**: 세션 시작: `check-repo-updates.js` · 세션 시작: `check-context-sync.js` · 세션 시작: `handoff-brief.js` · 세션 시작: `session-brief.js` · 세션 시작: `model-profile.js` · 세션 시작: `team-mode.js` · 세션 시작: `channel-mode.js` · 세션 끝: `task-check.js` · 세션 끝: `decision-ask.js` · 세션 끝: `answer-first.js` · 세션 끝: `handoff-reminder.js` · 세션 끝: `agent-cleanup.js` · 세션 끝: `budget-check.js` · 세션 끝: `team-idle.js` · 세션 끝: `notify.js` · UserPromptSubmit: `agent-budget.js` · UserPromptSubmit: `task-focus.js` · UserPromptSubmit: `prompt-time.js` · UserPromptSubmit: `chat-prefs.js` · UserPromptSubmit: `settings-hint.js` · UserPromptSubmit: `budget-check.js` · UserPromptSubmit: `team-idle.js` · UserPromptSubmit: `decision-ask.js` · UserPromptSubmit: `plan-first.js` · UserPromptSubmit: `answer-first.js` · UserPromptSubmit: `notify.js` · PreToolUse: `agent-budget.js` · PreToolUse: `notify.js` · PreToolUse: `decision-ask.js` · PreToolUse: `notify.js` · PreToolUse: `plan-first.js` · PreToolUse: `team-guard.js` · PreToolUse: `repo-guard.js` · PreToolUse: `git-guard.js` · PreToolUse: `secret-guard.js` · PreToolUse: `review-gate.js` · PreToolUse: `spec-commit.js` · PostToolUse: `channel-progress.js` · PostToolUse: `chat-prefs.js` · PostToolUse: `secret-guard.js` · PostToolUse: `notify.js` · PostToolUse: `notify.js` · Notification: `team-idle.js` · Notification: `notify.js` · SubagentStop: `agent-budget.js` · SubagentStop: `notify.js` · TeammateIdle: `team-idle.js` · TeammateIdle: `notify.js`
+**훅**: 세션 시작: `check-repo-updates.js` · 세션 시작: `check-context-sync.js` · 세션 시작: `handoff-brief.js` · 세션 시작: `session-brief.js` · 세션 시작: `model-profile.js` · 세션 시작: `team-mode.js` · 세션 시작: `channel-mode.js` · 세션 끝: `task-check.js` · 세션 끝: `decision-ask.js` · 세션 끝: `answer-first.js` · 세션 끝: `handoff-reminder.js` · 세션 끝: `agent-cleanup.js` · 세션 끝: `budget-check.js` · 세션 끝: `team-idle.js` · 세션 끝: `notify.js` · UserPromptSubmit: `agent-budget.js` · UserPromptSubmit: `task-focus.js` · UserPromptSubmit: `prompt-time.js` · UserPromptSubmit: `chat-prefs.js` · UserPromptSubmit: `settings-hint.js` · UserPromptSubmit: `budget-check.js` · UserPromptSubmit: `team-idle.js` · UserPromptSubmit: `decision-ask.js` · UserPromptSubmit: `plan-first.js` · UserPromptSubmit: `answer-first.js` · UserPromptSubmit: `notify.js` · PreToolUse: `agent-budget.js` · PreToolUse: `notify.js` · PreToolUse: `decision-ask.js` · PreToolUse: `notify.js` · PreToolUse: `plan-first.js` · PreToolUse: `team-guard.js` · PreToolUse: `repo-guard.js` · PreToolUse: `git-guard.js` · PreToolUse: `secret-guard.js` · PreToolUse: `review-gate.js` · PreToolUse: `spec-commit.js` · PostToolUse: `channel-progress.js` · PostToolUse: `chat-prefs.js` · PostToolUse: `secret-guard.js` · PostToolUse: `fact-freshness.js` · PostToolUse: `notify.js` · PostToolUse: `notify.js` · Notification: `team-idle.js` · Notification: `notify.js` · SubagentStop: `agent-budget.js` · SubagentStop: `notify.js` · TeammateIdle: `team-idle.js` · TeammateIdle: `notify.js`
 
 </details>
 
@@ -190,9 +190,9 @@ GitHub 협업: 브랜치 전략(작업 브랜치 → PR, 머지는 사람만), �
 </details>
 
 <details>
-<summary><b>gitlab</b> · GitLab 팀 워크플로: 브랜치 전략 · MR 생성 · 이슈 등록 · 파이프라인 조회 · 배포 연쇄(대기 · 머지 · 수동 작업) · 커밋 규칙</summary>
+<summary><b>gitlab</b> · GitLab 팀 워크플로: 브랜치 전략 · MR 생성 · 이슈 등록 · 파이프라인 조회 · 배포 연쇄(대기 · 머지 · 수동 작업) · 운영 배포 명령(kedovi release) · 러너 감시 · 커밋 규칙</summary>
 
-GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.branchMode 를 trunk 로 두면 통합 브랜치 직접 커밋 · 운영 배포만 MR. 머지는 사람만. vars.gitlab.agentMerge 를 켜면 지시받은 MR 만 에이전트가), 커밋 메시지, 이슈·MR 어조, MR 생성 스킬, 이슈 찾기 · 읽기 · 등록 · 조치 보고 댓글 스킬, 파이프라인 조회(kedovi gitlab pipeline) · 수동 작업 실행 · 다시 실행(--play · --retry: manual 이 될 때까지 기다린 뒤 실행하고 끝날 때까지 상태, --yes 없이는 확인 문구만), 배포 연쇄 명령(kedovi gitlab wait · merge · play · retry · cancel, create 는 열린 MR 을 다시 씀)
+GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.branchMode 를 trunk 로 두면 통합 브랜치 직접 커밋 · 운영 배포만 MR. 머지는 사람만. vars.gitlab.agentMerge 를 켜면 지시받은 MR 만 에이전트가), 커밋 메시지, 이슈·MR 어조, MR 생성 스킬, 이슈 찾기 · 읽기 · 등록 · 조치 보고 댓글 스킬, 파이프라인 조회(kedovi gitlab pipeline) · 수동 작업 실행 · 다시 실행(--play · --retry: manual 이 될 때까지 기다린 뒤 실행하고 끝날 때까지 상태, --yes 없이는 확인 문구만), 배포 연쇄 명령(kedovi gitlab wait · merge · play · retry · cancel, create 는 열린 MR 을 다시 씀), 운영 배포 한 번에(kedovi release: 같은 트리 develop 파이프라인 · CI 설정 변경 판정 → release MR → 머지 → release 파이프라인 → 배포 작업, 파이프라인은 하나씩 · 일시 오류만 다시 실행), 자원 경합 확인(kedovi gitlab busy), 러너 감시(kedovi gitlab runner-watch: 디스크 · 대기열 · 작업 시간 급증 알림, 캐시 상한)
 
 | 항목 | 내용 |
 |---|---|
@@ -218,16 +218,16 @@ GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.
 | `gitlab-issue` | GitLab 이슈를 찾고 · 읽고 · 등록하고 · 조치 보고를 댓글로 단다. 초안 → 비슷한 이슈 · 민감정보 검사 → 사용자 OK → 등록 · 댓글. 닫기 · 라벨 · 담당자는 하지 않는다. "이슈 등록해줘", "#12 이슈 봐줘", "조치 내용 이슈에 남겨줘" 요청에 쓴다. |
 | `mr` | 지정한 source→target 으로 GitLab 머지리퀘스트를 만든다 (target 생략 시 통합 브랜치). 미리보기 → 사용자 OK → 생성 → 팀 배포 안내까지. 머지는 사람이 한다 (agentMerge 를 켠 워크스페이스는 지시받은 MR 만 배포 연쇄로). "MR 만들어줘", "QA MR", "배포해줘" 요청에 쓴다. |
 
-**도구**: `bin/gitlab-issue.js` · `bin/gitlab-mr.js`
+**도구**: `bin/ci-load.js` · `bin/gitlab-issue.js` · `bin/gitlab-mr.js` · `bin/release.js` · `bin/runner-watch.js`
 
 </details>
 
 ## 계층 팩
 
 <details>
-<summary><b>backend</b> · 백엔드 공통 원칙: 인가·검증·API 계약·데이터·외부 호출·로깅</summary>
+<summary><b>backend</b> · 백엔드 공통 원칙: 인가·검증·API 계약·데이터·외부 호출·로깅·운영 검증</summary>
 
-프레임워크와 무관한 백엔드 원칙: 기존 관례 따르기, 객체 단위 인가, 경계 입력 검증, 기존 API 계약·하위 호환, 페이지·멱등성, 트랜잭션 경계·동시 수정, 데이터 접근(파라미터 바인딩·N+1·대량 처리), 보안(비밀·SSRF·업로드·의존성), 외부 호출 타임아웃·재시도·설정·정상 종료, 구조화 로깅·추적 ID, 변경 동작 테스트, 저장 로직 변경 때 쓰기 보고서 · 기대값(kedovi writes add sqlalchemy · node-pg). 근거 출처는 docs/SOURCES.md
+프레임워크와 무관한 백엔드 원칙: 기존 관례 따르기, 객체 단위 인가, 경계 입력 검증, 기존 API 계약·하위 호환, 페이지·멱등성, 트랜잭션 경계·동시 수정, 데이터 접근(파라미터 바인딩·N+1·대량 처리), 보안(비밀·SSRF·업로드·의존성), 외부 호출 타임아웃·재시도·설정·정상 종료, 구조화 로깅·추적 ID, 변경 동작 테스트, 저장 로직 변경 때 쓰기 보고서 · 기대값(kedovi writes add sqlalchemy · node-pg), 호출 체인의 시간 예산(남은 예산 상대값 전달 · 엔드포인트별 timeout · 시간 초과 구간 시험), 외부 API 동작 장부(실측만 기대 · 미확인은 최악 응답 시뮬레이터 · 대조 시험 · 실패 주입 세트, kedovi apiledger), 실데이터 극값 fixture · 칸 여유 검사(kedovi extremes), 운영 결함 수정은 고치기 전 실패 → 고친 뒤 통과. 근거 출처는 docs/SOURCES.md
 
 | 항목 | 내용 |
 |---|---|
@@ -247,6 +247,8 @@ GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.
 | `backend--70-resilience-and-config` | 백엔드 외부 호출·재시도·설정 | 필요할 때: 외부 API·다른 서비스·큐·캐시를 호출·소비하거나, 타임아웃·재시도·폴백·배경 작업, 설정값·헬스 체크·기동/종료 동작을 바꿀 때 |
 | `backend--80-testing` | 백엔드 테스트 | 필요할 때: 백엔드 동작을 바꾸거나 버그를 고쳐 테스트를 추가·수정할 때 |
 | `backend--85-write-report` | 백엔드 쓰기 보고서: 저장 로직 변경 | 필요할 때: DB 에 쓰는 코드(INSERT · UPDATE · DELETE · UPSERT · MERGE · 배치 저장 · 저장 쿼리 · 엔티티 저장)를 새로 쓰거나 고칠 때, 쓰기 보고서 · 기대값(approval) 시험이 실패할 때 |
+
+**도구**: `bin/apiledger.js` · `bin/extremes.js`
 
 </details>
 
@@ -327,9 +329,9 @@ DBMS 공통 DB 작업 원칙: 환경 확정·운영 직접 변경 금지·파괴
 </details>
 
 <details>
-<summary><b>infra</b> · 인프라·배포 계층 원칙: 환경 확정 · plan/diff 먼저 · 반영 승인 · 비밀 출처만</summary>
+<summary><b>infra</b> · 인프라·배포 계층 원칙: 환경 확정 · plan/diff 먼저 · 반영 승인 · 비밀 출처만 · compose 수명 시험 · 경보 · 배포 전 확인</summary>
 
-도구와 무관한 인프라·배포 원칙: 대상 환경(클러스터·컨텍스트·계정·워크스페이스) 확정, 운영 직접 반영 금지와 plan·diff·dry-run 근거, 파괴적 작업(destroy·삭제·state 조작) 건별 승인, 비밀은 출처만, 버전·이미지 태그 고정, 컨테이너 이미지(비루트·다단계·헬스체크), Kubernetes·Helm(리소스·프로브·보안 컨텍스트), IaC(원격 state·잠금·버전 고정·import), Ansible(check·diff·멱등), 배포 파이프라인(권한 최소·승인 단계). infra 역할(인프라 담당)을 더한다
+도구와 무관한 인프라·배포 원칙: 대상 환경(클러스터·컨텍스트·계정·워크스페이스) 확정, 운영 직접 반영 금지와 plan·diff·dry-run 근거, 파괴적 작업(destroy·삭제·state 조작) 건별 승인, 비밀은 출처만, 버전·이미지 태그 고정, 컨테이너 이미지(비루트·다단계·헬스체크), Kubernetes·Helm(리소스·프로브·보안 컨텍스트), IaC(원격 state·잠금·버전 고정·import), Ansible(check·diff·멱등), 배포 파이프라인(권한 최소·승인 단계), compose 스택 운영 검증 템플릿(kedovi ops: release 수명 시험 · 운영 수명 경보(메모리 anon/file 분리) · 배포 전 확인 preflight). infra 역할(인프라 담당)을 더한다
 
 | 항목 | 내용 |
 |---|---|
@@ -341,12 +343,14 @@ DBMS 공통 DB 작업 원칙: 환경 확정·운영 직접 변경 금지·파괴
 | ID | 제목 | 읽는 때 |
 |---|---|---|
 | `infra--10-infra-safety` | 인프라 작업 안전 원칙 | 상시 |
-| `infra--20-containers` | 컨테이너 이미지 · compose | 필요할 때: Dockerfile · Containerfile · compose 파일을 만들거나 고칠 때, 이미지 크기 · 빌드 시간 · 보안 지적을 다룰 때 |
+| `infra--20-containers` | 컨테이너 이미지 · compose | 필요할 때: Dockerfile · Containerfile · compose 파일을 만들거나 고칠 때, 이미지 크기 · 빌드 시간 · 보안 지적을 다룰 때, compose 스택을 배포하거나 재시작 · 메모리 · PIDS 문제를 다룰 때 |
 | `infra--30-kubernetes` | Kubernetes · Helm | 필요할 때: Kubernetes 매니페스트 · Kustomize · Helm 차트 · values 를 만들거나 고칠 때, 배포 · 롤아웃 · 스케일 설정을 바꿀 때 |
 | `infra--40-iac` | IaC (Terraform · OpenTofu · Ansible) | 필요할 때: Terraform · OpenTofu · Terragrunt 코드, state · 백엔드 · 모듈 · 프로바이더, Ansible 플레이북 · 인벤토리 · 롤을 만들거나 고칠 때 |
 | `infra--50-pipelines` | 배포 파이프라인 | 필요할 때: CI · CD 파이프라인 설정(GitHub Actions · GitLab CI 등), 배포 단계 · 승인 단계 · 배포 권한 · 러너를 만들거나 고칠 때 |
 
 **팀 에이전트 역할**: 인프라 (`infra`)
+
+**도구**: `bin/ops.js`
 
 </details>
 

@@ -1086,7 +1086,7 @@ const GITIGNORE_END = '# <<< kit <<<';
 
 function buildGitignore(current, ws) {
   const block = [GITIGNORE_BEGIN, '# 개인 지침: 공유하지 않는다',
-    '.agents/local.md', LOCAL_CONFIG, 'CLAUDE.local.md', 'AGENTS.override.md', '.claude/settings.local.json', '.handoff-snooze', '.agents/bin/', '.agents/board/',
+    '.agents/local.md', LOCAL_CONFIG, 'CLAUDE.local.md', 'AGENTS.override.md', '.claude/settings.local.json', '.handoff-snooze', '.agents/bin/', '.agents/board/', '.agents/history/',
     '# 팀 에이전트: 모델이 사람마다 다를 수 있어 각자 sync 가 만든다', '.claude/agents/', '.codex/agents/', LOCAL_MANIFEST,
     '# repo: 각자 kedovi install 로 clone 한다', `/${REPOS_DIR}/`, GITIGNORE_END].join('\n');
   const re = new RegExp(`${GITIGNORE_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${GITIGNORE_END}`);

@@ -34,6 +34,8 @@
  *   test [--team]                  테스트 메시지
  *   pre-push <remote>              .githooks/pre-push 가 부른다. push 가 끝나면 핸드오프·설정 변경을 팀 방에 알린다 (push 를 막지 않는다)
  * 비밀값: ~/.config/kedovi/telegram.env (권한 600). 토큰은 어떤 출력에도 찍지 않는다.
+ * 종료 코드: 0 = 보냄 · 1 = 전송 실패(텔레그램 API 거부 · 네트워크) 또는 기타 오류 · 2 = 설정 없음(봇 토큰 · 채팅 · 팀 방) · 3 = 사용법 오류.
+ *   스크립트가 부르는 say · ask · prompt · answered · announce · test · voice test 가 이 값을 돌려준다. deliver · pre-push 는 push 를 막지 않게 항상 0
  */
 'use strict';
 const fs = require('fs');
@@ -47,6 +49,10 @@ const argv = process.argv.slice(2);
 const cmd = argv[0];
 const opt = (k) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : null; };
 const has = (k) => argv.includes(`--${k}`);
+/** 종료 코드를 가진 오류: fail(문구, EXIT.config) */
+const EXIT = { send: 1, config: 2, usage: 3 };
+const fail = (message, code = EXIT.send) => Object.assign(new Error(message), { exitCode: code });
+const sentOk = (r) => !!(r && r.ok !== false);
 const positional = () => argv.slice(1).filter((a, i, all) => !a.startsWith('--') && !(i > 0 && all[i - 1].startsWith('--') && ['chat', 'min', 'file', 'fold'].includes(all[i - 1].slice(2))));
 
 const ROOT = findRoot();
@@ -140,9 +146,9 @@ function status() {
 
 async function test() {
   const cfg = has('team') ? notify.team(ROOT, ws) : notify.personal(ROOT, ws);
-  if (!cfg.token || !cfg.chat) throw new Error(`봇 토큰·채팅이 없습니다. status 로 확인하세요 (${notify.secretFile()})`);
+  if (!cfg.token || !cfg.chat) throw fail(`봇 토큰·채팅이 없습니다. status 로 확인하세요 (${notify.secretFile()})`, EXIT.config);
   const r = await notify.send(`🔔 [${PROJECT}] ${has('team') ? '팀' : '개인'} 알림 테스트`, cfg);
-  if (!r.ok) throw new Error(r.description);
+  if (!sentOk(r)) throw fail(`전송 실패: ${(r && r.description) || '응답 없음'}`);
   console.log('✓ 보냄');
 }
 
@@ -160,12 +166,12 @@ function teamChat() {
 
 async function announce() {
   const text = positional().join(' ');
-  if (!text) throw new Error('사용: announce "<내용>"');
+  if (!text) throw fail('사용: announce "<내용>"', EXIT.usage);
   const cfg = notify.team(ROOT, ws);
   const msg = notify.announceMessage(cfg, { project: PROJECT, author: devId(ROOT), text });
-  if (!msg) throw new Error('팀 공지가 꺼져 있거나 팀 방·팀 봇이 없습니다 (status)');
+  if (!msg) throw fail('팀 공지가 꺼져 있거나 팀 방·팀 봇이 없습니다 (status)', EXIT.config);
   const r = await notify.send(msg, cfg);
-  if (!r.ok) throw new Error(r.description);
+  if (!sentOk(r)) throw fail(`전송 실패: ${(r && r.description) || '응답 없음'}`);
   console.log('✓ 팀 방에 공지했습니다');
 }
 
@@ -223,25 +229,26 @@ function readInputText() {
 const lastAskFile = () => path.join(stateDir(ROOT), 'last-ask.json');
 function personalOrFail() {
   const cfg = notify.personal(ROOT, ws);
-  if (!cfg.token || !cfg.chat) throw new Error('개인 텔레그램 봇이 없습니다. kedovi notify setup');
+  if (!cfg.token || !cfg.chat) throw fail('개인 텔레그램 봇이 없습니다. kedovi notify setup', EXIT.config);
   return cfg;
 }
 
 /** 결정 질문: JSON { title?, decisions: [{ title, context?, options: [{ label, detail? }], recommended? }] } → 머리 · 결정마다 메시지 · 답 버튼 (+ 음성) */
 async function askCmd() {
   let spec;
-  try { spec = JSON.parse(readInputText()); } catch { throw new Error('사용: node packs/core/bin/notify.js ask --file <결정.json> (또는 stdin). 형식: { "decisions": [{ "title", "context", "options": [{ "label", "detail" }], "recommended": 0 }] }'); }
+  try { spec = JSON.parse(readInputText()); } catch { throw fail('사용: node packs/core/bin/notify.js ask --file <결정.json> (또는 stdin). 형식: { "decisions": [{ "title", "context", "options": [{ "label", "detail" }], "recommended": 0 }] }', EXIT.usage); }
   const bad = !(spec.decisions || []).length || spec.decisions.some((d) => !d.title || !(d.options || []).length);
-  if (bad) throw new Error('decisions 마다 title 과 options(1개 이상)가 필요합니다');
+  if (bad) throw fail('decisions 마다 title 과 options(1개 이상)가 필요합니다', EXIT.usage);
   const cfg = personalOrFail();
   const r = notify.decisionMessages(spec);
   fs.mkdirSync(stateDir(ROOT), { recursive: true });
   fs.writeFileSync(lastAskFile(), JSON.stringify(spec));
   const ok = (x) => x && x.ok !== false;
-  let sent = ok(await notify.send(r.head, cfg, 10000, { html: true }));
+  const trySend = (...a) => notify.send(...a).catch((e) => ({ ok: false, description: e.message }));
+  let sent = ok(await trySend(r.head, cfg, 10000, { html: true }));
   for (let i = 0; i < r.messages.length; i++) {
     const last = i === r.messages.length - 1;
-    sent = ok(await notify.send(r.messages[i], cfg, 10000, { html: true, ...(last ? { markup: r.keyboard } : {}) })) && sent;
+    sent = ok(await trySend(r.messages[i], cfg, 10000, { html: true, ...(last ? { markup: r.keyboard } : {}) })) && sent;
   }
   // 보낸 표시 (자리 비움 Stop 검사가 이번 요청에 ask 를 보냈는지 본다). 전송에 실패하면 남기지 않는다
   if (sent) fs.writeFileSync(path.join(stateDir(ROOT), 'last-ask.sent'), String(Date.now()));
@@ -249,6 +256,7 @@ async function askCmd() {
   console.log(`${sent ? '✔' : '⚠'} 결정 ${spec.decisions.length}건을 텔레그램으로 보냈습니다 (결정마다 메시지 · 답 버튼${voice && voice.ok ? ' · 음성' : ''})${sent ? '' : ' (일부 전송 실패)'}`);
   if (voice && voice.ok === false && voice.error) console.log(`  ⚠ 음성: ${voice.error}`);
   console.log('  답: 버튼 글자 "1-1 ✅ 보기 이름"(앞의 1-1 이 답) · "1-1" · "2: 내용" · "모두 권장안" · "<번호> ✏️ 직접 입력"(이면 prompt <번호>). 다 받으면 answered "<받은 답 요약>" (잊으면 끝남 알림이 버튼을 걷는다)');
+  if (!sent) throw fail('결정 질문 전송 실패 (텔레그램 API 거부 · 네트워크). 터미널 응답의 번호 목록으로 답을 받는다');
 }
 
 /** ✏️ 직접 입력 — 그 결정에 답장하는 입력창을 연다 */
@@ -256,16 +264,18 @@ async function promptCmd() {
   const no = Number(positional()[0]);
   let spec = {};
   try { spec = JSON.parse(fs.readFileSync(lastAskFile(), 'utf8')); } catch { /* 없으면 번호만 */ }
-  if (!Number.isInteger(no) || no < 1) throw new Error('사용: node packs/core/bin/notify.js prompt <결정 번호>');
+  if (!Number.isInteger(no) || no < 1) throw fail('사용: node packs/core/bin/notify.js prompt <결정 번호>', EXIT.usage);
   const m = notify.promptMessage(spec, no);
-  await notify.send(m.text, personalOrFail(), 10000, { html: true, markup: m.markup });
+  const r = await notify.send(m.text, personalOrFail(), 10000, { html: true, markup: m.markup });
+  if (!sentOk(r)) throw fail(`전송 실패: ${(r && r.description) || '응답 없음'}`);
   console.log(`✔ ${no}번 직접 입력 창을 열었습니다. 다음에 온 텔레그램 메시지가 ${no}번 답이다`);
 }
 
 /** 답을 다 받음 — 키보드를 걷는다 */
 async function answeredCmd() {
   const m = notify.answeredMessage(positional().join(' '));
-  await notify.send(m.text, personalOrFail(), 10000, { html: true, markup: m.markup });
+  const r = await notify.send(m.text, personalOrFail(), 10000, { html: true, markup: m.markup });
+  if (!sentOk(r)) throw fail(`전송 실패: ${(r && r.description) || '응답 없음'}`);
   fs.rmSync(lastAskFile(), { force: true });
   console.log('✔ 답 버튼을 걷었습니다');
 }
@@ -273,12 +283,13 @@ async function answeredCmd() {
 /** 서식 보고: 마크다운(stdin · --file) → 텔레그램 HTML (제목 굵게 · 목록 · 인용 · 긴 뒷부분은 접기). --done 이면 끝남 보고 음성도 */
 async function sayCmd() {
   const md = readInputText();
-  if (!md.trim()) throw new Error('사용: node packs/core/bin/notify.js say [--done] [--fold <줄>] < 보고.md');
+  if (!md.trim()) throw fail('사용: node packs/core/bin/notify.js say [--done] [--fold <줄>] < 보고.md', EXIT.usage);
   const cfg = personalOrFail();
   const html = notify.foldHtml(notify.toTelegramHtml(md), Number(opt('fold')) || 12);
   const r = await notify.send(html, cfg, 10000, { html: true });
+  if (!sentOk(r)) throw fail(`전송 실패: ${(r && r.description) || '응답 없음'}`);
   const voice = await notify.sendSpeech(ROOT, cfg, has('done') ? 'done' : 'other', has('done') ? notify.doneSpeech(md) : notify.speakable(md, 300));
-  console.log(`${r && r.ok !== false ? '✔' : '⚠'} 텔레그램으로 보냈습니다${voice && voice.ok ? ' (음성 포함)' : ''}`);
+  console.log(`✔ 텔레그램으로 보냈습니다${voice && voice.ok ? ' (음성 포함)' : ''}`);
   if (voice && voice.ok === false && voice.error) console.log(`  ⚠ 음성: ${voice.error}`);
 }
 
@@ -302,7 +313,8 @@ async function voiceCmd() {
   } else if (v === 'test') {
     const r = await notify.sendSpeech(ROOT, personalOrFail(), 'other', `${PROJECT} 음성 알림 시험입니다. 이렇게 들립니다.`).catch((e) => ({ ok: false, error: e.message }));
     if (!cur().on) return console.log('음성이 꺼져 있습니다. kedovi notify my voice on');
-    console.log(r && r.ok ? '✔ 시험 음성을 보냈습니다' : `⚠ 시험 음성 실패: ${(r && (r.error || r.description)) || '알 수 없음'}`);
+    if (!(r && r.ok)) throw fail(`시험 음성 실패: ${(r && (r.error || r.description)) || '알 수 없음'}`);
+    console.log('✔ 시험 음성을 보냈습니다');
     return;
   } else throw new Error('사용: kedovi notify my voice on|off · scope both|decisions|done|all · name <목소리> · test');
   console.log('✓ 바로 적용');
@@ -496,5 +508,5 @@ if (!fn) {
 Promise.resolve().then(fn).catch((e) => {
   if (cmd === 'pre-push' || cmd === 'deliver') process.exit(0); // push 를 막지 않는다
   console.error(`✖ ${e.message}`);
-  process.exit(1);
+  process.exit(e.exitCode || EXIT.send);
 });

@@ -1,0 +1,91 @@
+# 운영 수명 경보 규칙 (Prometheus). 지표는 container-metrics.sh 가 node_exporter textfile 로 낸다 (접두사 __PREFIX__).
+#
+# 붙이는 법: prometheus.yml 의 rule_files 에 이 파일을 더한다. 검사: promtool check rules <이 파일>
+# 기준값(증가 속도 · 비율 · 시간)은 서비스 실측으로 고친다. 아래 값은 출발점이다.
+#
+# 메모리 판정
+#   anon(앱이 쥔 메모리)이 꾸준히 늘면 누수 의심 → 경보.
+#   file(page cache)만 늘면 커널이 회수하는 캐시라 경보하지 않는다 (working set 경보가 내는 오탐을 이걸로 가른다).
+#   추세는 기동 1시간 뒤부터 본다: 기동 직후 캐시 · 풀 · JIT 로 느는 것을 빼려고, 추세 창(1h)이 기동 1시간 뒤에 시작하게 기동 2시간이 지난 컨테이너만 본다.
+
+groups:
+  - name: __PREFIX__-lifecycle
+    rules:
+      - record: __PREFIX__:uptime_seconds
+        expr: time() - __PREFIX___started_at_seconds
+
+      - alert: ContainerAnonMemoryGrowing
+        expr: |
+          deriv(__PREFIX___memory_anon_bytes[1h]) * 3600 > 32 * 1024 * 1024
+          and on (instance, container) __PREFIX__:uptime_seconds > 7200
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.container }}: anon 메모리가 시간당 {{ $value | humanize1024 }}B 씩 늘어남 (누수 의심)"
+          description: "file(page cache)이 아니라 anon 이 늘고 있다. 힙 덤프 · 연결 · 캐시 상한을 본다. 기동 2시간 이후 1시간 추세 기준."
+
+      - alert: ContainerRestarted
+        expr: increase(__PREFIX___restarts_total[15m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.container }}: 15분 안에 {{ $value | humanize }}회 재시작"
+          description: "재시작 정책이 살린 비정상 종료다 (OOM · 예외 종료 · healthcheck kill). docker inspect 의 State.OOMKilled · ExitCode 와 로그를 본다."
+
+      - alert: ContainerRestartLoop
+        expr: increase(__PREFIX___restarts_total[1h]) >= 3
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.container }}: 1시간에 {{ $value | humanize }}회 재시작 (재시작 루프)"
+
+      - alert: ContainerUnhealthy
+        expr: __PREFIX___healthy == 0 and on (instance, container) __PREFIX___up == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.container }}: 5분째 healthy 아님"
+
+      - alert: ContainerPidsNearLimit
+        expr: |
+          __PREFIX___pids / on (instance, container) (__PREFIX___pids_limit > 0) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.container }}: PIDS 가 상한의 {{ $value | humanizePercentage }}"
+          description: "스레드 · 자식 프로세스가 쌓인다 (스레드 풀 누수 · 좀비). 상한에 닿으면 새 스레드를 못 만든다."
+
+      - alert: ContainerPidsGrowing
+        expr: |
+          deriv(__PREFIX___pids[1h]) * 3600 > 20
+          and on (instance, container) __PREFIX__:uptime_seconds > 7200
+        for: 2h
+        labels:
+          severity: info
+        annotations:
+          summary: "{{ $labels.container }}: PIDS 가 시간당 {{ $value | humanize }}개씩 늘어남 (상한 없는 컨테이너도 본다)"
+
+      - alert: ContainerSocketReconnects
+        expr: increase(__PREFIX___socket_reconnects_total[1h]) > 10
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.container }}: 외부 소켓 재연결 1시간 {{ $value | humanize }}회"
+
+      - alert: ContainerMetricsErrors
+        expr: __PREFIX___metrics_errors > 0
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "container-metrics.sh 가 값 {{ $value }}개를 못 읽음 (cron 로그를 본다)"
+
+      - alert: ContainerMetricsStale
+        expr: time() - __PREFIX___metrics_last_run_seconds > 300
+        labels:
+          severity: warning
+        annotations:
+          summary: "container-metrics.sh 가 5분 넘게 안 돌았다 (cron · 권한 · 디스크)"

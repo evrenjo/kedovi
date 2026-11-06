@@ -1,0 +1,324 @@
+# 운영 검증
+
+운영에서 살아남는지 · 가정이 실측인지 · 사실이 최신인지를 보는 장치 모음. 개발 루프(커밋 · 테스트)에 기다림을 더하지 않고, 기록 · 읽기 · CI 에서만 돈다.
+
+## 외부 API 장부 · 실패 주입 · 극값 · 시간 예산
+
+backend 팩. 템플릿은 명령이 repo 에 복사하고(있는 파일은 덮지 않는다), 검사는 이 PC 에서 돈다.
+
+| 장치 | 개발 루프 대기 | 도는 곳 | 명령 |
+|---|---|---|---|
+| 외부 API 동작 장부 + 대조 시험 | 0 (일반 test 안) | repo 시험 | `kedovi apiledger add node\|python\|java` · `kedovi apiledger check` |
+| 실패 주입 세트 | 0 (CI 전용 작업, test 와 병렬) | CI | 위 `add` 가 함께 넣는다 |
+| 실데이터 극값 fixture · 칸 여유 검사 | 0 | 운영 DB 집계 → 이 PC | `kedovi extremes add postgres` · `check` · `fixture` |
+| 호출 체인의 시간 예산 | 0 | 룰 (backend 「외부 호출」) | |
+
+### 외부 API 동작 장부
+
+외부 API 가 어떻게 동작하는지 동작마다 적은 표(`api-ledger.yaml`). 코드는 **실측(measured) 인 동작만 기대**하고, 미확인(unverified) 은 최악 응답을 견뎌야 한다.
+
+```mermaid
+flowchart LR
+  L[api-ledger.yaml] --> S[시뮬레이터]
+  S -->|measured: 실제로 본 응답| T[대조 시험]
+  S -->|unverified: 최악 응답| T
+  T --> C[.api-ledger/covered.json]
+  L --> K[kedovi apiledger check]
+  C --> K
+```
+
+| 동작 칸 | 뜻 |
+|---|---|
+| 무엇 (`what`) · 종류 (`kind`) | 한 줄 설명 · 429 · 지연 · 빈 응답 · 일시 404 · 본문 멈춤 · 토큰 지연 · 순서 · 모양 |
+| 상태 (`status`) | `measured` 실측 · `unverified` 미확인 |
+| 확인일 (`checked`) · 근거 (`evidence`) | 실측이면 필수. 로그 위치 · 문서 절 · 실측 명령 |
+| 실제로 본 응답 (`observed`) · 최악 응답 (`worst`) | 상태 · 머리 · 본문 · 지연 · 본문 중 멈춤 · 연결 끊기 · 앞 N 번만 |
+
+엔드포인트에는 `timeoutMs`(이 엔드포인트 값) 와 실측 `p99Ms` · 확인일 · 근거를 둔다. 칸 전체는 형식 정본(킷 `packs/backend/assets/api-ledger/FORMAT.md`).
+
+```yaml
+- id: rate-limit
+  kind: rate-limit
+  what: 초당 20회를 넘으면 429 와 Retry-After(초)
+  status: measured
+  checked: 2026-11-01
+  evidence: "운영 로그 2026-10-30 429 312건"
+  observed: { status: 429, headers: { Retry-After: "1" } }
+```
+
+| `kedovi apiledger check` 가 보는 것 | 결과 |
+|---|---|
+| 형식 (필수 칸 · 상태 값 · 응답 칸 · 날짜) | ✖ 면 exit 1 |
+| 미확인 목록 | 코드가 기대하면 안 되는 동작 |
+| 확인일이 오래된 것 (기본 30일, `vars.apiLedger.staleDays`) | 재확인 목록 |
+| timeout 근거 (timeout 없음 · p99 미측정 · timeout < p99) | ⚠ |
+| 시험 대조 (안 다룬 동작 · 안 돈 실패 주입 · 장부가 시험 뒤에 바뀜) | ⚠ (`--strict` 면 exit 1) |
+
+| 스택 | 넣는 것 | 프로젝트가 채우는 것 |
+|---|---|---|
+| node | `test/api-ledger/` (시뮬레이터 · 대조 시험) · `test-faults/api-ledger.cjs` | `expectations.cjs` |
+| python | `tests/` (시뮬레이터 · pytest 대조 · 실패 주입 `-m faults`) | `api_ledger_expectations.py` |
+| java | `src/test/java/<기준 패키지>/apiledger/` (JUnit 5, 실패 주입은 태그 `faults`) | `ApiLedgerExpectations` |
+
+공통으로 장부 예시 · CI 작업 예시(`ci/api-faults.gitlab-ci.yml`)가 들어간다. 장부에 있는데 기대가 없는 동작은 대조 시험이 실패한다 (빠짐 없이 다루게). 시뮬레이터는 의존성이 없다 (Node 기본 모듈 · Python 표준 http.server + PyYAML · JDK HttpServer + SnakeYAML).
+
+### 실패 주입 세트
+
+엔드포인트마다 아래 종류를 주입한다. 재료는 장부에서 같은 종류 동작의 최악 응답, 없으면 기본 최악값.
+
+| 종류 | 기본 최악값 | 단언 |
+|---|---|---|
+| 429 (`rate-limit`) | 429, Retry-After 없음 | 예산 안에 끝나고, 오류면 처리된 오류 |
+| 지연 (`slow`) | 머리 전 timeout × 2 | 같음 (시간 초과로 분류) |
+| 빈 응답 (`empty`) | 200, 빈 본문 | 같음 |
+| 일시 404 (`transient-404`) | 첫 1번만 404 | 같음 (재시도로 성공 또는 처리된 오류) |
+| 본문 멈춤 (`body-stall`) | 본문 절반 뒤 timeout × 2 멈춤 | 같음 (본문 읽기 중 시간 초과) |
+| 토큰 지연 (`token-slow`) | 토큰 엔드포인트만, timeout × 0.9 | 동시 5건이 토큰을 한 번만 받는다 |
+
+- CI 작업 `api-faults` 는 test 와 같은 단계에서 `needs: []` 로 병렬로 돈다. 개발 루프에는 대기를 더하지 않는다.
+- **운영 결함 수정은 「고치기 전 실패 → 고친 뒤 통과」** 를 보인다. 검증표 칸: 운영 증상 · 재현 시험 · 고치기 전 (커밋 · 결과) · 고친 뒤 (커밋 · 결과). 고치기 전 칸이 비면 완료로 보고하지 않는다 (backend 「테스트」 · core 「검증」 룰).
+
+### 실데이터 극값 fixture · 칸 여유 검사
+
+운영 DB 를 **집계만** 해서(원문 없음) 칸 정의에 여유가 있는지 보고, 그 극값으로 시험 데이터를 만든다.
+
+```mermaid
+flowchart LR
+  Q[집계 SQL<br/>읽기 전용 계정] --> V[extremes.csv<br/>길이 · null · 최솟값 · 최댓값]
+  V --> C[kedovi extremes check]
+  D[데이터 설계 정의서] -.->|--against design| C
+  V --> F[kedovi extremes fixture]
+```
+
+| 집계 칸 | 뜻 |
+|---|---|
+| `table_name` · `column_name` · `column_type` | 표 · 칸 · 지금 타입 (예: `character varying(20)`, `numeric(12,2)`) |
+| `row_count` · `null_count` | 행 수 · null 수 |
+| `max_len` · `max_bytes` | 글자 칸 최대 길이 (글자 · 바이트) |
+| `min_value` · `max_value` | 숫자 칸 최솟값 · 최댓값 |
+
+PostgreSQL 은 `kedovi extremes add postgres` 가 넣는 SQL 로 만든다 (표마다 한 번 읽기, 큰 표는 표본). 다른 DB 는 같은 칸을 내는 쿼리를 쓰면 된다.
+
+| 판정 | 조건 |
+|---|---|
+| ✖ | 최대 길이 · 정수 자릿수가 정의를 넘음, null 이 있는데 정의는 NOT NULL (`--against design`) |
+| ⚠ | 한도의 90% 이상 (`vars.extremes.warnRatio`), 한도와 같음, 소수 자리가 정의보다 많음 (반올림) |
+
+타입 해석은 쓰기 보고서의 타입 범위 검사와 같다. fixture 는 표마다 max · min · nulls 행이고, 글자는 길이 · 바이트만 맞춘 합성 값이다. 숫자 칸 최솟값 · 최댓값은 실제 값이므로 식별 번호 같은 칸은 공유 전에 지운다.
+
+### 호출 체인의 시간 예산
+
+중간 계층이 재시도까지 합쳐 호출자의 timeout 보다 오래 일하면 호출자는 이미 끊었고 그 일은 버려진다 (예: 호출자 10초, 중간 계층 재시도 포함 16.5초 → 연결 끊김 오류가 쌓임).
+
+| 자리 | 규칙 |
+|---|---|
+| 보내는 쪽 | 남은 예산을 **상대값**(남은 밀리초)으로 싣는다. gRPC 는 deadline, HTTP 는 프로젝트 헤더 (기본 예 `vars.timeBudget.header`) |
+| 받는 쪽 | 큐 대기 · 잠금 · 시도 · 재시도를 모두 남은 예산 안에서. 모자라면 시도하지 않고 바로 시간 초과 |
+| 중간 계층 | 시도 timeout × 횟수 + 백오프 + 대기 < 호출자 timeout |
+| 외부 API | 공용 기본 timeout 금지. 엔드포인트마다 실측 p99 근거 (장부의 `p99Ms`) |
+
+| 시간 초과 구간 | 시뮬레이터로 재현 | 주의 |
+|---|---|---|
+| 연결 | 닫힌 포트 | |
+| 응답 머리 대기 | `delayMs` | |
+| 본문 읽기 중 | `stallBodyMs` | 요청 timeout 이 이 구간을 덮지 않는 클라이언트가 있다 (JDK HttpClient). 바이트 사이 간격만 보는 읽기 timeout 도 있다 (Python requests) |
+
+> 근거: gRPC Deadlines 안내(deadline 은 경과 시간을 뺀 timeout 으로 바꿔 전파) · gRPC HTTP/2 규약(`grpc-timeout` 상대값) · Google SRE 「Addressing Cascading Failures」 · JDK `HttpRequest.Builder.timeout` · requests 「Timeouts」. 목록은 backend 팩 `docs/SOURCES.md`.
+
+## 결함 측정 · 문서 신선도
+
+### 운영 결함 기록
+
+운영에서 난 결함은 작업별 기록(`handoffs/<id>/topics/<티켓>.md`) 머리에 아래 칸을 쓴다. 형식은 `ticket` 스킬.
+
+| 칸 | 내용 | 필수 |
+|---|---|---|
+| 종류 | 운영 결함 · 장애 (`vars.defects.kinds`). 이 값이면 결함 기록으로 본다 | 예 |
+| 분류 | 외부 API 가정 · 수명 · CI 자원 · 환경 · 한도 · 실데이터 모양 · 운영 절차 · 파이프라인 · flaky/TZ · 문서 신선도 (`vars.defects.categories` 로 바꾼다) | 예 |
+| 발견 | 알게 된 시각 (YYYY-MM-DD HH:MM) | 예 |
+| 해소 | 운영에서 더 나지 않게 된 시각 | 상태가 완료면 |
+| 원인 커밋 | 원인을 넣은 커밋 (`<repo>@<커밋>`). 커밋이 아니면 「발생:」 시각 | 아니오 |
+
+- 빈 칸 · 목록에 없는 분류는 `handoff.js check` 와 `kedovi defects check` 가 막는다.
+- `kedovi defects report [--month YYYY-MM]`: 그 달(발견 기준) 결함 수 · 분류별 잠복 · 해소 시간 중앙값 · 해소 시간 합(비용 큰 순).
+
+| 지표 | 계산 |
+|---|---|
+| 잠복 | 원인 커밋(또는 발생) 시각부터 발견까지 |
+| 해소 시간 | 발견부터 해소까지 |
+
+### 시간 예산 월간 집계
+
+`budget.js` 의 시작 · 늘림 · 끝을 이 PC 의 `.agents/history/budget.jsonl` 에 한 줄씩 남긴다 (커밋하지 않는다). `kedovi budget report [--month YYYY-MM]` 가 끝낸 작업 수 · 예산 초과율 · 1.5배 넘김 · 걸린 시간 중앙값 · 예산 대비 중앙값을 낸다. 끝내지 않고 하루가 지난 예산은 따로 센다.
+
+### 환경 사실 신선도
+
+서버 · CI · 메모리 · 경로처럼 운영하며 바뀌는 사실은 표에 「확인 명령」 · 「확인일」 칸을 둔다. 양식은 infra · db 팩의 환경 표 양식과 시스템 구성 문서의 「운영 환경 사실」 절.
+
+| 언제 | 무엇을 |
+|---|---|
+| 에이전트가 문서를 읽을 때 | 확인일이 30일(`vars.docs.factDays`, 0 = 끔) 지난 행이 있으면 「재확인 필요: 사실 (확인일 · 확인 명령)」 을 알린다 (세션당 파일 한 번). 그 행을 근거로 쓰기 전에 확인 명령을 다시 돌린다 |
+| `kedovi docs build` · `check` | 문서 점검 경고: 오래된 환경 사실 · 확인일 없는 환경 사실 |
+
+칸이 없는 옛 표는 보지 않는다. 코드 블록 안의 양식 예시도 뺀다.
+
+## release 명령 · 러너 감시
+
+### release 명령
+
+`kedovi release <repo> --deploy` 하나로 develop → release MR → 머지 → release 파이프라인 → 운영 배포까지 잇는다 (gitlab 팩). 임시 스크립트 대신 쓴다.
+
+```mermaid
+flowchart LR
+  A[배포 전 판정] -->|통과| B[release MR]
+  A -->|실패| R[develop 파이프라인 다시] --> A
+  B --> C[MR 파이프라인] --> D[머지] --> E[release 파이프라인] --> F[배포 작업]
+```
+
+| 판정 | 어떻게 | 실패하면 |
+|---|---|---|
+| 같은 트리 develop 파이프라인 | develop 머리와 트리가 같은 커밋의 develop 파이프라인이 성공했는지 (GitLab 비교 API) | develop 파이프라인을 새로 돌리고 다시 판정 |
+| CI 설정 그대로 | 그 파이프라인 뒤로 include 한 다른 프로젝트 파일이 바뀌었는지. 브랜치 ref 는 그 시각의 커밋과 지금 머리를 비교, 태그는 파이프라인 뒤 커밋을 가리키면 바뀐 것, 커밋 SHA 는 고정 | 같음 |
+| repo 확인 명령 | `repos[].gitlab.releaseCheck` (예: 레지스트리에 그 SHA 의 이미지 태그가 있는지). 끝 코드 0 = 통과 | 같음 |
+
+remote · 변수가 든 include 는 판정하지 못해 ⚠ 로 알린다. 그런 repo 는 확인 명령으로 보완한다.
+
+| 장치 | 동작 |
+|---|---|
+| 승인 | `--yes` 없이 부르면 계획과 판정만 보이고 끝 코드 3. `--dry-run` 은 같고 끝 코드 0. 머지는 `vars.gitlab.agentMerge` 가 true 일 때만 |
+| 하나씩 | 같은 repo(`runnerGroup` 이 같으면 그 repo 들까지)에 도는 파이프라인이 있으면 끝난 뒤 다음 단계 |
+| 일시 오류 | 레지스트리 · 네트워크 오류 모양이면 그 작업만 `vars.gitlab.retryMax`(기본 2)번 다시. 그 밖의 실패는 바로 멈춤. 운영 배포 작업은 일시 오류여도 다시 돌리지 않고 다시 실행 명령을 보이며 멈춤 (`vars.gitlab.retryDeploy`) |
+| 단계 기록 | 단계마다 「멈출 조건」 한 줄과 결과 한 줄 |
+| 자원 경합 | 러너가 이 PC 면(`vars.gitlab.localRunner`) CI 를 기다리는 동안 로컬 무거운 작업을 경고. 로컬 장애 시험 전에는 `kedovi gitlab busy` |
+
+출력 예 (판정 실패 → develop 다시 → 일시 오류 재시도):
+
+```text
+[1/6] 배포 전 확인
+  멈출 조건: 같은 트리 develop 파이프라인 실패 · develop 을 다시 돌린 뒤에도 판정 실패
+  10:02:11 ▶ develop 파이프라인 새로 실행 #101 (d2bbbbb)
+  10:05:40 ↻ build 다시 실행 (1/2) · 일시 오류: dial tcp …:443: i/o timeout
+  → 판정 통과 (develop #101)
+```
+
+### 러너 감시
+
+`kedovi gitlab runner-watch add` 가 설정과 주기 실행 파일(macOS launchd 600초 · Linux systemd timer)을 만든다. 등록 명령은 화면에 나오고, 등록은 러너가 도는 머신에서 사람이 한다.
+
+| 보는 것 | 기본 상한 (`runner-watch.json`) |
+|---|---|
+| 디스크 사용률 | 85% |
+| 대기열 | pending 5개 · 가장 오래 기다린 작업 10분 |
+| 작업 시간 급증 | 같은 이름 작업의 최근 중앙값 2배 이상이고 120초 이상 늘어남 (끝난 작업 · 도는 작업) |
+| docker 캐시 | 빌드 캐시 20GB 넘으면 정리, 회수 가능한 이미지 중 168시간 지난 것 정리 |
+| 러너 캐시 폴더 | 30GB 넘으면 경보 (`cache.clean` 이면 오래된 것부터 지움) |
+
+새로 생기거나 풀린 경보만 텔레그램으로 알린다. 알림 명령이 실패하면 다음 주기에 다시 보낸다. 토큰은 파일에 쓰지 않는다.
+
+## compose 스택 수명 시험 · 수명 경보 · 배포 전 확인
+
+infra 팩. `kedovi ops add lifecycle|alerts|preflight|all` 이 스크립트를 repo 의 `ops/` 에 넣는다 (있는 파일은 덮지 않는다). 스크립트는 docker CLI 와 bash 만 써서 서버에 kedovi 이 없어도 돈다.
+
+| 장치 | 개발 루프 대기 | 도는 곳 | 명령 |
+|---|---|---|---|
+| release 수명 시험 | 0 (release 브랜치 CI 만) | CI · 이 PC | `kedovi ops add lifecycle` · `kedovi ops lifecycle` |
+| 운영 수명 경보 | 0 | 서버 cron → node_exporter textfile → Prometheus | `kedovi ops add alerts` |
+| 배포 전 확인 (preflight) | 0 | 배포 폴더 (서버 · 이 PC) | `kedovi ops add preflight` · `kedovi ops preflight` |
+
+### release 수명 시험
+
+떠 있는 compose 스택의 컨테이너마다 아래를 차례로 하고, 검사마다 결과 한 줄을 찍는다. 실패가 하나라도 있으면 끝 코드 1.
+
+| 검사 | 통과 기준 | 잡는 결함 |
+|---|---|---|
+| restart 2회 | 매번 healthy 로 돌아옴 | 재기동 때 잠금 파일 · 포트 · 초기화 충돌 |
+| SIGKILL | 재시작 정책이 살려 healthy 로 돌아옴 (정책이 없으면 실패) | 비정상 종료 뒤 복구 실패 · 정책 누락 |
+| stop/start | healthy 복귀, 종료 코드 137 이면 경고 | SIGTERM 무시(정지가 늘 강제 종료) |
+| 기동 ↔ healthcheck | 가장 긴 기동 시간 ≤ start_period + interval × retries | healthcheck 가 기동 중에 죽이는 루프 |
+| 재시작 루프 | 마지막 관찰 시간(기본 60초) 동안 재시작 수 · 기동 시각이 그대로, unhealthy 아님 | 재시작 루프 |
+| PIDS | 상한의 80% 미만 (상한이 없으면 경고) | 스레드 · 자식 프로세스 누수 |
+| 좀비 | 0 | 자식을 거두지 않는 주 프로세스 (`init: true` · tini 로 고침) |
+
+> SIGKILL 은 `docker kill` 을 쓰지 않는다. Docker 는 그것을 수동 정지로 보고 재시작 정책을 돌리지 않는다. 그래서 도우미 컨테이너를 `--pid=host` 로 띄워 주 프로세스를 죽인다. 좀비는 종료 순간 cgroup 에서 빠져 `docker top` 에 보이지 않아 같은 도우미로 호스트 프로세스 목록을 본다.
+
+CI job 예시(`lifecycle.gitlab-ci.yml`)는 release 브랜치(`branch.release`)에서만 돈다. `.gitlab-ci.yml` 에 include 하고 stage · compose 파일 · 이미지 태그를 프로젝트에 맞춘다. 러너는 docker:dind(privileged) 또는 Docker 가 있는 shell 러너.
+
+| 환경 변수 | 기본 | 뜻 |
+|---|---|---|
+| `COMPOSE` | `docker compose` | compose 명령 (`-f` · `-p` 를 붙여도 된다) |
+| `HEALTH_TIMEOUT` · `WATCH_SEC` · `STOP_TIMEOUT` | 180 · 60 · 30 | healthy 대기 · 루프 관찰 · 정지 대기 초 |
+| `PIDS_PCT` · `REQUIRE_PIDS_LIMIT` | 80 · 0 | PIDS 비율 상한 · 1 이면 상한 없음도 실패 |
+| `ALLOW_NO_RESTART` · `SKIP` | 0 · 없음 | 1 이면 재시작 정책 없음 허용 (일회성 작업) · 건너뛸 서비스 |
+
+### 운영 수명 경보
+
+호스트 cron 이 1분마다 `container-metrics.sh` 를 돌려 컨테이너별 지표를 node_exporter textfile collector 형식(`.prom`)으로 쓴다. Prometheus 가 `container-lifecycle.rules.yml` 로 경보를 낸다.
+
+| 지표 (`<접두사>_…`) | 뜻 |
+|---|---|
+| `restarts_total` · `up` · `healthy` | 재시작 정책이 살린 횟수 · 도는지 · healthcheck 결과 |
+| `started_at_seconds` | 기동 시각. 추세 판정에서 기동 직후를 빼는 데 쓴다 |
+| `pids` · `pids_limit` | PIDS · 상한 (0 = 없음) |
+| `memory_anon_bytes` · `memory_file_bytes` | cgroup `memory.stat` 의 anon(앱이 쥔 메모리) · file(page cache). cgroup v1 은 rss · cache |
+| `socket_reconnects_total` | 외부 소켓 재연결 누적 (선택. 앱이 `RECONNECT_DIR/<컨테이너 또는 서비스>` 에 숫자를 쓴다) |
+| `metrics_errors` · `metrics_last_run_seconds` | 이번 실행에서 못 읽은 값 수 · 마지막 실행 시각 (수집기 자체 고장 감시) |
+
+| 경보 | 조건 (출발점, 실측으로 고친다) |
+|---|---|
+| anon 증가 (누수 의심) | 기동 2시간이 지난 컨테이너의 1시간 추세가 시간당 32MiB 이상, 2시간 지속 |
+| 재시작 · 재시작 루프 | 15분 안에 1회 이상 · 1시간에 3회 이상 |
+| unhealthy | 5분 지속 |
+| PIDS | 상한의 80% 이상 10분 · 상한이 없어도 시간당 20개 이상 증가 |
+| 소켓 재연결 | 1시간에 10회 초과 |
+| 수집기 | 못 읽은 값이 15분 · 5분 넘게 안 돎 |
+
+file(page cache)만 느는 것은 경보하지 않는다. 커널이 회수하는 캐시라 working set 하나로 경보하면 누수로 오판한다. 추세 창(1시간)이 기동 1시간 뒤에 시작하도록 기동 2시간 전 컨테이너는 보지 않는다.
+
+> 메모리는 호스트 `/sys/fs/cgroup` 에서 먼저 읽고(systemd · cgroupfs 경로), 안 보이면 컨테이너 안에서 읽는다(`MEM_SOURCE=exec`, Docker Desktop 처럼 cgroup 이 VM 안일 때). 컨테이너에 `cat` 이 없으면(distroless) 그 값은 `metrics_errors` 로 센다.
+
+### 배포 전 확인 (preflight)
+
+배포 폴더에서 pull · build 를 마친 뒤 up 직전에 돌린다. 위험하면 끝 코드 1 로 멈춘다.
+
+```mermaid
+flowchart LR
+  A[② 재생성될 컨테이너] --> B[③ 사라지는 상태]
+  B --> C{① 도는 배치}
+  C -->|없음| P[통과 → 배포 명령]
+  C -->|분 주기만| W[끝나는 틈 기다림] -->|틈| P
+  W -->|최대 초 지남| S[멈춤]
+  C -->|그 밖| S
+  B -->|block 상태| S
+```
+
+| 단계 | 어떻게 |
+|---|---|
+| ② 재생성될 컨테이너 | compose 설정 해시(`docker compose config --hash`)와 지금 컨테이너의 해시 라벨 비교, 같은 태그의 새 이미지(로컬 이미지 ID 비교, `PULL=1` 이면 먼저 pull), 멈춘 컨테이너 |
+| ③ 사라지는 상태 | 설정 `STATES` 의 서비스별 설명. 수준 `block` 이면 멈춤, `warn` 이면 보이고 진행, 없으면 「설명 없음」 |
+| ① 도는 배치 | 재생성 대상이 배치 서비스(`BATCH_SERVICES`)일 때 `BATCH_QUERY` 를 돌린다. 출력이 비면 0, 분 주기 작업(`MINUTE_JOBS`)만 돌면 끝나는 틈을 `WAIT_MAX` 초까지 기다림, 조회가 실패하면 확인 못 함으로 멈춤 |
+
+통과하면 `--` 뒤 명령을 바로 실행해 기다린 틈을 놓치지 않는다. 강제는 `--force` 또는 `PREFLIGHT_FORCE=1` (위험 목록은 그대로 찍는다).
+
+설정 파일 `preflight.conf` (bash 가 읽는다. 비밀번호는 적지 않는다):
+
+| 값 | 뜻 |
+|---|---|
+| `COMPOSE` · `PULL` | compose 명령 · 1 이면 먼저 pull |
+| `BATCH_QUERY` | 도는 작업을 한 줄에 「id\|작업 이름\|상태\|시작 시각」 으로 찍는 명령 (예: Spring Batch `batch_job_execution` 의 `end_time` 없는 행) |
+| `BATCH_SERVICES` · `MINUTE_JOBS` | 배치 서비스 이름 · 분 주기 작업 이름(확장 정규식) |
+| `WAIT_MAX` · `POLL_SEC` | 틈을 기다릴 최대 초(기본 90) · 다시 조회할 간격 |
+| `STATES` | 한 줄에 「서비스\|block 또는 warn\|설명」 |
+
+출력 예:
+
+```text
+preflight: 1개 서비스 (worker) · 설정 ops/preflight.conf
+② 이번 작업으로 바뀌는 컨테이너 · ③ 그때 사라지는 상태
+   worker: 재생성(설정 변경): 도는 작업이 끊긴다 (재시작 뒤 다음 주기에 다시 돈다)
+① 도는 배치 (BATCH_QUERY)
+   실행 5536 · MINUTE_SYNC · STARTED · 시작 15:23:10 (분 주기)
+   분 주기 작업만 돈다: 끝나는 틈을 최대 90초 기다린다
+   틈: 도는 배치 0, 진행 (7초 기다림)
+통과
+실행: docker compose up -d worker
+```

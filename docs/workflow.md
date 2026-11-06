@@ -318,6 +318,9 @@ flowchart TD
     Q -->|"파이프라인 보기"| GLP["kedovi gitlab pipeline [--ref 브랜치 · --mr 번호 · --id ID] [--log]<br/>최근 목록 · 단계별 작업 상태 · 실패한 작업의 로그 끝부분 (읽기만)"]
     Q -->|"수동 작업 실행 · 다시 실행"| GLJ["kedovi gitlab pipeline --id ID --play 작업 · --retry 작업 --yes<br/>manual 이 될 때까지 기다린 뒤 실행 · 끝날 때까지 상태<br/>--yes 없으면 확인 문구만 (운영 배포는 사용자 승인 뒤)"]
     Q -->|"배포 연쇄"| GLW["kedovi gitlab create --json → wait --mr 번호 → merge 번호 --yes<br/>→ wait --ref 브랜치 → play --id ID --job 작업 --yes<br/>열린 MR 은 다시 씀 · 지금 커밋의 파이프라인을 기다림<br/>머지 · 취소는 vars.gitlab.agentMerge 가 true 일 때만"]
+    Q -->|"운영 배포"| REL["kedovi release [repo] [--deploy] [--yes] [--dry-run]<br/>판정(같은 트리 develop 파이프라인 · CI 설정 · 확인 명령, 실패면 develop 부터)<br/>→ release MR → MR 파이프라인 → 머지 → release 파이프라인 → 배포 작업<br/>파이프라인은 하나씩 · 일시 오류만 다시 실행 · --yes 없으면 계획만"]
+    Q -->|"CI 러너 감시"| RW["kedovi gitlab runner-watch add [--repo R] [--dry-run]<br/>디스크 · 대기열 · 작업 시간 급증 → 알림, docker 캐시 상한<br/>→ launchd plist · systemd timer (등록은 사람이) · kedovi gitlab busy (겹침 확인)"]
+    Q -->|"compose 운영 검증"| OPS["kedovi ops add lifecycle · alerts · preflight · all [--repo R] [--dry-run]<br/>수명 시험 + CI job · 지표 cron + 경보 규칙(anon · file) · preflight + 설정 → repo 의 ops/<br/>kedovi ops preflight [서비스…] [-- 배포 명령] (위험하면 멈춤, --force) · kedovi ops lifecycle"]
     Q -->|"화면 비교"| SCC["kedovi screens compare &lt;화면 ID&gt;<br/>프로토타입 ↔ 구현을 같은 폭(PC · 폰)으로 찍어 compare.html<br/>구현 주소 = @spec 줄의 @route 또는 --impl"]
     Q -->|"응답 언어 · 대화 스타일"| PRF["kedovi prefs language ko · en · style learn · normal · expert [--team]<br/>값 team = 이 PC 값 지우기 · mermaid [install] · setup (화면)<br/>→ .agents/local.json (팀은 workspace.json) → sync"]
     Q -->|"답변 시각 표시"| TS["kedovi timestamp on · off · team [--team]<br/>답변 첫 줄에 요청 받은 시각 (기본 켜짐, Claude Code)<br/>→ .agents/local.json (팀은 workspace.json)"]
@@ -374,6 +377,8 @@ flowchart TD
 | `kedovi notify my voice on\|off` | 음성 알림: 결정 질문(기본) · 끝남 보고를 읽어 음성 메시지로 (`scope` · `name <목소리>` · `test`). 대화로 "음성 켜줘" 도 된다 |
 | `kedovi notify [my\|team …]` | 화면 없이 같은 일: `my level` · `my away` · `my setup` · `my channel on` 은 봇 토큰을 숨김 입력으로 받는다 (봇 바꾸기 `--new`). `my channel on` 은 양방향 대화(기본 꺼짐, 프로젝트마다 전용 봇, `kedovi start` 가 `--channels` 를 붙인다) |
 | `kedovi handoff find <작업>` | 핸드오프 기록 찾기 (`check` · `index` · `archive` · `organize` 도) |
+| `kedovi budget report` | 시간 예산 월간 집계: 끝낸 작업 수 · 예산 초과율 · 걸린 시간 중앙값 (`--month YYYY-MM`, 이력은 이 PC 만) |
+| `kedovi defects report` | 운영 결함 월간 집계: 분류별 건수 · 잠복 · 해소 시간 (`check` 는 발견 · 분류 · 해소 칸 검사) |
 | `kedovi team-mode` | 팀 구성: 자동(리더가 작업마다 역할 · 모델) · 고정(프로필대로), `prefer` 역할별 선호 모델. `enforce <대상>` 은 훅으로 지키게 하는 수준(off · warn · block)이고, 대상(name · roster · idle · status · ask · run · check · plan · review)과 기본값은 [명령](commands.md). `--team` 은 팀 기본값 |
 | `kedovi ai plan claude\|gpt <요금제>` | 회사별 요금제 (빠듯 · 넉넉 · 종량). 보통은 `kedovi ai` 화면에서 |
 | `kedovi secret` | 비밀값(토큰): `set <이름> [--global]`(숨김 입력) · `list` · `test <이름>`(권한 · 만료) · `rm` · `import`(옛 telegram.env · gitlab-token · 환경변수에서) · `exec -- <명령>`(그 명령에만 주입). OS 저장소에 프로젝트별 · 전역으로, 값은 출력하지 않는다 |
@@ -395,14 +400,19 @@ flowchart TD
 | `kedovi tidy` | 정리 후보 찾기 (읽기만): 이번 작업 새 파일 · 안 쓰는 자료 · 링크 없는 문서 · 백업 이름. 지우기는 `tidy` 스킬 (표 → 승인 → 지움 → 검증) |
 | `kedovi import` | 기존 AI 작업 폴더 훑기 (읽기만): 종류별 분류 · 큰 폴더 · 문서 속 절대경로 · 비밀값 의심 줄. 옮기기는 `import` 스킬 (계획 → 승인 → 반영) |
 | `kedovi review` | 리뷰 확인 (기본 꺼짐, `kedovi team-mode enforce review warn\|block --team` 으로 켠다): `status` 대상 repo 마다 리뷰 안 된 줄 수 · `mark` 지금 상태를 리뷰했다고 기록 · `skip --reason` 사용자 승인 뒤 한 번 생략 |
-| `kedovi gitlab pipeline` | GitLab 파이프라인 조회 (gitlab 팩): 최근 목록 · 단계별 작업 상태 · `--ref` · `--mr` · `--id` · `--log`(실패한 작업의 로그 끝부분). `--id <ID> --play <작업>` · `--retry <작업>` 은 수동 작업 실행 · 다시 실행 (manual 이 될 때까지 기다리고 끝날 때까지 상태, `--yes` 없으면 확인 문구만) |
+| `kedovi gitlab pipeline` | GitLab 파이프라인 조회 (gitlab 팩): 최근 목록 · 단계별 작업 상태 · `--ref` · `--mr` · `--id` · `--log`(실패한 작업의 로그 끝부분). `--id <ID> --play <작업>` · `--retry <작업>` 은 수동 작업 실행 · 다시 실행 (manual 이 될 때까지 기다리고 끝날 때까지 상태, `--yes` 없으면 확인 문구만. `play … --retry` 는 이미 실패한 작업을 다시 실행) |
 | `kedovi gitlab wait` · `merge` · `create` · `play` · `retry` · `cancel` | 배포 연쇄 (gitlab 팩): 지금 커밋의 파이프라인이 끝날 때까지 대기 · 머지할 수 있는지 확인 뒤 머지(머지 커밋 SHA) · 열린 MR 다시 쓰기 · 수동 작업 실행 · 실패한 작업 다시 실행 · 겹친 파이프라인 취소. 머지 · 취소는 `vars.gitlab.agentMerge` 가 true 일 때만, 모두 `--yes` 없으면 확인 문구만 |
+| `kedovi release` | 운영 배포 연쇄 (gitlab 팩): 배포 전 판정(같은 트리 develop 파이프라인 성공 · 그 뒤 CI 설정 안 바뀜 · repo 확인 명령, 실패면 develop 파이프라인부터) → develop → release MR → MR 파이프라인 → 머지 → release 파이프라인 → `--deploy` 면 배포 작업. 파이프라인은 하나씩, 일시 오류만 다시 실행, `--yes` 없으면 계획만 |
+| `kedovi gitlab busy` · `runner-watch` | 자원 경합 확인(같은 러너의 도는 파이프라인 · 이 PC 의 무거운 프로세스) · 러너 감시 넣기(디스크 · 대기열 · 작업 시간 급증 알림, docker 캐시 상한, launchd · systemd 파일) |
 | `kedovi board` | 워크스페이스 현황판: 로드맵 · 팀원별 마지막 핸드오프 · 미완 작업 · 공지 + 기록(핸드오프 · 로드맵 · 모델 조사 · 설정 요약). 이 PC 의 `.agents/board/` 에 만들어 브라우저로 연다 (보기 전용) |
 | `kedovi screens compare <화면 ID>` | 프로토타입과 구현 화면을 같은 폭(PC 1280 · 폰 390)으로 찍어 나란히 보는 `compare.html` (screens 팩, Playwright). 프로토타입 = 화면 목록의 「프로토타입」 칸 · `prototype/` 파일 이름, 구현 = `@spec` 줄의 `@route` · `--impl` |
 | `kedovi screens check [repo]` | 화면설계서 검사 (screens 팩): 근거 ID 가 색인에 있는지 · 화면 ID 중복 · 기능 ID 누락(「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |
 | `kedovi datamodel check [repo]` | 데이터 설계 검사 (datamodel 팩): 참조 대상 · 기본키 · 중복 · 표 형식(✖), 논리명 · 컨벤션(`vars.datamodel`) · 기능 ID 대조 · 논리 참조 대상 · 고정 스키마 기본키(⚠). ERD 는 `kedovi docs build` 가 정의서 폴더마다 `erd.html` 로 만든다 |
 | `kedovi archrules spring\|react\|fastapi` | 구조 검사 템플릿을 repo 에: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사 (구조 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다) |
 | `kedovi writes add` · `kedovi writes check` · `kedovi writes open` | 쓰기 보고서: 기록기를 repo 에 넣기(jooq · jdbc · sqlalchemy · node-pg) · 기능 문서 「저장」 표와 대조(표에 없는 쓰기 · 안 쓴 컬럼 · 타입 범위) · 보고서 화면 열기 |
+| `kedovi apiledger add` · `kedovi apiledger check` | 외부 API 동작 장부: 장부 · 시뮬레이터 · 대조 시험 · 실패 주입 세트를 repo 에 넣기(node · python · java) · 형식 · 미확인 · 오래된 확인일 · 시험 대조 검사 |
+| `kedovi extremes add` · `kedovi extremes check` · `kedovi extremes fixture` | 실데이터 극값: 운영 DB 집계 SQL(원문 없음) · 칸 길이 · 여유 검사 · 극값 fixture |
+| `kedovi ops add` · `kedovi ops preflight` · `kedovi ops lifecycle` | compose 스택 운영 검증 (infra 팩): release 수명 시험 · 운영 수명 경보(메모리 anon/file) · 배포 전 확인 템플릿을 repo 에 넣기 · 배포 전 확인 실행(위험하면 멈춤, `--force`) · 수명 시험 실행 |
 | `kedovi packs` | 팩 목록 |
 | `kedovi init-docs [폴더]` | 기획자 repo 뼈대: 개요 · 아이디어 · 규모 → 시스템 구성(아키텍처) → 기능(요구 목록 · 기능 문서) → 화면(목록 · 정책 · 프로토타입) → 데이터 · API → 결정 · 미결 (메뉴 `docs-site.json` · 장 양식 · Pages CI 포함) |
 

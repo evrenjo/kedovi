@@ -14,7 +14,8 @@
  *                                              --md = 추적표(ID · 정의 · 코드 · 테스트) · --new = 새로 만들거나 고친 진입 파일 중 기획 ID 가 없는 것
  *                                              --strict = ✖(또는 --new 의 ⚠)이 있으면 exit 1
  * build · check 는 문서 점검 경고도 낸다: 큰 문서(vars.docs.maxKB) · 문장형 제목 · 긴 코드 블록(vars.docs.codeMax) · 파일:줄 참조 · 머리말에 쌓인 변경 이력 · 여러 문서에 같은 문장 ·
- *   긴 표 칸(vars.docs.cellMax) · 문단형 표(vars.docs.cellAvg) · 표 칸 안 경위 · 그림 없는 큰 문서(vars.docs.figureKB) · ASCII 그림 · 메뉴 「기타」 문서 (「상태: 동결」 문서는 뺀다)
+ *   긴 표 칸(vars.docs.cellMax) · 문단형 표(vars.docs.cellAvg) · 표 칸 안 경위 · 그림 없는 큰 문서(vars.docs.figureKB) · ASCII 그림 · 메뉴 「기타」 문서 ·
+ *   오래된 환경 사실(「확인일」 칸이 vars.docs.factDays 일 넘음) · 확인일 없는 환경 사실 (「상태: 동결」 문서는 뺀다)
  * 기획 repo 의 docs-site.json (선택): { title, logo, version, source, ink: false(펜 필기 끔), printAll: { autoPrint: false }(전체 인쇄 쪽이 인쇄 창을 열지 않음), groups: [{ group, icon, files: [glob], split: true|[glob], collapsed, tree }], labels: { 'md 경로': '메뉴 이름' }, include: [glob], exclude: [glob], repos: { … } }. 메뉴 묶음 · 상단 바 · 원본 버튼 · 포함 범위.
  *   groups[].files 는 나열한 순서대로 메뉴에 나온다 (glob 하나에 맞는 여러 문서는 파일 이름 순). 어느 묶음에도 안 맞는 문서는 「기타」 로 가고 경고한다.
  *   collapsed: 처음엔 접힌 묶음 · tree: 묶음 안을 폴더 트리로. 메뉴는 쪽마다 넣지 않고 assets/nav.js 하나 (site.js 가 그린다).
@@ -604,7 +605,7 @@ function healthLines(t, ws, res) {
   const docs = res && res.files ? Object.entries(res.files).filter(([k, c]) => /\.md$/i.test(k) && typeof c === 'string' && wanted(k)).map(([rel, text]) => ({ rel, text, sheet: false })) : undefined;
   // 규모 문서 점검은 기획 repo 만 (워크스페이스 밖 폴더면 기획 repo 뼈대의 결정 폴더로 알아본다)
   const scale = t.kind ? t.kind === 'docs' : fs.existsSync(path.join(t.dir, '90-decisions'));
-  try { return DR.health(t.dir, { maxKB: v.maxKB, cellMax: v.cellMax, cellAvg: v.cellAvg, figureKB: v.figureKB, codeMax: v.codeMax, docs, scale }).map((w) => `⚠ 문서 점검: ${w}`); } catch { return []; }
+  try { return DR.health(t.dir, { maxKB: v.maxKB, cellMax: v.cellMax, cellAvg: v.cellAvg, figureKB: v.figureKB, codeMax: v.codeMax, factDays: require('../lib/freshness').daysOf(ws), docs, scale }).map((w) => `⚠ 문서 점검: ${w}`); } catch { return []; }
 }
 
 /** show: ID 의 정의 부분만 */
