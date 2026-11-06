@@ -18,6 +18,14 @@ kedovi --version
 
 Claude Code(`npm i -g @anthropic-ai/claude-code`) 나 Codex(`npm i -g @openai/codex`) 중 쓸 것도 설치돼 있어야 한다.
 
+설치가 `EACCES: permission denied` 로 실패하면 전역 설치 위치를 홈 폴더로 바꾼 뒤 다시 설치한다 (`sudo` 는 쓰지 않는다. 자세히는 GitHub README 「권한 오류」):
+
+```bash
+npm config set prefix ~/.npm-global
+echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+npm i -g kedovi
+```
+
 ## 빠른 시작
 
 | 누가 | 명령 |

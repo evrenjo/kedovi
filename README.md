@@ -137,6 +137,34 @@ kedovi --version
 
 > 참고: 끄려면 환경 변수 `KEDOVI_NO_GLOBAL_SHIM=1`. 넣은 줄은 `# kedovi:` 표시가 붙어 있어 지울 때 찾기 쉽다.
 
+### 권한 오류 (EACCES)
+
+설치가 `EACCES: permission denied, mkdir '/usr/local/lib/node_modules/…'` 로 실패하면, 전역 설치 폴더의 주인이 지금 계정이 아니다. 예전에 `sudo npm i -g` 를 한 번 썼거나, Node · Homebrew 를 다른 계정이나 공식 설치 파일(.pkg)로 깐 경우다. 킷 문제가 아니라 npm 이 패키지를 받기 전에 난 오류다.
+
+원인 확인:
+
+```bash
+which node npm
+ls -ld "$(npm config get prefix)/lib/node_modules"   # 주인이 지금 계정(whoami)이 아니면 이 경우
+```
+
+| 방법 | 관리자 암호 | 명령 | 맞는 경우 |
+|---|---|---|---|
+| 전역 설치 위치를 홈 폴더로 (권장) | 필요 없음 | 아래 「홈 폴더로」 | 누구 PC 든, 원인이 무엇이든 |
+| 폴더 주인을 내 계정으로 | 한 번 | `sudo chown -R "$(whoami)" "$(npm config get prefix)/lib/node_modules" "$(npm config get prefix)/bin"` | 내 PC 이고 `sudo npm i -g` 를 쓴 것이 원인일 때 |
+| 설치 없이 실행 | 필요 없음 | `npx <패키지>@latest <명령>` | 잠깐 써 볼 때 (매번 `npx` 를 붙인다) |
+
+홈 폴더로 (macOS · Linux, 셸이 bash 면 `~/.zshrc` 대신 `~/.bash_profile`):
+
+```bash
+mkdir -p ~/.npm-global
+npm config set prefix ~/.npm-global
+echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+그다음 위 설치 명령(`npm i -g …`)을 다시 실행한다. `sudo npm i -g` 로 설치하지 않는다: 설치는 되지만 업데이트와 킷이 만드는 파일에서 같은 오류가 다시 난다.
+
 Claude Code(`npm i -g @anthropic-ai/claude-code`) 나 Codex(`npm i -g @openai/codex`) 중 쓸 것도 설치돼 있어야 한다. Codex 앱만 깔아 터미널에 `codex` 명령이 없어도, 앱이 내려받은 CLI(`~/.codex/packages/*/current`)를 찾아 쓴다.
 
 ### 플러그인 · MCP · 도구
