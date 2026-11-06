@@ -25,7 +25,7 @@ const { execFileSync, spawnSync } = require('child_process');
 const GEN_NOTE = '생성 파일: `node bin/kit.js sync` 로 다시 만든다. 직접 고치지 말 것 (정본 = packs/ · workspace.json)';
 const DEFAULT_AGENTS_MD_BYTES = 32 * 1024; // Codex project_doc_max_bytes 기본값
 const ENFORCE_LEVELS = ['off', 'warn', 'block']; // agents.enforce.* 훅 강제 수준 (약한 것부터)
-const ENFORCE_DEFAULTS = { teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' } }; // 기본값 · 가장 센 값
+const ENFORCE_DEFAULTS = { teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'warn', max: 'block' } }; // 기본값 · 가장 센 값
 const MAX_AGENTS_MD_BYTES = 96 * 1024; // 이 위로는 sync 가 막는다 (context 낭비)
 const PERSONAL_HEADROOM = 12 * 1024; // 개인 지침(응답 언어 · 대화 스타일 약 1.7KB · 역할 상한 · 팀 구성(역할 · 모델 메뉴) · 위임 표 · 잠금)이 AGENTS.override.md 에 더해지는 몫. 자동 모드에서 약 8KB
 const MANIFEST = '.agents/.generated.json';
@@ -1338,6 +1338,7 @@ function resolveModels(root, ws) {
   const idle = { after: mins(te.idleMinutes, 10), remind: mins(te.idleRemindMinutes, 30) };
   //   longRunning = 일하는 팀원 · 위임 작업이 상한(runMinutes, 팀 값만, 기본 60분)을 넘으면 계속할지 묻게 한다 (기본 block: 멈출 때 한 번 막는다)
   //   planFirst = 요청마다 코드 repo 첫 수정 전에 답변에 「착수 전 확인:」 이 없으면 알린다 (warn 기본: 요청마다 한 번 · block: 보일 때까지 수정을 막는다)
+  //   answerFirst = 사용자 요청이 질문이면 답 첫 줄을 그 답으로 (warn 기본: 요청 때 한 줄 알림 · block: 답변 첫 문장에 판단이 없으면 멈출 때 한 번 막기)
   //   checkBeforeReview = 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 막는다 (리뷰 위임 · 리뷰 역할 에이전트)
   const longRun = { after: mins(te.runMinutes, 60) };
   return { team, effective, base, run, access, runWarnings, limits, teamLimits, enforce, teamEnforce, review, idle, longRun, profile: { team: teamProfile, local: localProfile, blocked, allowHigher } };

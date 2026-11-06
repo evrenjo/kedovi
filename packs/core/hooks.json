@@ -11,6 +11,7 @@
   "Stop": [
     { "script": "hooks/task-check.js", "timeout": 10, "statusMessage": "완료 조건 점검" },
     { "script": "hooks/decision-ask.js", "timeout": 5, "agents": "claude" },
+    { "script": "hooks/answer-first.js", "timeout": 5 },
     { "script": "hooks/handoff-reminder.js", "timeout": 15, "statusMessage": "핸드오프 점검" },
     { "script": "hooks/agent-cleanup.js", "timeout": 10 },
     { "script": "hooks/budget-check.js", "timeout": 5 },
@@ -27,6 +28,7 @@
     { "script": "hooks/team-idle.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/decision-ask.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/plan-first.js", "timeout": 5, "agents": "claude" },
+    { "script": "hooks/answer-first.js", "timeout": 5 },
     { "script": "hooks/notify.js", "timeout": 5 }
   ],
   "PreToolUse": [

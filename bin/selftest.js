@@ -475,6 +475,35 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   }
 }
 
+// 질문에 먼저 답하기 (알림 기본 · 막기는 설정 · 팀원 제외 · 한 번만)
+{
+  const dw = path.join(tmp, 'answer-ws');
+  spawnSync(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dw, '--type', 'new'], { cwd: tmp, encoding: 'utf8' });
+  const env = { PATH: process.env.PATH, HOME: path.join(tmp, 'answer-home'), TMPDIR: require('os').tmpdir(), CLAUDE_PROJECT_DIR: dw };
+  const hook = (ev, extra = {}) => spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'hooks', 'answer-first.js'), '--agent=claude'], { cwd: dw, encoding: 'utf8', input: JSON.stringify({ hook_event_name: ev, session_id: 'answer-1', ...extra }), env }).stdout.trim();
+  const cli = (...a) => spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), ...a], { cwd: dw, encoding: 'utf8', env: { ...process.env, HOME: env.HOME } });
+  const { looksLikeQuestion: q, answersFirst: af } = require(path.join(KIT, 'packs', 'core', 'hooks', 'answer-first.js'));
+  const e = {};
+  e['질문 판정'] = ['문제없지 않나?', '이거 맞아', '되나요', '다 끝난거임?'].every(q) && !['배포해줘', 'xD 도 같은 서버야', '여기 글자 겹침 고쳐줘', '/loop 5m'].some(q);
+  e['첫 문장 판단'] = ['네, 문제없습니다. 이유는 …', '**아니요**. 아직 대기 중입니다.', '이번 작업은 다 끝났습니다.'].every(af) && !af('문서를 고쳤고 커밋했습니다.\n\n문제없습니다.');
+  const bad = '문서를 고쳤고 커밋했습니다.\n\n참고로 문제는 없어 보입니다.';
+  e['알림 (기본)'] = /첫 줄은 이 질문의 답/.test(hook('UserPromptSubmit', { prompt: '이거 문제없지 않나?' })) && !hook('Stop', { last_assistant_message: bad }) && !hook('UserPromptSubmit', { prompt: '배포해줘' });
+  e['막기 설정'] = cli('team-mode', 'enforce', 'answer', 'block', '--team').status === 0 && /질문에 먼저 답하기  막기/.test(cli('team-mode').stdout);
+  hook('UserPromptSubmit', { prompt: '이거 문제없지 않나?' });
+  e['막기: 답 없으면 한 번'] = /"decision":"block"/.test(hook('Stop', { last_assistant_message: bad })) && !hook('Stop', { last_assistant_message: bad });
+  hook('UserPromptSubmit', { prompt: '이거 맞아?' });
+  e['막기: 답했으면 통과'] = !hook('Stop', { last_assistant_message: '네, 맞습니다. 두 값이 같습니다.' });
+  hook('UserPromptSubmit', { prompt: '배포해줘' });
+  e['질문 아님 통과'] = !hook('Stop', { last_assistant_message: bad });
+  e['팀원 제외'] = !hook('UserPromptSubmit', { prompt: '맞아?', agent_id: 'a1' });
+  e['끄기'] = cli('team-mode', 'enforce', 'answer', 'off', '--team').status === 0 && !hook('UserPromptSubmit', { prompt: '맞아?' });
+  const hooks = JSON.parse(fs.readFileSync(path.join(dw, '.claude', 'settings.json'), 'utf8')).hooks || {};
+  e['훅 등록'] = ['Stop', 'UserPromptSubmit'].every((k) => JSON.stringify(hooks[k] || []).includes('answer-first'));
+  const rules = fs.readFileSync(path.join(dw, 'AGENTS.md'), 'utf8');
+  e['상시 룰'] = /물은 것에 먼저 답한다/.test(rules) && /사용자가 말하지 않은 문제를 만들지 않는다/.test(rules) && /대화 답변 · 사실 반영에서 가능한 영향을 늘어놓지 않는다/.test(rules);
+  record('질문에 먼저 답하기 (알림 · 막기 · 한 번 · 팀원 제외 · 끄기 · 룰)', Object.values(e).every(Boolean), Object.entries(e).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
+
 // 보완 3건: 결정 질문을 글로 끝내면 한 번 막기 · 기존 폴더 훑기(kedovi import) · 기획 repo 없음 경고 끄기
 {
   const dw = path.join(tmp, 'extras-ws');

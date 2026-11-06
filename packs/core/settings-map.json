@@ -80,6 +80,14 @@
       "weakOk": true
     },
     {
+      "id": "answer",
+      "topic": "질문에\\s*(?:먼저\\s*)?(?:대답|답)|대답을?\\s*해\\s*줘야|물은\\s*것에",
+      "say": "질문에 먼저 답하기",
+      "cmd": "kedovi team-mode enforce answer off|warn|block [--team]",
+      "scope": "이 PC · 팀",
+      "weakOk": true
+    },
+    {
       "id": "ask",
       "topic": "질문\\s*창|선택지|객관식|글로\\s*물어",
       "say": "결정 질문 점검 (질문 창으로 다시 묻기)",
