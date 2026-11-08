@@ -2,6 +2,19 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.86.0
+
+| 구분 | 내용 |
+|---|---|
+| 명령 | `kedovi screens inventory <화면 ID>`: 화면 정본 판정(프로토타입 · 화면설계서 · 둘 다 다름 · 없음은 묻기, `--canon` 으로 고름) + 정본 요소 체크리스트 `handoffs/<나>/screens/<화면 ID>.md` |
+| 명령 | `kedovi screens checklist <화면 ID>`: 착수 전(`--start` 데이터 원천) · 완료 전(판정 · 비교) 점검, `--md` MR 본문 표 |
+| 명령 | `kedovi screens review <화면 ID…>`: 리뷰 지시서용 정본 대조 블록 (정본에 있는데 구현에 없는 요소 = 블로커). `kedovi delegate` 리뷰는 저절로 넣음 |
+| 기능 | `kedovi screens compare --mock <픽스처.json\|.har>` (`vars.screens.mock`): 백엔드 없이 구현 화면 찍기, 실패한 API 요청 · 찾은 경로 안내, 체크리스트 비교 줄 기록 |
+| 기능 | 커밋 전 알림: 화면 진입 파일(@spec 화면 ID)이 바뀌었는데 요소 판정 · 비교가 없으면 (`vars.screens.checklistOnCommit`) |
+| 규칙 | 화면 구현: 정본 결정 순서 · 착수 전 체크리스트 · 원천 없는 요소 먼저 알림 · 판정 없는 요소나 비교 미실행이면 완료 아님 (screens · core · frontend · go · team · MR) |
+| 규칙 | 백엔드 테스트: 실제 엔진을 브로커 · 캐시까지 · 테스트 컨테이너 실행당 한 벌 · 쓰는 인프라만 · 공유 시 격리 · 층은 아래로. Spring 테스트 인프라 룰 신설 |
+| 적용 | `kedovi upgrade` 뒤 sync. 화면 작업 전 `kedovi screens inventory <화면 ID>` |
+
 ## 0.85.0
 
 | 구분 | 내용 |

@@ -99,7 +99,10 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | CI 와 로컬 작업이 겹치는지 | `kedovi gitlab busy [--repo <이름>]` (같은 repo · 러너 그룹의 도는 파이프라인 · 이 PC 의 무거운 프로세스. 러너가 이 PC 면 겹칠 때 경고, 끝 코드 2). 로컬 장애 · 시간 시험 전에 쓴다 | 보기 |
 | CI 러너 감시 넣기 | `kedovi gitlab runner-watch add [--repo <이름>] [--interval 600] [--dry-run]` (디스크 · 대기열 · 작업 시간 급증 → 텔레그램 알림, docker 캐시 상한. launchd plist · systemd timer 를 만들고 등록 명령을 보인다. 등록은 사람이) · `runner-watch check --config <파일> [--dry-run]` · `runner-watch status` | 이 PC |
 | 기획 repo 새로 만들기 | `kedovi init-docs <폴더>` 로 뼈대를 만들고 `kedovi repo add <폴더> --kind docs` 로 등록 | 팀 |
-| 화면 비교 (프로토타입 ↔ 구현) | `kedovi screens compare <화면 ID> [--impl <주소\|/경로>] [--proto <파일\|주소>] [--widths 1280,390] [--storage <상태.json>] [--find]` (같은 폭으로 두 장씩 찍어 `compare.html`. 구현 주소는 진입점 `@spec` 줄의 `@route`, screens 팩 · Playwright). "프로토타입이랑 비교해 줘" · "디자인 맞게 됐어?" 같은 말에 쓴다. 다른 곳은 「프로토타입 요소 · 구현 · 다른 이유」 표로 | 보기 |
+| 화면 비교 (프로토타입 ↔ 구현) | `kedovi screens compare <화면 ID> [--impl <주소\|/경로>] [--proto <파일\|주소>] [--widths 1280,390] [--storage <상태.json>] [--mock <픽스처.json\|.har>] [--find]` (같은 폭으로 두 장씩 찍어 `compare.html`. 구현 주소는 진입점 `@spec` 줄의 `@route`, 백엔드 없이는 `--mock`, screens 팩 · Playwright). "프로토타입이랑 비교해 줘" · "디자인 맞게 됐어?" 같은 말에 쓴다. 찍으면 체크리스트의 비교 줄에 적힌다 | 보기 |
+| 화면 정본 · 요소 체크리스트 | `kedovi screens inventory <화면 ID> [--proto <파일\|주소>] [--force]` (정본 판정: 프로토타입 · 화면설계서 · 둘 다 · 없음, 정본의 영역별 요소를 `handoffs/<나>/screens/<화면 ID>.md` 로. 끝 코드 3 = 사용자에게 물을 것). "이 화면 만들기 전에 요소 세 줘" · "정본이 뭐야?" 같은 말에 쓴다 | 쓰기 |
+| 요소 체크리스트 점검 | `kedovi screens checklist <화면 ID> [--start] [--md]` (`--start` = 착수 전 데이터 원천 빈 칸 · 원천 없음, 기본 = 완료 전 판정 빈 칸 · 비교 미실행, `--md` = MR 본문 표). "빠진 요소 없어?" 같은 말에 쓴다 | 보기 |
+| 화면 리뷰 지시서 블록 | `kedovi screens review <화면 ID…>` (정본 경로 · 요소 체크리스트 · 비교 스크린샷 · 「정본에 있는데 구현에 없는 요소 = 블로커」. `kedovi delegate` 리뷰는 저절로 넣는다) | 보기 |
 | 화면설계서 검사 | `kedovi screens check [기획 repo]` (근거 ID · 화면 ID 중복 · 기능 ID 누락). 화면설계서 작성 절차는 `screens` 스킬 | 보기 |
 | 데이터 설계 검사 | `kedovi datamodel check [기획 repo]` (참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조). 작성 절차는 `datamodel` 스킬 | 보기 |
 | 구조 검사 넣기 (패키지 구조 · 계층 경계를 테스트 · 린트로) | `kedovi archrules spring\|react\|fastapi [--repo <이름>] [--dry-run]` (Spring ArchUnit · React eslint-plugin-boundaries · FastAPI import-linter + 역할 파일 검사. 있는 파일은 덮지 않는다). "구조 검사 넣어줘" · "패키지 규칙 테스트로" 같은 말에 쓴다. 먼저 `--dry-run` 으로 만들 파일을 보이고, 기존 코드 위반은 범위를 사용자와 정한다 | 코드 repo |

@@ -2,7 +2,7 @@
   "name": "stack-spring",
   "title": "Spring 백엔드 스택",
   "summary": "Spring·JPA·QueryDSL 트랜잭션·쿼리 규칙",
-  "description": "Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked 예외 롤백 함정, 파생 쿼리/QueryDSL/네이티브 SQL 정책, 엔티티당 리포지토리, 복합 키 값 객체, 대량 처리 예외, MapStruct·Bean Validation, 패키지 구조 선택(계층 먼저 · 기능 먼저, jOOQ 안내) + 쿼리 술어 추출기·QueryDSL 런타임 오류 검사기·로깅 검사기·ArchUnit 구조 검사 템플릿(kedovi archrules spring) · 쓰기 보고서 기록기(kedovi writes add jooq · jdbc). 계층·API 계약 원칙은 backend 팩",
+  "description": "Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked 예외 롤백 함정, 파생 쿼리/QueryDSL/네이티브 SQL 정책, 엔티티당 리포지토리, 복합 키 값 객체, 대량 처리 예외, MapStruct·Bean Validation, 패키지 구조 선택(계층 먼저 · 기능 먼저, jOOQ 안내), 테스트 컨테이너 실행당 한 벌 · 컨텍스트 줄이기 + 쿼리 술어 추출기·QueryDSL 런타임 오류 검사기·로깅 검사기·ArchUnit 구조 검사 템플릿(kedovi archrules spring) · 쓰기 보고서 기록기(kedovi writes add jooq · jdbc). 계층·API 계약 원칙은 backend 팩",
   "category": "stack",
   "layer": "backend",
   "stacks": [

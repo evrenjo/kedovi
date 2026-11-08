@@ -92,6 +92,10 @@ backend 팩 룰이 기대는 공개 문서 목록과, **룰별 근거**·**출�
 |---|---|---|---|
 | T1 | Martin Fowler / Ham Vocke — The Practical Test Pyramid | https://martinfowler.com/articles/practical-test-pyramid.html | 단위 많이·통합 일부·E2E 적게, 동작을 테스트, 실제 DB, 외부는 스텁, 계약 테스트, 중복 제거 |
 | T2 | Martin Fowler: ContractTest | https://martinfowler.com/bliki/ContractTest.html | 테스트 대역(스텁)은 실제 서비스와 어긋날 수 있다: 대역이 가정한 동작을 실제와 대조해 두어야 한다 |
+| T3 | Docker: Testcontainers 수명 · singleton 컨테이너 | https://docs.docker.com/guides/testcontainers-java-lifecycle/singleton-containers | 컨테이너를 static 초기화로 한 번 띄워 모든 테스트 클래스가 공유, @Testcontainers 와 섞으면 클래스 끝에 멈춰 캐시된 컨텍스트가 끊김, 테스트마다 데이터 정리 |
+| T4 | Spring Boot 4.0: Testcontainers | https://docs.spring.io/spring-boot/4.0.0/reference/testing/testcontainers.html | 컨테이너 빈은 컨텍스트마다 한 벌 생성 · 컨텍스트가 닫힐 때 멈춤, JUnit 확장 컨테이너는 캐시된 컨텍스트보다 먼저 멈출 수 있음 |
+| T5 | Spring Framework: 테스트 컨텍스트 캐시 · 동적 속성 | https://docs.spring.io/spring-framework/reference/testing/testcontext-framework/ctx-management/caching.html | 설정 조합마다 컨텍스트 키, 기본 최대 32개 · LRU 로 밀려나면 닫힘. 동적 속성은 DynamicPropertyRegistrar 빈 |
+| T6 | Testcontainers: Replace H2 with a real database | https://testcontainers.com/guides/replace-h2-with-real-database-for-testing | 메모리 DB 대신 운영과 같은 엔진으로 테스트 |
 
 ### 공개 AGENTS.md (에이전트 규칙 사례)
 
@@ -183,6 +187,8 @@ backend 팩 룰이 기대는 공개 문서 목록과, **룰별 근거**·**출�
 | 70 외부 호출 | 외부 API 동작 장부: 실측만 기대 · 미확인은 최악 · 확인일 · 근거 | T2 (대역과 실제의 대조), R16, 킷 원 규칙(외부 API 가정이 운영 결함 비용 1위였던 실측) |
 | 80 테스트 | 바뀐 동작마다 실패하는 테스트, 기존 로직 테스트 추가 안 함 | G4 |
 | 80 테스트 | 층 나누기·중복 제거·동작 테스트·실제 DB·외부 스텁·계약 | T1 |
+| 80 테스트 | 실제 엔진을 브로커 · 캐시까지 | T1 (실제 인프라로 통합 테스트), T6 |
+| 80 테스트 | 컨테이너는 실행당 한 벌 · 쓰는 것만 · 공유 시 격리 | T3, T4, T5, 킷 원 규칙(컨텍스트마다 컨테이너가 떠 빌드 한 번에 30개 이상 뜬 실측) |
 | 80 테스트 | 인가 거부 케이스 | S2, S8 |
 | 80 테스트 | 시간 고정·로그 문자열 대조 금지·합성 데이터 | G4, G2 |
 | 80 테스트 | 실데이터 극값(집계만, 원문 없음) · 칸 여유 | S16 (개인정보 금지), G2 (고객 데이터를 픽스처에 넣지 않기), 킷 원 규칙 |

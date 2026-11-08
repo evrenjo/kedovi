@@ -27,7 +27,7 @@ const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { load, git, stateDir } = require('../lib/workspace');
 const { findCli } = require('../lib/cli');
-const { REVIEW_ROLE, hasCheckLine, CHECK_MESSAGE, checkLevel, prototypeGap } = require('../lib/review');
+const { REVIEW_ROLE, hasCheckLine, CHECK_MESSAGE, checkLevel, screenGapIds, screenBlock } = require('../lib/review');
 const P = require('../lib/delegate-progress');
 
 const argv = process.argv.slice(2);
@@ -196,7 +196,7 @@ function readTask() {
 
 function start() {
   const job = parseJobArgs();
-  const task = readTask();
+  let task = readTask();
   if (!task.trim()) throw new Error('작업 지시서가 비었습니다. stdin 이나 --task-file 로 주세요');
   const id = `${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}-${job.role}-${process.pid}`;
   const dir = path.join(JOBS, id);
@@ -208,7 +208,12 @@ function start() {
   const checkLv = REVIEW_ROLE.test(job.role) && !hasCheckLine(task) ? checkLevel(ROOT) : 'off';
   if (checkLv === 'block') { fs.rmSync(dir, { recursive: true, force: true }); console.log(`✖ ${CHECK_MESSAGE}`); process.exit(6); }
   if (checkLv === 'warn') console.log(`⚠ ${CHECK_MESSAGE}`);
-  if (REVIEW_ROLE.test(job.role)) { const gap = prototypeGap(ROOT, task); if (gap) console.log(`⚠ ${gap}`); }
+  // 화면 정본 대조: 정본이 있는 화면을 다루는 리뷰면 정본 경로 · 요소 체크리스트 · 비교 스크린샷 · 블로커 기준을 지시서에 넣는다 (screens 팩)
+  if (REVIEW_ROLE.test(job.role)) {
+    const ids = screenGapIds(ROOT, task);
+    const block = screenBlock(ROOT, ids);
+    if (block) { task = `${task.replace(/\s+$/, '')}\n\n${block}\n`; console.log(`ℹ 화면 정본 대조 블록을 지시서에 넣었습니다: ${ids.join(' · ')}`); }
+  }
   const prior = priorReviews(job.role, job.scope);
   const meta = { id, ...job, cli: exe, args, startedAt: Date.now(), dir, round: prior ? prior.round : undefined };
   if (has('dry-run')) { console.log(JSON.stringify({ ...meta, prompt: `${buildPrompt({ ...job, task, prior }).slice(0, 300)}…` }, null, 2)); fs.rmSync(dir, { recursive: true, force: true }); return; }

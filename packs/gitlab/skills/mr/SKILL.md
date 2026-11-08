@@ -74,7 +74,7 @@ argument-hint: "<source 브랜치> [target 브랜치]"
 
      해당 Change Type 만 `[x]`(커밋 prefix 기준). Related Issues 에는 **MR 을 받는 쪽이 열어볼 수 있는 이슈 키만** 적는다 —
      내부 트래커 번호(`#132` 등)는 그 repo 의 다른 이슈로 자동 링크되므로 쓰지 않는다. 없으면 `N/A`.
-   - 프로토타입이 있는 화면을 바꿨으면 Summary 아래에 `### 프로토타입과 다른 곳` 소제목과 `| 프로토타입 요소 | 구현 | 다른 이유 |` 표를 둔다 (다른 곳이 없으면 「없음 (kedovi screens compare 로 확인)」 한 줄).
+   - 정본(프로토타입 · 화면설계서)이 있는 화면을 바꿨으면 Summary 아래에 `### 화면 정본 대조` 소제목과 `kedovi screens checklist <화면 ID> --md` 의 출력(정본 · 비교 · 요소별 판정 표)을 둔다. 판정 없는 요소가 남았으면 MR 을 올리기 전에 채운다.
    - QA 승격 MR 은 Summary 를 repo 가 아니라 **화면·기능·배치 단위** 소제목으로 나눈다.
 5. **미리보기 → 멈춤** — 사용자의 언어로 무엇이 들어가는지 설명하고, 실제 등록될 title/description 원문은 코드블록으로 보여준다. 함께 표시:
    `source → target` · 커밋 수 · `remove_source_branch` · assignee(기본 **비움**, 사용자가 사람을 지정할 때만).

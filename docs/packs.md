@@ -581,7 +581,7 @@ React + TypeScript + Vite + TanStack Query + React Router 구현 규약: 생성 
 <details>
 <summary><b>stack-spring</b> · Spring 백엔드 스택: Spring·JPA·QueryDSL 트랜잭션·쿼리 규칙</summary>
 
-Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked 예외 롤백 함정, 파생 쿼리/QueryDSL/네이티브 SQL 정책, 엔티티당 리포지토리, 복합 키 값 객체, 대량 처리 예외, MapStruct·Bean Validation, 패키지 구조 선택(계층 먼저 · 기능 먼저, jOOQ 안내) + 쿼리 술어 추출기·QueryDSL 런타임 오류 검사기·로깅 검사기·ArchUnit 구조 검사 템플릿(kedovi archrules spring) · 쓰기 보고서 기록기(kedovi writes add jooq · jdbc). 계층·API 계약 원칙은 backend 팩
+Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked 예외 롤백 함정, 파생 쿼리/QueryDSL/네이티브 SQL 정책, 엔티티당 리포지토리, 복합 키 값 객체, 대량 처리 예외, MapStruct·Bean Validation, 패키지 구조 선택(계층 먼저 · 기능 먼저, jOOQ 안내), 테스트 컨테이너 실행당 한 벌 · 컨텍스트 줄이기 + 쿼리 술어 추출기·QueryDSL 런타임 오류 검사기·로깅 검사기·ArchUnit 구조 검사 템플릿(kedovi archrules spring) · 쓰기 보고서 기록기(kedovi writes add jooq · jdbc). 계층·API 계약 원칙은 backend 팩
 
 | 항목 | 내용 |
 |---|---|
@@ -600,6 +600,7 @@ Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked �
 | `stack-spring--40-api-and-validation` | Spring 기존 관례 찾기·입력 검증 | 필요할 때: Spring 에서 엔드포인트를 새로 만들거나 요청·응답·예외·검증·사용자 메시지를 정하거나 바꿀 때 |
 | `stack-spring--50-logging` | Spring 로깅 | 필요할 때: Spring 백엔드에서 로그를 새로 넣거나, 예외를 잡아 로그로 남기는 코드·@RestControllerAdvice 를 고칠 때 |
 | `stack-spring--60-clean-code` | Spring 레이어 책임 · 주입 · 설정값 | 상시 |
+| `stack-spring--70-testing` | Spring 테스트 인프라 · 컨텍스트 | 필요할 때: Spring 에서 통합 테스트(@SpringBootTest · 슬라이스 · Testcontainers)를 새로 쓰거나, 테스트 설정 · 컨테이너 기동 방식을 고치거나, 테스트가 느리거나 컨테이너가 많이 뜰 때 |
 
 **도구**: `bin/check-logging-convention.js` · `bin/check-querydsl-distinct-order.js` · `bin/check-querydsl-projection-arity.js` · `bin/query-predicates.js`
 
@@ -776,9 +777,9 @@ Swift 소스가 있는 repo 에: 문장처럼 읽히는 이름 · 인자 레이�
 </details>
 
 <details>
-<summary><b>screens</b> · 화면설계서: 화면설계서 양식 · 뷰어 · screens 스킬 · 검사 · 프로토타입대로 구현 · 화면 비교</summary>
+<summary><b>screens</b> · 화면설계서: 화면설계서 양식 · 뷰어 · screens 스킬 · 검사 · 정본 요소 체크리스트 · 화면 비교</summary>
 
-화면의 정본은 프로토타입(기본: 화면 목록 · 정책 · 스크린샷만) 또는 화면설계서 중 하나로 고른다. 화면설계서(스토리보드)를 같은 양식 · 같은 뷰어로: 장 양식(표지 · 변경 이력 · 메뉴 구조 · 정책 · 화면, 가로 1280×760), 뷰어(썸네일 · 발표 · A4 가로 인쇄 · 한 쪽 넘침 표시 · 내부 정보(Check Point · 근거 ID · sb-dev) 숨김과 I 키 토글 · 근거 ID 를 누르면 오른쪽 패널에 근거 문서), 화면설계 절차(screens 스킬: 진행 방식 합의 → 화면 정책 → 화면 목록 → 장 작성 → 문서 사이트 반영), 프로토타입대로 구현(상시 규칙: 프로토타입이 있으면 화면 구현이 구성 · 스타일을 따르고 다르게 만든 곳은 「프로토타입 요소 \| 구현 \| 다른 이유」 표로 보고 · MR 에 남긴다), 화면 비교(kedovi screens compare <화면 ID>: 프로토타입과 구현을 같은 폭 PC · 폰으로 찍어 나란히 보는 compare.html), 검사(Related ID · 근거 ID 가 색인에 있는지 · Description 이 결론 한 줄인지 · 화면 ID 중복 · 기능 ID 누락). 문서 사이트는 core 의 kedovi docs build 가 만든다. 신규 · 차세대 유형은 기본으로 켜진다
+화면의 정본은 프로토타입(기본: 화면 목록 · 정책 · 스크린샷만) 또는 화면설계서 중 하나로 고른다. 화면설계서(스토리보드)를 같은 양식 · 같은 뷰어로: 장 양식(표지 · 변경 이력 · 메뉴 구조 · 정책 · 화면, 가로 1280×760), 뷰어(썸네일 · 발표 · A4 가로 인쇄 · 한 쪽 넘침 표시 · 내부 정보(Check Point · 근거 ID · sb-dev) 숨김과 I 키 토글 · 근거 ID 를 누르면 오른쪽 패널에 근거 문서), 화면설계 절차(screens 스킬: 진행 방식 합의 → 화면 정책 → 화면 목록 → 장 작성 → 문서 사이트 반영), 정본 결정 · 요소 체크리스트(상시 규칙 + kedovi screens inventory <화면 ID>: 프로토타입 있음 → 프로토타입, 화면설계서만 → 화면설계서, 둘 다 다름 · 둘 다 없음 → 묻기. 정본의 영역별 요소를 체크리스트로 만들어 착수 전 데이터 원천, 완료 전 요소마다 판정(구현 · 다름 (이유) · 뺌 (결정 ID))을 kedovi screens checklist 가 점검, MR 본문 표), 화면 비교(kedovi screens compare <화면 ID>: 프로토타입과 구현을 같은 폭 PC · 폰으로 찍어 나란히 보는 compare.html, 백엔드 없이 --mock 픽스처), 리뷰 지시서 블록(kedovi screens review: 정본에 있는데 구현에 없는 요소 = 블로커, kedovi delegate 리뷰는 저절로), 커밋 전 알림(화면 진입 파일이 바뀌었는데 판정이 없으면), 검사(Related ID · 근거 ID 가 색인에 있는지 · Description 이 결론 한 줄인지 · 화면 ID 중복 · 기능 ID 누락). 문서 사이트는 core 의 kedovi docs build 가 만든다. 신규 · 차세대 유형은 기본으로 켜진다
 
 | 항목 | 내용 |
 |---|---|
@@ -798,7 +799,7 @@ Swift 소스가 있는 repo 에: 문장처럼 읽히는 이름 · 인자 레이�
 |---|---|
 | `screens` | 화면설계서(스토리보드)를 킷 양식으로 만든다. 진행 방식 합의 → 화면 정책 → 화면 목록(화면 ID ↔ 기능 ID 대조) → 화면별 장 작성 → 문서 사이트 반영과 검사. "화면설계", "화면설계서", "스토리보드", "와이어프레임" 요청에 쓴다. |
 
-**도구**: `bin/check-screens.js` · `bin/compare-screens.js`
+**도구**: `bin/check-screens.js` · `bin/compare-screens.js` · `bin/screens-inventory.js`
 
 </details>
 <!-- /packs:catalog -->

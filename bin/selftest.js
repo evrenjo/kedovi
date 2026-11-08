@@ -2063,9 +2063,9 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const r4 = cmp('SCR-ORD-09');
   const missing = r4.status === 1 && /SCR-ORD-09 의 프로토타입을 찾지 못했습니다/.test(r4.stderr);
   const R = require(path.join(ws, 'packs', 'core', 'lib', 'review.js'));
-  const gap = /SCR-ORD-01/.test(R.prototypeGap(ws, '검사: npm test 통과\n주문 목록 화면(SCR-ORD-01) 리뷰')) && !R.prototypeGap(ws, 'SCR-ORD-01 리뷰\n| 프로토타입 요소 | 구현 | 다른 이유 |') && !R.prototypeGap(ws, 'SCR-ORD-03 리뷰') && !R.prototypeGap(ws, 'API 리뷰');
+  const gap = /SCR-ORD-01/.test(R.prototypeGap(ws, '검사: npm test 통과\n주문 목록 화면(SCR-ORD-01) 리뷰')) && !R.prototypeGap(ws, 'SCR-ORD-01 리뷰\n## 화면 정본 대조: SCR-ORD-01') && !R.prototypeGap(ws, 'SCR-ORD-03 리뷰') && !R.prototypeGap(ws, 'API 리뷰');
   const agentsMd = fs.readFileSync(path.join(ws, 'AGENTS.md'), 'utf8');
-  const rule = /프로토타입이 있는 화면 구현/.test(agentsMd) && /kedovi screens compare/.test(fs.readFileSync(path.join(ws, '.agents', 'rules', 'core--21-verification.md'), 'utf8'));
+  const rule = /화면 구현: 정본 · 요소 체크리스트/.test(agentsMd) && /kedovi screens compare/.test(fs.readFileSync(path.join(ws, '.agents', 'rules', 'core--21-verification.md'), 'utf8'));
   // doctor: 원격 기본 브랜치가 통합 브랜치가 아니면 · 영구 브랜치가 아닌 main 이 뒤처졌으면 알린다 (안내만)
   const remote = path.join(tmp, 'branch-remote.git');
   const seed = path.join(tmp, 'branch-seed');
@@ -2094,6 +2094,75 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const cleaned = /✓ 기본 브랜치: svc\. develop/.test(d3) && !/낡은 브랜치/.test(d3);
   record('프로토타입대로 구현 (화면 비교 · 지시서 비교표 · 규칙) · doctor 원격 기본 브랜치', listed && byName && impl && missing && gap && rule && warnMain && okDev && cleaned,
     `목록 칸 · @route ${listed} · 자리 값 경로 막음 ${byName} · 파일 이름 · --impl ${impl} · 없음 ${missing} · 지시서 비교표 알림 ${gap} · 상시 규칙 · 검증 규칙 ${rule} · 기본 브랜치 main 알림 ${warnMain} · develop 정상 ${okDev} · main 지우면 조용 ${cleaned}`);
+
+  // 화면 정본 · 요소 체크리스트: 정본 판정(프로토타입 · 화면설계서 · 둘 다 · 없음) · 요소 뽑기 · 착수 전 · 완료 전 점검 · 합치기 · 리뷰 블록 · 커밋 훅 · --mock
+  {
+    const sdir = path.join(docs, '30-screens');
+    fs.writeFileSync(path.join(sdir, 'prototype', 'orders.html'), '<!doctype html><title>주문</title><body><main><section data-area="주문 목록"><h2>주문 목록</h2><table><tr><th>주문번호</th><th>금액</th></tr></table><button>엑셀 받기</button></section>'
+      + '<aside class="panel"><h3>주문 요약</h3><canvas id="trend"></canvas><div class="stat">전일비 +3%</div><span class="chip">배송중</span><button>주문 분석</button></aside></main><script>document.title = "x"</script></body>');
+    const sheet = (id, inner) => `<section class="sheet" id="${id}" data-label="${id}"><div class="body"><div class="canvas"><table class="meta screen-meta"><tr><th>Screen ID</th><td>${id}</td></tr></table>${inner}</div><aside class="side"><ol class="desc"><li><div>통계 기간 선택<ul><li>FN-ORD-001</li></ul></div></li></ol></aside></div></section>`;
+    fs.writeFileSync(path.join(sdir, 'screens.html'), `<!doctype html><body>${sheet('SCR-ORD-03', '<span class="area-label">기간</span><span class="mk">1</span><div class="wf-label">시작일</div><div class="wf-input">2026-01-01</div><span class="wf-btn primary">조회</span>')}${sheet('SCR-ORD-02', '<span class="area-label">상세</span><span class="wf-btn">환불</span>')}</body>`);
+    const sc = (command) => spawnSync(process.execPath, [path.join(ws, 'packs', 'core', 'hooks', 'spec-commit.js'), '--agent=claude'], { cwd: ws, encoding: 'utf8', input: JSON.stringify({ session_id: 'scr-1', hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command }, cwd: ws }), env: { ...process.env, CLAUDE_PROJECT_DIR: ws } }).stdout;
+    const inv = (...a) => spawnSync(process.execPath, [path.join(ws, 'packs', 'screens', 'bin', 'screens-inventory.js'), ...a], { cwd: ws, encoding: 'utf8' });
+    const S = require(path.join(ws, 'packs', 'screens', 'bin', 'screens-inventory.js'));
+    const W = require(path.join(ws, 'packs', 'core', 'lib', 'workspace.js'));
+    const wsObj = W.load(ws);
+    const i1 = inv('inventory', 'SCR-ORD-01', '--json');
+    const j1 = (() => { try { return JSON.parse(i1.stdout); } catch { return { rows: [] }; } })();
+    const has = (area, kind, label) => (j1.rows || []).some((r) => r.area === area && r.kind === kind && r.label.includes(label));
+    const ckFile = S.checklistPath(wsObj, 'SCR-ORD-01');
+    const protoCanon = i1.status === 0 && j1.verdict === 'prototype' && fs.existsSync(ckFile) && ckFile.includes(path.join('handoffs', W.devId(ws) || 'me', 'screens'))
+      && has('주문 목록', '표', '주문번호 · 금액') && has('주문 목록', '버튼', '엑셀 받기') && has('주문 요약', '차트', 'trend') && has('주문 요약', '값', '전일비') && has('주문 요약', '상태 칩', '배송중') && has('주문 요약', '버튼', '주문 분석')
+      && !(j1.rows || []).some((r) => r.kind === '제목' && r.label === '주문 요약');
+    const startFail = inv('checklist', 'SCR-ORD-01', '--start').status === 1;
+    // 원천 채우기 (하나는 없음) → 착수 전 통과 · 알림, 판정 일부 → 완료 전 실패
+    const fill = (fn) => { const t = fs.readFileSync(ckFile, 'utf8').split('\n').map((l) => { if (!/^\| /.test(l) || /^\| 영역 \|/.test(l)) return l; const c = l.split('|').slice(1, -1).map((x) => x.trim()); return `| ${fn(c).join(' | ')} |`; }); fs.writeFileSync(ckFile, t.join('\n')); };
+    fill((c) => { c[4] = /주문 분석/.test(c[1]) ? '없음' : 'API-ORD-01'; return c; });
+    const s2 = inv('checklist', 'SCR-ORD-01', '--start');
+    const startOk = s2.status === 0 && /데이터 원천이 없는 요소 1개: 주문 요약 > 주문 분석/.test(s2.stdout);
+    fill((c) => { c[5] = /주문 분석/.test(c[1]) ? '뺌 (이유 없음)' : '구현'; return c; });
+    const d1 = inv('checklist', 'SCR-ORD-01');
+    const doneFail = d1.status === 1 && /판정 모양이 틀린 요소 1개/.test(d1.stdout) && /비교 미실행/.test(d1.stdout);
+    fill((c) => { if (/주문 분석/.test(c[1])) c[5] = '뺌 (DEC-007)'; return c; });
+    S.recordCompare(wsObj, 'SCR-ORD-01', path.join(tmp, 'compare.html'));
+    const d2 = inv('checklist', 'SCR-ORD-01');
+    const md = inv('checklist', 'SCR-ORD-01', '--md');
+    const doneOk = d2.status === 0 && md.status === 0 && /\| 주문 요약 \| 주문 분석 \| 뺌 \(DEC-007\) \|/.test(md.stdout) && S.verdictOk('다름 (API 가 일 단위만 줌)') && !S.verdictOk('다름') && !S.verdictOk('뺌 (나중에)');
+    // 다시 뽑아도 채운 칸 · 비교 줄이 남는다
+    inv('inventory', 'SCR-ORD-01');
+    const kept = /\| 주문 요약 \| 주문 분석 \| 버튼 \|  \| 없음 \| 뺌 \(DEC-007\) \|/.test(fs.readFileSync(ckFile, 'utf8')) && /^- 비교: `.*compare\.html`/m.test(fs.readFileSync(ckFile, 'utf8'));
+    const i3 = inv('inventory', 'SCR-ORD-03', '--json');
+    const j3 = (() => { try { return JSON.parse(i3.stdout); } catch { return { rows: [] }; } })();
+    const sbCanon = i3.status === 0 && j3.verdict === 'storyboard' && (j3.rows || []).some((r) => r.area === '기간' && r.kind === '입력' && r.label === '시작일') && (j3.rows || []).some((r) => r.kind === '버튼' && r.label === '조회') && (j3.rows || []).some((r) => r.kind === '설명 1' && r.area === '기간' && /통계 기간 선택/.test(r.label));
+    const i2 = inv('inventory', 'SCR-ORD-02');
+    const both = i2.status === 3 && /\| 화면설계서 \| 상세 \| 환불 \| 버튼 \|/.test(i2.stdout) && /진행하지 말고/.test(i2.stdout);
+    const bothWait = !fs.existsSync(S.checklistPath(wsObj, 'SCR-ORD-02'));
+    const i9 = inv('inventory', 'SCR-ORD-09');
+    const none = i9.status === 3 && /\(권장\) 프로토타입 · 화면설계를 먼저/.test(i9.stdout) && /찾은 곳: plans\/30-screens/.test(i9.stdout.replace(/repos\//g, ''));
+    // 리뷰 지시서 블록 · 지시서 알림
+    const block = R.screenBlock(ws, R.screenGapIds(ws, '검사: npm test 통과\nSCR-ORD-01 리뷰'));
+    const review = /## 화면 정본 대조: SCR-ORD-01/.test(block) && /정본에 있는데 구현에 없는 요소는 블로커다/.test(block) && /판정 없음 0개/.test(block) && /SCR-ORD-03/.test(R.prototypeGap(ws, 'SCR-ORD-03 리뷰')) && !R.prototypeGap(ws, `SCR-ORD-01 리뷰\n${block}`);
+    // 커밋 훅: 화면 진입 파일(SCR-ORD-02)이 바뀌었는데 체크리스트가 없으면 알림, 완료된 SCR-ORD-01 은 조용
+    fs.appendFileSync(path.join(app, 'src', 'OrdersPage.tsx'), '// 고침\n');
+    const hookOut = sc('git -C repos/app commit -m x');
+    const hook = /SCR-ORD-02 체크리스트 없음/.test(hookOut) && !/SCR-ORD-01/.test(hookOut) && !/"deny"/.test(hookOut);
+    const i2b = inv('inventory', 'SCR-ORD-02', '--canon', 'storyboard');
+    const picked = i2b.status === 0 && /사용자가 화면설계서로 정함/.test(fs.readFileSync(S.checklistPath(wsObj, 'SCR-ORD-02'), 'utf8')) && /\| 상세 \| 환불 \| 버튼 \|/.test(fs.readFileSync(S.checklistPath(wsObj, 'SCR-ORD-02'), 'utf8')) && inv('inventory', 'SCR-ORD-01', '--canon', 'storyboard').status === 1;
+    const w3 = JSON.parse(fs.readFileSync(wsFile, 'utf8')); w3.vars.screens = { ...(w3.vars.screens || {}), checklistOnCommit: 'off' }; fs.writeFileSync(wsFile, JSON.stringify(w3, null, 2));
+    const hookOff = !/화면 진입 파일/.test(sc('git -C repos/app commit -m x'));
+    // --mock: 픽스처 경로 목록 · HAR · 없는 파일
+    fs.writeFileSync(path.join(ws, 'mock.json'), JSON.stringify({ 'GET **/api/orders': [{ id: 1 }] }));
+    fs.writeFileSync(path.join(ws, 'mock2.json'), JSON.stringify({ routes: [{ method: 'get', url: '**/api/me', status: 200, json: { name: 'a' } }, { url: '**/api/x', file: 'mock.json' }] }));
+    const C = require(path.join(ws, 'packs', 'screens', 'bin', 'compare-screens.js'));
+    const m1 = C.loadMock(wsObj, { mock: 'mock.json' });
+    const m2 = C.loadMock(wsObj, { mock: 'mock2.json' });
+    const m3 = cmp('SCR-ORD-01', '--mock', 'nope.json');
+    const mock = m1.routes.length === 1 && m1.routes[0].method === 'GET' && m1.routes[0].body === '[{"id":1}]' && m2.routes[0].method === 'GET' && m2.routes[0].url === '**/api/me' && m2.routes[1].body.includes('[{"id":1}]') && C.loadMock(wsObj, {}) === null;
+    const mockErr = m3.status === 1 && /--mock 픽스처 nope\.json 를 찾지 못했습니다/.test(m3.stderr) && /미실행: 완료로 보고하지 않는다/.test(m3.stderr);
+    const rule2 = /kedovi screens inventory/.test(agentsMd) && /둘 다 없음/.test(agentsMd);
+    record('화면 정본 · 요소 체크리스트 (inventory · checklist · review · 커밋 훅 · compare --mock)', protoCanon && startFail && startOk && doneFail && doneOk && kept && sbCanon && both && bothWait && picked && none && review && hook && hookOff && mock && mockErr && rule2,
+      `프로토타입 정본 · 요소 ${protoCanon} · 착수 전 원천 빈 칸 막음 ${startFail} · 원천 없음 알림 ${startOk} · 완료 전 판정 · 비교 ${doneFail} · 통과 · MR 표 ${doneOk} · 다시 뽑아도 판정 유지 ${kept} · 화면설계서 정본 ${sbCanon} · 둘 다 다름 묻기 ${both} · 답 전엔 체크리스트 안 만듦 ${bothWait} · 고른 정본 ${picked} · 없음 묻기 ${none} · 리뷰 블록 ${review} · 커밋 훅 ${hook} · 끄기 ${hookOff} · 픽스처 ${mock} · 없는 픽스처 ${mockErr} · 상시 규칙 ${rule2}`);
+  }
 }
 
 // 업무 흐름 문서 — 선택 화면의 질문 문구와 kedovi 명령이 docs/workflow.md 에 모두 있어야 한다 (화면을 고치면 문서도 같이)

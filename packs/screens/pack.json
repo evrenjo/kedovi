@@ -1,8 +1,8 @@
 {
   "name": "screens",
   "title": "화면설계서",
-  "summary": "화면설계서 양식 · 뷰어 · screens 스킬 · 검사 · 프로토타입대로 구현 · 화면 비교",
-  "description": "화면의 정본은 프로토타입(기본: 화면 목록 · 정책 · 스크린샷만) 또는 화면설계서 중 하나로 고른다. 화면설계서(스토리보드)를 같은 양식 · 같은 뷰어로: 장 양식(표지 · 변경 이력 · 메뉴 구조 · 정책 · 화면, 가로 1280×760), 뷰어(썸네일 · 발표 · A4 가로 인쇄 · 한 쪽 넘침 표시 · 내부 정보(Check Point · 근거 ID · sb-dev) 숨김과 I 키 토글 · 근거 ID 를 누르면 오른쪽 패널에 근거 문서), 화면설계 절차(screens 스킬: 진행 방식 합의 → 화면 정책 → 화면 목록 → 장 작성 → 문서 사이트 반영), 프로토타입대로 구현(상시 규칙: 프로토타입이 있으면 화면 구현이 구성 · 스타일을 따르고 다르게 만든 곳은 「프로토타입 요소 | 구현 | 다른 이유」 표로 보고 · MR 에 남긴다), 화면 비교(kedovi screens compare <화면 ID>: 프로토타입과 구현을 같은 폭 PC · 폰으로 찍어 나란히 보는 compare.html), 검사(Related ID · 근거 ID 가 색인에 있는지 · Description 이 결론 한 줄인지 · 화면 ID 중복 · 기능 ID 누락). 문서 사이트는 core 의 kedovi docs build 가 만든다. 신규 · 차세대 유형은 기본으로 켜진다",
+  "summary": "화면설계서 양식 · 뷰어 · screens 스킬 · 검사 · 정본 요소 체크리스트 · 화면 비교",
+  "description": "화면의 정본은 프로토타입(기본: 화면 목록 · 정책 · 스크린샷만) 또는 화면설계서 중 하나로 고른다. 화면설계서(스토리보드)를 같은 양식 · 같은 뷰어로: 장 양식(표지 · 변경 이력 · 메뉴 구조 · 정책 · 화면, 가로 1280×760), 뷰어(썸네일 · 발표 · A4 가로 인쇄 · 한 쪽 넘침 표시 · 내부 정보(Check Point · 근거 ID · sb-dev) 숨김과 I 키 토글 · 근거 ID 를 누르면 오른쪽 패널에 근거 문서), 화면설계 절차(screens 스킬: 진행 방식 합의 → 화면 정책 → 화면 목록 → 장 작성 → 문서 사이트 반영), 정본 결정 · 요소 체크리스트(상시 규칙 + kedovi screens inventory <화면 ID>: 프로토타입 있음 → 프로토타입, 화면설계서만 → 화면설계서, 둘 다 다름 · 둘 다 없음 → 묻기. 정본의 영역별 요소를 체크리스트로 만들어 착수 전 데이터 원천, 완료 전 요소마다 판정(구현 · 다름 (이유) · 뺌 (결정 ID))을 kedovi screens checklist 가 점검, MR 본문 표), 화면 비교(kedovi screens compare <화면 ID>: 프로토타입과 구현을 같은 폭 PC · 폰으로 찍어 나란히 보는 compare.html, 백엔드 없이 --mock 픽스처), 리뷰 지시서 블록(kedovi screens review: 정본에 있는데 구현에 없는 요소 = 블로커, kedovi delegate 리뷰는 저절로), 커밋 전 알림(화면 진입 파일이 바뀌었는데 판정이 없으면), 검사(Related ID · 근거 ID 가 색인에 있는지 · Description 이 결론 한 줄인지 · 화면 ID 중복 · 기능 ID 누락). 문서 사이트는 core 의 kedovi docs build 가 만든다. 신규 · 차세대 유형은 기본으로 켜진다",
   "requires": [
     "core"
   ],
@@ -18,6 +18,14 @@
     "screens.appUrl": {
       "default": "http://localhost:5173",
       "desc": "kedovi screens compare 가 구현 화면을 여는 주소 앞부분. 화면 진입점의 @route /경로 가 뒤에 붙는다"
+    },
+    "screens.mock": {
+      "default": "",
+      "desc": "kedovi screens compare 가 백엔드 없이 구현 화면을 찍을 때 쓰는 API 픽스처 (.json 경로 목록 또는 .har, 워크스페이스나 repo 기준 경로). 비우면 실제 백엔드에 요청한다. 명령의 --mock 이 먼저다"
+    },
+    "screens.checklistOnCommit": {
+      "default": "warn",
+      "desc": "화면 진입 파일(@spec 화면 ID)이 바뀐 커밋에 정본 요소 체크리스트 판정이 없으면 커밋 전에 알린다 (warn | off). 막지는 않는다"
     }
   }
 }

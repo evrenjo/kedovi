@@ -50,7 +50,10 @@
  *   kedovi debate list · watch [<id>] [--once] · status [<id>] · models [--task code|design|docs]   토론 모드(여러 모델이 따로 보고 서로 반박): 목록 · 모델별 주장 · 판정을 실시간으로 보기(--once = 지금까지만, 채팅용) · 지금 회차와 모델별 상태 · 이 PC 에서 쓸 수 있는 모델과 패널 예시. 시작은 채팅에서 "토론해줘" (debate 스킬)
  *   kedovi board [--no-open] [--no-fetch]   워크스페이스 현황판: 로드맵 · 팀원별 마지막 핸드오프 · 미완 작업 · 공지 + 기록 쪽 (.agents/board/, 이 PC 만 · 보기 전용)
  *   kedovi screens check [repo|폴더]   화면설계서 검사: 근거 ID 가 색인에 있는지 · 화면 ID 중복 · 기능 ID 누락 (screens 팩)
- *   kedovi screens compare <화면 ID> [--proto 파일|주소] [--impl 주소|/경로] [--widths 1280,390] [--storage 상태.json] [--find]   프로토타입과 구현 화면을 같은 폭(PC · 폰)으로 찍어 나란히 보는 compare.html (screens 팩, Playwright). 구현 주소는 @spec 줄의 @route
+ *   kedovi screens compare <화면 ID> [--proto 파일|주소] [--impl 주소|/경로] [--widths 1280,390] [--storage 상태.json] [--mock 픽스처.json|.har] [--find]   프로토타입과 구현 화면을 같은 폭(PC · 폰)으로 찍어 나란히 보는 compare.html (screens 팩, Playwright). 구현 주소는 @spec 줄의 @route
+ *   kedovi screens inventory <화면 ID> [--proto 파일|주소] [--force]   화면 정본 판정(프로토타입 · 화면설계서 · 둘 다 · 없음) + 정본 요소 체크리스트 handoffs/<나>/screens/<화면 ID>.md (영역 · 요소 · 상태 · 데이터 원천 · 판정, screens 팩)
+ *   kedovi screens checklist <화면 ID> [--start] [--md]   체크리스트 점검: --start 는 착수 전(데이터 원천 빈 칸 · 원천 없음), 기본은 완료 전(판정 빈 칸 · 비교 미실행), --md 는 MR 본문 표
+ *   kedovi screens review <화면 ID…>   리뷰 지시서에 넣을 화면 정본 대조 블록 (정본 경로 · 체크리스트 · 비교 스크린샷 · 정본에 있는데 없는 요소 = 블로커)
  *   kedovi datamodel check [repo|폴더]   데이터 설계 검사: 참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조 (datamodel 팩)
  *   kedovi archrules spring|react|fastapi [--repo R] [--dir 모듈 경로] [--dry-run] [--json]   구조 검사 템플릿을 repo 에 넣는다: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사. 구조 · 기준 패키지 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다
  *   kedovi writes add jooq|jdbc|sqlalchemy|node-pg [--repo R] [--dir 모듈] [--dry-run] [--json]   쓰기 보고서(시험이 DB 에 쓴 것을 DB 화면처럼 보고 기대값으로 고정) 기록기를 repo 에 넣는다: 스택 팩의 파일 · 설정(없는 키만 더함) · 의존성 · 실행 · 기대값 고정 명령 안내. 있는 파일은 덮지 않는다
@@ -3833,7 +3836,7 @@ async function main() {
     case 'debate': return runWsTool('debate.js', rest.length ? rest : ['list']);
     case 'board': return runWsTool('board.js', rest);
     case 'tidy': return runWsTool('tidy.js', rest);
-    case 'screens': return rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
+    case 'screens': return rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : ['inventory', 'checklist', 'review'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
     case 'datamodel': return runWsTool('check-datamodel.js', rest.filter((x) => x !== 'check'), 'datamodel');
     case 'archrules': return runWsTool('archrules.js', rest);
     case 'writes': return runWsTool('writes.js', rest.map((a, i) => (rest[i - 1] === '--report' ? path.resolve(a) : a))); // 도구는 워크스페이스 루트에서 돈다
