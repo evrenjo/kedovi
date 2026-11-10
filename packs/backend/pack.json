@@ -2,7 +2,7 @@
   "name": "backend",
   "title": "백엔드 공통 원칙",
   "summary": "인가·검증·API 계약·데이터·외부 호출·로깅·운영 검증",
-  "description": "프레임워크와 무관한 백엔드 원칙: 기존 관례 따르기, 객체 단위 인가, 경계 입력 검증, 기존 API 계약·하위 호환, 페이지·멱등성, 트랜잭션 경계·동시 수정, 데이터 접근(파라미터 바인딩·N+1·대량 처리), 보안(비밀·SSRF·업로드·의존성), 외부 호출 타임아웃·재시도·설정·정상 종료, 구조화 로깅·추적 ID, 변경 동작 테스트, 저장 로직 변경 때 쓰기 보고서 · 기대값(kedovi writes add sqlalchemy · node-pg), 호출 체인의 시간 예산(남은 예산 상대값 전달 · 엔드포인트별 timeout · 시간 초과 구간 시험), 외부 API 동작 장부(실측만 기대 · 미확인은 최악 응답 시뮬레이터 · 대조 시험 · 실패 주입 세트, kedovi apiledger), 실데이터 극값 fixture · 칸 여유 검사(kedovi extremes), 운영 결함 수정은 고치기 전 실패 → 고친 뒤 통과. 근거 출처는 docs/SOURCES.md",
+  "description": "프레임워크와 무관한 백엔드 원칙: 기존 관례 따르기, 객체 단위 인가, 경계 입력 검증, 기존 API 계약·하위 호환, 페이지·멱등성, 트랜잭션 경계·동시 수정, 데이터 접근(파라미터 바인딩·N+1·대량 처리), 보안(비밀·SSRF·업로드·의존성), 외부 호출 타임아웃·재시도·설정·정상 종료, 구조화 로깅·추적 ID, 변경 동작 테스트, 저장 로직 변경 때 쓰기 보고서 · 기대값(kedovi writes add sqlalchemy · node-pg), 호출 체인의 시간 예산(남은 예산 상대값 전달 · 엔드포인트별 timeout · 시간 초과 구간 시험), 외부 API 동작 장부(실측만 기대 · 미확인은 최악 응답 시뮬레이터 · 대조 시험 · 실패 주입 세트, kedovi apiledger), 실데이터 극값 fixture · 칸 여유 검사(kedovi extremes), 운영 결함 수정은 고치기 전 실패 → 고친 뒤 통과, 구조 선택지 backend.layout = component-web(기능 핵심 + 화면 기준 web 층 · 화면 이름 대조 kedovi views check · 스택별 대응표 · kedovi archrules 의존 방향). 근거 출처는 docs/SOURCES.md",
   "category": "layer",
   "layer": "backend",
   "requires": [
@@ -24,6 +24,34 @@
     "extremes.warnRatio": {
       "default": 0.9,
       "desc": "kedovi extremes check 의 경고 기준: 실데이터 최댓값이 칸 한도의 이 비율 이상이면 ⚠"
+    },
+    "backend.layout": {
+      "default": "existing",
+      "choices": [
+        "existing",
+        "component-web"
+      ],
+      "desc": "백엔드 구조: existing(프로젝트 관례 · 스택 팩 구조 변수, 기본) | component-web(기능 핵심 feature/<기능> + 화면 기준 web 층 web/views/<화면> · web/api/<묶음>. 각 스택의 기능 먼저 구조 위에 web 층을 더한다). 바꾸면 sync 가 공통 규칙과 스택 대응표를 넣고, kedovi archrules 가 의존 방향 검사를 만든다"
+    },
+    "backend.webDir": {
+      "default": "",
+      "desc": "component-web 의 web 폴더 (백엔드 repo 기준). 비우면 스택에서 정한다: Spring src/main/java/<기준 패키지>/web · NestJS src/web · FastAPI <소스>/<패키지>/web · Django <패키지>/web"
+    },
+    "backend.frontViewsDir": {
+      "default": "",
+      "desc": "화면 이름 대조의 프론트 화면 루트 (프론트 repo 기준). 비우면 react.viewsDir (FSD 면 <react.srcDir>/pages)"
+    },
+    "backend.viewsIgnore": {
+      "default": [],
+      "desc": "화면 이름 대조에서 뺄 화면 경로 (정규화 전 그대로, 예: [\"auth/login\"]). 백엔드 화면 API 가 필요 없는 화면 · 화면 없는 API"
+    },
+    "backend.viewsOnCommit": {
+      "default": "warn",
+      "choices": [
+        "warn",
+        "off"
+      ],
+      "desc": "component-web 에서 화면 폴더(views · pages)가 바뀐 커밋에 프론트 · 백엔드 화면 이름이 어긋나면 커밋 전에 알린다 (warn | off). 막지는 않는다"
     }
   },
   "notes": [

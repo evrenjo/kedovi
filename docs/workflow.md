@@ -322,6 +322,7 @@ flowchart TD
     Q -->|"CI 러너 감시"| RW["kedovi gitlab runner-watch add [--repo R] [--dry-run]<br/>디스크 · 대기열 · 작업 시간 급증 → 알림, docker 캐시 상한<br/>→ launchd plist · systemd timer (등록은 사람이) · kedovi gitlab busy (겹침 확인)"]
     Q -->|"compose 운영 검증"| OPS["kedovi ops add lifecycle · alerts · preflight · all [--repo R] [--dry-run]<br/>수명 시험 + CI job · 지표 cron + 경보 규칙(anon · file) · preflight + 설정 → repo 의 ops/<br/>kedovi ops preflight [서비스…] [-- 배포 명령] (위험하면 멈춤, --force) · kedovi ops lifecycle"]
     Q -->|"화면 정본 · 요소"| SCI["kedovi screens inventory &lt;화면 ID&gt;<br/>정본 판정(프로토타입 · 화면설계서 · 둘 다 · 없음)<br/>→ handoffs/나/screens/화면 ID.md 요소 체크리스트<br/>kedovi screens checklist --start · 완료 전 · kedovi screens review"]
+    Q -->|"화면 이름 대조"| VWC["kedovi views check<br/>component-web: 프론트 화면 폴더 ↔ 백엔드 web/views/화면<br/>대소문자 · - · _ 무시 · 화면 폴더 커밋 때 훅이 알림"]
     Q -->|"화면 비교"| SCC["kedovi screens compare &lt;화면 ID&gt; [--mock 픽스처]<br/>프로토타입 ↔ 구현을 같은 폭(PC · 폰)으로 찍어 compare.html<br/>구현 주소 = @spec 줄의 @route 또는 --impl · 체크리스트 비교 줄"]
     Q -->|"응답 언어 · 대화 스타일"| PRF["kedovi prefs language ko · en · style learn · normal · expert [--team]<br/>값 team = 이 PC 값 지우기 · mermaid [install] · setup (화면)<br/>→ .agents/local.json (팀은 workspace.json) → sync"]
     Q -->|"답변 시각 표시"| TS["kedovi timestamp on · off · team [--team]<br/>답변 첫 줄에 요청 받은 시각 (기본 켜짐, Claude Code)<br/>→ .agents/local.json (팀은 workspace.json)"]
@@ -412,7 +413,8 @@ flowchart TD
 | `kedovi screens compare <화면 ID>` | 프로토타입과 구현 화면을 같은 폭(PC 1280 · 폰 390)으로 찍어 나란히 보는 `compare.html` (screens 팩, Playwright). 프로토타입 = 화면 목록의 「프로토타입」 칸 · `prototype/` 파일 이름, 구현 = `@spec` 줄의 `@route` · `--impl`. 백엔드 없이 `--mock <픽스처>` |
 | `kedovi screens check [repo]` | 화면설계서 검사 (screens 팩): 근거 ID 가 색인에 있는지 · 화면 ID 중복 · 기능 ID 누락(「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |
 | `kedovi datamodel check [repo]` | 데이터 설계 검사 (datamodel 팩): 참조 대상 · 기본키 · 중복 · 표 형식(✖), 논리명 · 컨벤션(`vars.datamodel`) · 기능 ID 대조 · 논리 참조 대상 · 고정 스키마 기본키(⚠). ERD 는 `kedovi docs build` 가 정의서 폴더마다 `erd.html` 로 만든다 |
-| `kedovi archrules spring\|react\|fastapi` | 구조 검사 템플릿을 repo 에: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사 (구조 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다) |
+| `kedovi archrules spring\|react\|fastapi\|nestjs\|django` | 구조 검사 템플릿을 repo 에: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사 · NestJS dependency-cruiser · Django import-linter (component-web 이면 web → feature → shared 방향까지, 구조 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다) |
+| `kedovi views check` | 화면 이름 대조 (component-web): 프론트 화면 폴더 ↔ 백엔드 `web/views/<화면>` (backend 팩) |
 | `kedovi writes add` · `kedovi writes check` · `kedovi writes open` | 쓰기 보고서: 기록기를 repo 에 넣기(jooq · jdbc · sqlalchemy · node-pg) · 기능 문서 「저장」 표와 대조(표에 없는 쓰기 · 안 쓴 컬럼 · 타입 범위) · 보고서 화면 열기 |
 | `kedovi apiledger add` · `kedovi apiledger check` | 외부 API 동작 장부: 장부 · 시뮬레이터 · 대조 시험 · 실패 주입 세트를 repo 에 넣기(node · python · java) · 형식 · 미확인 · 오래된 확인일 · 시험 대조 검사 |
 | `kedovi extremes add` · `kedovi extremes check` · `kedovi extremes fixture` | 실데이터 극값: 운영 DB 집계 SQL(원문 없음) · 칸 길이 · 여유 검사 · 극값 fixture |

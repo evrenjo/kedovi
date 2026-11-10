@@ -27,17 +27,20 @@ public final class ArchRules {
     /** true = feature/<기능>/[<하위기능>/]<계층> 구조, false = 계층 먼저(webapi · service · query …). */
     static final boolean FEATURE_FIRST = __FEATURE_FIRST__;
 
+    /** true = component-web: feature (진입점 없음) + web/views/<화면> · web/api/<묶음> 화면 API 층 (+ 선택 customer/<고객>). FEATURE_FIRST 가 true 여야 한다. */
+    static final boolean COMPONENT_WEB = __COMPONENT_WEB__;
+
     /** true = 역할 클래스에 도우미 메서드 0개(접근 제한자 무관, 자기만 부르는 public 포함). */
     static final boolean NO_HELPER_METHODS = __NO_HELPER_METHODS__;
 
     /** 생성 코드 최상위 패키지 (검사하지 않는다). 예: jOOQ 생성 위치. */
     static final Set<String> GENERATED_TOP_PACKAGES = Set.of("jooq", "generated");
 
-    /** 최상위는 feature · config · shared 와 @SpringBootApplication 메인 클래스뿐이다. */
+    /** 최상위는 feature · config · shared (component-web 이면 web · customer 도) 와 @SpringBootApplication 메인 클래스뿐이다. */
     static final ArchRule TOP_LEVEL_PACKAGES = classes()
             .that(PackageLayout.APP_CLASS)
             .should(PackageLayout.RESIDE_IN_ALLOWED_TOP_LEVEL)
-            .because("최상위는 feature/ · config/ · shared/ 와 메인 클래스다")
+            .because(COMPONENT_WEB ? "최상위는 feature/ · web/ · config/ · shared/ · customer/ 와 메인 클래스다" : "최상위는 feature/ · config/ · shared/ 와 메인 클래스다")
             .allowEmptyShould(true);
 
     /** 기능 안은 feature/<기능>/<계층> 또는 feature/<기능>/<하위기능>/<계층> 이고 계층 패키지가 끝이다. */
@@ -70,6 +73,50 @@ public final class ArchRules {
                             .isPresent()))
             .should(FeatureBoundaries.NOT_DEPEND_ON_FEATURE)
             .because("전역 설정 · 공통 코드가 기능을 알면 기능을 옮기거나 지울 때 전역이 깨진다")
+            .allowEmptyShould(true);
+
+    /** component-web: web 안은 web/views/<화면 경로>/<계층> · web/api/<묶음>/<계층> 이다. */
+    static final ArchRule WEB_LAYER_PACKAGES = classes()
+            .that(PackageLayout.APP_CLASS)
+            .should(PackageLayout.HAVE_WEB_LAYER_PACKAGE)
+            .because("화면 하나 = 프론트 화면 폴더 하나 = web/views/<화면 경로> 하나다")
+            .allowEmptyShould(true);
+
+    /** component-web: 기능 안에는 진입점(controller · websocket)을 두지 않는다. */
+    static final ArchRule NO_ENTRY_IN_FEATURE = classes()
+            .that(PackageLayout.APP_CLASS)
+            .should(PackageLayout.NOT_BE_ENTRY_IN_FEATURE)
+            .because("HTTP 진입점은 화면 기준 web 층에 둔다. 기능은 업무 로직 · 저장소만 갖는다")
+            .allowEmptyShould(true);
+
+    /** component-web: web 은 기능의 service · model · dto · exception 만 참조한다. */
+    static final ArchRule WEB_USES_PUBLIC_FEATURE_LAYERS = classes()
+            .that(webClasses())
+            .should(FeatureBoundaries.ONLY_USE_PUBLIC_LAYERS_OF_OTHER_FEATURES)
+            .because("화면 API 는 기능의 서비스를 부르고 저장소 · 클라이언트를 직접 쓰지 않는다")
+            .allowEmptyShould(true);
+
+    /** component-web: feature 는 web 을 참조하지 않는다. */
+    static final ArchRule FEATURE_DOES_NOT_DEPEND_ON_WEB = classes()
+            .that(DescribedPredicate.describe(
+                    "feature 의 클래스",
+                    (JavaClass javaClass) -> PackageLocation.of(javaClass.getPackageName()).filter(PackageLocation::isFeature).isPresent()))
+            .should(FeatureBoundaries.NOT_DEPEND_ON_WEB)
+            .because("화면이 바뀌어도 기능은 그대로여야 한다 (방향은 web → feature → shared)")
+            .allowEmptyShould(true);
+
+    /** component-web: 화면 · API 묶음끼리 참조하지 않는다. */
+    static final ArchRule WEB_UNITS_ARE_INDEPENDENT = classes()
+            .that(webClasses())
+            .should(FeatureBoundaries.NOT_DEPEND_ON_OTHER_WEB_UNITS)
+            .because("화면 하나를 고치거나 지울 때 다른 화면이 깨지지 않게 한다")
+            .allowEmptyShould(true);
+
+    /** component-web: 공통 코드는 customer 를 참조하지 않고, 고객사끼리도 참조하지 않는다. */
+    static final ArchRule COMMON_DOES_NOT_DEPEND_ON_CUSTOMER = classes()
+            .that(PackageLayout.APP_CLASS)
+            .should(FeatureBoundaries.NOT_DEPEND_ON_OTHER_CUSTOMER)
+            .because("고객사 코드를 지워도 공통은 그대로여야 한다")
             .allowEmptyShould(true);
 
     /** 역할 클래스에는 도우미 메서드가 0개다 (private · protected · package-private · 자기만 부르는 public). */
@@ -118,6 +165,14 @@ public final class ArchRules {
             rules.add(FEATURE_BOUNDARIES);
             rules.add(CONFIG_AND_SHARED_DO_NOT_DEPEND_ON_FEATURE);
         }
+        if (FEATURE_FIRST && COMPONENT_WEB) {
+            rules.add(WEB_LAYER_PACKAGES);
+            rules.add(NO_ENTRY_IN_FEATURE);
+            rules.add(WEB_USES_PUBLIC_FEATURE_LAYERS);
+            rules.add(FEATURE_DOES_NOT_DEPEND_ON_WEB);
+            rules.add(WEB_UNITS_ARE_INDEPENDENT);
+            rules.add(COMMON_DOES_NOT_DEPEND_ON_CUSTOMER);
+        }
         rules.add(SUFFIX_MATCHES_LAYER);
         if (NO_HELPER_METHODS) {
             rules.add(ROLE_CLASSES_HAVE_NO_HELPER_METHODS);
@@ -163,6 +218,14 @@ public final class ArchRules {
             rule = rule.and(next);
         }
         rule.check(classes);
+    }
+
+    static DescribedPredicate<JavaClass> webClasses() {
+        return DescribedPredicate.describe(
+                "web/… 의 클래스",
+                (JavaClass javaClass) -> PackageLocation.of(javaClass.getPackageName())
+                        .flatMap(PackageLocation::webUnit)
+                        .isPresent());
     }
 
     static DescribedPredicate<JavaClass> featureClasses() {

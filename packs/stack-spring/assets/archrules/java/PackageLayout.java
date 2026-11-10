@@ -28,7 +28,7 @@ final class PackageLayout {
                             .isPresent());
 
     static final ArchCondition<JavaClass> RESIDE_IN_ALLOWED_TOP_LEVEL =
-            new ArchCondition<>("feature · config · shared 또는 루트의 메인 클래스에 있다") {
+            new ArchCondition<>("feature · config · shared (component-web 이면 web · customer 도) 또는 루트의 메인 클래스에 있다") {
                 @Override
                 public void check(JavaClass javaClass, ConditionEvents events) {
                     PackageLocation location = location(javaClass);
@@ -40,10 +40,17 @@ final class PackageLayout {
                         }
                         return;
                     }
-                    if (!location.isFeature() && !location.isConfigOrShared()) {
+                    if (location.customer().isPresent() && !location.isFeature() && !location.isWeb() && !location.isConfigOrShared()) {
                         events.add(SimpleConditionEvent.violated(
                                 javaClass,
-                                javaClass.getName() + " 의 최상위 패키지 '" + location.top() + "' 는 허용되지 않는다 (feature · config · shared 만)"));
+                                javaClass.getName() + " 는 customer/" + location.customer().get() + "/ 바로 아래가 feature · web · config · shared 가 아니다"));
+                        return;
+                    }
+                    if (!location.isFeature() && !location.isConfigOrShared() && !location.isWeb() && location.customer().isEmpty()) {
+                        events.add(SimpleConditionEvent.violated(
+                                javaClass,
+                                javaClass.getName() + " 의 최상위 패키지 '" + location.top() + "' 는 허용되지 않는다 ("
+                                        + (ArchRules.COMPONENT_WEB ? "feature · web · config · shared · customer 만)" : "feature · config · shared 만)")));
                     }
                 }
             };
@@ -63,12 +70,43 @@ final class PackageLayout {
                 }
             };
 
+    static final ArchCondition<JavaClass> HAVE_WEB_LAYER_PACKAGE =
+            new ArchCondition<>("web/views/<화면 경로>/<계층> 또는 web/api/<묶음>/<계층> 에 있다") {
+                @Override
+                public void check(JavaClass javaClass, ConditionEvents events) {
+                    PackageLocation location = location(javaClass);
+                    if (location.isWeb() && !location.isValidWebLayout()) {
+                        events.add(SimpleConditionEvent.violated(
+                                javaClass,
+                                javaClass.getName() + " 는 web/views/<화면 경로>/<계층> · web/api/<묶음>/<계층> 이 아니다. 계층은 "
+                                        + String.join(" · ", PackageLocation.WEB_LAYERS.stream().sorted().toList())
+                                        + " 중 하나이고 그 아래 패키지를 두지 않는다"));
+                    }
+                }
+            };
+
+    static final ArchCondition<JavaClass> NOT_BE_ENTRY_IN_FEATURE =
+            new ArchCondition<>("기능 안 controller · websocket 계층에 있지 않다") {
+                @Override
+                public void check(JavaClass javaClass, ConditionEvents events) {
+                    PackageLocation location = location(javaClass);
+                    Optional<String> layer = location.isValidFeatureLayout() ? location.layer() : Optional.empty();
+                    if (layer.filter(PackageLocation.ENTRY_LAYERS::contains).isPresent()) {
+                        events.add(SimpleConditionEvent.violated(
+                                javaClass,
+                                javaClass.getName() + " 는 기능 안 " + layer.get() + " 계층에 있다. 진입점은 web/views/<화면>/" + layer.get()
+                                        + " (화면이 부르지 않는 API 는 web/api/<묶음>/" + layer.get() + ") 로 옮긴다"));
+                    }
+                }
+            };
+
     static final ArchCondition<JavaClass> RESIDE_IN_LAYER_OF_SUFFIX = new ArchCondition<>("접미사에 맞는 계층 패키지에 있다") {
         @Override
         public void check(JavaClass javaClass, ConditionEvents events) {
             PackageLocation location = location(javaClass);
             // 최상위 config · shared 는 예외. 기능 모양이 틀린 클래스는 기능/계층 규칙이 잡는다.
-            if (location.isConfigOrShared() || (location.isFeature() && !location.isValidFeatureLayout())) {
+            if (location.isConfigOrShared() || (location.isFeature() && !location.isValidFeatureLayout())
+                    || (location.isWeb() && !location.isValidWebLayout())) {
                 return;
             }
             Optional<Map.Entry<String, String>> expected = SUFFIX_LAYERS.entrySet().stream()
@@ -79,7 +117,10 @@ final class PackageLayout {
             }
             String expectedLayer = expected.get().getValue();
             if (!location.layer().map(expectedLayer::equals).orElse(false)) {
-                String where = ArchRules.FEATURE_FIRST ? "feature/<기능>/" + expectedLayer : expectedLayer + "/";
+                String where = !ArchRules.FEATURE_FIRST ? expectedLayer + "/"
+                        : ArchRules.COMPONENT_WEB && PackageLocation.ENTRY_LAYERS.contains(expectedLayer) ? "web/views/<화면>/" + expectedLayer
+                        : location.isWeb() && PackageLocation.WEB_LAYERS.contains(expectedLayer) ? "web/…/" + expectedLayer
+                        : "feature/<기능>/" + expectedLayer;
                 events.add(SimpleConditionEvent.violated(
                         javaClass, javaClass.getName() + " 는 이름이 *" + expected.get().getKey() + " 라 " + where + " 에 있어야 한다"));
             }

@@ -55,7 +55,8 @@
  *   kedovi screens checklist <화면 ID> [--start] [--md]   체크리스트 점검: --start 는 착수 전(데이터 원천 빈 칸 · 원천 없음), 기본은 완료 전(판정 빈 칸 · 비교 미실행), --md 는 MR 본문 표
  *   kedovi screens review <화면 ID…>   리뷰 지시서에 넣을 화면 정본 대조 블록 (정본 경로 · 체크리스트 · 비교 스크린샷 · 정본에 있는데 없는 요소 = 블로커)
  *   kedovi datamodel check [repo|폴더]   데이터 설계 검사: 참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조 (datamodel 팩)
- *   kedovi archrules spring|react|fastapi [--repo R] [--dir 모듈 경로] [--dry-run] [--json]   구조 검사 템플릿을 repo 에 넣는다: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사. 구조 · 기준 패키지 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다
+ *   kedovi archrules spring|react|fastapi|nestjs|django [--repo R] [--dir 모듈 경로] [--dry-run] [--json]   구조 검사 템플릿을 repo 에 넣는다: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사 · NestJS dependency-cruiser 설정 · Django import-linter 계약과 web 배치 검사 (backend.layout = component-web 이면 web → feature → shared 방향까지). 구조 · 기준 패키지 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다
+ *   kedovi views check [--json]   화면 이름 대조 (backend.layout = component-web): 프론트 화면 폴더(@spec 화면 ID 가 있는 폴더)와 백엔드 web/views/<화면> 폴더를 상대 경로로 비교해 한쪽에만 있는 것 (대소문자 · - · _ 무시, backend 팩)
  *   kedovi writes add jooq|jdbc|sqlalchemy|node-pg [--repo R] [--dir 모듈] [--dry-run] [--json]   쓰기 보고서(시험이 DB 에 쓴 것을 DB 화면처럼 보고 기대값으로 고정) 기록기를 repo 에 넣는다: 스택 팩의 파일 · 설정(없는 키만 더함) · 의존성 · 실행 · 기대값 고정 명령 안내. 있는 파일은 덮지 않는다
  *   kedovi writes check [--repo R] [--report <index.json>] [--json] [--strict]   쓰기 보고서 ↔ 기능 문서 「저장」 표 대조 (기능 ID 별): 표에 없는 쓰기 · 안 쓴 컬럼 · 타입 범위 위험(numeric · varchar 자릿수, 넓은 값 출처). --strict 면 위반 시 exit 1
  *   kedovi writes open [--repo R] [--no-open]   최신 쓰기 보고서 화면(index.html) 경로를 찍고 연다
@@ -3601,7 +3602,7 @@ function upgradeSummary(root, from) {
 const HELP_GROUPS = [
   ['시작 · 설치', '워크스페이스 만들기 · 받기 · 작업 시작 · 킷 새 버전', ['init', 'init-docs', 'install', 'start', 'upgrade', 'list', 'remove', 'help']],
   ['AI · 모델', '연결 방식 · 메인 에이전트 · 모델 프로필 · 응답 언어 · 대화 스타일', ['agent', 'ai', 'models', 'prefs', 'timestamp']],
-  ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
+  ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'views', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
   ['팀 규칙 점검', '리뷰 확인 · 훅이 알리거나 막는 수준', ['review', 'team-mode enforce']],
   ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 위임 · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'delegate', 'debate', 'import', 'tidy']],
@@ -3839,6 +3840,7 @@ async function main() {
     case 'screens': return rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : ['inventory', 'checklist', 'review'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
     case 'datamodel': return runWsTool('check-datamodel.js', rest.filter((x) => x !== 'check'), 'datamodel');
     case 'archrules': return runWsTool('archrules.js', rest);
+    case 'views': return runWsTool('check-views.js', rest, 'backend');
     case 'writes': return runWsTool('writes.js', rest.map((a, i) => (rest[i - 1] === '--report' ? path.resolve(a) : a))); // 도구는 워크스페이스 루트에서 돈다
     case 'apiledger': return runWsTool('apiledger.js', rest.map((a, i) => (['--file', '--covered'].includes(rest[i - 1]) ? path.resolve(a) : a)), 'backend');
     case 'extremes': return runWsTool('extremes.js', rest.map((a, i) => (rest[i - 1] === '--out' || (i === 1 && ['check', 'fixture'].includes(rest[0])) ? path.resolve(a) : a)), 'backend');

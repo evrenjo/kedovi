@@ -2,7 +2,7 @@
   "name": "stack-fastapi",
   "title": "FastAPI 스택",
   "summary": "FastAPI 라우터 · Pydantic 모델 · 의존성 · async · 설정",
-  "description": "FastAPI: 얇은 라우터 · Pydantic 모델 분리 · Annotated 의존성 · async 안 블로킹 금지 · 설정 의존성, 기능 폴더 구조 선택 + import-linter 계약 · 역할 파일 검사 템플릿(kedovi archrules fastapi). 서버 공통은 backend 팩",
+  "description": "FastAPI: 얇은 라우터 · Pydantic 모델 분리 · Annotated 의존성 · async 안 블로킹 금지 · 설정 의존성, 기능 폴더 구조 선택 + import-linter 계약 · 역할 파일 검사 템플릿(kedovi archrules fastapi). 서버 공통은 backend 팩, component-web 구조(backend.layout: web/views/<화면> 라우터 층)",
   "category": "stack",
   "layer": "backend",
   "stacks": [

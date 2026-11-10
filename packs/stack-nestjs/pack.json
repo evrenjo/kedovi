@@ -2,7 +2,7 @@
   "name": "stack-nestjs",
   "title": "NestJS 스택",
   "summary": "NestJS 레이어 책임 · 모듈 경계 · 공통 처리 위치 · 파일 이름",
-  "description": "NestJS: Controller · provider · Module 책임 · 모듈 경계 · 공통 처리는 pipe · guard · interceptor · 파일 이름. 서버 공통은 backend 팩",
+  "description": "NestJS: Controller · provider · Module 책임 · 모듈 경계 · 공통 처리는 pipe · guard · interceptor · 파일 이름. 서버 공통은 backend 팩, component-web 구조(backend.layout: 기능 모듈 + web/views/<화면> 컨트롤러 · 모듈, kedovi archrules nestjs 의 dependency-cruiser 설정)",
   "category": "stack",
   "layer": "backend",
   "stacks": [
@@ -10,5 +10,11 @@
   ],
   "requires": [
     "core"
-  ]
+  ],
+  "vars": {
+    "nestjs.srcDir": {
+      "default": "src",
+      "desc": "소스 루트 (repo 기준). component-web 의 feature · web 이 그 아래. kedovi archrules nestjs 가 쓴다"
+    }
+  }
 }

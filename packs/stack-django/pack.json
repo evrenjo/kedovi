@@ -2,7 +2,7 @@
   "name": "stack-django",
   "title": "Django 스택",
   "summary": "Django 업무 로직 위치 · 모델 · 쿼리 · 설정",
-  "description": "Django: 업무 로직 위치(서비스 · 선택자) · 뷰 · 시그널에 로직 금지 · DB 제약 · 쿼리 · 설정. 서버 공통은 backend 팩",
+  "description": "Django: 업무 로직 위치(서비스 · 선택자) · 뷰 · 시그널에 로직 금지 · DB 제약 · 쿼리 · 설정. 서버 공통은 backend 팩, component-web 구조(backend.layout: 기능 앱 + web/views/<화면> 뷰 · URL · serializer, kedovi archrules django 의 import-linter 계약)",
   "category": "stack",
   "layer": "backend",
   "stacks": [
@@ -10,5 +10,15 @@
   ],
   "requires": [
     "core"
-  ]
+  ],
+  "vars": {
+    "django.package": {
+      "default": "app",
+      "desc": "component-web 구조의 최상위 패키지 (feature · web · config · shared 가 그 아래). kedovi archrules django 의 import-linter root_package"
+    },
+    "django.sourceDir": {
+      "default": ".",
+      "desc": "패키지 폴더가 있는 곳 (repo 기준)"
+    }
+  }
 }

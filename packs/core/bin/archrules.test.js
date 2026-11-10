@@ -76,6 +76,31 @@ it('fastapi: .importlinter 와 검사 스크립트, 도우미 기준을 Python �
   assert.ok(!/__[A-Z_]+__ *$/m.test(items[1].content.replace(/__init__|__main__|__name__|__pycache__|__file__/g, '')));
 });
 
+it('component-web: spring · fastapi 는 web 층 검사를 켜고, 기능 먼저가 아니면 멈춘다', () => {
+  const cw = { backend: { layout: 'component-web' } };
+  const sp = a.plan('spring', tmp(), a.values({ vars: { ...cw, spring: { packageLayout: 'feature-first' } } }, 'spring', {}));
+  assert.ok(/COMPONENT_WEB = true;/.test(sp.find((x) => x.to.endsWith('ArchRules.java')).content));
+  assert.ok(/COMPONENT_WEB = false;/.test(a.plan('spring', tmp(), a.values({ vars: {} }, 'spring', {})).find((x) => x.to.endsWith('ArchRules.java')).content));
+  assert.throws(() => a.values({ vars: cw }, 'spring', {}), /feature-first/);
+  const fa = a.plan('fastapi', tmp(), a.values({ vars: { ...cw, fastapi: { package: 'svc', packageLayout: 'feature' } } }, 'fastapi', {}));
+  assert.ok(fa[0].content.includes('feature-no-web') && fa[1].content.includes('COMPONENT_WEB = True'));
+  assert.ok(a.plan('fastapi', tmp(), a.values({ vars: {} }, 'fastapi', {}))[1].content.includes('COMPONENT_WEB = False'));
+  assert.throws(() => a.values({ vars: cw }, 'fastapi', {}), /fastapi.packageLayout 을 feature/);
+});
+
+it('nestjs · django: component-web 일 때만, 소스 · 패키지를 채운다', () => {
+  assert.throws(() => a.values({ vars: {} }, 'nestjs', {}), /component-web 일 때만/);
+  assert.throws(() => a.values({ vars: {} }, 'django', {}), /component-web 일 때만/);
+  const cw = { backend: { layout: 'component-web' } };
+  const ns = a.plan('nestjs', tmp(), a.values({ vars: { ...cw, nestjs: { srcDir: 'apps/api/src' } } }, 'nestjs', {}));
+  assert.deepStrictEqual(ns.map((x) => x.to), ['.dependency-cruiser.cjs']);
+  assert.ok(ns[0].content.includes("const SRC = 'apps/api/src';"));
+  const dj = a.plan('django', tmp(), a.values({ vars: { ...cw, django: { package: 'shop' } } }, 'django', {}));
+  assert.deepStrictEqual(dj.map((x) => x.to), ['.importlinter', 'tools/check_web_layout.py']);
+  assert.ok(dj[0].content.includes('root_package = shop') && dj[1].content.includes('PACKAGE = "shop"'));
+  assert.throws(() => a.values({ vars: { ...cw, django: { package: 'a.b' } } }, 'django', {}), /패키지 이름 하나/);
+});
+
 it('repo 고르기: --repo · vars · stack 순, 없으면 알린다', () => {
   const ws = { vars: { react: { repo: 'b' } }, repos: [{ name: 'a', stack: 'react' }, { name: 'b', stack: 'vue' }, { name: 'd', stack: ['spring', 'react'], kind: 'docs' }] };
   assert.strictEqual(a.pickRepo(ws, 'react').name, 'b');
@@ -83,6 +108,14 @@ it('repo 고르기: --repo · vars · stack 순, 없으면 알린다', () => {
   assert.strictEqual(a.pickRepo({ vars: {}, repos: ws.repos }, 'react').name, 'a');
   assert.throws(() => a.pickRepo({ vars: {}, repos: ws.repos }, 'fastapi'), /fastapi/);
   assert.throws(() => a.pickRepo({ vars: {}, repos: ws.repos }, 'react', 'd'), /코드 repo/);
+});
+
+it('repo 고르기: workspace.json 에 stack 이 없으면 스택 감지로', () => {
+  const root = workspace({}, [{ name: 'web', path: 'repos/web' }, { name: 'api', path: 'repos/api' }]);
+  fs.writeFileSync(path.join(root, 'repos', 'api', 'build.gradle'), "plugins { id 'org.springframework.boot' version '3.5.5' }\n");
+  const r = run(root, ['spring', '--dry-run', '--json']);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.strictEqual(JSON.parse(r.stdout).repo, 'api');
 });
 
 it('잘못된 값은 쓰기 전에 멈춘다', () => {

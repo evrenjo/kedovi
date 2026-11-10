@@ -298,7 +298,7 @@ const cell = (s) => String(s == null ? '' : s).replace(/\|/g, '\\|').replace(/\n
 function readChecklist(file) {
   const text = fs.readFileSync(file, 'utf8');
   const head = {};
-  for (const m of text.matchAll(/^- (정본|화면설계서|프로토타입|비교|만든 때):\s*(.*)$/gm)) head[m[1]] = m[2].trim();
+  for (const m of text.matchAll(/^- (정본|화면설계서|프로토타입|백엔드 화면 API|비교|만든 때):\s*(.*)$/gm)) head[m[1]] = m[2].trim();
   const rows = [];
   let inTable = false;
   for (const l of text.split('\n')) {
@@ -318,6 +318,7 @@ function writeChecklist(file, c, rows) {
     `- 정본: ${c.canonLine}`,
     `- 화면설계서: ${c.storyboard ? `\`${c.storyboard.rel}\`` : '없음'}`,
     `- 프로토타입: ${c.prototype ? `\`${c.prototype.from ? (path.isAbsolute(c.prototype.from) ? path.relative(c.root, c.prototype.from) : c.prototype.from) : c.prototype.url}\`` : '없음'}`,
+    ...(c.backend ? [`- 백엔드 화면 API: ${c.backend.exists ? `\`${c.backend.at}\`` : c.backend.at ? `없음 (만들 곳: \`${c.backend.at}\`)` : `없음 (${c.backend.note})`}`] : []),
     `- 비교: ${c.compare || '미실행'}`,
     `- 만든 때: ${new Date().toISOString().slice(0, 10)} · kedovi screens inventory ${c.id} (${c.how})`,
     '',
@@ -376,6 +377,7 @@ function reviewBlock(ws, ids) {
     const ck = f ? checkChecklist(f) : null;
     const canon = c.verdict === 'prototype' || c.verdict === 'both' ? `프로토타입 \`${c.prototype.from && path.isAbsolute(c.prototype.from) ? path.relative(ws.root, c.prototype.from) : c.prototype.url}\`${c.verdict === 'both' ? ` (화면설계서 \`${c.storyboard.rel}\` 도 있음)` : ''}` : c.verdict === 'storyboard' ? `화면설계서 \`${c.storyboard.rel}\` (장 ${id})` : '없음 (기능 명세만)';
     const lines = [`## 화면 정본 대조: ${id}`, '', `- 정본: ${canon}`];
+    if (ck && ck.head['백엔드 화면 API']) lines.push(`- 백엔드 화면 API: ${ck.head['백엔드 화면 API']}`);
     if (ck) {
       lines.push(`- 정본 요소 체크리스트: \`${path.relative(ws.root, f)}\` (요소 ${ck.rows.length}개 · 판정 없음 ${ck.missingVerdict.length}개 · 판정 모양 틀림 ${ck.badVerdict.length}개)`);
       lines.push(`- 비교 스크린샷: ${ck.compareDone ? ck.head['비교'] : '미실행 (구현 쪽이 완료로 보고하면 안 되는 상태)'}`);
@@ -432,7 +434,11 @@ async function inventory(ws, id, a) {
   });
   // 사람이 더한 줄 · 정본에서 사라진 줄도 지우지 않는다 (판정이 있으면 그대로)
   for (const r of oldBy.values()) rows.push(r);
-  if (!a.print) writeChecklist(file, { id, root: ws.root, canonLine, storyboard: c.storyboard, prototype: c.prototype, compare, how }, rows);
+  // component-web: 이 화면의 백엔드 화면 API 폴더 (backend 팩 kedovi views)
+  let backend = null;
+  try { backend = require(path.join(PACKS, 'backend', 'bin', 'check-views.js')).backendFor(ws, id); } catch { /* backend 팩 없음 */ }
+  if (backend) out.backend = backend;
+  if (!a.print) writeChecklist(file, { id, root: ws.root, canonLine, storyboard: c.storyboard, prototype: c.prototype, compare, how, backend }, rows);
   out.checklist = path.relative(ws.root, file);
   out.rows = rows;
   return out;
@@ -444,6 +450,7 @@ function printInventory(r) {
   if (r.searched) console.log(`  찾은 곳: ${r.searched.join(' · ') || '기획 repo(kind: docs) 없음'}`);
   for (const w of r.warns || []) console.log(`  ⚠ ${w}`);
   if (r.checklist) console.log(`  요소 ${r.rows.length}개 · 체크리스트 ${r.checklist}`);
+  if (r.backend) console.log(`  백엔드 화면 API: ${r.backend.exists ? r.backend.at : r.backend.at ? `없음, 만들 곳 ${r.backend.at}` : `없음 (${r.backend.note})`}`);
   if (r.diff && r.diff.length) {
     console.log('\n| 한쪽에만 있음 | 영역 | 요소 | 종류 |\n|---|---|---|---|');
     for (const d of r.diff) console.log(`| ${d.only} | ${cell(d.area)} | ${cell(d.label)} | ${d.kind} |`);

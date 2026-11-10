@@ -69,7 +69,8 @@
 | `kedovi screens review <화면 ID…>` | 화면 변경 리뷰를 맡길 때 | 지시서에 넣을 화면 정본 대조 블록: 정본 경로 · 요소 체크리스트 · 비교 스크린샷 · 「정본에 있는데 구현에 없는 요소 = 블로커」. `kedovi delegate` 리뷰는 저절로 넣는다 |
 | `kedovi screens check [repo]` | 화면설계서를 쓴 뒤 | 근거 ID 가 색인에 있는지 · 화면 ID 중복 · Description 줄이 결론 한 줄인지(60자 넘음 · 날짜 · 결정 경위는 ⚠) · 기능 ID 누락(`vars.screens.functionIds`, 화면 목록의 「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |
 | `kedovi datamodel check [repo]` | 테이블 정의서를 쓴 뒤 | ✖ 참조 대상 없음 · 기본키 없음 · 테이블 · 컬럼 중복 · 표 형식. ⚠ 논리명 없음 · 컨벤션 위반(`vars.datamodel`) · 기능 ID 없는 테이블 · 테이블 없는 기능(「없음」 으로 적은 것은 뺀다) |
-| `kedovi archrules spring\|react\|fastapi [--repo R] [--dry-run]` | 패키지 구조를 정했을 때 · 구조 규칙을 문장 대신 검사로 지키게 할 때 | 구조 검사 템플릿을 repo 에 쓴다 (있는 파일은 덮지 않고, 넣을 의존성 · 실행 명령을 알려 준다). 무엇이 들어가는지는 아래 「archrules 자세히」 |
+| `kedovi archrules spring\|react\|fastapi\|nestjs\|django [--repo R] [--dry-run]` | 패키지 구조를 정했을 때 · 구조 규칙을 문장 대신 검사로 지키게 할 때 | 구조 검사 템플릿을 repo 에 쓴다 (있는 파일은 덮지 않고, 넣을 의존성 · 실행 명령을 알려 준다). 무엇이 들어가는지는 아래 「archrules 자세히」 |
+| `kedovi views check [--json]` | `vars.backend.layout = component-web` 에서 화면을 더하거나 이름을 바꿨을 때 | 프론트 화면 폴더(화면 루트 아래 `@spec` 화면 ID 가 있는 폴더)와 백엔드 `web/views/<화면 경로>` 폴더를 상대 경로로 비교한다 (대소문자 · `-` · `_` 무시, `customer/<고객>/web/views` 포함). 한쪽에만 있으면 exit 1, 짝이 필요 없는 화면은 `vars.backend.viewsIgnore`. 화면 폴더가 바뀐 커밋에서는 훅이 알린다 |
 | `kedovi writes add jooq\|jdbc\|sqlalchemy\|node-pg [--repo R] [--dir 모듈] [--dry-run]` | 저장 로직을 시험으로 지키고 싶을 때 · 시험이 DB 에 무엇을 쓰는지 보고 싶을 때 | 쓰기 보고서 기록기를 repo 에 넣는다 (있는 파일은 덮지 않고, 설정 파일은 없는 키만 더한다. spring.factories 는 같은 키의 값 목록에 덧붙인다). 넣을 의존성 · 시험 연결 · 실행 · 기대값 고정 명령을 알려 준다. 아래 「writes 자세히」 |
 | `kedovi writes check [--repo R] [--report <index.json>] [--strict]` | 시험을 돌린 뒤 · 저장 로직 리뷰 때 | 쓰기 보고서와 기능 문서의 「저장」 표를 기능 ID 별로 대조: 표에 없는 쓰기 · 안 쓴 컬럼 · 타입 범위 위험. `--strict` 면 위반 시 exit 1 |
 | `kedovi writes open [--repo R]` | 보고서를 화면으로 볼 때 | 최신 보고서 화면(index.html) 경로를 찍고 연다 |
@@ -110,8 +111,12 @@
 | Spring | ArchUnit 테스트 (`src/test/java/<기준 패키지>/archrules/`) | 패키지 배치 · 접미사 → 계층 · 기능 경계 · static 은 Logger 만 · 중첩 타입 금지 · 인스턴스 필드 private |
 | React | `eslint.boundaries.config.js` | FSD 레이어 방향 · 다른 slice 는 index 로만 · 생성 API 값은 api 세그먼트에서만 |
 | FastAPI | `.importlinter` + `tools/check_role_files.py` | 기능 안 계층 방향 · config · shared → feature 금지 · 파일 허용 목록 · 역할 파일 클래스 · 상수 |
+| NestJS (component-web) | `.dependency-cruiser.cjs` | feature → web 금지 · config · shared → feature · web 금지 · 화면끼리 금지 · web → 기능 저장소 금지 · 공통 → customer 금지 · 기능 안 컨트롤러 금지 |
+| Django (component-web) | `.importlinter` + `tools/check_web_layout.py` | feature → web 금지 · config · shared → feature · web 금지 · 기능 앱 안 views · urls · serializers 금지 · web 파일 목록 · 화면끼리 금지 · web 은 기능의 services · selectors · models · exceptions 만 · 고객사 경계 |
 
-구조는 `vars.spring.packageLayout` · `vars.react.packageLayout` · `vars.fastapi.packageLayout` 으로 고른다. 역할 클래스 도우미 0개 검사는 `vars.cleanCode.helperMethods` 가 `none` 일 때만 켜진다.
+`vars.backend.layout = component-web` 이면 Spring 과 FastAPI 에도 web 층 검사가 더해진다: 최상위 feature · web · config · shared · customer, `web/views/<화면 경로>/<계층>` · `web/api/<묶음>/<계층>` 배치, 기능 안 진입점 금지, feature → web 금지, 화면끼리 금지, web 은 기능의 공개 계층만, 공통 → customer 금지. 이때 `spring.packageLayout = feature-first` · `fastapi.packageLayout = feature` 여야 한다 (아니면 sync 가 알리고 archrules 가 멈춘다).
+
+구조는 `vars.spring.packageLayout` · `vars.react.packageLayout` · `vars.fastapi.packageLayout` · `vars.backend.layout` 으로 고른다. 역할 클래스 도우미 0개 검사는 `vars.cleanCode.helperMethods` 가 `none` 일 때만 켜진다.
 
 ### writes 자세히
 

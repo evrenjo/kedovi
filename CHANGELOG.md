@@ -2,6 +2,17 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.87.0
+
+| 구분 | 내용 |
+|---|---|
+| 기능 | 백엔드 구조 선택지 `vars.backend.layout = existing \| component-web`: 기능 핵심 `feature/<기능>` + 화면 기준 `web/views/<화면>` · `web/api/<묶음>` (+ 선택 `customer/<고객>`). 켜면 공통 규칙과 스택 대응 규칙(Spring · NestJS · FastAPI · Django)이 생긴다. 기본은 그대로 |
+| 명령 | `kedovi views check`: 프론트 화면 폴더 ↔ 백엔드 `web/views/<화면>` 상대 경로 대조 (대소문자 · - · _ 무시, `vars.backend.viewsIgnore`). 화면 폴더가 바뀐 커밋에 어긋나면 훅이 알림 |
+| 명령 | `kedovi archrules nestjs\|django` (dependency-cruiser · import-linter + web 배치 검사). component-web 이면 spring · fastapi 에도 web → feature → shared · 화면끼리 · 고객사 경계 검사 |
+| 기능 | 화면 체크리스트 · 리뷰 블록에 그 화면의 백엔드 화면 API 경로 (component-web) |
+| 수정 | `kedovi archrules` 가 workspace.json 에 stack 이 없어도 스택 감지로 repo 를 고른다 |
+| 적용 | `kedovi upgrade` 뒤 sync. 쓰려면 `vars.backend.layout` 을 component-web 으로 (Spring 은 `spring.packageLayout` feature-first, FastAPI 는 `fastapi.packageLayout` feature) → `kedovi archrules <스택>` |
+
 ## 0.86.0
 
 | 구분 | 내용 |

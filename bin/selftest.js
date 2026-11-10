@@ -863,6 +863,58 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   record('설정값으로 고르는 규칙 (if: · choices · 커밋 훅 경고 줄이기)', featureOk && trunkOk && choiceOk && quietOk, `feature ${featureOk} · trunk ${trunkOk} · 잘못된 값 경고 ${choiceOk} · 같은 경고 한 줄 ${quietOk}`);
 }
 
+// 백엔드 구조 선택지 component-web: 기본(existing)이면 생성물 없음 · 켜면 공통 규칙 + 스택 대응 규칙 · 스택 구조 변수 경고 · 화면 이름 대조 · 커밋 훅
+{
+  const ns = fixture('cw-nest', { 'package.json': '{"dependencies":{"@nestjs/core":"^11"}}' });
+  const fa = fixture('cw-fastapi', { 'requirements.txt': 'fastapi==0.115.0\n' });
+  const dj = fixture('cw-django', { 'requirements.txt': 'django==5.2\n', 'manage.py': '' });
+  const sp = fixture('cw-spring', { 'build.gradle': "plugins { id 'org.springframework.boot' version '3.5.5' }\n" });
+  const fe = fixture('cw-web', { 'package.json': '{"dependencies":{"react":"^19"}}' });
+  for (const d of [sp, fe]) spawnSync('git', ['init', '-q', d]);
+  const dir = path.join(tmp, 'cw-ws');
+  const init = run(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dir, '--type', 'new', '--code', [sp, fe, ns, fa, dj].join(',')], tmp);
+  const wsFile = path.join(dir, 'workspace.json');
+  const ruleFiles = () => { try { return fs.readdirSync(path.join(dir, '.agents', 'rules')).filter((f) => /component-web/.test(f)).sort(); } catch { return []; } };
+  const offOk = init.ok && ruleFiles().length === 0 && !/component-web/.test(fs.readFileSync(path.join(dir, 'AGENTS.md'), 'utf8'));
+  const w = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+  w.vars = { ...(w.vars || {}), backend: { ...((w.vars || {}).backend || {}), layout: 'component-web' }, spring: { ...((w.vars || {}).spring || {}), packageLayout: 'layer-first' }, fastapi: { ...((w.vars || {}).fastapi || {}), packageLayout: 'feature' } };
+  fs.writeFileSync(wsFile, JSON.stringify(w, null, 2));
+  const s1 = run(process.execPath, ['bin/kit.js', 'sync'], dir);
+  const want = ['backend--22-component-web.md', 'stack-django--20-component-web.md', 'stack-fastapi--21-component-web.md', 'stack-nestjs--20-component-web.md', 'stack-spring--23-component-web.md'];
+  const onOk = s1.ok && JSON.stringify(ruleFiles()) === JSON.stringify(want) && /backend--22-component-web\.md/.test(fs.readFileSync(path.join(dir, 'AGENTS.md'), 'utf8'));
+  const warnOk = /vars\.spring\.packageLayout 를 "feature-first" 로 바꿉니다 \(지금 "layer-first"\)/.test(s1.out) && !/vars\.fastapi\.packageLayout 를/.test(s1.out);
+  w.vars.spring.packageLayout = 'feature-first';
+  fs.writeFileSync(wsFile, JSON.stringify(w, null, 2));
+  const s2 = run(process.execPath, ['bin/kit.js', 'sync'], dir);
+  const quiet = s2.ok && !/component-web 은 기능 먼저 구조/.test(s2.out);
+  // 화면 이름 대조: 프론트 src/views/order/order-list (@spec SCR-ORD-01) ↔ 백엔드 web/views/order/orderlist, 백엔드에만 admin/stats
+  const W = require(path.join(dir, 'packs', 'core', 'lib', 'workspace.js'));
+  const repoDir = (n) => W.load(dir).repos.find((r) => r.name === n).dir;
+  const put = (f, body) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, body); };
+  put(path.join(repoDir('cw-web'), 'src', 'views', 'order', 'order-list', 'OrderList.tsx'), '// @spec SCR-ORD-01 FN-ORD-001 @route /orders\nexport default function OrderList() { return null; }\n');
+  put(path.join(repoDir('cw-web'), 'src', 'views', 'order', 'order-list', 'parts', 'Row.tsx'), 'export const Row = () => null;\n');
+  const javaWeb = path.join(repoDir('cw-spring'), 'src', 'main', 'java', 'com', 'example', 'app', 'web', 'views');
+  put(path.join(javaWeb, 'order', 'orderlist', 'controller', 'OrderListController.java'), 'class OrderListController {}\n');
+  put(path.join(javaWeb, 'order', 'orderlist', 'dto', 'OrderListResponse.java'), 'record OrderListResponse() {}\n');
+  put(path.join(javaWeb, 'admin', 'stats', 'controller', 'StatsController.java'), 'class StatsController {}\n');
+  const vc = (...a) => spawnSync(process.execPath, [path.join(dir, 'packs', 'backend', 'bin', 'check-views.js'), 'check', ...a], { cwd: dir, encoding: 'utf8' });
+  const v1 = vc();
+  const V = require(path.join(dir, 'packs', 'backend', 'bin', 'check-views.js'));
+  const link = V.backendFor(W.load(dir), 'SCR-ORD-01');
+  const viewsOk = v1.status === 1 && /맞음 1/.test(v1.stdout) && /백엔드에만: cw-spring\/src\/main\/java\/com\/example\/app\/web\/views\/admin\/stats/.test(v1.stdout) && !/프론트에만/.test(v1.stdout)
+    && link && link.exists && /web\/views\/order\/orderlist$/.test(link.at) && V.norm('order/order-list') === V.norm('Order/order_list');
+  // 커밋 훅: 화면 폴더가 바뀐 커밋에 어긋남을 알린다 (기획 repo 없어도)
+  const sc = (command) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'hooks', 'spec-commit.js'), '--agent=claude'], { cwd: dir, encoding: 'utf8', input: JSON.stringify({ session_id: 'cw-1', hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command }, cwd: dir }), env: { ...process.env, CLAUDE_PROJECT_DIR: dir } }).stdout;
+  const hookOut = sc(`git -C ${repoDir('cw-web')} commit -m x`);
+  const hookOk = /화면 이름이 어긋납니다 \(component-web\): 백엔드에만 .*admin\/stats/.test(hookOut) && !/"deny"/.test(hookOut);
+  w.vars.backend.viewsIgnore = ['admin/stats'];
+  fs.writeFileSync(wsFile, JSON.stringify(w, null, 2));
+  const v2 = vc();
+  const ignoreOk = v2.status === 0 && /한쪽에만 있는 화면 없음/.test(v2.stdout) && !/화면 이름이 어긋납니다/.test(sc(`git -C ${repoDir('cw-web')} commit -m x`));
+  record('백엔드 구조 component-web (선택지별 생성물 · 스택 구조 경고 · 화면 이름 대조 · 커밋 훅)', offOk && onOk && warnOk && quiet && viewsOk && hookOk && ignoreOk,
+    `기본은 없음 ${offOk} · 켜면 공통 + 스택 4 ${onOk} (${ruleFiles().length}) · 스택 구조 경고 ${warnOk} · 맞추면 조용 ${quiet} · 대조 · 화면 연결 ${viewsOk} · 커밋 훅 ${hookOk} · 제외 ${ignoreOk}`);
+}
+
 // 팀원 설정 수정 불가 — 관리자 아닌 사람은 자기 handoffs/ 밖 커밋 거부, Claude 편집 금지, 허용으로 바꾸면 모두 걷힘
 {
   const dir = path.join(tmp, 'lock-ws');

@@ -227,7 +227,7 @@ GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.
 <details>
 <summary><b>backend</b> · 백엔드 공통 원칙: 인가·검증·API 계약·데이터·외부 호출·로깅·운영 검증</summary>
 
-프레임워크와 무관한 백엔드 원칙: 기존 관례 따르기, 객체 단위 인가, 경계 입력 검증, 기존 API 계약·하위 호환, 페이지·멱등성, 트랜잭션 경계·동시 수정, 데이터 접근(파라미터 바인딩·N+1·대량 처리), 보안(비밀·SSRF·업로드·의존성), 외부 호출 타임아웃·재시도·설정·정상 종료, 구조화 로깅·추적 ID, 변경 동작 테스트, 저장 로직 변경 때 쓰기 보고서 · 기대값(kedovi writes add sqlalchemy · node-pg), 호출 체인의 시간 예산(남은 예산 상대값 전달 · 엔드포인트별 timeout · 시간 초과 구간 시험), 외부 API 동작 장부(실측만 기대 · 미확인은 최악 응답 시뮬레이터 · 대조 시험 · 실패 주입 세트, kedovi apiledger), 실데이터 극값 fixture · 칸 여유 검사(kedovi extremes), 운영 결함 수정은 고치기 전 실패 → 고친 뒤 통과. 근거 출처는 docs/SOURCES.md
+프레임워크와 무관한 백엔드 원칙: 기존 관례 따르기, 객체 단위 인가, 경계 입력 검증, 기존 API 계약·하위 호환, 페이지·멱등성, 트랜잭션 경계·동시 수정, 데이터 접근(파라미터 바인딩·N+1·대량 처리), 보안(비밀·SSRF·업로드·의존성), 외부 호출 타임아웃·재시도·설정·정상 종료, 구조화 로깅·추적 ID, 변경 동작 테스트, 저장 로직 변경 때 쓰기 보고서 · 기대값(kedovi writes add sqlalchemy · node-pg), 호출 체인의 시간 예산(남은 예산 상대값 전달 · 엔드포인트별 timeout · 시간 초과 구간 시험), 외부 API 동작 장부(실측만 기대 · 미확인은 최악 응답 시뮬레이터 · 대조 시험 · 실패 주입 세트, kedovi apiledger), 실데이터 극값 fixture · 칸 여유 검사(kedovi extremes), 운영 결함 수정은 고치기 전 실패 → 고친 뒤 통과, 구조 선택지 backend.layout = component-web(기능 핵심 + 화면 기준 web 층 · 화면 이름 대조 kedovi views check · 스택별 대응표 · kedovi archrules 의존 방향). 근거 출처는 docs/SOURCES.md
 
 | 항목 | 내용 |
 |---|---|
@@ -240,6 +240,7 @@ GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.
 |---|---|---|
 | `backend--10-backend-baseline` | 백엔드 기본 원칙 | 상시 |
 | `backend--20-layers-and-naming` | 백엔드 계층·이름·주석 | 필요할 때: 백엔드에 클래스·모듈·패키지를 새로 만들거나, 코드를 다른 계층으로 옮기거나, 트랜잭션 경계·이름·주석을 정할 때 |
+| `backend--22-component-web` | 백엔드 구조 (기능 핵심 + 화면 기준 web 층) | 필요할 때: 백엔드에 진입점(컨트롤러 · 라우터) · 기능 폴더 · 화면 API 를 새로 만들거나 옮기거나, 화면이 부를 API 를 정할 때 |
 | `backend--30-api-contract` | 백엔드 API 계약·검증·오류 메시지 | 필요할 때: 엔드포인트를 만들거나 요청·응답·오류·상태 코드·검증·페이지·멱등성·사용자 메시지를 정하거나 기존 API 를 바꿀 때 |
 | `backend--40-data-access` | 백엔드 데이터 접근: 쿼리·대량 처리·원시 SQL | 필요할 때: DB 를 읽거나 쓰는 코드를 새로 쓰거나 고칠 때 (조회 조건 변경, 동시 수정 처리, 대량 수정·삭제·복제, 원시 SQL 포함) |
 | `backend--50-logging` | 백엔드 로깅 원칙 | 필요할 때: 로그를 새로 넣거나, 예외를 잡아 로그로 남기는 코드·전역 오류 처리기·요청 로깅 필터·감사(보안 이벤트) 로그를 고칠 때 |
@@ -248,7 +249,7 @@ GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.
 | `backend--80-testing` | 백엔드 테스트 | 필요할 때: 백엔드 동작을 바꾸거나 버그를 고쳐 테스트를 추가·수정할 때 |
 | `backend--85-write-report` | 백엔드 쓰기 보고서: 저장 로직 변경 | 필요할 때: DB 에 쓰는 코드(INSERT · UPDATE · DELETE · UPSERT · MERGE · 배치 저장 · 저장 쿼리 · 엔티티 저장)를 새로 쓰거나 고칠 때, 쓰기 보고서 · 기대값(approval) 시험이 실패할 때 |
 
-**도구**: `bin/apiledger.js` · `bin/extremes.js`
+**도구**: `bin/apiledger.js` · `bin/check-views.js` · `bin/extremes.js`
 
 </details>
 
@@ -441,7 +442,7 @@ Android: UI 층 · 데이터 층 분리 · 화면당 ViewModel · UiState · Com
 <details>
 <summary><b>stack-django</b> · Django 스택: Django 업무 로직 위치 · 모델 · 쿼리 · 설정</summary>
 
-Django: 업무 로직 위치(서비스 · 선택자) · 뷰 · 시그널에 로직 금지 · DB 제약 · 쿼리 · 설정. 서버 공통은 backend 팩
+Django: 업무 로직 위치(서비스 · 선택자) · 뷰 · 시그널에 로직 금지 · DB 제약 · 쿼리 · 설정. 서버 공통은 backend 팩, component-web 구조(backend.layout: 기능 앱 + web/views/<화면> 뷰 · URL · serializer, kedovi archrules django 의 import-linter 계약)
 
 | 항목 | 내용 |
 |---|---|
@@ -453,13 +454,14 @@ Django: 업무 로직 위치(서비스 · 선택자) · 뷰 · 시그널에 로�
 | ID | 제목 | 읽는 때 |
 |---|---|---|
 | `stack-django--10-django` | Django 기본 규약 | 상시 |
+| `stack-django--20-component-web` | Django component-web 구조 | 필요할 때: Django 에서 뷰 · URL · 화면 API · 기능 앱을 새로 만들거나 옮길 때 |
 
 </details>
 
 <details>
 <summary><b>stack-fastapi</b> · FastAPI 스택: FastAPI 라우터 · Pydantic 모델 · 의존성 · async · 설정</summary>
 
-FastAPI: 얇은 라우터 · Pydantic 모델 분리 · Annotated 의존성 · async 안 블로킹 금지 · 설정 의존성, 기능 폴더 구조 선택 + import-linter 계약 · 역할 파일 검사 템플릿(kedovi archrules fastapi). 서버 공통은 backend 팩
+FastAPI: 얇은 라우터 · Pydantic 모델 분리 · Annotated 의존성 · async 안 블로킹 금지 · 설정 의존성, 기능 폴더 구조 선택 + import-linter 계약 · 역할 파일 검사 템플릿(kedovi archrules fastapi). 서버 공통은 backend 팩, component-web 구조(backend.layout: web/views/<화면> 라우터 층)
 
 | 항목 | 내용 |
 |---|---|
@@ -472,6 +474,7 @@ FastAPI: 얇은 라우터 · Pydantic 모델 분리 · Annotated 의존성 · as
 |---|---|---|
 | `stack-fastapi--10-fastapi` | FastAPI 기본 규약 | 상시 |
 | `stack-fastapi--20-feature-layout` | FastAPI 폴더 구조 (기능 먼저) | 필요할 때: FastAPI 코드에 파일 · 폴더를 새로 만들거나 옮기거나, 다른 기능의 모듈을 import 할 때 |
+| `stack-fastapi--21-component-web` | FastAPI component-web 구조 | 필요할 때: FastAPI 에서 라우터 · 화면 API · 기능 폴더를 새로 만들거나 옮길 때 |
 
 </details>
 
@@ -496,7 +499,7 @@ Flutter: View · ViewModel · Repository 구조 · 위젯에는 표시만 · 작
 <details>
 <summary><b>stack-nestjs</b> · NestJS 스택: NestJS 레이어 책임 · 모듈 경계 · 공통 처리 위치 · 파일 이름</summary>
 
-NestJS: Controller · provider · Module 책임 · 모듈 경계 · 공통 처리는 pipe · guard · interceptor · 파일 이름. 서버 공통은 backend 팩
+NestJS: Controller · provider · Module 책임 · 모듈 경계 · 공통 처리는 pipe · guard · interceptor · 파일 이름. 서버 공통은 backend 팩, component-web 구조(backend.layout: 기능 모듈 + web/views/<화면> 컨트롤러 · 모듈, kedovi archrules nestjs 의 dependency-cruiser 설정)
 
 | 항목 | 내용 |
 |---|---|
@@ -508,6 +511,7 @@ NestJS: Controller · provider · Module 책임 · 모듈 경계 · 공통 처�
 | ID | 제목 | 읽는 때 |
 |---|---|---|
 | `stack-nestjs--10-nestjs` | NestJS 레이어 책임 · 모듈 · 공통 처리 | 상시 |
+| `stack-nestjs--20-component-web` | NestJS component-web 구조 | 필요할 때: NestJS 에서 컨트롤러 · 모듈 · 화면 API · 기능 폴더를 새로 만들거나 옮길 때 |
 
 </details>
 
@@ -581,7 +585,7 @@ React + TypeScript + Vite + TanStack Query + React Router 구현 규약: 생성 
 <details>
 <summary><b>stack-spring</b> · Spring 백엔드 스택: Spring·JPA·QueryDSL 트랜잭션·쿼리 규칙</summary>
 
-Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked 예외 롤백 함정, 파생 쿼리/QueryDSL/네이티브 SQL 정책, 엔티티당 리포지토리, 복합 키 값 객체, 대량 처리 예외, MapStruct·Bean Validation, 패키지 구조 선택(계층 먼저 · 기능 먼저, jOOQ 안내), 테스트 컨테이너 실행당 한 벌 · 컨텍스트 줄이기 + 쿼리 술어 추출기·QueryDSL 런타임 오류 검사기·로깅 검사기·ArchUnit 구조 검사 템플릿(kedovi archrules spring) · 쓰기 보고서 기록기(kedovi writes add jooq · jdbc). 계층·API 계약 원칙은 backend 팩
+Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked 예외 롤백 함정, 파생 쿼리/QueryDSL/네이티브 SQL 정책, 엔티티당 리포지토리, 복합 키 값 객체, 대량 처리 예외, MapStruct·Bean Validation, 패키지 구조 선택(계층 먼저 · 기능 먼저, jOOQ 안내 · backend.layout=component-web 이면 web/views/<화면> 화면 API 층), 테스트 컨테이너 실행당 한 벌 · 컨텍스트 줄이기 + 쿼리 술어 추출기·QueryDSL 런타임 오류 검사기·로깅 검사기·ArchUnit 구조 검사 템플릿(kedovi archrules spring) · 쓰기 보고서 기록기(kedovi writes add jooq · jdbc). 계층·API 계약 원칙은 backend 팩
 
 | 항목 | 내용 |
 |---|---|
@@ -596,6 +600,7 @@ Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked �
 | `stack-spring--20-layers-and-naming` | Spring 패키지 구조 (계층 먼저) | 필요할 때: Spring 백엔드에 클래스·패키지를 새로 만들거나 옮길 때 |
 | `stack-spring--21-feature-first-layout` | Spring 패키지 구조 (기능 먼저) | 필요할 때: Spring 백엔드에 클래스·패키지를 새로 만들거나 옮기거나, 다른 기능의 클래스를 참조할 때 |
 | `stack-spring--22-naming-and-javadoc` | Spring 이름·MapStruct·Javadoc | 필요할 때: Spring 백엔드에서 메서드 이름을 짓거나, MapStruct 변환을 쓰거나, Javadoc 을 달 때 |
+| `stack-spring--23-component-web` | Spring component-web 구조 | 필요할 때: Spring 에서 컨트롤러 · 화면 API · 기능 패키지를 새로 만들거나 옮길 때 |
 | `stack-spring--30-persistence` | Spring 데이터 접근: 리포지토리·QueryDSL·네이티브 SQL | 필요할 때: Repository·QueryDSL·네이티브 SQL 로 DB 를 읽거나 쓰는 코드를 새로 쓰거나 고칠 때 (대량 수정·삭제·복제 포함) |
 | `stack-spring--40-api-and-validation` | Spring 기존 관례 찾기·입력 검증 | 필요할 때: Spring 에서 엔드포인트를 새로 만들거나 요청·응답·예외·검증·사용자 메시지를 정하거나 바꿀 때 |
 | `stack-spring--50-logging` | Spring 로깅 | 필요할 때: Spring 백엔드에서 로그를 새로 넣거나, 예외를 잡아 로그로 남기는 코드·@RestControllerAdvice 를 고칠 때 |

@@ -2,14 +2,17 @@
 /**
  * 구조 검사 템플릿을 repo 에 넣는다 (kedovi archrules).
  *
- *   kedovi archrules spring|react|fastapi [--repo R] [--dir 모듈 경로] [--dry-run] [--json]
+ *   kedovi archrules spring|react|fastapi|nestjs|django [--repo R] [--dir 모듈 경로] [--dry-run] [--json]
  *
  * spring : ArchUnit 규칙 묶음 → <repo>/src/test/java/<기준 패키지>/archrules/ (ArchitectureTest 하나로 돈다)
  * react  : eslint-plugin-boundaries 설정 → <repo>/eslint.boundaries.config.js (FSD 레이어 · slice 공개 API · 생성 API 경계)
  * fastapi: import-linter 계약 → <repo>/.importlinter, 역할 파일 검사 → <repo>/tools/check_role_files.py
+ * nestjs : dependency-cruiser 설정 → <repo>/.dependency-cruiser.cjs (backend.layout = component-web 일 때)
+ * django : import-linter 계약 → <repo>/.importlinter, web 배치 검사 → <repo>/tools/check_web_layout.py (component-web 일 때)
+ * backend.layout = component-web 이면 spring · fastapi 도 web → feature → shared 방향 · 화면끼리 · 고객사 경계를 넣는다
  *
  * 값은 workspace.json vars 에서 읽는다 (spring.basePackage · spring.packageLayout · react.srcDir · react.generatedApiDir ·
- * fastapi.package · fastapi.sourceDir · cleanCode.helperMethods). 있는 파일은 덮지 않는다. Node 기본 모듈만 쓴다.
+ * fastapi.package · fastapi.sourceDir · nestjs.srcDir · django.package · django.sourceDir · backend.layout · cleanCode.helperMethods). 있는 파일은 덮지 않는다. Node 기본 모듈만 쓴다.
  */
 'use strict';
 const fs = require('fs');
@@ -30,7 +33,7 @@ const STACKS = {
       return fs.readdirSync(path.join(PACKS, 'stack-spring', 'assets', 'archrules', 'java')).filter((f) => f.endsWith('.java')).sort()
         .map((f) => ({ from: path.join('stack-spring', 'assets', 'archrules', 'java', f), to: path.posix.join(dir, f) }));
     },
-    tokens: (v) => ({ __BASE_PACKAGE__: v.basePackage, __FEATURE_FIRST__: String(v.layout === 'feature-first'), __NO_HELPER_METHODS__: String(v.noHelpers) }),
+    tokens: (v) => ({ __BASE_PACKAGE__: v.basePackage, __FEATURE_FIRST__: String(v.layout === 'feature-first'), __COMPONENT_WEB__: String(!!v.componentWeb), __NO_HELPER_METHODS__: String(v.noHelpers) }),
   },
   react: {
     pack: 'stack-react',
@@ -44,10 +47,27 @@ const STACKS = {
     deps: ['pip install import-linter  (개발 의존성에 넣는다)'],
     run: 'lint-imports && python tools/check_role_files.py',
     files: (v) => [
-      { from: path.join('stack-fastapi', 'assets', 'archrules', 'importlinter.ini'), to: path.posix.join(v.dir, '.importlinter') },
+      { from: path.join('stack-fastapi', 'assets', 'archrules', v.componentWeb ? 'importlinter-component-web.ini' : 'importlinter.ini'), to: path.posix.join(v.dir, '.importlinter') },
       { from: path.join('stack-fastapi', 'assets', 'archrules', 'check_role_files.py'), to: path.posix.join(v.dir, 'tools', 'check_role_files.py') },
     ],
-    tokens: (v) => ({ __PACKAGE__: v.package, __SOURCE_DIR__: v.sourceDir || '.', __NO_HELPER_FUNCTIONS__: v.noHelpers ? 'True' : 'False' }),
+    tokens: (v) => ({ __PACKAGE__: v.package, __SOURCE_DIR__: v.sourceDir || '.', __NO_HELPER_FUNCTIONS__: v.noHelpers ? 'True' : 'False', __COMPONENT_WEB__: v.componentWeb ? 'True' : 'False' }),
+  },
+  nestjs: {
+    pack: 'stack-nestjs',
+    deps: ['npm i -D dependency-cruiser'],
+    run: 'npx depcruise <소스> --config .dependency-cruiser.cjs',
+    files: (v) => [{ from: path.join('stack-nestjs', 'assets', 'archrules', 'dependency-cruiser.cjs'), to: path.posix.join(v.dir, '.dependency-cruiser.cjs') }],
+    tokens: (v) => ({ __SRC__: v.srcDir }),
+  },
+  django: {
+    pack: 'stack-django',
+    deps: ['pip install import-linter  (개발 의존성에 넣는다)'],
+    run: 'lint-imports && python tools/check_web_layout.py',
+    files: (v) => [
+      { from: path.join('stack-django', 'assets', 'archrules', 'importlinter.ini'), to: path.posix.join(v.dir, '.importlinter') },
+      { from: path.join('stack-django', 'assets', 'archrules', 'check_web_layout.py'), to: path.posix.join(v.dir, 'tools', 'check_web_layout.py') },
+    ],
+    tokens: (v) => ({ __PACKAGE__: v.package, __SOURCE_DIR__: v.sourceDir || '.' }),
   },
 };
 
@@ -75,7 +95,15 @@ function pickRepo(ws, stack, name) {
     if (!r) throw new Error(`workspace.json repos 에 코드 repo '${want}' 가 없습니다`);
     return r;
   }
-  const stackOf = (r) => (Array.isArray(r.stack) ? r.stack.join(',') : String(r.stack || ''));
+  // workspace.json 에 stack 이 없으면(init 은 적지 않는다) 스택 감지로 본다
+  const stackOf = (r) => {
+    if (r.stack) return Array.isArray(r.stack) ? r.stack.join(',') : String(r.stack);
+    if (!r.dir || !fs.existsSync(r.dir)) return '';
+    try {
+      const D = require('../lib/detect');
+      return D.detect(r.dir, D.withHints(D.loadCatalog(path.resolve(PACKS, '..')), ws.stackHints)).map((x) => x.id).join(',');
+    } catch { return ''; }
+  };
   const r = code.find((x) => new RegExp(`(^|[^a-z])${stack}([^a-z]|$)`, 'i').test(stackOf(x)));
   if (!r) throw new Error(`stack 에 ${stack} 가 든 repo 가 없습니다. --repo <이름> 으로 지정합니다`);
   return r;
@@ -84,19 +112,31 @@ function pickRepo(ws, stack, name) {
 /** 템플릿 값 (workspace.json vars + 인자) */
 function values(ws, stack, a) {
   const vars = ws.vars || {};
-  const v = { dir: a.dir ? String(a.dir).replace(/\/$/, '') : '.', noHelpers: get(vars, 'cleanCode.helperMethods') === 'none' };
+  const v = { dir: a.dir ? String(a.dir).replace(/\/$/, '') : '.', noHelpers: get(vars, 'cleanCode.helperMethods') === 'none', componentWeb: get(vars, 'backend.layout') === 'component-web' };
   if (stack === 'spring') {
     v.basePackage = a.package || get(vars, 'spring.basePackage') || 'com.example.app';
     v.layout = a.layout || get(vars, 'spring.packageLayout') || 'layer-first';
     if (!['layer-first', 'feature-first'].includes(v.layout)) throw new Error(`spring.packageLayout 은 layer-first | feature-first 입니다 (지금 ${v.layout})`);
     if (!/^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*$/.test(v.basePackage)) throw new Error(`spring.basePackage 가 Java 패키지 이름이 아닙니다: ${v.basePackage}`);
+    if (v.componentWeb && v.layout !== 'feature-first') throw new Error(`backend.layout = component-web 은 기능 먼저 구조 위에 web 층을 더합니다. spring.packageLayout 을 feature-first 로 (지금 ${v.layout})`);
   } else if (stack === 'react') {
     v.srcDir = get(vars, 'react.srcDir') || 'src';
     v.generatedApiDir = get(vars, 'react.generatedApiDir') || `${v.srcDir}/shared/api/generated`;
+  } else if (stack === 'nestjs' || stack === 'django') {
+    if (!v.componentWeb) throw new Error(`${stack} 구조 검사는 backend.layout = component-web 일 때만 넣는다 (지금 ${get(vars, 'backend.layout') || 'existing'})`);
+    if (stack === 'nestjs') {
+      v.srcDir = String(get(vars, 'nestjs.srcDir') || 'src').replace(/^\.\//, '').replace(/\/$/, '');
+      if (!/^[\w./-]+$/.test(v.srcDir)) throw new Error(`nestjs.srcDir 가 폴더 경로가 아닙니다: ${v.srcDir}`);
+    } else {
+      v.package = a.package || get(vars, 'django.package') || 'app';
+      v.sourceDir = get(vars, 'django.sourceDir') || '.';
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(v.package)) throw new Error(`django.package 는 최상위 패키지 이름 하나입니다: ${v.package}`);
+    }
   } else if (stack === 'fastapi') {
     v.package = a.package || get(vars, 'fastapi.package') || 'app';
     v.sourceDir = get(vars, 'fastapi.sourceDir') || '.';
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(v.package)) throw new Error(`fastapi.package 는 최상위 패키지 이름 하나입니다: ${v.package}`);
+    if (v.componentWeb && (get(vars, 'fastapi.packageLayout') || 'existing') !== 'feature') throw new Error(`backend.layout = component-web 은 기능 먼저 구조 위에 web 층을 더합니다. fastapi.packageLayout 을 feature 로 (지금 ${get(vars, 'fastapi.packageLayout') || 'existing'})`);
   }
   return v;
 }
@@ -124,10 +164,13 @@ function write(items) {
 }
 
 function usage() {
-  return '사용법: kedovi archrules spring|react|fastapi [--repo R] [--dir 모듈 경로] [--dry-run] [--json]\n'
+  return '사용법: kedovi archrules spring|react|fastapi|nestjs|django [--repo R] [--dir 모듈 경로] [--dry-run] [--json]\n'
     + '  spring : ArchUnit 규칙 (패키지 배치 · 접미사 → 계층 · 기능 경계 · 역할 클래스) → src/test/java/<기준 패키지>/archrules/\n'
     + '  react  : eslint-plugin-boundaries 설정 (FSD 레이어 · slice 공개 API · 생성 API 경계) → eslint.boundaries.config.js\n'
     + '  fastapi: import-linter 계약 + 역할 파일 검사 → .importlinter · tools/check_role_files.py\n'
+    + '  nestjs : dependency-cruiser 설정 (component-web 방향 · 화면끼리 · 고객사) → .dependency-cruiser.cjs\n'
+    + '  django : import-linter 계약 + web 배치 검사 (component-web) → .importlinter · tools/check_web_layout.py\n'
+    + '  backend.layout = component-web 이면 spring · fastapi 에도 web → feature → shared 방향을 넣는다\n'
     + '  값은 workspace.json vars (spring.basePackage · spring.packageLayout · react.srcDir · react.generatedApiDir · fastapi.package · cleanCode.helperMethods). 있는 파일은 덮지 않는다';
 }
 
@@ -147,12 +190,13 @@ function main(argv) {
     console.log(JSON.stringify({ stack, repo: repo.name, dryRun: !!a['dry-run'], values: v, files: items.map((x) => ({ path: x.to, written: !x.exists && !a['dry-run'], exists: x.exists })), next: s.deps, run: s.run }, null, 2));
     return 0;
   }
-  const opt = stack === 'spring' ? ` · 구조 ${v.layout} · 기준 패키지 ${v.basePackage}` : stack === 'react' ? ` · 소스 ${v.srcDir} · 생성 API ${v.generatedApiDir}` : ` · 패키지 ${v.package}`;
+  const opt = (stack === 'spring' ? ` · 구조 ${v.layout} · 기준 패키지 ${v.basePackage}` : stack === 'react' ? ` · 소스 ${v.srcDir} · 생성 API ${v.generatedApiDir}` : stack === 'nestjs' ? ` · 소스 ${v.srcDir}` : ` · 패키지 ${v.package}`)
+    + (v.componentWeb && stack !== 'react' ? ' · component-web' : '');
   console.log(`${a['dry-run'] ? '미리보기 (쓰지 않음)' : '구조 검사 템플릿'}: ${repo.name}${opt} · 도우미 ${v.noHelpers ? '0개 검사 켬' : '검사 끔 (cleanCode.helperMethods = few)'}`);
   for (const it of items) console.log(`  ${it.exists ? '· 있음 (덮지 않음)' : a['dry-run'] ? '+ 만들 파일' : '✔ 만듦'} ${it.to}`);
   console.log('다음');
   for (const d of s.deps) console.log(`  ${d}`);
-  console.log(`  실행: ${s.run}`);
+  console.log(`  실행: ${s.run.replace('<소스>', v.srcDir || '')}`);
   console.log('  기존 코드가 규칙을 어기면 한꺼번에 고치지 말고 위반 목록을 보고 범위를 사용자와 정한다');
   return 0;
 }

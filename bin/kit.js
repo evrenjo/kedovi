@@ -1105,6 +1105,7 @@ function generate(root) {
   const packs = loadPacks(root, ws, errors, Object.keys(repoMap).filter((pk) => !ws.packs.includes(pk)));
   applyPackVarDefaults(ws, packs.map((pk) => pk.dir)); // 메모리에서만 — 새로 붙은 스택 팩 변수가 비어 sync 가 멈추지 않게
   checkVarChoices(ws, packs, warnings);
+  checkComponentWeb(ws, packs, warnings);
   validateProject(ws, errors, warnings);
   const detectLib = path.join(root, 'packs', 'core', 'lib', 'detect.js');
   if (ws.stackHints !== undefined && exists(detectLib)) {
@@ -2548,6 +2549,18 @@ function applyPackVarDefaults(ws, packDirs) {
     }
   }
   return added;
+}
+
+/** backend.layout = component-web 은 스택의 기능 먼저 구조 위에 web 층을 더한다. 스택 구조 변수가 다르면 알린다 (규칙이 서로 다른 말을 하지 않게) */
+function checkComponentWeb(ws, packs, warnings) {
+  if (lookup(ws.vars, 'backend.layout') !== 'component-web') return;
+  const names = new Set(packs.map((p) => p.name));
+  const need = [['stack-spring', 'spring.packageLayout', 'feature-first', 'layer-first'], ['stack-fastapi', 'fastapi.packageLayout', 'feature', 'existing']];
+  for (const [pack, key, want, dflt] of need) {
+    if (!names.has(pack)) continue;
+    const v = lookup(ws.vars, key) ?? dflt;
+    if (v !== want) warnings.push(`vars.backend.layout = component-web 은 기능 먼저 구조 위에 web 층을 더합니다. vars.${key} 를 ${JSON.stringify(want)} 로 바꿉니다 (지금 ${JSON.stringify(v)}). 기존 코드 구조가 다르면 옮기는 범위를 사용자와 정한다`);
+  }
 }
 
 /** pack.json 변수의 choices(고를 수 있는 값)에 없는 값이면 알린다. 그 값으로 고르는 규칙(if:)이 하나도 안 걸리는 일을 막는다 */
