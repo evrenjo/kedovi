@@ -1,8 +1,20 @@
 {
   "name": "kedovi",
-  "version": "0.87.1",
+  "version": "0.88.0",
   "private": false,
-  "description": "Claude Code · Codex 겸용 AI 협업 워크스페이스 킷",
+  "description": "Claude Code · Codex 팀 개발 워크스페이스 킷: 한 규칙 두 도구 · 3층 팀 에이전트 병렬 작업(요금제별 상한) · 핸드오프 · 로드맵 · 기획 문서 사이트 · 화면 정본 대조 · 훅으로 지키는 검사",
+  "keywords": [
+    "claude-code",
+    "codex",
+    "ai-agents",
+    "multi-agent",
+    "subagents",
+    "workspace",
+    "team",
+    "handoff",
+    "agents-md",
+    "developer-tools"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

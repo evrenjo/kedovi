@@ -56,6 +56,9 @@
     { "script": "hooks/team-idle.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/notify.js", "timeout": 10, "agents": "claude" }
   ],
+  "SubagentStart": [
+    { "script": "hooks/agent-budget.js", "timeout": 10, "agents": "claude" }
+  ],
   "SubagentStop": [
     { "script": "hooks/agent-budget.js", "timeout": 10, "agents": "claude" },
     { "script": "hooks/notify.js", "timeout": 5, "agents": "claude" }

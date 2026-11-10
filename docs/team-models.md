@@ -1,6 +1,6 @@
 # 팀 에이전트와 모델
 
-에이전트 도구의 서브에이전트 기능으로 **역할 에이전트**를 만든다 (core 일반 역할 7개 + 팩·프로젝트가 더한 역할). 리드(메인 세션)는 합의된 작업 안에서 일을 나눌 때는 **묻지 않고** 역할 에이전트를 불러 나누고, 끝나면 정리한다 (규칙 `core--29-agents` · `team` 스킬). 단계 전환(분석 → 기획 → 설계 → 구축)과 그 단계의 진행 방식은 사용자와 정한 뒤 시작한다 (규칙 `core--10-communication`). 조사처럼 많이 읽는 일을 맡기고 결론만 받아 메인 대화 context 를 아끼므로 더 오래 일할 수 있다.
+에이전트 도구의 서브에이전트 기능으로 **역할 에이전트**를 만든다 (core 일반 역할 7개와 작업 리더 + 팩·프로젝트가 더한 역할). 리드(메인 세션)는 합의된 작업 안에서 일을 나눌 때는 **묻지 않고** 역할 에이전트를 불러 나누고, 끝나면 정리한다 (규칙 `core--29-agents` · `team` 스킬). 단계 전환(분석 → 기획 → 설계 → 구축)과 그 단계의 진행 방식은 사용자와 정한 뒤 시작한다 (규칙 `core--10-communication`). 조사처럼 많이 읽는 일을 맡기고 결론만 받아 메인 대화 context 를 아끼므로 더 오래 일할 수 있다.
 
 실행 방식은 세션 시작 때 훅(`team-mode.js`)이 환경으로 정한다 (이어서 시작 · 대화 요약 뒤에도 그 줄을 다시 넣는다). 팀 모드인데 역할 에이전트를 이름 없이 띄우면 서브에이전트로 돌기 때문에 훅이 막는다 (`kedovi team-mode enforce name`, `agents.enforce.teammateName`). 한 요청의 첫 역할 에이전트 때는 실행 방식과 구성표를 알렸는지 훅이 한 줄로 짚는다 (`enforce roster`, `agents.enforce.rosterAnnounce`). 일을 마친 팀원이 대기로 10분 넘게 남으면 리더가 멈출 때 훅(`team-idle.js`)이 한 번 막고 알린다 (`enforce idle`, `agents.enforce.idleTeammates`). 팀원이나 백그라운드 작업이 남은 채 멈출 때 답변에 상태 줄(`지금 도는 것:`)이 없어도 한 번 막는다 (`enforce status`, `agents.enforce.waitStatus`). Claude Code 의 agent teams(팀원 세션)가 가능하면 **팀 모드**, 아니면 **서브에이전트**. `teammateMode` 가 `tmux` 면 tmux 가 설치돼 있어야 하고(세션 밖이면 Claude Code 가 tmux 세션을 만들어 입력창 오른쪽에 이름을 보여 준다. 다른 터미널에서 `tmux attach -t <이름>`), 없으면 사유와 함께 서브에이전트로 간다. 어느 쪽이든 상한·역할 모델은 같고, 리더는 작업 시작 때 어느 방식인지 한 줄로 알린다.
 
@@ -13,11 +13,53 @@
 | 테스트 `tester` | 재현·테스트 작성·검증표 | 쓰기 | standard |
 | 리뷰 `reviewer` | diff 검토 (정확성·보안·회귀·테스트 누락) | 읽기 전용 | high |
 | 문서화 `documenter` | README·사용법·이슈 문서 | 쓰기(문서) | low |
+| 작업 리더 `lead` | 독립 단위 하나를 맡아 팀원을 부르고 끝까지 진행 (아래 「작업 리더 (3층)」) | 읽기 전용 (코드 안 씀) | standard |
 
-- **많이 부르지 않는다**: 한 요청(사용자 메시지 하나)에 동시 · 모두 상한이 있다 (절약 2 · 5, 표준 4 · 10, 최고 6 · 20, `agents.limits` 로 바꾼다. 이 PC 값은 팀 값보다 낮게만). Claude Code 는 넘으면 훅이 막고 AI 가 이유와 함께 사용자에게 묻는다. Codex 는 `config.toml` 의 동시 상한과 규칙으로 지킨다. 같은 역할은 새로 부르지 않고 앞 에이전트에게 이어서 맡긴다.
+- **많이 부르지 않는다**: 한 요청(사용자 메시지 하나)에 메인이 직접 부르는 동시 · 모든 층 합계 상한이 있다 (절약 2 · 6, 표준 4 · 15, 최고 6 · 30, `agents.limits` 로 바꾼다. 이 PC 값은 팀 값보다 낮게만). 작업 리더 상한은 아래 「작업 리더 (3층)」. Claude Code 는 넘으면 훅이 막고 AI 가 이유와 함께 사용자에게 묻는다. Codex 는 `config.toml` 의 동시 상한과 규칙으로 지킨다. 같은 역할은 새로 부르지 않고 앞 에이전트에게 이어서 맡긴다.
 - project 팩의 `agents/` 에 같은 이름을 두면 덮어쓰고, 새 이름이면 역할이 추가된다. 역할 머리말에 `grade: high | standard | low` 를 두면 프로필에 그 역할이 없어도 성향에 맞는 모델이 정해진다 (예: 표준의 high = Sonnet high).
 
 > 참고: 역할 정의 원본은 `packs/core/agents/*.md` 하나다. sync 가 Claude Code 용 `.claude/agents/*.md` 와 Codex 용 `.codex/agents/*.toml` 로 만든다.
+
+## 작업 리더 (3층)
+
+서로 독립인 작업 단위(이슈 · 기능 · 문서 영역 · 테스트 영역)가 2개 이상이면 세 층으로 나눠 함께 돌린다. 단위가 하나거나 서로 강하게 묶였으면 지금처럼 메인이 역할을 직접 부른다.
+
+```mermaid
+flowchart TD
+    M["메인 (총괄)<br/>단위로 쪼개기 · 공유 계약 먼저 · 합치기 · 보고"] --> L1["작업 리더 A<br/>(lead · Sonnet · 코드 안 씀)"]
+    M --> L2["작업 리더 B"]
+    L1 --> A1["analyst"] --> I1["implementer"] --> T1["tester ∥ reviewer"]
+    L2 --> S2["analyst"] --> W2["spec-writer"] --> R2["reviewer"]
+    T1 -. "보고 20줄" .-> M
+    R2 -. "보고 20줄" .-> M
+```
+
+| 층 | 맡는 일 | 하지 않는 일 |
+|---|---|---|
+| 메인 | 단위 나누기, 공유 계약(API · 스키마 · 문서 ID 범위) 먼저 확정, 리더 배정, `kedovi worktree merge` 로 합치기, 통합 검사, 사용자 보고 | 직접 편집 |
+| 작업 리더 (`lead`) | 맡은 단위에서 팀원을 순서대로 부르고 리뷰 반영까지 끝내 짧게 보고 | 코드 작성, 다른 리더 부르기, 다른 단위 파일 |
+| 팀원 | 분석 · 설계 · 문서 · 구현 · 테스트 · 리뷰 (위 역할) | 소유 밖 파일 |
+
+| 단계 | 독립 단위 | 리더 아래 팀원 |
+|---|---|---|
+| 기획 (문서) | 기능 묶음 · 화면 묶음 · 데이터 영역 (영역마다 문서 ID 범위를 미리 나눔) | analyst → spec-writer → reviewer |
+| 개발 | 이슈 · 기능 하나 (백엔드부터 화면까지 세로로) | analyst → implementer → tester ∥ reviewer |
+| 테스트 | 기능별 시나리오 · 층 | tester ∥ tester → reviewer (결함은 그 기능의 개발 리더에게) |
+
+**상한 (요금제별 기본값)**: 이 PC 의 Claude 요금제 여유도로 정해지고, 팀 프로필 값보다 높지 않다. 넘으면 훅(`agent-budget.js`)이 층별로 세어 막는다.
+
+| 여유도 | 리더 동시 | 리더당 팀원 동시 | 요청당 모두 |
+|---|---|---|---|
+| 빠듯 (Pro · Team 표준 · 요금제 모름이면 팀 값) | 1 (사실상 2층) | 2 | 6 |
+| 넉넉 (Max 5x · Team 프리미엄) | 3 | 2 | 15 |
+| Max 20x · 종량 (API · Enterprise · 게이트웨이) | 4 | 3 | 30 |
+
+- 팀 프로필 상한: 절약 1×2 · 6, 표준 3×2 · 15, 최고 4×3 · 30. 그래서 Max 20x 라도 팀이 표준이면 3×2 · 15 다.
+- **띄우는 법 (Claude Code)**: 리더는 팀 모드여도 이름 없이 서브에이전트로 띄우고(이름을 주면 팀원이 되어 그 아래 팀원이 병렬로 돌지 않는다), 리더가 팀원을 서브에이전트로 부른다. sync 가 중첩 깊이를 2층(`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=2`)으로 정한다. Codex 는 하위 에이전트 중첩이 공식 문서에 없어 2층이다.
+- **같은 repo**: 리더마다 `kedovi worktree add <repo> <단위>` 로 작업 폴더(`.worktrees/<repo>/<단위>/`, 로컬 임시 브랜치)를 주고, 끝나면 메인이 `kedovi worktree merge` 로 본 작업 트리에 커밋하지 않은 변경으로 옮긴다. 통합 브랜치 직접 운영이어도 쓸 수 있다 (임시 브랜치는 이 PC 에만 있다).
+- **진행 보기**: `kedovi team` 현황의 「지금 도는 에이전트」 줄 (작업 리더 수 · 리더별 팀원 수).
+
+> 근거: Claude Code 서브에이전트 중첩(메인 아래 3층까지 · 동시 20)과 훅 입력의 agent_id 는 공식 문서(code.claude.com/docs/en/sub-agents · /hooks), agent teams 의 중첩 팀 불가는 /agent-teams. 2026-11-11 Claude Code 2.1.322 에서 리더 2명 아래 팀원 4명이 함께 도는 것을 확인. 여러 에이전트는 채팅의 약 15배 토큰을 쓴다 (anthropic.com/engineering/multi-agent-research-system). 그래서 독립 단위가 있을 때만 쓴다.
 
 ## 팀 구성: 자동 · 고정
 
@@ -58,6 +100,7 @@
 | 리뷰 | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · medium) |
 | 테스트 | GPT-6.1 Sol (Codex 위임 · high) | Haiku 5.5 (xhigh) | Haiku 5.5 (xhigh) |
 | 문서화 | Haiku 5.5 | Haiku 5.5 | Haiku 5.5 |
+| 작업 리더 | Opus 5.5 (high) | Sonnet 5.5 (medium) | Sonnet 5.5 (low) |
 | 교차 검토 → Codex | GPT-6.1 Sol (high) | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) |
 <!-- /models:claude -->
 
@@ -74,6 +117,7 @@
 | 리뷰 | Opus 5.5 (Claude 위임 · xhigh) | Opus 5.5 (Claude 위임 · high) | Sonnet 5.5 (Claude 위임 · high) |
 | 테스트 | GPT-6.1 Sol (high) | GPT-6 Luna (max) | GPT-6 Luna (max) |
 | 문서화 | GPT-6 Luna (high) | GPT-6 Luna (medium) | GPT-6 Luna (medium) |
+| 작업 리더 | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) | GPT-6 Luna (high) |
 | 교차 검토 → Claude | Opus 5.5 (xhigh) | Opus 5.5 (high) | Sonnet 5.5 |
 <!-- /models:codex -->
 

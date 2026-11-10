@@ -194,7 +194,9 @@ Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 
 
 진행 방식은 새 워크스페이스가 유형마다 정해진다 (신규 구축은 init 에서 MVP · 워터폴, 운영·고도화는 이슈형 · 스프린트 · 전체 중 고른다): 신규 · 운영·고도화 = **MVP · 스프린트**(기능 단위 스프린트. 끝까지 동작하는 최소 기능부터 만들고 나머지는 백로그, 스프린트마다 데모 · 회고하며 하나씩 붙임), 차세대 · 분석·설계 = **워터폴 · 전체**(전체 범위를 설계한 뒤 구축). 신규 구축은 두 방식 모두 첫 단계가 「아이디어 · 전체 그림」(무엇을 왜 만드는지 대화 → 기능 지도 → MVP 범위, 건너뛸 수 있음)이다. `project.approach` 가 없는 옛 워크스페이스는 전체처럼 동작하고, `kedovi upgrade` 가 고르는 법을 알린다. `kedovi approach` 로 바꾼다. 이슈마다 운영에 반영하는 운영 · 유지보수는 **이슈형**(단계 대신 이슈 보드)이다.
 프로필 선택 화면은 시작 도구와 연결 방식을 반영한 표를 보여 준다.
-역할 에이전트 상한(한 요청에 동시 · 모두)은 프로필마다 정해져 있다 (절약 1·3, 표준 2·5, 최고 3·8). `workspace.json`·`.agents/local.json` 의 `agents.limits` 로 바꾼다. 이 PC 값은 팀 값보다 낮게만 적용된다.
+역할 에이전트 상한은 프로필마다 정해져 있다: 메인이 직접 부르는 동시 · 요청당 모두 · 작업 리더 동시 × 리더당 팀원 동시 (절약 2 · 6 · 1×2, 표준 4 · 15 · 3×2, 최고 6 · 30 · 4×3). 이 PC 의 Claude 요금제 여유도가 리더 · 팀원 · 모두를 더 낮춘다 (빠듯 1×2 · 6, 넉넉 3×2 · 15, Max 20x · 종량 4×3 · 30). `workspace.json`·`.agents/local.json` 의 `agents.limits` 로 바꾼다. 이 PC 값은 팀 값보다 낮게만 적용된다.
+
+서로 독립인 작업 단위가 2개 이상이면 메인 → 작업 리더(`lead`, 단위마다) → 팀원 세 층으로 나눠 함께 돌린다 (Claude Code. Codex 는 2층). 같은 repo 를 여러 리더가 고치면 리더마다 작업 폴더(`kedovi worktree`)를 준다. 자세한 구성은 [팀 에이전트와 모델](team-models.md).
 
 **Claude Code 로 실행할 때**
 
@@ -209,6 +211,7 @@ Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 
 | 리뷰 | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · medium) |
 | 테스트 | GPT-6.1 Sol (Codex 위임 · high) | Haiku 5.5 (xhigh) | Haiku 5.5 (xhigh) |
 | 문서화 | Haiku 5.5 | Haiku 5.5 | Haiku 5.5 |
+| 작업 리더 | Opus 5.5 (high) | Sonnet 5.5 (medium) | Sonnet 5.5 (low) |
 | 교차 검토 → Codex | GPT-6.1 Sol (high) | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) |
 <!-- /models:claude -->
 
@@ -225,6 +228,7 @@ Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 
 | 리뷰 | Opus 5.5 (Claude 위임 · xhigh) | Opus 5.5 (Claude 위임 · high) | Sonnet 5.5 (Claude 위임 · high) |
 | 테스트 | GPT-6.1 Sol (high) | GPT-6 Luna (max) | GPT-6 Luna (max) |
 | 문서화 | GPT-6 Luna (high) | GPT-6 Luna (medium) | GPT-6 Luna (medium) |
+| 작업 리더 | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) | GPT-6 Luna (high) |
 | 교차 검토 → Claude | Opus 5.5 (xhigh) | Opus 5.5 (high) | Sonnet 5.5 |
 <!-- /models:codex -->
 
@@ -292,6 +296,7 @@ flowchart TD
     PXW --> RUN["에이전트 실행"]
     RUN --> SS["세션 시작 훅: repo 갱신 확인 · 생성물 동기화 확인 · 내 마지막 핸드오프 한 줄"]
     SS --> WORK["작업: 규칙(AGENTS.md) · 스킬 · 역할 에이전트<br/>(AI 가 필요할 때 스스로 부르고 정리. 한 요청 상한을 넘으면 훅이 막는다)"]
+    WORK -->|"독립 단위 2개 이상"| TIER["메인 → 작업 리더(단위마다) → 팀원<br/>같은 repo 면 kedovi worktree add · merge"]
     WORK --> STOP["세션 끝 훅: 인계(handoffs/) 점검 · 끝나지 않은 위임 작업 알림"]
 ```
 
@@ -395,6 +400,7 @@ flowchart TD
 | `kedovi docs build [repo]` | 기획 repo 의 md · 화면설계서 장 → 같은 경로 구조의 `docs-site/` (정의 ID 앵커 · 근거 색인 · 정의서 폴더마다 ERD). 묶음 · 포함 범위는 `docs-site.json`, 옛 `html/` 은 처음 build 때 옮긴다. `check` 는 md 와 어긋났는지. 둘 다 문서 점검 경고와 mermaid 문법 오류를 낸다. 자세히는 [문서 사이트](docs-site.md) |
 | `kedovi docs show <ID>` · `refs <ID>` | 기획 문서를 ID 단위로: 정의 부분만 출력 · 그 ID 가 나오는 곳(기획 · 코드 · 이슈 repo, 파일:줄, ★ 정의 · [동결]) |
 | `kedovi delegate watch [id]` · `status [id]` · `list` | 다른 도구에 맡긴 작업(위임)의 진행: 상대 에이전트가 읽고 실행하는 것을 줄마다 · 지금 현황 한 번 · 목록 |
+| `kedovi worktree add <repo> <단위>` · `merge` · `remove` · `list` | 작업 리더 작업 폴더: 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 `.worktrees/<repo>/<단위>`, merge 는 본 작업 트리에 커밋하지 않은 변경으로 옮김 |
 | `kedovi debate list` · `watch [id]` · `status [id]` · `models` | 토론 모드: 목록 · 실시간 보기(모델별 주장 · 판정) · 지금 회차와 모델별 상태 · 쓸 수 있는 모델과 패널 예시 (시작은 채팅에서 "토론해줘") |
 | `kedovi docs serve [repo]` | `docs-site/` 를 이 PC 에서 웹 주소(`http://127.0.0.1:8000/`)로 보기. 전체 인쇄와 새로고침 없는 이동까지 된다 |
 | `kedovi docs pages [on\|off] [repo]` | 문서 사이트를 Pages 로 올리기 켜고 끄기 · 상태. on = 원격(GitLab · GitHub)에 맞는 CI 파일(`.gitlab-ci.yml` · `.github/workflows/pages.yml`)을 두고 `docs-site/` 를 커밋 대상으로(원격이 없으면 둘 다), off = `.gitignore` 에 `/docs-site/` (CI 는 두어도 돌지 않는다) |
@@ -475,6 +481,7 @@ flowchart TD
 | `workspace.json` | init · detect · models(팀) · team-mode(팀) · team add · rules · upgrade | git 공유 | 유형 · repo · 스택 · 팀 모델 프로필 · 팀 구성(`agents.mode` · `save` · `prefer`) · 훅 강제 수준 · 리뷰 확인 대상 · 대기 팀원 시간(`agents.enforce`) · 팀원의 높은 프로필 허용(`agents.allowHigherProfile`) · 팀 직접 지정 모델 · 팀 명단 · 팀장 · 설정 수정 권한(`team`) · 끈 규칙(`rules.off`) · 필요할 때만 읽는 규칙(`rules.onDemand`) |
 | `.agents/local.json` | install · agent · ai · models(내 PC) | 이 PC 만 | 시작 도구 · 인자 · AI 연결 방식(`agents.access`: 게이트웨이 주소·키 환경변수 이름·모델 목록, 키 값은 없음) · 내 프로필(팀과 같거나 낮은 것만) · 내가 직접 고른 모델 · 역할 상한(`agents.limits`, 팀 값 이내) |
 | `.claude/agents` · `.codex/agents` | sync | 이 PC 만 (사람마다 모델이 달라서) | 역할 에이전트 파일 |
+| `.worktrees/<repo>/<단위>/` | kedovi worktree add | 이 PC 만 (gitignore) | 작업 리더 작업 폴더 · 로컬 임시 브랜치 `kedovi/<단위>` (merge · remove 때 지운다) |
 | `CLAUDE.local.md` · `AGENTS.override.md` · `.claude/settings.local.json` | sync | 이 PC 만 | 개인 지침 · 역할 위임 표 · 설정 잠금 지침과 편집 금지(팀원) |
 | `AGENTS.md` · `CLAUDE.md` · `.claude/settings.json` · `.codex/config.toml` | sync | git 공유 | 규칙 · 스킬 · 훅 · 팀 메인 모델 |
 | `handoffs/<id>/` | handoff · 인수(resume <id> · kedovi team --take) | git 공유 (워크스페이스 repo) | 본인 작업별 기록(미완 작업의 정본) · LATEST · 주간 기록 · TODO(사용자가 등록한 것). 각자 자기 폴더만 |

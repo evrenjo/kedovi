@@ -31,6 +31,7 @@ const notifyHome = fs.mkdtempSync(path.join(require('os').tmpdir(), 'kedovi-self
 process.env.KEDOVI_CONFIG_DIR = notifyHome;
 delete process.env.CLAUDE_CODE_BRIDGE_SESSION_ID; delete process.env.KEDOVI_CHANNEL; delete process.env.KEDOVI_DELEGATED; process.env.KEDOVI_REMOTE_CONTROL = '0'; // 리모트 컨트롤 세션에서 돌려도 같게 (세션 파일을 읽지 않는다)
 process.env.KEDOVI_TELEGRAM_API = 'http://127.0.0.1:9';
+process.env.KEDOVI_LOGIN_PLANS = 'none'; // 상한(작업 리더)이 이 PC 의 Claude 요금제에 따라 달라지지 않게
 process.env.KEDOVI_IDLE_SECONDS = '100000'; // PC 앞이면 알림을 건너뛰므로, 테스트는 자리에 없는 것으로
 for (const k of ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID', 'TELEGRAM_TEAM_BOT_TOKEN', 'KEDOVI_CHANNEL']) delete process.env[k];
 const results = [];
@@ -188,7 +189,7 @@ for (const c of cases) {
     fs.writeFileSync(localFile, JSON.stringify({ agents: { profile: 'rich', limits: { parallel: 9, total: 9 } } }));
     run(process.execPath, ['bin/kit.js', 'sync'], dir);
     const res1 = kitLib.resolveModels(dir, kitLib.loadWorkspace(dir));
-    const blocked = res1.profile.blocked === 'rich' && !res1.profile.local && effortOf('architect') === 'xhigh' && res1.limits.parallel === 4 && res1.limits.total === 9;
+    const blocked = res1.profile.blocked === 'rich' && !res1.profile.local && effortOf('architect') === 'xhigh' && res1.limits.parallel === 4 && res1.limits.total === 9 && res1.limits.leaders === 3 && res1.limits.members === 2;
     const hookLine = (run(process.execPath, ['packs/core/hooks/model-profile.js'], dir).out || '').trim();
     const hookBlocked = /^🎚 모델 프로필: 팀 표준 \(이 PC 값 최고 은 팀보다 높아 적용하지 않음\)/.test(hookLine);
     fs.writeFileSync(wsFile, JSON.stringify({ ...JSON.parse(wsRaw), agents: { allowHigherProfile: true } }, null, 2));
@@ -200,7 +201,7 @@ for (const c of cases) {
     run(process.execPath, ['bin/kit.js', 'sync'], dir);
     const res3 = kitLib.resolveModels(dir, kitLib.loadWorkspace(dir));
     const hookLean = (run(process.execPath, ['packs/core/hooks/model-profile.js'], dir).out || '').trim();
-    const leanOk = res3.limits.parallel === 2 && res3.limits.total === 5 && /^🎚 모델 프로필: 이 PC 절약 \(팀 표준 대신\) · 되돌리기 kedovi models profile team · 상한 동시 2 · 모두 5 \(팀 4 · 10\)$/.test(hookLean);
+    const leanOk = res3.limits.parallel === 2 && res3.limits.total === 6 && res3.limits.leaders === 1 && /^🎚 모델 프로필: 이 PC 절약 \(팀 표준 대신\) · 되돌리기 kedovi models profile team · 상한 동시 2 · 모두 6 \(팀 4 · 15\)$/.test(hookLean);
     if (localRaw === null) fs.rmSync(localFile); else fs.writeFileSync(localFile, localRaw);
     run(process.execPath, ['bin/kit.js', 'sync'], dir);
     const hookNone = (run(process.execPath, ['packs/core/hooks/model-profile.js'], dir).out || '').trim();
@@ -1135,10 +1136,81 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const claudeHooks = fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8');
   const codexHooks = fs.readFileSync(path.join(dir, '.codex', 'hooks.json'), 'utf8');
   const wired = /agent-budget/.test(claudeHooks) && !/agent-budget/.test(codexHooks) && /max_concurrent_threads_per_session = \d/.test(fs.readFileSync(path.join(dir, '.codex', 'config.toml'), 'utf8'));
-  // 이 PC 값은 팀 값(표준 4 · 10)보다 낮게만: 동시 5 는 4 로 눌리고 모두 2 는 그대로
-  const capped = /동시 4개 · 모두 2개\*\*까지 \(팀 4 · 10 보다 낮춘 이 PC 값\)/;
+  // 이 PC 값은 팀 값(표준 4 · 15)보다 낮게만: 동시 5 는 4 로 눌리고 모두 2 는 그대로
+  const capped = /동시 4개 · 모두 2개\*\*까지 \(팀 4 · 15 보다 낮춘 이 PC 값\)/;
   const limitsText = capped.test(fs.readFileSync(path.join(dir, 'CLAUDE.local.md'), 'utf8')) || spawnSync(process.execPath, [path.join(dir, 'bin', 'kit.js'), 'sync', '--quiet'], { cwd: dir }).status === 0 && capped.test(fs.readFileSync(path.join(dir, 'CLAUDE.local.md'), 'utf8'));
   record('역할 에이전트 상한 (훅 · Codex 동시 상한 · 개인 지침)', denied && reset && wired && limitsText, `넘으면 막음 ${denied} · 새 요청이면 다시 셈 ${reset} · Claude 훅만·Codex 설정 ${wired} · 개인 지침 ${limitsText}`);
+}
+
+// 작업 리더 3층 — 요금제 여유도별 상한(리더 · 리더당 팀원 · 모두), 층별로 세는 훅, 중첩 깊이 설정, lead 역할, 같은 repo 작업 폴더(kedovi worktree)
+{
+  const dir = path.join(tmp, 'ai-ws');
+  const localFile = path.join(dir, '.agents', 'local.json');
+  const wsFile = path.join(dir, 'workspace.json');
+  const localRaw = fs.readFileSync(localFile, 'utf8');
+  const wsRaw = fs.readFileSync(wsFile, 'utf8');
+  const setLocal = (agents) => { const l = JSON.parse(localRaw); l.agents = { ...(l.agents || {}), limits: undefined, access: { ...((l.agents || {}).access || {}), connection: 'direct' }, ...agents }; fs.writeFileSync(localFile, JSON.stringify(l, null, 2)); }; // 직접 연결이어야 요금제 여유도를 본다 (게이트웨이 = 종량)
+  const kitT = require(path.join(dir, 'bin', 'kit.js'));
+  const lim = () => kitT.resolveModels(dir, kitT.loadWorkspace(dir)).limits;
+  setLocal({ plans: { claude: 'pro' } });
+  const tight = lim();
+  setLocal({ plans: { claude: 'max20x' } });
+  const big = lim();
+  fs.writeFileSync(wsFile, JSON.stringify({ ...JSON.parse(wsRaw), agents: { ...(JSON.parse(wsRaw).agents || {}), profile: 'rich' } }, null, 2));
+  const rich = lim();
+  fs.writeFileSync(wsFile, wsRaw);
+  const rooms = tight.leaders === 1 && tight.members === 2 && tight.total === 6 && big.leaders === 3 && big.members === 2 && big.total === 15 && rich.leaders === 4 && rich.members === 3 && rich.total === 30 && /Max 20x/.test((big.room || {}).label || '');
+  // 훅: 리더 3명까지 · 리더당 팀원 2명까지 · 팀원이 끝나면 다시 · 리더 안에서 리더 금지
+  const hook = (ev, extra = {}) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'hooks', 'agent-budget.js'), '--agent=claude'], { cwd: dir, encoding: 'utf8', input: JSON.stringify({ session_id: 'selftest-tier', hook_event_name: ev, tool_name: 'Agent', ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: dir } }).stdout;
+  const deny = (o) => /"permissionDecision":"deny"/.test(o || '');
+  const spawn = (type, parent) => hook('PreToolUse', { tool_input: { subagent_type: type, prompt: 'x' }, ...(parent ? { agent_id: parent, agent_type: 'lead' } : {}) });
+  hook('UserPromptSubmit');
+  const leads = ['L1', 'L2', 'L3'].map((id) => { const o = spawn('lead'); hook('SubagentStart', { agent_id: id, agent_type: 'lead' }); return o; });
+  const leadCap = !leads.some(deny) && /작업 리더 상한/.test(spawn('lead'));
+  const m1 = spawn('implementer', 'L1'); hook('SubagentStart', { agent_id: 'M1', agent_type: 'implementer' });
+  const m2 = spawn('tester', 'L1'); hook('SubagentStart', { agent_id: 'M2', agent_type: 'tester' });
+  const memberCap = !deny(m1) && !deny(m2) && /팀원 상한/.test(spawn('documenter', 'L1')) && !deny(spawn('analyst', 'L2'));
+  hook('SubagentStop', { agent_id: 'M1', agent_type: 'implementer' });
+  const freed = !deny(spawn('documenter', 'L1'));
+  const noNested = /메인만 부른다/.test(spawn('lead', 'L2'));
+  const state = JSON.parse(fs.readFileSync(path.join(require(path.join(dir, 'packs', 'core', 'lib', 'workspace.js')).stateDir(dir), 'selftest-tier.agents.json'), 'utf8'));
+  const tree = require(path.join(dir, 'packs', 'core', 'hooks', 'agent-budget.js')).tree(state);
+  const treeOk = tree.filter((x) => x.type === 'lead').length === 3 && tree.find((x) => x.id === 'L1').members.length === 1;
+  // 설정 · 역할 · 지침
+  if (localRaw) fs.writeFileSync(localFile, localRaw);
+  spawnSync(process.execPath, [path.join(dir, 'bin', 'kit.js'), 'sync', '--quiet'], { cwd: dir });
+  const settings = JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8'));
+  const wired = (settings.env || {}).CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH === '2' && fs.existsSync(path.join(dir, '.claude', 'agents', 'lead.md')) && JSON.stringify((settings.hooks || {}).SubagentStart || []).includes('agent-budget')
+    && /작업 리더\(3층, Claude Code\): \*\*리더 동시 \d · 리더당 팀원 동시 \d\*\*/.test(fs.readFileSync(path.join(dir, 'CLAUDE.local.md'), 'utf8')) && /^\/?\.worktrees\/$/m.test(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'));
+  // kedovi worktree: 같은 repo 두 단위 → 본 작업 트리에 커밋하지 않은 변경으로 옮김 · 겹치면 멈추고 작업 폴더를 남김
+  const repo = path.join(dir, 'repos', 'wt-demo');
+  fs.mkdirSync(repo, { recursive: true });
+  const g = (cwd, ...a) => spawnSync('git', ['-C', cwd, '-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { encoding: 'utf8' });
+  g(repo, 'init', '-q', '-b', 'main');
+  fs.writeFileSync(path.join(repo, 'a.txt'), 'one\ntwo\n'); fs.writeFileSync(path.join(repo, 'b.txt'), 'b\n');
+  g(repo, 'add', '-A'); g(repo, 'commit', '-q', '-m', 'init');
+  fs.writeFileSync(wsFile, JSON.stringify({ ...JSON.parse(wsRaw), repos: [...(JSON.parse(wsRaw).repos || []), { name: 'wt-demo', kind: 'code' }] }, null, 2));
+  const wt = (...a) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'worktree.js'), ...a], { cwd: dir, encoding: 'utf8' });
+  const add1 = wt('add', 'wt-demo', 'FN-1').status === 0 && wt('add', 'wt-demo', 'FN-2').status === 0;
+  const w1 = path.join(dir, '.worktrees', 'wt-demo', 'FN-1');
+  const w2 = path.join(dir, '.worktrees', 'wt-demo', 'FN-2');
+  fs.writeFileSync(path.join(w1, 'a.txt'), 'one\nTWO\n'); fs.writeFileSync(path.join(w1, 'new.txt'), 'new\n');
+  fs.writeFileSync(path.join(w2, 'b.txt'), 'b2\n');
+  fs.writeFileSync(path.join(repo, 'c.txt'), 'main dirty\n'); // 본 작업 트리에 이미 있던 변경
+  const listed = /FN-1/.test(wt('list').stdout);
+  const mg1 = wt('merge', 'wt-demo', 'FN-1');
+  const mg2 = wt('merge', 'wt-demo', 'FN-2');
+  const moved = mg1.status === 0 && mg2.status === 0 && fs.readFileSync(path.join(repo, 'a.txt'), 'utf8') === 'one\nTWO\n' && fs.existsSync(path.join(repo, 'new.txt')) && fs.readFileSync(path.join(repo, 'b.txt'), 'utf8') === 'b2\n'
+    && fs.existsSync(path.join(repo, 'c.txt')) && !fs.existsSync(w1) && !/kedovi\/FN-1/.test(g(repo, 'branch').stdout) && g(repo, 'rev-list', '--count', 'HEAD').stdout.trim() === '1';
+  wt('add', 'wt-demo', 'FN-3');
+  fs.writeFileSync(path.join(dir, '.worktrees', 'wt-demo', 'FN-3', 'a.txt'), 'one\nthree\n');
+  const clash = wt('merge', 'wt-demo', 'FN-3');
+  const stopped = clash.status === 1 && fs.existsSync(path.join(dir, '.worktrees', 'wt-demo', 'FN-3'));
+  g(repo, 'checkout', '-q', '--', '.'); wt('remove', 'wt-demo', 'FN-3', '--force');
+  fs.writeFileSync(wsFile, wsRaw);
+  fs.rmSync(repo, { recursive: true, force: true }); fs.rmSync(path.join(dir, '.worktrees'), { recursive: true, force: true });
+  record('작업 리더 3층 (요금제별 상한 · 층별 훅 · 중첩 깊이 · lead 역할 · kedovi worktree)', rooms && leadCap && memberCap && freed && noNested && treeOk && wired && add1 && listed && moved && stopped,
+    `요금제별 빠듯 1×2·6 · Max 20x 3×2·15(팀 표준) · 최고 4×3·30 ${rooms} · 리더 상한 ${leadCap} · 리더당 팀원 상한 ${memberCap} · 끝나면 다시 ${freed} · 리더 안 리더 금지 ${noNested} · 현황 나무 ${treeOk} · 설정 · 역할 · 지침 · gitignore ${wired} · 작업 폴더 ${add1 && listed} · 커밋 없이 옮김(남의 변경 유지) ${moved} · 겹치면 멈춤 ${stopped}`);
 }
 
 // 역할 에이전트 실행 방식 — SessionStart 훅이 환경(팀 기능 · teammateMode · tmux)으로 팀 모드/서브에이전트를 판정한다 (Claude 만)

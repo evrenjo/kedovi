@@ -40,6 +40,7 @@
  *   kedovi budget start|extend "<작업>" <시간> · done ["<작업>"] · status · report [--month YYYY-MM] [--json]   시간 예산: 시작 · 늘림 · 끝 · 지금 · 월간 집계(끝낸 작업 수 · 예산 초과율 · 걸린 시간 중앙값, 이력은 이 PC 의 .agents/history/)
  *   kedovi defects check [--id <id>] · report [--month YYYY-MM] [--json]   운영 결함 기록(작업별 기록 머리 「종류: 운영 결함」): 발견 · 분류 · 해소 칸 검사 · 월간 집계(분류별 잠복 · 해소 시간)
  *   kedovi plan [--short | --json | --stage <번호>] · init · check · external <위치>|off   로드맵(handoffs/PLAN.md): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것 · 다음
+ *   kedovi worktree add|merge|remove <repo> <단위> · list   작업 리더 worktree: 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 .worktrees/<repo>/<단위> (merge = 본 작업 트리에 커밋하지 않은 변경으로 옮김)
  *   kedovi docs build [repo|폴더] [--out docs-site] [--force] [--no-source] [--write-config] · check [repo|폴더]   문서 사이트: 기획 repo 의 md · 화면설계서 장 → docs-site/ (가이드와 같은 화면 틀 · 근거 색인 ids.json · 묶음은 docs-site.json) · 어긋남 검사 · 문서 점검 경고
  *   kedovi docs show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs]   기획 문서를 ID 단위로: 정의 부분만 출력 · 그 ID 가 나오는 곳(기획 · 코드 · 이슈 repo, 파일:줄)
  *   kedovi docs refs-quote <md 파일…> [--dry]   본문 괄호 속 근거(파일:줄)를 그 문단 · 목록 · 표 아래 「> 근거:」 인용구로 옮긴다
@@ -2866,7 +2867,7 @@ function modelRows(root, cat, roles) {
   return [
     `팀 구성: ${opts.mode === 'auto' ? '자동 (리더가 작업마다 역할·모델 선택, 아래는 기본값)' : '고정 (아래 모델대로)'} · 요금제 ${(() => { const r = kit.vendorRooms(kit.loadCatalogFor(root, ws).cat, kit.normalizeAccess({ ...((ws.agents || {}).access || {}), ...(localAgents.access || {}) }), opts.plans); return ['claude', 'codex'].filter((v) => r[v].room).map((v) => `${VENDOR[v]} ${r[v].label}(${ROOM_TEXT[r[v].room]})`).join(' · ') || '모름'; })()}${Object.keys(opts.prefer).length ? ` · 선호 ${Object.entries(opts.prefer).map(([k, v]) => `${k}=${v}`).join(', ')}` : ''}  (kedovi team-mode)`,
     ...(profile && profile.team ? [`성향(프로필): 팀 ${pfLabel(profile.team)}${profile.local ? ` · 이 PC ${pfLabel(profile.local)} (팀 대신)` : ''}${profile.blocked ? ` · 이 PC 값 ${pfLabel(profile.blocked)} 은 팀보다 높아 적용하지 않음 (kedovi models profile team 으로 지우기)` : ''}${profile.allowHigher ? ' · 팀원의 높은 프로필 허용' : ''}`,
-      `상한: 동시 ${limits.parallel} · 모두 ${limits.total}${limits.parallel !== teamLimits.parallel || limits.total !== teamLimits.total ? ` (팀 ${teamLimits.parallel} · ${teamLimits.total})` : ''}`] : []),
+      `상한: 동시 ${limits.parallel} · 모두 ${limits.total}${limits.parallel !== teamLimits.parallel || limits.total !== teamLimits.total ? ` (팀 ${teamLimits.parallel} · ${teamLimits.total})` : ''} · 작업 리더 ${limits.leaders} × 리더당 팀원 ${limits.members}${limits.room ? ` (요금제 ${limits.room.label})` : ' (요금제 모름: 팀 값)'}`] : []),
     '',
     `${padTo('역할', 12)}${padTo('등급', 10)}${padTo('Claude Code', 33)}Codex`,
     `${padTo('메인', 12)}${padTo('', 10)}${padTo(cell('claude', effective.main, localAgents.main, teamAgents.main, '도구 기본'), 33)}${cell('codex', effective.main, localAgents.main, teamAgents.main, '도구 기본')}`,
@@ -3608,7 +3609,7 @@ const HELP_GROUPS = [
   ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'views', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
   ['팀 규칙 점검', '리뷰 확인 · 훅이 알리거나 막는 수준', ['review', 'team-mode enforce']],
-  ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 위임 · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'delegate', 'debate', 'import', 'tidy']],
+  ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 위임 · 작업 리더 worktree · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'delegate', 'worktree', 'debate', 'import', 'tidy']],
   ['문서', '문서 사이트 · ID 찾기 · 화면설계서 · 데이터 설계 검사', ['docs', 'screens', 'datamodel']],
   ['알림 · 연동', '텔레그램 · 비밀값 · GitLab · 운영 배포 · 운영 검증', ['notify', 'secret', 'gitlab', 'release', 'ops']],
 ];
@@ -3835,6 +3836,7 @@ async function main() {
     case 'budget': return runWsTool('budget.js', rest);
     case 'defects': return runWsTool('defects.js', rest);
     case 'plan': return runWsTool('plan.js', rest);
+    case 'worktree': return runWsTool('worktree.js', rest);
     case 'docs': return runWsTool('docs-site.js', rest);
     case 'delegate': return runWsTool('delegate.js', rest.length ? rest : ['list']);
     case 'debate': return runWsTool('debate.js', rest.length ? rest : ['list']);

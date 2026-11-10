@@ -130,7 +130,7 @@ function findGit(cmd, cwd, root, depth = 0) {
 function message(hit, root) {
   const via = hit.via ? ` (스크립트 ${hit.via} 안)` : '';
   if (hit.kind === 'push') return `팀원은 git push 를 하지 않는다${via}. push 는 리더만 한다: 커밋까지 끝났으면 여기서 다시 시도하지 말고 올릴 repo · 브랜치 · 커밋을 리더에게 보고하고 일을 마친다.`;
-  if (hit.kind === 'newbranch') return `이 워크스페이스는 통합 브랜치에서 직접 작업한다 (vars.gitlab.branchMode = trunk)${via}. git ${hit.sub} 로 브랜치 · worktree 를 만들지 않고 지금 브랜치에서 고친다. 브랜치가 꼭 필요하면 멈추고 리더에게 알린다.`;
+  if (hit.kind === 'newbranch') return `이 워크스페이스는 통합 브랜치에서 직접 작업한다 (vars.gitlab.branchMode = trunk)${via}. git ${hit.sub} 로 브랜치 · worktree 를 만들지 않고 지금 브랜치(또는 메인이 준 작업 폴더)에서 고친다. 같은 repo 를 나눠 맡아야 하면 메인이 kedovi worktree add <repo> <단위> 로 만든다. 그 밖에 브랜치가 꼭 필요하면 멈추고 리더에게 알린다.`;
   if (hit.kind === 'unsafe-cd') return `cd 뒤 git ${hit.sub} 이(가) && 연결 · set -e 없이 이어진다${via}. cd 가 실패하면 워크스페이스 루트 repo 에서 돈다. \`git -C <절대경로> ${hit.sub} …\` 로 위치를 명시해 다시 실행한다 (또는 \`cd <경로> && git …\`).`;
   if (hit.kind === 'unknown') return `git ${hit.sub} 이(가) 어느 repo 에서 도는지 알 수 없다${via} (cd · -C 대상이 변수이거나 위치가 바뀐 뒤). cd 가 실패하면 워크스페이스 루트 repo 에서 돈다. 맡은 repo 를 \`git -C repos/<이름> ${hit.sub} …\` 처럼 실제 경로로 적어 다시 실행한다.`;
   return `팀원은 워크스페이스 루트 repo(${root}) 에 git ${hit.sub} 을(를) 하지 않는다${via}. 사용자의 미커밋 파일이 사라질 수 있다. 맡은 repo 를 \`git -C repos/<이름> ${hit.sub} …\` 로 부른다. 루트를 바꿔야 하면 멈추고 리더에게 알린다.`;

@@ -1,7 +1,7 @@
 {
   "catalogVersion": "2026-10-28",
   "reviewEveryDays": 45,
-  "note": "모델 목록과 실행 도구별 추천 프로필. 선택 화면(kedovi agent · kedovi models)이 쓴다. 목록에 없는 모델은 직접 입력할 수 있다. 근거(2026-10-28 확인): Claude — code.claude.com/docs/en/model-config · /sub-agents · platform.claude.com/docs/en/about-claude/pricing, Codex — learn.chatgpt.com/docs/models · /docs/agent-configuration/subagents · developers.openai.com/api/docs/pricing. 두 도구 모두 서브에이전트는 자기 회사 모델만 쓴다. 상대 회사 모델이 맡는 역할은 { tool, model, effort, fallback } 으로 적고, 그 도구의 비대화형 실행(delegate.js)으로 위임한다. fallback = 상대 도구가 없는 PC 에서 대신 쓰는 같은 도구 모델. profiles.<이름>.<도구> = 그 도구로 실행했을 때 역할별 모델 (문자열 또는 { model, effort }). limits = 역할 에이전트 상한 (한 요청에 동시 parallel 개 · 모두 total 개, workspace.json·.agents/local.json 의 agents.limits 로 덮는다). crossReview 는 그 도구 세션이 상대 도구에게 검토를 맡길 때 쓰는 상대 도구 모델이다. profiles 는 높은 순(최고 → 절약)으로 적는다. 팀은 workspace.json agents.profile, 개인은 .agents/local.json agents.profile 인데 개인 값은 팀보다 낮은 것만 적용한다 (높은 것은 workspace.json agents.allowHigherProfile 이 true 일 때만). 상한도 팀 값을 넘지 않는다. 역할별 직접 지정이 그 위에 덮인다. 모델이 새로 나오거나 퇴역하면 이 파일(tools · retired · profiles)을 고치고 catalogVersion 을 올린다. 워크스페이스는 kedovi upgrade 로 받는다.",
+  "note": "모델 목록과 실행 도구별 추천 프로필. 선택 화면(kedovi agent · kedovi models)이 쓴다. 목록에 없는 모델은 직접 입력할 수 있다. 근거(2026-10-28 확인): Claude — code.claude.com/docs/en/model-config · /sub-agents · platform.claude.com/docs/en/about-claude/pricing, Codex — learn.chatgpt.com/docs/models · /docs/agent-configuration/subagents · developers.openai.com/api/docs/pricing. 두 도구 모두 서브에이전트는 자기 회사 모델만 쓴다. 상대 회사 모델이 맡는 역할은 { tool, model, effort, fallback } 으로 적고, 그 도구의 비대화형 실행(delegate.js)으로 위임한다. fallback = 상대 도구가 없는 PC 에서 대신 쓰는 같은 도구 모델. profiles.<이름>.<도구> = 그 도구로 실행했을 때 역할별 모델 (문자열 또는 { model, effort }). limits = 역할 에이전트 상한 (한 요청에 메인이 직접 부르는 동시 parallel 개 · 모든 층 합계 total 개 · 작업 리더 동시 leaders · 리더당 팀원 동시 members, workspace.json·.agents/local.json 의 agents.limits 로 덮는다). crossReview 는 그 도구 세션이 상대 도구에게 검토를 맡길 때 쓰는 상대 도구 모델이다. profiles 는 높은 순(최고 → 절약)으로 적는다. 팀은 workspace.json agents.profile, 개인은 .agents/local.json agents.profile 인데 개인 값은 팀보다 낮은 것만 적용한다 (높은 것은 workspace.json agents.allowHigherProfile 이 true 일 때만). 상한도 팀 값을 넘지 않는다. 역할별 직접 지정이 그 위에 덮인다. 모델이 새로 나오거나 퇴역하면 이 파일(tools · retired · profiles)을 고치고 catalogVersion 을 올린다. 워크스페이스는 kedovi upgrade 로 받는다.",
   "aliases": {
     "claude": [
       "opus",
@@ -554,7 +554,9 @@
       "hint": "무제한·엔터프라이즈: 상위 모델 위주, 리뷰·테스트(Claude 세션) 또는 설계·구현·리뷰(Codex 세션)는 상대 회사 모델에게 위임",
       "limits": {
         "parallel": 6,
-        "total": 20
+        "total": 30,
+        "leaders": 4,
+        "members": 3
       },
       "claude": {
         "main": {
@@ -667,7 +669,9 @@
       "hint": "추천 기본: 설계·구현은 Opus, 리뷰는 다른 회사 모델(두 도구 모두), 테스트는 가성비 모델",
       "limits": {
         "parallel": 4,
-        "total": 10
+        "total": 15,
+        "leaders": 3,
+        "members": 2
       },
       "claude": {
         "main": "opusplan",
@@ -776,7 +780,9 @@
       "hint": "사용량이 빠듯할 때: 최상위 모델 없이. 리뷰는 다른 회사 모델(Claude 세션은 분석도 GPT-6.1 Sol)",
       "limits": {
         "parallel": 2,
-        "total": 5
+        "total": 6,
+        "leaders": 1,
+        "members": 2
       },
       "claude": {
         "main": "sonnet",
@@ -883,6 +889,24 @@
   "plans": {
     "note": "여유도: tight = 기본 한도(Pro·Plus 급) · ample = 그보다 많이 (Max·Pro 등) · metered = 쓴 만큼 비용(API 키·Enterprise·게이트웨이). detect = 로그인 정보(Claude ~/.claude.json organizationType·RateLimitTier·seatTier, Codex ~/.codex/auth.json chatgpt_plan_type)에 맞는 정규식. 2026-10-07 실제 값으로 확인한 것은 Max 5x(default_claude_max_5x)·Plus(plus) 뿐, 나머지는 이름 규칙 추정. 못 맞추면 사용자에게 가장 가까운 것을 묻고 그전엔 tight",
     "checked": "2026-10-07",
+    "roomLimits": {
+      "note": "작업 리더(3층) 상한: 이 PC 의 Claude 요금제 여유도별 leaders(리더 동시) · members(리더당 팀원 동시) · total(요청당 모두). 요금제 항목의 limits 가 있으면 그것. 팀 프로필 상한보다 높게는 안 된다",
+      "tight": {
+        "leaders": 1,
+        "members": 2,
+        "total": 6
+      },
+      "ample": {
+        "leaders": 3,
+        "members": 2,
+        "total": 15
+      },
+      "metered": {
+        "leaders": 4,
+        "members": 3,
+        "total": 30
+      }
+    },
     "claude": [
       {
         "id": "pro",
@@ -912,7 +936,12 @@
         "hint": "Pro 의 20배",
         "sources": [
           "https://claude.com/pricing"
-        ]
+        ],
+        "limits": {
+          "leaders": 4,
+          "members": 3,
+          "total": 30
+        }
       },
       {
         "id": "team-standard",

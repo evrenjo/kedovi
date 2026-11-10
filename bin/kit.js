@@ -1086,7 +1086,7 @@ const GITIGNORE_END = '# <<< kit <<<';
 
 function buildGitignore(current, ws) {
   const block = [GITIGNORE_BEGIN, '# 개인 지침: 공유하지 않는다',
-    '.agents/local.md', LOCAL_CONFIG, 'CLAUDE.local.md', 'AGENTS.override.md', '.claude/settings.local.json', '.handoff-snooze', '.agents/bin/', '.agents/board/', '.agents/history/',
+    '.agents/local.md', LOCAL_CONFIG, 'CLAUDE.local.md', 'AGENTS.override.md', '.claude/settings.local.json', '.handoff-snooze', '.agents/bin/', '.agents/board/', '.agents/history/', '.worktrees/',
     '# 팀 에이전트: 모델이 사람마다 다를 수 있어 각자 sync 가 만든다', '.claude/agents/', '.codex/agents/', LOCAL_MANIFEST,
     '# repo: 각자 kedovi install 로 clone 한다', `/${REPOS_DIR}/`, GITIGNORE_END].join('\n');
   const re = new RegExp(`${GITIGNORE_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${GITIGNORE_END}`);
@@ -1156,6 +1156,8 @@ function generate(root) {
   if (team.main && team.main.claude) base.model = team.main.claude; // 팀 기본 메인 모델 — 개인은 kedovi agent (start 때 --model)
   // 커밋·PR 에 도구 서명(Co-Authored-By · Generated with)을 넣지 않는다. false 한 값은 v2.1.281 미만이 파일째 무시하므로 빈 문자열로
   base.attribution = { commit: '', pr: '', sessionUrl: false };
+  // 서브에이전트 중첩 깊이: 메인 → 작업 리더 → 팀원 (2층 아래까지). 공식 기본은 3층. 팀이 바꾸려면 workspace.json claude.settings.env
+  base.env = { CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH: '2' };
   const excludes = guideExcludes(ws);
   if (excludes.length) base.claudeMdExcludes = excludes;
   const claudeSettings = deepMerge(base, (ws.claude && ws.claude.settings) || {});
@@ -1312,10 +1314,15 @@ function resolveModels(root, ws) {
   const run = applyAccess(effective, access, runWarnings);
   if (blocked) runWarnings.push(`이 PC 프로필 ${profileLabel(cat, blocked)} 은(는) 팀 프로필 ${profileLabel(cat, teamProfile)} 보다 높아 적용하지 않습니다 (팀 값 사용). 지우기: kedovi models profile team · 팀이 허용하려면 kedovi models allow-higher on`);
   // 역할 에이전트 상한 — 팀 값(프로필 ← workspace.json agents.limits)이 기준이고, 이 PC 값(개인 프로필 · agents.limits)은 낮추기만 한다
-  const num = (o) => Object.fromEntries(Object.entries(o || {}).filter(([k, v]) => ['parallel', 'total'].includes(k) && Number.isInteger(v) && v > 0));
-  const teamLimits = { parallel: 4, total: 10, ...num(((cat.profiles || {})[teamProfile] || {}).limits), ...num(teamAgents.limits) };
+  //   parallel = 메인이 직접 부르는 역할 에이전트 동시 · total = 한 요청에 모든 층 합계 · leaders = 작업 리더 동시 · members = 리더(또는 역할 에이전트) 하나가 부르는 팀원 동시
+  //   이 PC 의 Claude 요금제 여유도(plans.roomLimits · 요금제의 limits)가 leaders · members · total 을 더 낮춘다. 요금제를 모르면 팀 값
+  const num = (o) => Object.fromEntries(Object.entries(o || {}).filter(([k, v]) => LIMIT_KEYS.includes(k) && Number.isInteger(v) && v > 0));
+  const teamLimits = { ...LIMIT_DEFAULTS, ...num(((cat.profiles || {})[teamProfile] || {}).limits), ...num(teamAgents.limits) };
   const mine = { ...(localProfile ? num(((cat.profiles || {})[localProfile] || {}).limits) : {}), ...num(local.limits) };
-  const limits = { parallel: Math.min(teamLimits.parallel, mine.parallel || teamLimits.parallel), total: Math.min(teamLimits.total, mine.total || teamLimits.total) };
+  const room = claudeRoom(cat, normalizeAccess({ ...(teamAgents.access || {}), ...(local.access || {}) }), teamOptions(ws, local).plans);
+  const cap = num(room.limits);
+  const limits = Object.fromEntries(LIMIT_KEYS.map((k) => [k, Math.min(teamLimits[k], mine[k] || teamLimits[k], cap[k] || teamLimits[k])]));
+  limits.room = room.room ? { label: room.label, room: room.room } : null;
   // 규칙 강제 수준 (훅) — 팀 값이 기준이고 이 PC 값은 더 세게만 한다 (상한과 같은 방침). teammateName = 팀 모드에서 이름 없는 역할 에이전트
   const lvl = (v) => ENFORCE_LEVELS.indexOf(v);
   //   rosterAnnounce = 한 요청의 첫 역할 에이전트 때 실행 방식 · 구성표를 알렸는지 한 줄 (off | warn)
@@ -1658,6 +1665,7 @@ const limitSection = (l, t = l) => [
   '## 역할 에이전트 상한: 이 PC (kedovi ai show)',
   '',
   `한 요청(사용자 메시지 하나)에 **동시 ${l.parallel}개 · 모두 ${l.total}개**까지${l.parallel !== t.parallel || l.total !== t.total ? ` (팀 ${t.parallel} · ${t.total} 보다 낮춘 이 PC 값)` : ''}. 위임 작업(delegate.js)도 동시 상한에 든다. Claude Code 는 넘으면 도구가 막는다.`,
+  ...(l.leaders ? ['', `작업 리더(3층, Claude Code): **리더 동시 ${l.leaders} · 리더당 팀원 동시 ${l.members}**${l.room ? ` (요금제 ${l.room.label} · ${ROOM_LABEL[l.room.room] || l.room.room})` : ''}. 서로 독립인 작업 단위가 2개 이상일 때만 리더를 둔다 (\`team\` 스킬 「작업 리더」). 모두 ${l.total}개는 리더 · 팀원을 합친 수다.`] : []),
   '',
 ].join('\n');
 
@@ -1734,6 +1742,21 @@ function vendorRooms(cat, access, plans) {
     out[tool] = p ? { plan: p.id, label: p.label, room: p.room } : { plan: null, label: '', room: null };
   }
   return out;
+}
+
+// 역할 에이전트 상한 칸 (models.json profiles.<이름>.limits · workspace.json · .agents/local.json agents.limits)
+const LIMIT_KEYS = ['parallel', 'total', 'leaders', 'members'];
+const LIMIT_DEFAULTS = { parallel: 4, total: 10, leaders: 1, members: 2 }; // 옛 카탈로그(leaders 없음)면 작업 리더 1 (사실상 2층)
+
+/** 이 PC 의 Claude 여유도와 그 상한 { plan, label, room, limits }. 요금제를 고르지 않았으면 로그인 정보로 맞춘 요금제, 그것도 없으면 room null */
+function claudeRoom(cat, access, plans) {
+  let picked = (plans || {}).claude;
+  // KEDOVI_LOGIN_PLANS=none: 시험(selftest)에서 상한이 이 PC 로그인 요금제에 따라 달라지지 않게
+  if (!picked && access.connection !== 'gateway' && process.env.KEDOVI_LOGIN_PLANS !== 'none') { try { picked = detectPlans(cat).claude.id; } catch { /* 없음 */ } }
+  const r = vendorRooms(cat, access, { ...(plans || {}), claude: picked }).claude;
+  if (!r.room) return { ...r, limits: null };
+  const plan = (((cat.plans || {}).claude) || []).find((x) => x.id === r.plan) || {};
+  return { ...r, limits: plan.limits || (((cat.plans || {}).roomLimits) || {})[r.room] || null };
 }
 
 /** 팀 구성 설정 — 모드(auto · fixed) · 요금제 · 역할별 선호 모델. 팀(workspace.json agents) ← 이 PC(.agents/local.json agents), 요금제는 회사마다. mode 가 없으면 fixed (옛 워크스페이스) */
@@ -2763,4 +2786,4 @@ function main() {
 
 main();
 
-module.exports = { claudeModelEnv, hasFamily, gatewayAliasFix, gatewayAliasCheck, gatewayAliasHint, gatewayFetchNotices, scanGuides, fillGuides, guideChanges, GUIDE_MODES, isGuideMode, hintedCatalog, parseRepos, repoLanguages, labelLanguages, ruleRepos, projectRulesPinning, fillLanguages, loadLanguages, claudeKey, window1m, claudeWindow, SECRET_PATTERNS, secretHits, repoRel, repoSafe, ENFORCE_LEVELS, ENFORCE_DEFAULTS, APPROACHES, missingTypePacks, ensurePlan, roleGrades, teamOptions, teamSection, loadCatalogFor, loginPlanValues, detectPlans, vendorRooms, profileRank, profileLabel, profileNotice, countPicks, applyAccess, normalizeAccess, gatewayVendors, gatewayId, startToolOf, migrateTypes, lockState, generate, buildAgentFiles, splitModel, fillLocalRemotes, installRepos, effortOf, profileModels, fillStackPaths, setStackPaths, detectLine, addStackHint, HINT_HELP, auditModels, resolveModels, stacksLabel, stackLabel, loadLayers, LAYER_PACKS, folderState, HOSTS, inferHost, hostOf, detectRepos, loadCatalog, repoPacks, PROJECT_NAME, PROJECT_NAME_RULE, PROJECT_TYPES, TYPE_RULES, REPO_KINDS, REPOS_DIR, LOCAL_CONFIG, initWorkspace, cmdInstall, cmdSync, cmdCheck, loadWorkspace, findRoot, kitRoot, isGitUrl };
+module.exports = { LIMIT_KEYS, LIMIT_DEFAULTS, claudeRoom, claudeModelEnv, hasFamily, gatewayAliasFix, gatewayAliasCheck, gatewayAliasHint, gatewayFetchNotices, scanGuides, fillGuides, guideChanges, GUIDE_MODES, isGuideMode, hintedCatalog, parseRepos, repoLanguages, labelLanguages, ruleRepos, projectRulesPinning, fillLanguages, loadLanguages, claudeKey, window1m, claudeWindow, SECRET_PATTERNS, secretHits, repoRel, repoSafe, ENFORCE_LEVELS, ENFORCE_DEFAULTS, APPROACHES, missingTypePacks, ensurePlan, roleGrades, teamOptions, teamSection, loadCatalogFor, loginPlanValues, detectPlans, vendorRooms, profileRank, profileLabel, profileNotice, countPicks, applyAccess, normalizeAccess, gatewayVendors, gatewayId, startToolOf, migrateTypes, lockState, generate, buildAgentFiles, splitModel, fillLocalRemotes, installRepos, effortOf, profileModels, fillStackPaths, setStackPaths, detectLine, addStackHint, HINT_HELP, auditModels, resolveModels, stacksLabel, stackLabel, loadLayers, LAYER_PACKS, folderState, HOSTS, inferHost, hostOf, detectRepos, loadCatalog, repoPacks, PROJECT_NAME, PROJECT_NAME_RULE, PROJECT_TYPES, TYPE_RULES, REPO_KINDS, REPOS_DIR, LOCAL_CONFIG, initWorkspace, cmdInstall, cmdSync, cmdCheck, loadWorkspace, findRoot, kitRoot, isGitUrl };

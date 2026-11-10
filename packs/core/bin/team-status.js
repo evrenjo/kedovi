@@ -168,6 +168,26 @@ function detail(id) {
   });
 }
 
+/** 이 PC 에서 지금 도는 역할 에이전트 (상한 훅의 상태 파일, 최근 6시간): 작업 리더 n명 (팀원 a · b) · 역할 m. 없으면 '' */
+function agentTree() {
+  try {
+    const { stateDir } = require('../lib/workspace');
+    const B = require('../hooks/agent-budget');
+    const dir = stateDir(ws.root);
+    const lines = [];
+    for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.agents.json'))) {
+      const st = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+      if (!st.kids || Date.now() - (st.at || 0) > 6 * 3600000) continue;
+      const t = B.tree(st);
+      if (!t.length) continue;
+      const leads = t.filter((x) => x.type === B.LEAD_ROLE);
+      const roles = t.filter((x) => x.type !== B.LEAD_ROLE);
+      lines.push(`지금 도는 에이전트 (이 PC · 세션 ${f.slice(0, 8)}): ${leads.length ? `작업 리더 ${leads.length}명 (${leads.map((x) => `팀원 ${x.members.length}`).join(' · ')})` : ''}${leads.length && roles.length ? ' · ' : ''}${roles.length ? `역할 ${roles.map((x) => x.type || '일반').join(', ')}` : ''}`);
+    }
+    return lines.join('\n');
+  } catch { return ''; }
+}
+
 function overview() {
   const list = collect();
   if (JSON_OUT) return console.log(JSON.stringify({ source, me, roster: ROSTER, restrict: !!(ws.team || {}).restrict, people: list.map((p) => ({ ...p, latest: undefined, todoRaw: undefined, taken: Object.fromEntries(p.taken) })) }, null, 2));
@@ -180,6 +200,8 @@ function overview() {
     const outside = list.filter((p) => !p.inRoster && p.joined).map((p) => p.id);
     console.log(`명단 ${ROSTER.length}명 · 합류 ${ROSTER.length - missing.length}명${missing.length ? ` · 미합류 ${missing.join(', ')}` : ''}${outside.length ? ` · 명단에 없음 ${outside.join(', ')}` : ''}${(ws.team || {}).restrict ? ' · 명단 제한 켜짐' : ''}`);
   }
+  const running = agentTree();
+  if (running) console.log(running);
   console.log('');
   if (!list.length) return console.log('핸드오프가 아직 없습니다 (handoffs/<id>/ 가 비어 있음)');
   for (const p of list) {
