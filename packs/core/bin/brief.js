@@ -21,7 +21,7 @@ const p = ws.project || {};
 out.push(`프로젝트: ${p.title || p.name || path.basename(ROOT)} · ${TYPES[p.type] || p.type || '유형 없음'} · repo: ${(ws.repos || []).map((r) => r.name).join(', ') || '없음'}`);
 const P = require('../lib/plan');
 const plan = P.read(ROOT);
-out.push(plan ? P.shortLine(plan, P.externalOf(ws)) : P.externalOf(ws) ? `일정 정본: ${P.externalOf(ws)}` : `로드맵 없음 (${P.FILE}). kedovi plan init 으로 만든다`);
+out.push(plan ? P.shortLine(plan, P.externalOf(ws), (ws.project || {}).type) : P.externalOf(ws) ? `일정 정본: ${P.externalOf(ws)}` : `로드맵 없음 (${P.FILE}). kedovi plan init 으로 만든다`);
 // 처음 시작할 때 전체 위치가 보이게 — 흐름도와 지금 단계 표 (이번에 생긴 것은 git 을 세야 해서 kedovi plan 에서)
 if (plan) {
   const cur = P.current(plan);

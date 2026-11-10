@@ -106,7 +106,7 @@ function report(ws, plan) {
   } else if (stage) out.push(`이번에 생긴 것: ${stage.name} 시작 날짜가 PLAN.md 에 없어 세지 않았습니다`, '');
   if (plan.changes.length) out.push(`분모 변경 (최근): ${P.latest(plan.changes)}`, '');
   if (plan.backlog) out.push(`백로그 ${plan.backlog.length}개${plan.backlog.length ? `: ${plan.backlog.slice(0, 5).join(' · ')}${plan.backlog.length > 5 ? ' …' : ''}` : ''}`, '');
-  out.push(`**다음** → ${P.nextLine(plan)}`);
+  out.push(`**다음** → ${P.nextLine(plan, (ws.project || {}).type)}`);
   const skill = P.skillOf(stage);
   if (skill) out.push(`**스킬** → \`${skill}\` (이 단계를 시작할 때 그 스킬을 따른다. 「진행 방식 합의」 가 있으면 거기부터)`);
   const ext = P.externalOf(ws);
@@ -246,7 +246,7 @@ function main() {
     const from = ds[0] || new Date(Date.parse(to) - 6 * 86400000).toISOString().slice(0, 10);
     return console.log(P.issueReport(plan, from, to));
   }
-  if (has('short')) return console.log(P.shortLine(plan, P.externalOf(ws)));
+  if (has('short')) return console.log(P.shortLine(plan, P.externalOf(ws), (ws.project || {}).type));
   console.log(report(ws, plan));
 }
 

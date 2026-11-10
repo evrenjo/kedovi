@@ -116,6 +116,13 @@ assert.strictEqual(P.nextLine(plan), '설계: 배송 기능정의');
 const allDone = P.parse(text.replace('| 배송 | ✔ | ○ |', '| 배송 | ✔ | ✔ |').replace('| 회원 | ○ | - |', '| 회원 | ✔ | - |'));
 assert.strictEqual(P.nextLine(allDone), '설계 마무리 → 구현');
 assert.strictEqual(P.nextLine(P.parse(text.replace('| 3 | 설계 | ▶ |', '| 3 | 설계 | ○ |'))), '설계 시작');
+// 모든 단계 완료: 다음 유형은 같은 워크스페이스에서 kedovi type
+const finished = P.parse('# 로드맵\n\n| # | 단계 | 상태 | 시작 | 완료 |\n|---|---|---|---|---|\n| 1 | 착수 | ✔ | | |\n| 2 | 최종 보고 | ✔ | | |\n');
+assert.strictEqual(P.nextLine(finished), '모든 단계 완료');
+assert.match(P.nextLine(finished, 'consulting'), /^모든 단계 완료 → 다음 유형은 새 워크스페이스 없이 여기서 kedovi type new \(신규 구축\) 또는 kedovi type modernization/);
+assert.match(P.nextLine(finished, 'new'), /kedovi type enhancement/);
+assert.strictEqual(P.nextLine(finished, 'enhancement'), '모든 단계 완료');
+assert.match(P.shortLine(finished, '', 'consulting'), /다음 모든 단계 완료 → .*kedovi type new/);
 
 // 표에 ◀다음 · 진행 막대
 const table = P.detailTable(P.current(plan));

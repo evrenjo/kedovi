@@ -278,8 +278,17 @@ function nextCell(stage) {
   return null;
 }
 
-/** 다음 순서 한 줄 */
-function nextLine(plan) {
+// 로드맵을 다 끝낸 유형의 다음 유형 (같은 워크스페이스에서 kedovi type 으로 바꾼다)
+const NEXT_TYPES = { consulting: [['new', '신규 구축'], ['modernization', '차세대']], new: [['enhancement', '운영·고도화']], modernization: [['enhancement', '운영·고도화']] };
+
+/** 다음 유형 안내 (모든 단계를 끝냈을 때). 다음 유형이 없으면 '' */
+function nextTypeHint(type) {
+  const list = NEXT_TYPES[type];
+  return list ? `다음 유형은 새 워크스페이스 없이 여기서 ${list.map(([k, v]) => `kedovi type ${k} (${v})`).join(' 또는 ')} · 팀장` : '';
+}
+
+/** 다음 순서 한 줄. type = 프로젝트 유형 (모든 단계를 끝냈으면 다음 유형 안내) */
+function nextLine(plan, type) {
   if (plan.issues) {
     const s = issueSummary(plan);
     if (s.stale.length) return `멈춘 이슈 확인 (${s.stale.map(issueLabel).slice(0, 3).join(' · ')})`;
@@ -294,7 +303,9 @@ function nextLine(plan) {
     return after ? `${cur.name} 마무리 → ${after.name}` : `${cur.name} 마무리`;
   }
   const first = plan.stages.find((s) => s.state !== 'done');
-  return first ? `${first.name} 시작` : '모든 단계 완료';
+  if (first) return `${first.name} 시작`;
+  const hint = nextTypeHint(type);
+  return hint ? `모든 단계 완료 → ${hint}` : '모든 단계 완료';
 }
 
 /** 화면 폭: 한글·전각은 2칸 */
@@ -382,8 +393,8 @@ function detailTable(stage) {
 /** 외부 일정 정본(vars.plan.external: GitLab 마일스톤 등)의 위치. 비었으면 '' (PLAN.md 가 정본) */
 const externalOf = (ws) => String((((ws || {}).vars || {}).plan || {}).external || '').trim();
 
-/** 한 줄 요약: 세션 브리핑 · resume · 알림. ext = 외부 일정 정본 위치 (있으면 「기본 단계 그대로」 안내 대신 그 위치) */
-function shortLine(plan, ext = '') {
+/** 한 줄 요약: 세션 브리핑 · resume · 알림. ext = 외부 일정 정본 위치 (있으면 「기본 단계 그대로」 안내 대신 그 위치), type = 프로젝트 유형 */
+function shortLine(plan, ext = '', type) {
   if (plan.issues) {
     const s = issueSummary(plan);
     const by = Object.entries(s.counts).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`);
@@ -394,7 +405,7 @@ function shortLine(plan, ext = '') {
   const cur = current(plan);
   const parts = [`로드맵 완료 ${doneCount(plan)}/${plan.stages.length}`];
   if (cur) parts.push(`지금 ${cur.no}.${cur.name}${cur.detail ? ` ${cur.detail.done}/${cur.detail.total}` : ''}${skillOf(cur) ? ` (${skillOf(cur)} 스킬)` : ''}`);
-  parts.push(`다음 ${nextLine(plan)}`);
+  parts.push(`다음 ${nextLine(plan, type)}`);
   if (plan.sprint && plan.sprint.goal) parts.splice(1, 0, `스프린트 목표 「${plan.sprint.goal}」${plan.sprint.end ? ` (끝 ${plan.sprint.end})` : ''}`);
   if (plan.backlog) parts.push(`백로그 ${plan.backlog.length}`);
   if (ext) parts.push(`일정 정본: ${ext}`);
@@ -513,4 +524,4 @@ function issueSection() {
   return ['## 이슈', '', `상태: ${ISSUE_STATES.join(' · ')}`, '', '| 이슈 | 제목 | 상태 | 브랜치 | 시작 | 갱신 | 운영 반영 |', '|---|---|---|---|---|---|---|', ''].join('\n');
 }
 
-module.exports = { externalOf, presetHint, isIdea, IDEA_STAGE, OLD_ENHANCEMENT, ISSUE_STATES, issueSummary, issueTable, issueReport, issueTemplate, issueSection, latest, FILE, PRESETS, presetOf, STACK_STAGES, STAGE_SKILLS, UI_LAYERS, skillOf, stagesFor, missingStages, upgradePreset, STATE, LABEL, parse, read, current, doneCount, nextCell, nextLine, width, flow, detailTable, shortLine, toJson, template, bar };
+module.exports = { externalOf, NEXT_TYPES, nextTypeHint, presetHint, isIdea, IDEA_STAGE, OLD_ENHANCEMENT, ISSUE_STATES, issueSummary, issueTable, issueReport, issueTemplate, issueSection, latest, FILE, PRESETS, presetOf, STACK_STAGES, STAGE_SKILLS, UI_LAYERS, skillOf, stagesFor, missingStages, upgradePreset, STATE, LABEL, parse, read, current, doneCount, nextCell, nextLine, width, flow, detailTable, shortLine, toJson, template, bar };

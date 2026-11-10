@@ -174,7 +174,7 @@ function overview() {
   console.log(`팀 현황: ${localDate()}\n기준: ${source}`);
   const P = require('../lib/plan');
   const plan = P.parse(readUp('handoffs/PLAN.md') || readWt('handoffs/PLAN.md') || ''); // 팀 공용 로드맵
-  if (plan) console.log(P.shortLine(plan, P.externalOf(ws)));
+  if (plan) console.log(P.shortLine(plan, P.externalOf(ws), (ws.project || {}).type));
   if (ROSTER.length) {
     const missing = list.filter((p) => p.inRoster && !p.joined).map((p) => p.id);
     const outside = list.filter((p) => !p.inRoster && p.joined).map((p) => p.id);

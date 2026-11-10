@@ -1202,6 +1202,9 @@ async function cmdInit(argv) {
   p.intro(' kedovi init ');
   p.log.info('순서: 프로젝트명 → 시작 유형 → repo 주소 (유형에 따라 2~3개) → 확인 → 생성 → 스택 확인 → 규칙 확인 → 쓰는 AI → 모델 프로필 → 실행 인자 → 워크스페이스 repo 원격 · 커밋·push. Esc 는 이전 질문');
   const cwd = process.cwd();
+  // 워크스페이스 안에서 또 만들지 않는다: 유형 · 진행 방식이 바뀌면 같은 워크스페이스에서 바꾼다
+  const inside = kit.findRoot();
+  if (inside) { p.cancel(`지금 폴더는 워크스페이스 ${inside} 안입니다.\n  유형을 바꾸려면 새로 만들지 않고 kedovi type <유형> (팀장. repo · 기록 그대로, 지난 로드맵은 남음) · 진행 방식은 kedovi approach\n  다른 프로젝트면 워크스페이스 밖 폴더에서 kedovi init`); process.exit(1); }
   const usable = (d) => ['missing', 'empty', 'fresh-repo'].includes(kit.folderState(d));
   // 막 clone 한 repo(README 등만 있음) 안에서 실행하면 그 폴더가 워크스페이스다 — 이름과 무관
   // 인자는 프로젝트명 하나. 지금 폴더가 막 clone 한 repo 나 빈 폴더면 그 자리에, 아니면 지금 폴더 아래 <이름> 에 만든다
@@ -1224,7 +1227,7 @@ async function cmdInit(argv) {
         if (!kit.PROJECT_NAME.test(v)) return kit.PROJECT_NAME_RULE;
         const dir = targetOf(v);
         const st = kit.folderState(dir);
-        if (st === 'workspace') return `${dir} 는 이미 워크스페이스입니다 (kedovi remove 로 비우거나 다른 이름)`;
+        if (st === 'workspace') return `${dir} 는 이미 워크스페이스입니다. 유형을 바꾸려면 그 폴더에서 kedovi type (새로 만들지 않음), 아니면 다른 이름`;
         if (!usable(dir)) return `${dir} 에 다른 파일이 있습니다. 빈 폴더나, README 만 있는 막 만든 repo 에서 만드세요`;
         return undefined;
       },
@@ -1251,7 +1254,7 @@ async function cmdInit(argv) {
     }), set: (v) => { a.approach = v; } },
     // 분석·설계 워크스페이스에서 이어 만들기: 그 기획 · 이슈 repo 를 그대로 가져온다 (현행 repo 는 목록만)
     { when: () => a.type !== 'consulting', run: async () => yesNo({
-      message: '분석·설계 워크스페이스에서 이어 만들까요?', hint: '분석 · 설계를 끝낸 워크스페이스가 있으면 그 기획 · 이슈 repo 를 그대로 가져옵니다. 요구사항 ID 가 이어집니다.', initialValue: !!a.from,
+      message: '분석·설계 워크스페이스에서 이어 만들까요?', hint: '같은 팀이 이어 가면 새로 만들지 말고 그 워크스페이스에서 kedovi type <유형> 으로 바꾸는 것이 낫습니다 (repo · 기록이 한곳). 팀 · 계약을 나눠야 할 때만 예: 그 기획 · 이슈 repo 를 가져오고 요구사항 ID 가 이어집니다.', initialValue: !!a.from,
     }), set: (v) => { a.from = v === true ? a.from || ' ' : ''; } },
     { when: () => a.type !== 'consulting' && !!a.from, run: async () => input({
       message: '분석·설계 워크스페이스 폴더', placeholder: '예: ~/projects/shop-isp', initialValue: a.from.trim(),
