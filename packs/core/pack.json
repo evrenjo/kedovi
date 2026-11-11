@@ -128,6 +128,10 @@
     "report.maxLines": {
       "default": "25",
       "desc": "마지막 답이 이 줄 수(빈 줄 제외)를 넘거나 표가 12줄을 넘는데 「자세히: <링크>」 가 없으면 보고 페이지(kedovi report)로 옮기라고 한 번 되돌린다 (kedovi team-mode enforce long)"
+    },
+    "report.agentLines": {
+      "default": "20",
+      "desc": "서브에이전트 · 리더의 마지막 보고가 이 줄 수(빈 줄 제외)를 넘으면 원문을 보고 페이지 파일로 보관하고, 킷 역할 에이전트면 결론 · 핵심 · 링크로 다시 끝내게 한다 (kedovi team-mode enforce report)"
     }
   },
   "secrets": [

@@ -15,48 +15,23 @@
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
-const { spawn, spawnSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const { load } = require('../lib/workspace');
 
-const DIR = path.join('.agents', 'reports');
+const R = require('../lib/reports');
+
+const { DIR } = R;
 const ws = load();
 const ROOT = ws.root;
 const BOARD = path.join(ROOT, '.agents', 'board');
-const STATE = path.join(ROOT, '.agents', 'board.serve.json');
+const STATE = R.stateFile(ROOT);
 const argv = process.argv.slice(2);
 const opt = (k) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : undefined; };
-
-const pad = (n) => String(n).padStart(2, '0');
-
-/** 워크스페이스마다 같은 포트 (8700 ~ 8899) */
-function basePort() {
-  let h = 0;
-  for (const c of ROOT) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return 8700 + (h % 200);
-}
-
-function readState() { try { return JSON.parse(fs.readFileSync(STATE, 'utf8')); } catch { return null; } }
-function alive(pid) { try { process.kill(pid, 0); return true; } catch { return false; } }
-
-/** 보고 파일 → 페이지 주소 */
-function urlOf(port, file) {
-  const rel = path.relative(path.join(ROOT, DIR), path.resolve(ROOT, file)).split(path.sep).join('/').replace(/\.md$/, '.html');
-  return `http://127.0.0.1:${port}/reports/${rel.split('/').map(encodeURIComponent).join('/')}`;
-}
-
-/** 뒤에서 도는 서버 (없으면 띄운다) → 포트 */
-function ensureServer() {
-  const st = readState();
-  if (st && st.pid && alive(st.pid)) return st.port;
-  const child = spawn(process.execPath, [__filename, 'serve', '--quiet'], { cwd: ROOT, detached: true, stdio: 'ignore' });
-  child.unref();
-  for (let i = 0; i < 40; i += 1) { // 최대 4초 기다린다
-    const s = readState();
-    if (s && s.pid === child.pid && s.port) return s.port;
-    spawnSync(process.execPath, ['-e', 'setTimeout(()=>{},100)']);
-  }
-  return basePort();
-}
+const readState = () => R.readState(ROOT);
+const { alive } = R;
+const basePort = () => R.basePort(ROOT);
+const urlOf = (port, file) => R.urlOf(ROOT, port, file);
+const ensureServer = () => R.ensureServer(ROOT);
 
 /** 보고 목록 (최근 것 먼저) → [{ rel, file, mtime, title }] */
 function reports() {
@@ -106,15 +81,8 @@ const TEMPLATE = (title, when) => `# ${title}
 
 function cmdNew(title) {
   if (!title) { console.error('사용법: kedovi report new "<제목>"'); process.exit(1); }
-  const d = new Date();
-  const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const dir = path.join(ROOT, DIR, day);
-  fs.mkdirSync(dir, { recursive: true });
-  // 파일 이름은 시각만 (한글 제목이 주소에 들어가면 링크가 %EC… 로 길어진다). 제목은 페이지 첫 줄
-  const hm = `${pad(d.getHours())}${pad(d.getMinutes())}`;
-  let file = path.join(dir, `${hm}.md`);
-  for (let i = 2; fs.existsSync(file); i += 1) file = path.join(dir, `${hm}-${i}.md`);
-  fs.writeFileSync(file, TEMPLATE(title, `${day} ${pad(d.getHours())}:${pad(d.getMinutes())}`));
+  const { file, day, time } = R.newFile(ROOT);
+  fs.writeFileSync(file, TEMPLATE(title, `${day} ${time}`));
   const port = ensureServer();
   console.log(`파일: ${path.relative(ROOT, file)}`);
   console.log(`링크: ${urlOf(port, file)}`);

@@ -1,13 +1,15 @@
 {
   "name": "kedovi",
-  "version": "0.91.0",
+  "version": "0.92.0",
   "private": false,
-  "description": "Claude Code · Codex 팀 개발 워크스페이스 킷: 한 규칙 두 도구 · 대화 전담 메인 · 3층 팀 에이전트 병렬 작업(요금제별 상한) · 짧은 답 + 자세히는 보고 페이지 · 핸드오프 · 로드맵 · 기획 문서 사이트 · 화면 정본 대조 · 훅으로 지키는 검사",
+  "description": "Claude Code · Codex 팀 개발 워크스페이스 킷: 메인은 대화만, 작업은 리더 · 팀원 에이전트가 병렬로(3층 · 요금제별 상한) · 질문엔 답 먼저 · 채팅은 결론 + 자세히 링크(보고 페이지) · 착수 전 확인 → 검사 → 리뷰를 훅으로 지킴 · 한 규칙 두 도구 · 핸드오프 · 로드맵 · 기획 문서 사이트 · 화면 정본 대조",
   "keywords": [
     "claude-code",
     "codex",
     "ai-agents",
     "multi-agent",
+    "agent-orchestration",
+    "hooks",
     "subagents",
     "workspace",
     "team",

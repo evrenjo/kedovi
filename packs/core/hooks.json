@@ -71,6 +71,7 @@
   ],
   "SubagentStop": [
     { "script": "hooks/browser-close.js", "timeout": 5, "agents": "claude" },
+    { "script": "hooks/agent-report.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/agent-budget.js", "timeout": 10, "agents": "claude" },
     { "script": "hooks/notify.js", "timeout": 5, "agents": "claude" }
   ],

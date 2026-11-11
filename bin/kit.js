@@ -25,7 +25,7 @@ const { execFileSync, spawnSync } = require('child_process');
 const GEN_NOTE = '생성 파일: `node bin/kit.js sync` 로 다시 만든다. 직접 고치지 말 것 (정본 = packs/ · workspace.json)';
 const DEFAULT_AGENTS_MD_BYTES = 32 * 1024; // Codex project_doc_max_bytes 기본값
 const ENFORCE_LEVELS = ['off', 'warn', 'block']; // agents.enforce.* 훅 강제 수준 (약한 것부터)
-const ENFORCE_DEFAULTS = { teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'block', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' }, browserClose: { level: 'block', max: 'block' }, longAnswer: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
+const ENFORCE_DEFAULTS = { teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'block', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' }, browserClose: { level: 'block', max: 'block' }, longAnswer: { level: 'block', max: 'block' }, agentReport: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
 const MAX_AGENTS_MD_BYTES = 96 * 1024; // 이 위로는 sync 가 막는다 (context 낭비)
 const PERSONAL_HEADROOM = 12 * 1024; // 개인 지침(응답 언어 · 대화 스타일 약 1.7KB · 역할 상한 · 팀 구성(역할 · 모델 메뉴) · 위임 표 · 잠금)이 AGENTS.override.md 에 더해지는 몫. 자동 모드에서 약 8KB
 const MANIFEST = '.agents/.generated.json';
@@ -1366,6 +1366,7 @@ function resolveModels(root, ws) {
   //   answerFirst = 사용자 요청이 질문이면 답 첫 줄을 그 답으로 (block 기본: 마지막 답변 글 첫 문장에 판단이 없으면 멈출 때 한 번 막기 · warn: 요청 때 한 줄 알림만)
   //   mainDelegate = 메인 대화 전담: 메인 세션이 repo 파일을 직접 고치려 하면 막고 백그라운드 에이전트에 맡기게 한다 (Claude Code. block 기본 · warn: 요청마다 한 번 알림 · off)
   //   longAnswer = 마지막 답변 글이 길면(vars.report.maxLines 기본 25줄 · 표 12줄 초과) 보고 페이지(kedovi report)로 옮기라고 한 번 되돌린다 (Claude Code. block 기본 · off)
+  //   agentReport = 서브에이전트 · 리더의 긴 마지막 보고(vars.report.agentLines 기본 20줄 초과)를 보고 페이지 파일로 보관하고, 킷 역할 에이전트면 결론 · 핵심 · 링크로 다시 끝내게 한 번 되돌린다 (Claude Code. block 기본 · warn 보관만 · off)
   //   browserClose = 브라우저 MCP 로 브라우저를 열고 닫지 않은 채 끝내면 한 번 막는다 (Claude Code. block 기본 · off)
   //   midTurnMessages = 작업 중 끼어 든 사용자 메시지를 답변에서 처리했는지 멈출 때 한 번 되묻는다 (Claude Code. block 기본 · off)
   //   checkBeforeReview = 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 막는다 (리뷰 위임 · 리뷰 역할 에이전트)

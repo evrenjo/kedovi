@@ -794,7 +794,19 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   p['길게 요청하면 안 봄'] = !lh('Stop', { last_assistant_message: long });
   lh('UserPromptSubmit', { prompt: '표로 줘' });
   p['큰 표도 셈'] = /표 14줄/.test(lh('Stop', { last_assistant_message: ['| a | b |', '|---|---|', ...Array.from({ length: 13 }, (_, i) => `| ${i} | x |`)].join('\n') }));
-  record('보고 페이지 · 긴 답 검사 (파일 · 링크 · 서버 다시 만듦 · 현황판 메뉴 · 목록 · 끄기 · 한 번 되돌림 · 링크 · 길게 요청 · 표)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
+  // 에이전트 보고 보관 (SubagentStop)
+  const ar = (extra) => spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'hooks', 'agent-report.js'), '--agent=claude'], { cwd: dw, encoding: 'utf8', input: JSON.stringify({ hook_event_name: 'SubagentStop', session_id: 'ar-1', agent_id: 'a1', ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: dw } }).stdout.trim();
+  fs.mkdirSync(path.join(dw, '.claude', 'agents'), { recursive: true });
+  if (!fs.existsSync(path.join(dw, '.claude', 'agents', 'implementer.md'))) fs.writeFileSync(path.join(dw, '.claude', 'agents', 'implementer.md'), '---\nname: implementer\n---\n');
+  const rep = ['결론: 주문 탭 고침', ...Array.from({ length: 24 }, (_, i) => `| f${i}.js | 고침 |`)].join('\n');
+  const before = new Set(rp('list', '--n', '50').stdout.split('\n'));
+  const ab = ar({ agent_type: 'implementer', last_assistant_message: rep });
+  const saved = rp('list', '--n', '50').stdout.split('\n').filter((l) => l && !before.has(l));
+  p['역할 에이전트 긴 보고: 보관 · 되돌림'] = /"block"/.test(ab) && /자세히: http:\/\/127\.0\.0\.1:\d+\/reports\/\d{4}-\d\d-\d\d\/\d{4}-implementer/.test(ab) && saved.some((l) => /implementer 보고: 주문 탭 고침/.test(l));
+  p['다시 멈춤 · 링크 있음 · 짧음 · 다른 에이전트는 보관만'] = !ar({ agent_type: 'implementer', stop_hook_active: true, last_assistant_message: rep }) && !ar({ agent_type: 'implementer', last_assistant_message: `${rep}\n자세히: http://x` }) && !ar({ agent_type: 'implementer', last_assistant_message: '결론: 끝' }) && !ar({ agent_type: 'Explore', last_assistant_message: rep });
+  for (let i = 0; i < 50 && !fs.existsSync(path.join(dw, '.agents', 'board.serve.json')); i += 1) spawnSync(process.execPath, ['-e', 'setTimeout(()=>{},100)']); // 훅이 뒤에서 띄운 서버를 기다렸다 끈다
+  rp('stop');
+  record('보고 페이지 · 긴 답 검사 (파일 · 링크 · 서버 다시 만듦 · 현황판 메뉴 · 목록 · 끄기 · 한 번 되돌림 · 링크 · 길게 요청 · 표 · 에이전트 보고 보관)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
 
 // 킷 문서 사이트 — docs-site/ 가 md(README · docs/*.md) 와 같아야 한다 (md 를 고치면 node bin/docs.js). 메뉴 「기타」 로 빠진 문서가 없어야 한다

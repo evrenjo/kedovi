@@ -18,7 +18,7 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 유형 바꾸기 | `kedovi type <new\|modernization\|enhancement\|consulting> [--approach a] [--code 이름,…]` (분석·설계 → 구축 · 고도화 등. 현행 repo 중 고칠 것을 개발 repo 로 · 진행 방식 · 로드맵 새 뼈대, 지난 로드맵은 남김). 바꾸기 전에 무엇이 바뀌는지 보여 주고 확인받는다 | 팀 (팀장) |
 | 역할 에이전트 상한 확인 · 바꾸기 | `kedovi models limits` (적용 값 · 정한 곳 표) · `set total=30 leaders=3 … [--team]` · `clear [--team]` (직접 값 지우고 프로필 · 요금제대로) | 이 PC · 팀 |
 | 팀원 tmux 창 보기 (Claude Code agent teams) | `kedovi team watch` (읽기 전용으로 붙음) · `--rw` (입력도) · `--print` (명령만, 채팅에서는 이것을 사용자에게 보여 준다) | 읽기만 |
-| 보고 페이지 (긴 보고를 채팅 대신 이 PC 웹 페이지로) | `kedovi report new "<제목>"` (파일 · 링크를 준다. 그 파일에 쓰고 채팅엔 결론 · 핵심 · `자세히: <링크>`) · `link <파일>` · `list` · `open [파일]` · `serve` · `stop` · 긴 답 검사 `kedovi team-mode enforce long off\|block [--team]` | 이 PC |
+| 보고 페이지 (긴 보고를 채팅 대신 이 PC 웹 페이지로) | `kedovi report new "<제목>"` (파일 · 링크를 준다. 그 파일에 쓰고 채팅엔 결론 · 핵심 · `자세히: <링크>`) · `link <파일>` · `list` · `open [파일]` · `serve` · `stop` · 긴 답 검사 `kedovi team-mode enforce long off\|block [--team]` · 에이전트 보고 보관 `kedovi team-mode enforce report off\|warn\|block [--team]` | 이 PC |
 | 화면이 너무 많이 올라가 읽기 힘들 때 | `kedovi tips` (Claude Code `/tui fullscreen` · `/focus` · `Ctrl+O` 안내, 사용자가 직접 친다) | 읽기만 |
 | 에이전트 진행 보기 (Claude Code: 작업 리더 · 역할 에이전트 · 리더 아래 팀원, 이름 없는 서브에이전트도) | `kedovi agents watch` (2초마다 새로 그림) · `--once` (채팅에서는 이것) · `--all` (끝난 것까지) · `--json` · `--tmux` (tmux 안이면 오른쪽 창에) | 읽기만 |
 | 작업 리더 작업 폴더 | `kedovi worktree add <repo> <단위>` · `merge <repo> <단위>` (본 작업 트리에 커밋하지 않은 변경으로 옮기고 작업 폴더 · 임시 브랜치 삭제, 겹치면 멈춤) · `remove <repo> <단위> [--force]` · `list`. 같은 repo 를 여러 작업 리더가 동시에 고칠 때 (`team` 스킬 「작업 리더」) | 개인 |
