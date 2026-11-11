@@ -34,7 +34,7 @@ when: 룰·스킬·문서를 추가·이동·삭제하거나, 스크립트를 �
 - 옮기기 전에 누가 가리키는지 본다: `node packs/core/bin/rename-ref.js --check <경로>`
 - 미리보기 → 적용: `node packs/core/bin/rename-ref.js <old> <new>` → `--apply` (참조 갱신 + git mv + kit sync + 검사). 손으로 `git mv` 하지 않는다. repo 문서까지는 `--repos`, 그 repo 에서 따로 커밋한다.
 - 파일명만 적힌 곳은 자동으로 안 고친다 — 목록을 보고 문맥대로 직접 고친다. `handoffs/` 는 지난 사실의 기록이라 고치지 않는다.
-- 일부러 없는 경로를 적는 자리는 자리표시자(`<루트>/…`)를 쓰거나 그 줄에 `refs:ignore` 를 적는다.
+- 일부러 없는 경로를 적는 자리는 자리표시자(`<루트>/…`)를 쓰거나 그 줄에 `refs:ignore` 를 적는다. 설치 서버 경로처럼 여러 줄이면 `<!-- refs:ignore-start -->` … `<!-- refs:ignore-end -->`, 문서 전체면 `<!-- refs:ignore-file -->`. 외부 주소 링크의 글자는 검사하지 않는다.
 - 수동 검사: `node packs/core/bin/check-refs.js`
 
 ### 스크립트 위치 — "다른 개발자 PC 에도 있어야 하는가"

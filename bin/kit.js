@@ -1323,6 +1323,13 @@ function resolveModels(root, ws) {
   const cap = num(room.limits);
   const limits = Object.fromEntries(LIMIT_KEYS.map((k) => [k, Math.min(teamLimits[k], mine[k] || teamLimits[k], cap[k] || teamLimits[k])]));
   limits.room = room.room ? { label: room.label, room: room.room } : null;
+  // 상한마다 어디서 왔는지 (kedovi models limits · 프로필을 바꿀 때 더 낮은 직접 값 알림)
+  const profileLimits = { ...LIMIT_DEFAULTS, ...num(((cat.profiles || {})[localProfile || teamProfile] || {}).limits) };
+  const limitParts = Object.fromEntries(LIMIT_KEYS.map((k) => {
+    const from = [['profile', profileLimits[k]], ['workspace', num(teamAgents.limits)[k]], ['local', num(local.limits)[k]], ['plan', cap[k]]].filter(([, v]) => v);
+    const by = limits[k] === profileLimits[k] ? 'profile' : ((from.find(([w, v]) => w !== 'profile' && v === limits[k]) || [])[0] || 'profile');
+    return [k, { final: limits[k], profile: profileLimits[k], workspace: num(teamAgents.limits)[k] || null, local: num(local.limits)[k] || null, plan: cap[k] || null, by }];
+  }));
   // 규칙 강제 수준 (훅) — 팀 값이 기준이고 이 PC 값은 더 세게만 한다 (상한과 같은 방침). teammateName = 팀 모드에서 이름 없는 역할 에이전트
   const lvl = (v) => ENFORCE_LEVELS.indexOf(v);
   //   rosterAnnounce = 한 요청의 첫 역할 에이전트 때 실행 방식 · 구성표를 알렸는지 한 줄 (off | warn)
@@ -1351,7 +1358,7 @@ function resolveModels(root, ws) {
   //   midTurnMessages = 작업 중 끼어 든 사용자 메시지를 답변에서 처리했는지 멈출 때 한 번 되묻는다 (Claude Code. block 기본 · off)
   //   checkBeforeReview = 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 막는다 (리뷰 위임 · 리뷰 역할 에이전트)
   const longRun = { after: mins(te.runMinutes, 60) };
-  return { team, effective, base, run, access, runWarnings, limits, teamLimits, enforce, teamEnforce, review, idle, longRun, profile: { team: teamProfile, local: localProfile, blocked, allowHigher } };
+  return { team, effective, base, run, access, runWarnings, limits, teamLimits, limitParts, enforce, teamEnforce, review, idle, longRun, profile: { team: teamProfile, local: localProfile, blocked, allowHigher } };
 }
 
 const profileLabel = (cat, name) => (((cat || {}).profiles || {})[name] || {}).label || name;

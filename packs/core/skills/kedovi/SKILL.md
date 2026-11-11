@@ -16,6 +16,8 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 지금 모델 보기 | `kedovi models` (화면 없이 실행하면 표: 팀 구성 · 성향 · 역할별 등급과 출처, `--json` 은 JSON) | 보기 |
 | 진행 방식 보기 · 바꾸기 | `kedovi approach` (지금 값) · `kedovi approach sprint\|full\|issue` (MVP · 스프린트: 최소 기능부터 기능 단위 스프린트 · 데모 · 회고, 워터폴 · 전체: 전체 설계 뒤 구축, 이슈형: 운영 · 유지보수의 이슈 보드). 기본 단계 그대로인 로드맵은 새 뼈대로 바뀐다. "작게 시작하자" · "스프린트로" · "이슈 단위로 관리" 같은 말에 쓴다 | 팀 (팀장) |
 | 유형 바꾸기 | `kedovi type <new\|modernization\|enhancement\|consulting> [--approach a] [--code 이름,…]` (분석·설계 → 구축 · 고도화 등. 현행 repo 중 고칠 것을 개발 repo 로 · 진행 방식 · 로드맵 새 뼈대, 지난 로드맵은 남김). 바꾸기 전에 무엇이 바뀌는지 보여 주고 확인받는다 | 팀 (팀장) |
+| 역할 에이전트 상한 확인 · 바꾸기 | `kedovi models limits` (적용 값 · 정한 곳 표) · `set total=30 leaders=3 … [--team]` · `clear [--team]` (직접 값 지우고 프로필 · 요금제대로) | 이 PC · 팀 |
+| 에이전트 진행 보기 (Claude Code: 작업 리더 · 역할 에이전트 · 리더 아래 팀원, 이름 없는 서브에이전트도) | `kedovi agents watch` (2초마다 새로 그림) · `--once` (채팅에서는 이것) · `--all` (끝난 것까지) · `--json` · `--tmux` (tmux 안이면 오른쪽 창에) | 읽기만 |
 | 작업 리더 작업 폴더 | `kedovi worktree add <repo> <단위>` · `merge <repo> <단위>` (본 작업 트리에 커밋하지 않은 변경으로 옮기고 작업 폴더 · 임시 브랜치 삭제, 겹치면 멈춤) · `remove <repo> <단위> [--force]` · `list`. 같은 repo 를 여러 작업 리더가 동시에 고칠 때 (`team` 스킬 「작업 리더」) | 개인 |
 | 로드맵 보기 · 점검 | `kedovi plan` (흐름도 · 지금 단계 표 · 다음, 이슈형은 이슈 보드) · `kedovi plan --short` (한 줄) · `kedovi plan check` (갱신 누락 ⚠) · `kedovi plan --report [시작 [끝]]` (이슈형 주간 보고) | 보기 |
 | 일정 정본을 밖에 둘 때 (GitLab 마일스톤 · 외부 일정표) | `kedovi plan external "<위치>"` (workspace.json `vars.plan.external` 에 적고 handoffs/PLAN.md 갱신 경고를 내지 않는다) · `kedovi plan external off` (PLAN.md 를 다시 정본으로) · `kedovi plan external` (지금 값). "일정은 GitLab 마일스톤에서 관리해" 같은 말에 쓴다 | 팀 |

@@ -296,7 +296,7 @@ flowchart TD
     PXW --> RUN["에이전트 실행"]
     RUN --> SS["세션 시작 훅: repo 갱신 확인 · 생성물 동기화 확인 · 내 마지막 핸드오프 한 줄"]
     SS --> WORK["작업: 규칙(AGENTS.md) · 스킬 · 역할 에이전트<br/>(AI 가 필요할 때 스스로 부르고 정리. 한 요청 상한을 넘으면 훅이 막는다)"]
-    WORK -->|"독립 단위 2개 이상"| TIER["메인 → 작업 리더(단위마다) → 팀원<br/>같은 repo 면 kedovi worktree add · merge"]
+    WORK -->|"독립 단위 2개 이상"| TIER["메인 → 작업 리더(단위마다) → 팀원<br/>같은 repo 면 kedovi worktree add · merge<br/>진행 보기 kedovi agents watch"]
     WORK --> STOP["세션 끝 훅: 인계(handoffs/) 점검 · 끝나지 않은 위임 작업 알림"]
 ```
 
@@ -309,6 +309,8 @@ flowchart TD
     MO --> MW{"무엇을 바꿀까요?"}
     MW -->|"프로필 바꾸기"| SC1{"적용 범위<br/>내 PC 만 · 팀 기본값"}
     SC1 --> PF["프로필 고르기 → sync<br/>(역할별로 직접 고르기 → 기준 프로필 → 역할마다)"]
+    PF -->|"직접 넣어 둔 상한이 새 프로필보다 낮으면"| LIM{"직접 넣어 둔 상한을 지우고 프로필 · 요금제대로 쓸까요?"}
+    LIM -->|"예"| LC["kedovi models limits clear (팀 값이면 --team)"]
     MW -->|"역할별로 한 번에 고르기"| SC3{"적용 범위"}
     SC3 --> TL4["어느 도구의 역할"]
     TL4 --> RL["메인 → 역할 전부 → 교차 검토(상대 도구)<br/>각각 프로필대로 · 목록 · 직접 입력 → sync"]
@@ -400,6 +402,7 @@ flowchart TD
 | `kedovi docs build [repo]` | 기획 repo 의 md · 화면설계서 장 → 같은 경로 구조의 `docs-site/` (정의 ID 앵커 · 근거 색인 · 정의서 폴더마다 ERD). 묶음 · 포함 범위는 `docs-site.json`, 옛 `html/` 은 처음 build 때 옮긴다. `check` 는 md 와 어긋났는지. 둘 다 문서 점검 경고와 mermaid 문법 오류를 낸다. 자세히는 [문서 사이트](docs-site.md) |
 | `kedovi docs show <ID>` · `refs <ID>` | 기획 문서를 ID 단위로: 정의 부분만 출력 · 그 ID 가 나오는 곳(기획 · 코드 · 이슈 repo, 파일:줄, ★ 정의 · [동결]) |
 | `kedovi delegate watch [id]` · `status [id]` · `list` | 다른 도구에 맡긴 작업(위임)의 진행: 상대 에이전트가 읽고 실행하는 것을 줄마다 · 지금 현황 한 번 · 목록 |
+| `kedovi agents watch` | 에이전트 진행 보기: 메인 → 작업 리더 → 팀원 나무로 상태 · 마지막 행동 (Claude Code, 이름 없는 서브에이전트도). `--once` · `--all` · `--json` · `--tmux` |
 | `kedovi worktree add <repo> <단위>` · `merge` · `remove` · `list` | 작업 리더 작업 폴더: 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 `.worktrees/<repo>/<단위>`, merge 는 본 작업 트리에 커밋하지 않은 변경으로 옮김 |
 | `kedovi debate list` · `watch [id]` · `status [id]` · `models` | 토론 모드: 목록 · 실시간 보기(모델별 주장 · 판정) · 지금 회차와 모델별 상태 · 쓸 수 있는 모델과 패널 예시 (시작은 채팅에서 "토론해줘") |
 | `kedovi docs serve [repo]` | `docs-site/` 를 이 PC 에서 웹 주소(`http://127.0.0.1:8000/`)로 보기. 전체 인쇄와 새로고침 없는 이동까지 된다 |

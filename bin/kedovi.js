@@ -27,6 +27,7 @@
  *   kedovi models [--migrate | --json]   모델 프로필·역할별·교차 검토 모델을 바꾼다 (화면 없이 실행하면 표, --json 은 JSON) / 퇴역 모델을 대체 모델로 일괄 교체
  *   kedovi models profile <이름> [--team] · set <역할> <도구> <모델> [--team] [--effort e]   화면 없이 (AI 가 대신 실행). 내 프로필은 팀보다 낮은 것만
  *   kedovi models allow-higher on|off   팀원이 팀보다 높은 프로필을 고를 수 있게 (팀, 팀장)
+ *   kedovi models limits [set k=N … | clear] [--team]   역할 에이전트 상한: 실제 적용 값과 정한 곳, 직접 값 넣기 · 지우기
  *   kedovi agent --claude|--codex [--args "<인자>"]   화면 없이 메인 에이전트
  *   kedovi list                 이 PC 에서 만들거나 쓴 워크스페이스 목록
  *   kedovi reset [항목,… | --all] [--yes]   이 PC 의 개인 설정을 처음 상태로 (이 PC 설정 · 텔레그램 채널 · 임시 기록 · 개인 지침 · 토큰 중 고른다). 팀 설정 · repos 는 그대로
@@ -40,6 +41,7 @@
  *   kedovi budget start|extend "<작업>" <시간> · done ["<작업>"] · status · report [--month YYYY-MM] [--json]   시간 예산: 시작 · 늘림 · 끝 · 지금 · 월간 집계(끝낸 작업 수 · 예산 초과율 · 걸린 시간 중앙값, 이력은 이 PC 의 .agents/history/)
  *   kedovi defects check [--id <id>] · report [--month YYYY-MM] [--json]   운영 결함 기록(작업별 기록 머리 「종류: 운영 결함」): 발견 · 분류 · 해소 칸 검사 · 월간 집계(분류별 잠복 · 해소 시간)
  *   kedovi plan [--short | --json | --stage <번호>] · init · check · external <위치>|off   로드맵(handoffs/PLAN.md): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것 · 다음
+ *   kedovi agents watch [--once] [--all] [--json] [--tmux]   에이전트 진행 보기 (Claude Code): 메인이 부른 작업 리더 · 역할 에이전트 · 그 아래 팀원이 지금 무엇을 하는지 나무 모양으로 (이름 없는 서브에이전트도). 읽기만
  *   kedovi worktree add|merge|remove <repo> <단위> · list   작업 리더 worktree: 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 .worktrees/<repo>/<단위> (merge = 본 작업 트리에 커밋하지 않은 변경으로 옮김)
  *   kedovi docs build [repo|폴더] [--out docs-site] [--force] [--no-source] [--write-config] · check [repo|폴더]   문서 사이트: 기획 repo 의 md · 화면설계서 장 → docs-site/ (가이드와 같은 화면 틀 · 근거 색인 ids.json · 묶음은 docs-site.json) · 어긋남 검사 · 문서 점검 경고
  *   kedovi docs show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs]   기획 문서를 ID 단위로: 정의 부분만 출력 · 그 ID 가 나오는 곳(기획 · 코드 · 이슈 repo, 파일:줄)
@@ -2334,9 +2336,51 @@ function migrateModels(root) {
  *   kedovi models profile [rich|standard|lean|team] [--team]         프로필 (team = 이 PC 값 지우고 팀 기본 따름, 호환: - · 팀). 이 PC 값은 팀보다 낮은 것만. 인자 없이 실행하면 화면에서 고른다
  *   kedovi models set <main|crossReview|역할> <claude|codex> <모델|-> [--team] [--effort <e>]   모델 (- = 직접 지정 지우기, 위임은 codex:<모델>)
  *   kedovi models allow-higher on|off                                 팀원이 팀보다 높은 프로필을 둘 수 있게 (workspace.json agents.allowHigherProfile, 팀장)
+ *   kedovi models limits [show] · set k=N … · clear [--team]          역할 에이전트 상한: 실제 적용 값과 정한 곳(프로필 · 팀 직접 값 · 이 PC 직접 값 · 요금제), 직접 값 넣기 · 지우기
  */
+const LIMIT_FROM = { profile: '프로필', workspace: '팀 직접 값(workspace.json agents.limits)', local: '이 PC 직접 값(.agents/local.json agents.limits)', plan: '이 PC 요금제' };
+const LIMIT_TEXT = { parallel: '메인이 직접 부르는 동시', total: '요청당 모두', leaders: '작업 리더 동시', members: '리더당 팀원 동시' };
+
+/** 상한 표: 실제 적용 값 · 어디서 묶였나 · 각 출처 값 */
+function limitsTable(root) {
+  const { limitParts } = kit.resolveModels(root, kit.loadWorkspace(root));
+  const rows = Object.entries(limitParts).map(([k, x]) => `| ${LIMIT_TEXT[k]} (${k}) | **${x.final}** | ${LIMIT_FROM[x.by] || x.by} | ${x.profile} | ${x.workspace ?? '-'} | ${x.local ?? '-'} | ${x.plan ?? '-'} |`);
+  return ['| 상한 | 적용 | 정한 곳 | 프로필 | 팀 직접 값 | 이 PC 직접 값 | 요금제 |', '|---|---|---|---|---|---|---|', ...rows].join('\n');
+}
+
+/** 직접 넣어 둔 상한(팀 · 이 PC)이 프로필 값보다 낮아 프로필 상한을 묶는 칸 */
+function lowerLimitOverrides(root) {
+  const { limitParts } = kit.resolveModels(root, kit.loadWorkspace(root));
+  return Object.entries(limitParts).filter(([, x]) => ['workspace', 'local'].includes(x.by) && x.final < x.profile).map(([k, x]) => ({ key: k, scope: x.by, value: x.final, profile: x.profile }));
+}
+
+/** kedovi models limits [clear|set k=N …] [--team] */
+function limitsCommand(root, args, team) {
+  const [cmd, ...kv] = args;
+  if (!cmd || cmd === 'show') { console.log(limitsTable(root)); console.log('\n바꾸기: kedovi models limits set total=30 leaders=3 … [--team] · 직접 값 지우고 프로필 · 요금제대로: kedovi models limits clear [--team] (팀 값은 팀장)'); return; }
+  if (!['clear', 'set'].includes(cmd)) fail('사용법: kedovi models limits [show] · set <parallel|total|leaders|members>=<수> … · clear [--team]');
+  if (team) requireAdmin(root, '팀 역할 에이전트 상한 변경');
+  const vals = {};
+  if (cmd === 'set') {
+    for (const x of kv) {
+      const m = String(x).match(/^(parallel|total|leaders|members)=(\d+)$/);
+      if (!m || Number(m[2]) < 1) fail(`잘못된 값: ${x} (예: total=30 leaders=3)`);
+      vals[m[1]] = Number(m[2]);
+    }
+    if (!Object.keys(vals).length) fail('사용법: kedovi models limits set total=30 leaders=3 … [--team]');
+  }
+  const apply = (agents) => { const y = { ...agents }; if (cmd === 'clear') delete y.limits; else y.limits = { ...(y.limits || {}), ...vals }; return y; };
+  if (team) { const f = path.join(root, 'workspace.json'); const w = JSON.parse(read(f)); w.agents = apply(w.agents || {}); fs.writeFileSync(f, `${JSON.stringify(w, null, 2)}\n`); }
+  else writeLocal(root, { agents: apply(readLocal(root).agents || {}) });
+  runWorkspaceKit(root, ['sync', '--quiet']);
+  console.log(`✔ ${team ? '팀 직접 값(workspace.json, commit · push 하면 팀 적용)' : '이 PC 직접 값(.agents/local.json)'}: ${cmd === 'clear' ? '지움' : Object.entries(vals).map(([k, v]) => `${k}=${v}`).join(' ')}`);
+  console.log(limitsTable(root));
+  if (!team) console.log('  이 PC 값은 팀 값보다 낮게만 적용된다');
+}
+
 async function modelsCommand(root, argv) {
   const [sub, ...rest] = argv;
+  if (sub === 'limits') { const team = rest.includes('--team'); limitsCommand(root, rest.filter((x) => x !== '--team'), team); return true; }
   if (!['profile', 'set', 'allow-higher'].includes(sub)) return false;
   if (sub === 'allow-higher') {
     let onOff = rest[0];
@@ -2386,6 +2430,21 @@ async function modelsCommand(root, argv) {
       fail(`이 PC 프로필은 팀 프로필(${kit.profileLabel(cat, profile.team)})과 같거나 낮은 것만 됩니다. 팀 값을 올리려면 kedovi models profile ${v} --team, 팀원에게 높은 프로필을 허용하려면 kedovi models allow-higher on (팀장)`);
     }
     saveProfile(root, team ? 'team' : 'local', clear ? '' : v);
+    // 직접 넣어 둔 상한이 새 프로필보다 낮으면 알리고, 화면이면 지울지 묻는다
+    const low = lowerLimitOverrides(root);
+    if (low.length) {
+      const text = low.map((x) => `${x.key} ${x.value} (${LIMIT_FROM[x.scope]}, 프로필 ${x.profile})`).join(' · ');
+      const scopes = [...new Set(low.map((x) => x.scope))];
+      const cmdOf = (sc) => `kedovi models limits clear${sc === 'workspace' ? ' --team' : ''}`;
+      let cleared = false;
+      if (process.stdin.isTTY && (!scopes.includes('workspace') || (() => { try { return kit.lockState(root, kit.loadWorkspace(root)).admin; } catch { return true; } })())) {
+        clack();
+        p.log.warn(`직접 넣어 둔 상한이 새 프로필보다 낮아 그 값이 적용됩니다: ${text}`);
+        const yes = await p.confirm({ message: '직접 넣어 둔 상한을 지우고 프로필 · 요금제대로 쓸까요?', initialValue: true });
+        if (yes === true) { for (const sc of scopes) limitsCommand(root, ['clear'], sc === 'workspace'); cleared = true; }
+      }
+      if (!cleared) console.log(`⚠ 직접 넣어 둔 상한이 새 프로필보다 낮아 그 값이 적용됩니다: ${text}. 프로필 값을 쓰려면: ${scopes.map(cmdOf).join(' · ')}${scopes.includes('workspace') ? ' (팀장)' : ''}`);
+    }
   } else {
     const [role, tool, model] = args;
     const roles = listRoles(root).map((r) => r.name);
@@ -2424,7 +2483,7 @@ function fitStartTool(root) {
 
 function showAccess(root) {
   const a = accessOf(root);
-  const { run, runWarnings } = kit.resolveModels(root, kit.loadWorkspace(root));
+  const { run, runWarnings, limitParts } = kit.resolveModels(root, kit.loadWorkspace(root));
   const agent = readLocal(root).agent || kit.startToolOf(a);
   const roleOf = (x) => { const sp = kit.splitModel((x || {})[agent], agent); return sp.delegated ? `${sp.tool}:${sp.model} (위임)` : sp.model || '메인과 같게'; };
   console.log(JSON.stringify({
@@ -2434,6 +2493,7 @@ function showAccess(root) {
     startTool: agent, mainModel: (run.main || {})[agent] || '도구 기본',
     roles: Object.fromEntries(Object.entries(run.roles || {}).map(([n, x]) => [n, roleOf(x)])),
     crossReview: (run.crossReview || {})[OTHER[agent]] || '쓰지 않음',
+    limits: Object.fromEntries(Object.entries(limitParts || {}).map(([k, x]) => [k, { applied: x.final, by: LIMIT_FROM[x.by] || x.by }])),
     warnings: runWarnings,
   }, null, 2));
   // 정하지 않았는데 이 PC 의 Claude Code · Codex 가 게이트웨이로 이어져 있으면: 실제 연결과 저장값이 다르다
@@ -3613,7 +3673,7 @@ const HELP_GROUPS = [
   ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'views', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
   ['팀 규칙 점검', '리뷰 확인 · 훅이 알리거나 막는 수준', ['review', 'team-mode enforce']],
-  ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 위임 · 작업 리더 worktree · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'delegate', 'worktree', 'debate', 'import', 'tidy']],
+  ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 위임 · 에이전트 진행 · 작업 리더 worktree · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'delegate', 'agents', 'worktree', 'debate', 'import', 'tidy']],
   ['문서', '문서 사이트 · ID 찾기 · 화면설계서 · 데이터 설계 검사', ['docs', 'screens', 'datamodel']],
   ['알림 · 연동', '텔레그램 · 비밀값 · GitLab · 운영 배포 · 운영 검증', ['notify', 'secret', 'gitlab', 'release', 'ops']],
 ];
@@ -3840,6 +3900,7 @@ async function main() {
     case 'budget': return runWsTool('budget.js', rest);
     case 'defects': return runWsTool('defects.js', rest);
     case 'plan': return runWsTool('plan.js', rest);
+    case 'agents': return runWsTool('agents-watch.js', rest.filter((x) => x !== 'watch'));
     case 'worktree': return runWsTool('worktree.js', rest);
     case 'docs': return runWsTool('docs-site.js', rest);
     case 'delegate': return runWsTool('delegate.js', rest.length ? rest : ['list']);

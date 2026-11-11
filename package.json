@@ -1,6 +1,6 @@
 {
   "name": "kedovi",
-  "version": "0.89.0",
+  "version": "0.90.0",
   "private": false,
   "description": "Claude Code · Codex 팀 개발 워크스페이스 킷: 한 규칙 두 도구 · 대화 전담 메인 · 3층 팀 에이전트 병렬 작업(요금제별 상한) · 핸드오프 · 로드맵 · 기획 문서 사이트 · 화면 정본 대조 · 훅으로 지키는 검사",
   "keywords": [

@@ -29,6 +29,8 @@
 
 **생성 파일은 직접 고치지 않는다.** `packs/` 나 `workspace.json` 을 고치고 `kedovi sync`. 고친 채 커밋하면 pre-commit 이 막는다.
 
+**죽은 참조 검사**: 커밋 전에 워크스페이스 문서(`AGENTS.md` · `docs/` · 팩 문서)의 백틱 · 링크 경로가 실제로 있는지 본다. 외부 주소로 가는 링크의 글자는 보지 않는다. 설치 서버 경로처럼 워크스페이스 파일이 아닌 경로를 적는 자리는 줄 끝에 `refs:ignore`, 여러 줄이면 `<!-- refs:ignore-start -->` … `<!-- refs:ignore-end -->`, 문서 전체면 `<!-- refs:ignore-file -->` 를 둔다. 목록: `node packs/core/bin/check-refs.js`.
+
 
 ## `workspace.json`
 

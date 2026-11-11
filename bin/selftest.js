@@ -651,6 +651,52 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   record('메인 대화 전담 · 작업 중 받은 메시지 (막기 · 서브에이전트 통과 · 기록 제외 · 알림 · 끄기 · 시작 줄 · 되묻기 · 한 번 · 처리 줄)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
 
+// 상한 출처 · 에이전트 진행 보기 · 죽은 참조 (외부 링크 글자 · 제외 구역 · 파일 이름)
+{
+  const dw = path.join(tmp, 'limits-ws');
+  spawnSync(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dw, '--type', 'new'], { cwd: tmp, encoding: 'utf8' });
+  const wsFile = path.join(dw, 'workspace.json');
+  const wj = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+  wj.agents = { ...(wj.agents || {}), limits: { total: 16 } };
+  fs.writeFileSync(wsFile, JSON.stringify(wj, null, 2));
+  const env = { ...process.env, HOME: path.join(tmp, 'limits-home'), KEDOVI_LOGIN_PLANS: 'none' };
+  const cli = (...a) => spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), ...a], { cwd: dw, encoding: 'utf8', env });
+  const kitL = require(path.join(dw, 'bin', 'kit.js'));
+  const parts = () => kitL.resolveModels(dw, kitL.loadWorkspace(dw)).limitParts;
+  const p = {};
+  const prof = cli('models', 'profile', 'rich', '--team');
+  p['프로필 올릴 때 낮은 직접 값 알림'] = /직접 넣어 둔 상한이 새 프로필보다 낮아/.test(prof.stdout) && /total 16/.test(prof.stdout) && /kedovi models limits clear --team/.test(prof.stdout);
+  p['정한 곳 = 팀 직접 값'] = parts().total.final === 16 && parts().total.by === 'workspace' && parts().total.profile === 30;
+  p['상한 표'] = /\| 요청당 모두 \(total\) \| \*\*16\*\* \| 팀 직접 값/.test(cli('models', 'limits').stdout);
+  const show = JSON.parse(cli('ai', 'show').stdout || '{}');
+  p['ai show 의 적용 상한'] = ((show.limits || {}).total || {}).applied === 16;
+  cli('models', 'limits', 'clear', '--team');
+  p['직접 값 지우면 프로필대로'] = parts().total.final === 30 && parts().total.by === 'profile';
+  cli('models', 'limits', 'set', 'total=12');
+  p['이 PC 값 넣기'] = parts().total.final === 12 && parts().total.by === 'local' && cli('models', 'limits', 'set', 'total=x').status !== 0;
+  // 에이전트 진행 보기: 기록 폴더(CLAUDE_CONFIG_DIR/projects/<경로>/<세션>/subagents)의 meta 로 나무
+  const cfg = path.join(tmp, 'watch-claude');
+  const sub = path.join(cfg, 'projects', fs.realpathSync(dw).replace(/[^A-Za-z0-9]/g, '-'), 'sess-1234abcd', 'subagents');
+  fs.mkdirSync(sub, { recursive: true });
+  const put = (id, meta, last) => {
+    fs.writeFileSync(path.join(sub, `agent-${id}.meta.json`), JSON.stringify(meta));
+    fs.writeFileSync(path.join(sub, `agent-${id}.jsonl`), `${JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: last } }] } })}\n`);
+  };
+  put('L1', { agentType: 'lead', description: '단위 A', spawnDepth: 1 }, 'repos/app/a.js');
+  put('M1', { agentType: 'analyst', description: 'A 조사', parentAgentId: 'L1', spawnDepth: 2 }, 'repos/app/b.js');
+  put('L2', { agentType: 'lead', description: '단위 B', spawnDepth: 1, finished: true }, 'x');
+  const w = spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'bin', 'agents-watch.js'), '--once'], { cwd: dw, encoding: 'utf8', env: { ...env, CLAUDE_CONFIG_DIR: cfg } }).stdout;
+  p['진행 보기 나무'] = /세션 sess-123/.test(w) && /\n  ● lead · 단위 A · 도는 중/.test(w) && /\n      ● analyst · A 조사/.test(w) && /└ Read repos\/app\/b\.js/.test(w) && /✔ lead · 단위 B · 끝남/.test(w);
+  p['명령 연결'] = /메인/.test(spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'agents', 'watch', '--once'], { cwd: dw, encoding: 'utf8', env: { ...env, CLAUDE_CONFIG_DIR: cfg } }).stdout);
+  // 죽은 참조
+  fs.mkdirSync(path.join(dw, 'docs'), { recursive: true });
+  fs.writeFileSync(path.join(dw, 'docs', 'refs.md'), ['[`docs/none-a.md`](https://example.com/docs/none-a.md)', '`config/none-b.properties`', '<!-- refs:ignore-start -->', '`config/none-c.properties`', '<!-- refs:ignore-end -->', '`config/none-d.properties`'].join('\n'));
+  fs.writeFileSync(path.join(dw, 'docs', 'skip.md'), '<!-- refs:ignore-file -->\n`config/none-e.properties`\n');
+  const dead = require(path.join(dw, 'packs', 'core', 'bin', 'check-refs.js')).findDeadRefs(dw).filter((d) => /none-/.test(d.ref));
+  p['죽은 참조: 외부 링크 글자 · 제외 구역 · 문서 제외 · 파일 이름'] = dead.map((d) => `${d.file}:${d.line}:${d.ref}`).join() === 'docs/refs.md:2:config/none-b.properties,docs/refs.md:6:config/none-d.properties';
+  record('상한 출처 · 에이전트 진행 보기 · 죽은 참조 (프로필 알림 · 표 · ai show · 지우기 · 넣기 · 나무 · 링크 글자 · 제외 구역 · 파일 이름)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
+
 // 킷 문서 사이트 — docs-site/ 가 md(README · docs/*.md) 와 같아야 한다 (md 를 고치면 node bin/docs.js). 메뉴 「기타」 로 빠진 문서가 없어야 한다
 {
   const docs = require('./docs.js');
@@ -1222,6 +1268,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   hook('SubagentStop', { agent_id: 'M1', agent_type: 'implementer' });
   const freed = !deny(spawn('documenter', 'L1'));
   const noNested = /메인만 부른다/.test(spawn('lead', 'L2'));
+  const namedInLead = /이름\(name\) 없이 부른다/.test(hook('PreToolUse', { tool_input: { subagent_type: 'analyst', name: 'analyst-a', prompt: 'x' }, agent_id: 'L2', agent_type: 'lead' }));
   const state = JSON.parse(fs.readFileSync(path.join(require(path.join(dir, 'packs', 'core', 'lib', 'workspace.js')).stateDir(dir), 'selftest-tier.agents.json'), 'utf8'));
   const tree = require(path.join(dir, 'packs', 'core', 'hooks', 'agent-budget.js')).tree(state);
   const treeOk = tree.filter((x) => x.type === 'lead').length === 3 && tree.find((x) => x.id === 'L1').members.length === 1;
@@ -1258,8 +1305,8 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   g(repo, 'checkout', '-q', '--', '.'); wt('remove', 'wt-demo', 'FN-3', '--force');
   fs.writeFileSync(wsFile, wsRaw);
   fs.rmSync(repo, { recursive: true, force: true }); fs.rmSync(path.join(dir, '.worktrees'), { recursive: true, force: true });
-  record('작업 리더 3층 (요금제별 상한 · 층별 훅 · 중첩 깊이 · lead 역할 · kedovi worktree)', rooms && leadCap && memberCap && freed && noNested && treeOk && wired && add1 && listed && moved && stopped,
-    `요금제별 빠듯 1×2·6 · Max 2×2·10 · Ultra 3×2·15(팀 표준) · 최고 4×3·30 ${rooms} · 리더 상한 ${leadCap} · 리더당 팀원 상한 ${memberCap} · 끝나면 다시 ${freed} · 리더 안 리더 금지 ${noNested} · 현황 나무 ${treeOk} · 설정 · 역할 · 지침 · gitignore ${wired} · 작업 폴더 ${add1 && listed} · 커밋 없이 옮김(남의 변경 유지) ${moved} · 겹치면 멈춤 ${stopped}`);
+  record('작업 리더 3층 (요금제별 상한 · 층별 훅 · 중첩 깊이 · lead 역할 · kedovi worktree)', rooms && leadCap && memberCap && freed && noNested && namedInLead && treeOk && wired && add1 && listed && moved && stopped,
+    `요금제별 빠듯 1×2·6 · Max 2×2·10 · Ultra 3×2·15(팀 표준) · 최고 4×3·30 ${rooms} · 리더 상한 ${leadCap} · 리더당 팀원 상한 ${memberCap} · 끝나면 다시 ${freed} · 리더 안 리더 금지 ${noNested} · 리더 안 이름 금지 ${namedInLead} · 현황 나무 ${treeOk} · 설정 · 역할 · 지침 · gitignore ${wired} · 작업 폴더 ${add1 && listed} · 커밋 없이 옮김(남의 변경 유지) ${moved} · 겹치면 멈춤 ${stopped}`);
 }
 
 // 역할 에이전트 실행 방식 — SessionStart 훅이 환경(팀 기능 · teammateMode · tmux)으로 팀 모드/서브에이전트를 판정한다 (Claude 만)

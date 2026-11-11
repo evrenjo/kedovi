@@ -116,6 +116,8 @@ function handle(input, ws, file) {
     }
     if (kitRole && R.REVIEW_ROLE.test(type) && R.prototypeGap) { const gap = R.prototypeGap(ws, ti.prompt); if (gap) warns.push(gap); }
   } catch { /* 옛 워크스페이스 */ }
+  // 리더(또는 역할 에이전트) 안에서 이름을 주면 팀원(agent teams)이 되어 보고가 메인으로 가고, 리더는 결과를 못 받고 끝난다
+  if (parent !== 'main' && String(ti.name || '').trim()) return deny('작업 리더 · 역할 에이전트 안에서는 팀원을 이름(name) 없이 부른다. 이름을 주면 팀원 세션이 되어 보고가 메인으로 가고 리더는 결과를 못 받는다. 이름 없이 다시 부르고, 팀원 결과를 받을 때까지 기다린 뒤 보고한다');
   if (isLead && parent !== 'main') return deny('작업 리더(lead)는 메인만 부른다. 리더 안에서 다른 리더를 부르지 않고, 팀원(역할 에이전트)을 부른다');
   if (st.turn >= limits.total) {
     return deny(`역할 에이전트 상한: 이번 요청에 이미 ${st.turn}개를 불렀습니다 (한 요청 ${limits.total}개). 새로 부르지 말고 앞 에이전트에게 이어서 맡기세요 (메인 대화 전담이 꺼져 있으면 직접 해도 된다). 꼭 더 필요하면 이유와 함께 사용자에게 물어보세요 (사용자가 답하면 다시 셉니다). 상한은 kedovi ai show 의 limits`);

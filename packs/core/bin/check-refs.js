@@ -13,6 +13,8 @@
  *   - 아직 clone 하지 않은 repo 안의 경로 (repos/<이름> · repos/<그룹>/<이름> 이 아직 없을 때)
  *   - .gitignore 에 적힌 경로 (`.agents/local.md` 처럼 PC 마다 있을 수도 없을 수도 있는 개인 파일)
  *   - `refs:ignore` 가 적힌 줄 (일부러 없는 경로를 적는 자리)
+ *   - `<!-- refs:ignore-start -->` ~ `<!-- refs:ignore-end -->` 구역, `<!-- refs:ignore-file -->` 가 있는 문서 전체 (설치 서버 경로처럼 워크스페이스 파일이 아닌 경로를 설명하는 자리)
+ *   - 외부 주소로 가는 링크의 글자 ([`docs/x.md`](https://…) 의 `docs/x.md`)
  * 기준 경로: 워크스페이스 루트 → 그 문서 폴더 → 그 문서가 속한 팩 폴더 (하나라도 있으면 산 참조)
  *
  * --fail  죽은 참조가 있으면 exit 1 (pre-commit 이 쓴다). 없으면 기본적으로 exit 0
@@ -81,6 +83,7 @@ const repoRels = (root) => repoList(root).map((r) => ['repos', ...(r.group ? [r.
 /** 한 줄에서 경로 후보를 뽑는다 */
 function candidates(line) {
   const out = [];
+  line = line.replace(/\[((?:[^\]\\]|\\.)*)\]\((?:[a-z][a-z0-9+.-]*:|\/\/)[^)]*\)/gi, ' '); // 외부 주소 링크는 글자까지 뺀다 (글자는 그 주소의 경로)
   for (const m of line.matchAll(/`([^`\n]+)`/g)) {
     const t = m[1].trim().replace(/^\.\//, '').replace(/[:#].*$/, '');
     if (PATH_TOKEN.test(t)) out.push(t);
@@ -101,20 +104,25 @@ function findDeadRefs(root) {
   const dead = [];
   const okCache = new Set();
   for (const doc of targetDocs(root)) {
-    const rel = path.relative(root, doc).split(path.sep).join('/');
+    const docRel = path.relative(root, doc).split(path.sep).join('/');
     const packDir = packDirOf(root, doc);
+    const text = fs.readFileSync(doc, 'utf8');
+    if (/<!--\s*refs:ignore-file\s*-->/.test(text)) continue;
     let fence = false;
-    fs.readFileSync(doc, 'utf8').split('\n').forEach((line, i) => {
+    let skip = false;
+    text.split('\n').forEach((line, i) => {
+      if (/<!--\s*refs:ignore-start\s*-->/.test(line)) { skip = true; return; }
+      if (/<!--\s*refs:ignore-end\s*-->/.test(line)) { skip = false; return; }
       if (/^\s*(```|~~~)/.test(line)) { fence = !fence; return; }
-      if (fence || line.includes('refs:ignore')) return;
+      if (skip || fence || line.includes('refs:ignore')) return;
       for (const ref of new Set(candidates(line))) {
         if (PLACEHOLDER.test(ref) || ref.startsWith('/') || ref.startsWith('~') || /\s/.test(ref)) continue;
         if (/(^|\/)scripts\//.test(ref) || /(^|\/)handoffs\//.test(ref)) continue;
         if (ignored.some((g) => ref === g || ref.startsWith(`${g}/`))) continue; // gitignore 대상 (개인 파일)
         const parts = ref.split('/');
         if (repos.includes(parts[0]) && !fs.existsSync(path.join(root, parts[0]))) continue; // 아직 clone 안 한 repo (옛 배치)
-        const rel = rels.find((x) => ref === x || ref.startsWith(`${x}/`));
-        if (rel && !fs.existsSync(path.join(root, rel))) continue; // 아직 clone 안 한 repo (repos/<이름> · repos/<그룹>/<이름>)
+        const repoRel = rels.find((x) => ref === x || ref.startsWith(`${x}/`));
+        if (repoRel && !fs.existsSync(path.join(root, repoRel))) continue; // 아직 clone 안 한 repo (repos/<이름> · repos/<그룹>/<이름>)
         // 생성 룰 경로(.agents/rules/<팩>--<파일>) — 그 팩을 안 쓰는 워크스페이스에는 생성되지 않는다. 원본이 있으면 산 참조
         const gen = ref.match(/^\.agents\/rules\/([^/]+?)--(.+)$/);
         if (gen && fs.existsSync(path.join(root, 'packs', gen[1], 'rules', gen[2].replace(/--/g, '/')))) continue;
@@ -122,7 +130,7 @@ function findDeadRefs(root) {
         if (okCache.has(key)) continue;
         const bases = [root, path.dirname(doc), packDir].filter(Boolean);
         if (bases.some((b) => fs.existsSync(path.resolve(b, ref)))) { okCache.add(key); continue; }
-        dead.push({ file: rel, line: i + 1, ref });
+        dead.push({ file: docRel, line: i + 1, ref });
       }
     });
   }
@@ -145,6 +153,7 @@ if (require.main === module) {
     if (dead.length > 50) console.log(`  … 외 ${dead.length - 50}건`);
     console.log('  파일을 옮겼다면: node packs/core/bin/rename-ref.js <old> <new> --apply');
     console.log('  일부러 없는 경로를 적는 자리라면: 자리표시자(<…>)를 넣거나 그 줄에 refs:ignore 주석');
+    console.log('  설치 서버 경로처럼 워크스페이스 파일이 아닌 경로를 설명하는 구역이면: <!-- refs:ignore-start --> … <!-- refs:ignore-end -->, 문서 전체면 <!-- refs:ignore-file -->');
   }
   process.exit(args.includes('--fail') && dead.length ? 1 : 0);
 }
