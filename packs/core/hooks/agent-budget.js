@@ -118,7 +118,7 @@ function handle(input, ws, file) {
   } catch { /* 옛 워크스페이스 */ }
   if (isLead && parent !== 'main') return deny('작업 리더(lead)는 메인만 부른다. 리더 안에서 다른 리더를 부르지 않고, 팀원(역할 에이전트)을 부른다');
   if (st.turn >= limits.total) {
-    return deny(`역할 에이전트 상한: 이번 요청에 이미 ${st.turn}개를 불렀습니다 (한 요청 ${limits.total}개). 새로 부르지 말고 앞 에이전트에게 이어서 맡기거나 직접 하세요. 꼭 더 필요하면 이유와 함께 사용자에게 물어보세요 (사용자가 답하면 다시 셉니다). 상한은 kedovi ai show 의 limits`);
+    return deny(`역할 에이전트 상한: 이번 요청에 이미 ${st.turn}개를 불렀습니다 (한 요청 ${limits.total}개). 새로 부르지 말고 앞 에이전트에게 이어서 맡기세요 (메인 대화 전담이 꺼져 있으면 직접 해도 된다). 꼭 더 필요하면 이유와 함께 사용자에게 물어보세요 (사용자가 답하면 다시 셉니다). 상한은 kedovi ai show 의 limits`);
   }
   if (parent === 'main' && isLead && count(st, 'main', 'lead') >= limits.leaders) {
     return deny(`작업 리더 상한: 리더가 이미 ${count(st, 'main', 'lead')}명 돌고 있습니다 (리더 동시 ${limits.leaders}명, 이 PC 요금제 기준). 끝난 리더의 결과를 받은 뒤 다음 단위를 맡기거나, 남은 단위를 도는 리더에게 이어서 맡기세요. 상한은 kedovi ai show`);

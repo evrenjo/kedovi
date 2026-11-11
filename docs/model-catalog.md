@@ -72,11 +72,11 @@
 5. `npm test` 통과 → `package.json` version 올림 (추천 변경 = patch, 형식 변경 = minor) → 커밋·push
 6. 워크스페이스는 `kedovi upgrade` 로 받는다. 팀이 직접 고른 값은 그대로 두고, 퇴역 모델만 sync 가 경고한다 (`kedovi models --migrate`)
 
-## 근거 (2026-10-28)
+## 근거 (2026-11-11)
 
 | 모델 | 벤더 권장 용도 | API 가격 (1M 토큰, 입력·출력) | 요금제 |
 |---|---|---|---|
-| Claude Fable 5.1 | 긴 조사·원인 분석, 어려운 문제(max) | $10 · $50 | Pro·Max·Team·Enterprise. Pro·표준 좌석은 첫 요청부터 사용량 크레딧, Max·프리미엄 좌석은 주간 한도 50% 까지 포함 |
+| Claude Fable 5.2 (2026-11-09, `fable` 별칭) | 야심 찬 열린 기술 작업(여러 날 에이전틱 개발 · 연구 · 금융). 일상 작업은 Opus 5.5 부터 권장 | $8 · $40 (5.1 은 $10 · $50) | Pro·Max·Ultra·Team·Enterprise. Pro·표준 좌석은 사용량 크레딧, Max · Ultra · 프리미엄 좌석은 주간 한도 50% 까지 |
 | Claude Opus 5.5 | 버그 수정(high), 설계(xhigh). Claude Code `default` 별칭 | $4 · $20 | Pro 이상 |
 | Claude Sonnet 5.5 | 일상 코딩 | $2 · $10 | Pro 이상 |
 | Claude Haiku 5.5 | 대량 · 반복 작업(요약 · 분류 · 압축), Opus · Sonnet 곁의 범위 좁은 서브에이전트. 복잡한 에이전틱 코딩은 Sonnet · Opus | $0.10 · $0.50 (100K 넘는 프롬프트 $0.50 · $2.50) | Pro 이상 |
@@ -85,6 +85,8 @@
 | GPT-6.1 Terra | 글쓰기, 이미지 · 화면 이해, 컴퓨터 사용 (Codex CLI 0.159 이상) | $1 · $5 | 요금제별 안내 없음 |
 | GPT-6 Luna | 빠르고 범위가 좁은 반복 작업, 가벼운 서브에이전트 | $0.10 · $0.50 | Free·Go 포함 |
 
+- 요금제 (2026-10-30 변경, claude.com/pricing 2026-11-11 확인): Max 5x → **Max**(월 $100, 5시간 · 주간 Pro 의 5배), Max 20x → **Ultra**(월 $200, 주간 Pro 의 10배, 인증된 계정은 5시간 제한 없음). 로그인 값은 Max 가 그대로 `default_claude_max_5x`(이 PC 확인), Ultra 는 옛 `max_20x` 와 `ultra` 를 모두 맞춘다. 저장된 요금제 id(`max5x` · `max20x`)는 그대로 둬 이미 고른 PC 가 바뀌지 않는다. ChatGPT Pro 는 $100 · $200 · $500 등급 모두 5시간 제한이 없다.
+- Fable 5.2 는 Claude Code 2.1.321 이상, `claude -p --model fable` 로 `claude-fable-5-2` 실행 확인(2026-11-11). LiveBench 측정이 아직 없어 기본 추천에 넣지 않았다 (벤더 수치만 있음, 아래 판단 표).
 - 없는 모델: `gpt-6-mini` 는 없다(OpenAI 는 `gpt-5.4-mini` 의 대체로 Luna 를 안내). `o4-mini` 는 ChatGPT 에서 빠진 옛 모델.
 - 퇴역(2026-10-01 확인): Sonnet 4.5(`claude-sonnet-4-5-20250929`)는 2026-09-30 퇴역 예고, 2026-11-30 종료, 대체 Sonnet 5.5. GPT-5.5 는 2026-10-14 에 ChatGPT·Codex(ChatGPT 로그인)에서 빠지고 API 에는 남는다(그때 OpenAI 안내 대체 gpt-6-sol, Free·Go 는 gpt-6-luna. gpt-6-sol 은 지금 Codex 목록에서도 빠졌으니 gpt-6.1-sol 로). GPT-5.3 Codex Spark 는 2026-09-14 Codex 에서 빠졌다. `gpt-5.2` · `gpt-5.3-codex` 는 날짜 없이 "Codex(ChatGPT 로그인)에서 이미 지원 중단"(2026-10-08 확인, 공식 대체 안내 없음 → 킷 기본 코딩 모델 gpt-6.1-sol).
 - Haiku 5.5 는 2026-10-07 출시. Claude Code 별칭 `haiku` 가 Anthropic API 에서 Haiku 5.5 로 연결된다(Claude Code 2.1.293 이상, effort 지원 · 기본 medium, 사고를 끌 수 없음). Bedrock · Vertex · Foundry 는 아직 Haiku 4.5.
@@ -110,6 +112,8 @@ Fable 5.1 max 83.4 / 66.1 / $1.01 · Opus 5.5 max 83.2 / 71.7 / $0.67 · Astra m
 | Codex 설계(최고)만 Astra xhigh | LiveBench 전체 82.2 로 6.1 Sol(81.6)보다 조금 높지만 비용 5배. 추론 비중이 큰 설계에만 |
 | 분석은 Opus 5.5 · GPT-6.1 Sol (Sonnet·Luna 아님) | LiveBench 추론·데이터 분석: 6.1 Sol xhigh 91.6·82.2($0.08), Opus xhigh 90.7·79.8($0.20), Sonnet 5.5 xhigh 86.8·78.6($0.11), Luna max 81.8·73.4. 벤더의 "탐색은 저렴한 모델" 권고는 가벼운 파일 탐색 이야기라 이 킷의 분석 역할(근거와 함께 넓게 조사)에는 맞지 않는다 |
 | Claude 테스트를 Luna(Codex 위임) → Haiku 5.5 xhigh (표준 · 절약) | LiveBench 전체 72.1 ≈ Luna 72.0, 에이전틱 코딩 51.4 ≈ 51.2, 문항당 $0.013 < $0.02. 같은 회사라 위임 없이 서브에이전트로 돈다. Anthropic 도 Opus · Sonnet 곁의 서브에이전트 용도로 안내 |
+| 작업 리더(lead): 최고 Opus 5.5 medium · 표준 Sonnet 5.5 medium · 절약 Sonnet 5.5 low | 리더는 나누고 넘기고 보고를 요약한다 (코드 안 씀). 리더가 여럿이라 곱절로 늘어나므로 메인보다 한 단계 낮게. Anthropic: Opus 5.5 medium ≈ Opus 5 high, 서브에이전트는 비용을 낮은 모델로 |
+| Fable 5.2 는 선택지로만 (설계 최고도 Opus 5.5 max 유지) | 벤더 수치는 Opus 5.5 보다 높다 (FrontierSWE v2 69.9% 대 62.3%) 하지만 독립 측정이 없고, 가격 2배 · Max 에서는 주간 한도의 절반까지만. LiveBench 에 들어오면 설계(최고)부터 다시 본다 |
 | Luna 는 테스트 max | 벤더 DeepSWE low 2.4% · high 59.3% · max 66.6%, LiveBench max 문항당 $0.02 |
 
 > 출처: 수치와 출처는 `models.json` 의 `bench`

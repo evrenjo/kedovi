@@ -604,6 +604,53 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   record('착수 전 확인 (알림 · 한 번 · 앞 요청 머리말 · 문서 · repo 밖 · 막기 · 끄기)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
 
+// 메인 대화 전담 · 작업 중 받은 메시지: 메인의 repo 수정은 막고(기본) 서브에이전트 · 기록 파일은 통과, 끼어 든 메시지는 멈출 때 한 번 되묻기
+{
+  const dw = path.join(tmp, 'dispatch-ws');
+  spawnSync(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dw, '--type', 'new'], { cwd: tmp, encoding: 'utf8' });
+  const wsFile = path.join(dw, 'workspace.json');
+  const wj = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+  wj.repos = [...(wj.repos || []), { name: 'app', kind: 'code' }];
+  fs.writeFileSync(wsFile, JSON.stringify(wj, null, 2));
+  fs.mkdirSync(path.join(dw, 'repos', 'app', 'src'), { recursive: true });
+  const env = { PATH: process.env.PATH, HOME: path.join(tmp, 'dispatch-home'), TMPDIR: require('os').tmpdir(), CLAUDE_PROJECT_DIR: dw };
+  const tr = path.join(tmp, 'dispatch-transcript.jsonl');
+  const run = (script, ev, extra = {}) => spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'hooks', script), '--agent=claude'], { cwd: dw, encoding: 'utf8', input: JSON.stringify({ hook_event_name: ev, session_id: 'disp-1', transcript_path: tr, cwd: dw, ...extra }), env }).stdout.trim();
+  fs.writeFileSync(tr, `${JSON.stringify({ type: 'user', message: { role: 'user', content: '고쳐줘' } })}\n`);
+  const edit = (file, extra = {}) => run('main-delegate.js', 'PreToolUse', { tool_name: 'Edit', tool_input: { file_path: file, old_string: 'a', new_string: 'b' }, ...extra });
+  const code = path.join(dw, 'repos', 'app', 'src', 'order.js');
+  const cli = (...a) => spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'team-mode', 'enforce', ...a], { cwd: dw, encoding: 'utf8', env: { ...process.env, HOME: env.HOME } });
+  const p = {};
+  p['메인 repo 수정 막기(기본)'] = /"deny"/.test(edit(code)) && /fork/.test(edit(code));
+  p['서브에이전트는 통과'] = !edit(code, { agent_id: 'sub-1', agent_type: 'implementer' });
+  p['워크스페이스 기록 · 밖은 통과'] = !edit(path.join(dw, 'handoffs', 'me', 'note.md')) && !edit(path.join(tmp, 'elsewhere.txt'));
+  cli('main', 'warn', '--team');
+  run('main-delegate.js', 'UserPromptSubmit');
+  p['알림: 요청마다 한 번'] = /additionalContext/.test(edit(code)) && !edit(code);
+  cli('main', 'off', '--team');
+  p['끄기'] = !edit(code);
+  const startLine = (lv) => { cli('main', lv, '--team'); return run('team-mode.js', 'SessionStart'); };
+  p['세션 시작 줄의 메인 방식'] = /메인 방식: 대화 전담/.test(startLine('block')) && /메인 방식: 직접 작업도/.test(startLine('off'));
+  // 작업 중 받은 메시지 (대화 기록의 queued_command)
+  const rows = (...r) => fs.writeFileSync(tr, r.map((x) => JSON.stringify(x)).join('\n') + '\n');
+  const q = (id, text, extra = {}) => ({ type: 'attachment', attachment: { type: 'queued_command', prompt: text, delivery_id: id, commandMode: 'prompt', origin: { kind: 'human' }, humanTurn: true, ...extra } });
+  const user = (text) => ({ type: 'user', message: { role: 'user', content: text } });
+  const tool = { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: 'ok' }] } };
+  const stop = (msg = '끝났습니다') => run('mid-turn-messages.js', 'Stop', { last_assistant_message: msg });
+  rows(user('기능 A'), q('old', '지난 요청 때 메시지'), user('기능 B'), tool, q('d1', '버튼 색도 바꿔줘'), tool);
+  const b1 = stop();
+  p['끼어 든 메시지 되묻기'] = /"block"/.test(b1) && /버튼 색도 바꿔줘/.test(b1) && !/지난 요청 때/.test(b1);
+  p['같은 메시지는 한 번'] = !stop();
+  rows(user('기능 C'), tool, q('d2', '로그도 남겨줘'), q('d3', '/compact', { commandMode: 'bash' }));
+  p['처리 줄이 있으면 통과 · 명령은 안 셈'] = !stop('완료.\n작업 중 받은 메시지: 로그 → 처리함');
+  rows(user('기능 D'), tool, q('d4', '하나 더'));
+  cli('msg', 'off', '--team');
+  p['메시지 점검 끄기'] = !stop();
+  const hooks = JSON.parse(fs.readFileSync(path.join(dw, '.claude', 'settings.json'), 'utf8')).hooks || {};
+  p['훅 등록'] = JSON.stringify(hooks.PreToolUse || []).includes('main-delegate') && JSON.stringify(hooks.Stop || []).includes('mid-turn-messages');
+  record('메인 대화 전담 · 작업 중 받은 메시지 (막기 · 서브에이전트 통과 · 기록 제외 · 알림 · 끄기 · 시작 줄 · 되묻기 · 한 번 · 처리 줄)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
+
 // 킷 문서 사이트 — docs-site/ 가 md(README · docs/*.md) 와 같아야 한다 (md 를 고치면 node bin/docs.js). 메뉴 「기타」 로 빠진 문서가 없어야 한다
 {
   const docs = require('./docs.js');
@@ -1154,12 +1201,14 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const lim = () => kitT.resolveModels(dir, kitT.loadWorkspace(dir)).limits;
   setLocal({ plans: { claude: 'pro' } });
   const tight = lim();
+  setLocal({ plans: { claude: 'max5x' } });
+  const mid = lim();
   setLocal({ plans: { claude: 'max20x' } });
   const big = lim();
   fs.writeFileSync(wsFile, JSON.stringify({ ...JSON.parse(wsRaw), agents: { ...(JSON.parse(wsRaw).agents || {}), profile: 'rich' } }, null, 2));
   const rich = lim();
   fs.writeFileSync(wsFile, wsRaw);
-  const rooms = tight.leaders === 1 && tight.members === 2 && tight.total === 6 && big.leaders === 3 && big.members === 2 && big.total === 15 && rich.leaders === 4 && rich.members === 3 && rich.total === 30 && /Max 20x/.test((big.room || {}).label || '');
+  const rooms = tight.leaders === 1 && tight.members === 2 && tight.total === 6 && mid.leaders === 2 && mid.members === 2 && mid.total === 10 && big.leaders === 3 && big.members === 2 && big.total === 15 && rich.leaders === 4 && rich.members === 3 && rich.total === 30 && /Ultra/.test((big.room || {}).label || '');
   // 훅: 리더 3명까지 · 리더당 팀원 2명까지 · 팀원이 끝나면 다시 · 리더 안에서 리더 금지
   const hook = (ev, extra = {}) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'hooks', 'agent-budget.js'), '--agent=claude'], { cwd: dir, encoding: 'utf8', input: JSON.stringify({ session_id: 'selftest-tier', hook_event_name: ev, tool_name: 'Agent', ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: dir } }).stdout;
   const deny = (o) => /"permissionDecision":"deny"/.test(o || '');
@@ -1210,7 +1259,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   fs.writeFileSync(wsFile, wsRaw);
   fs.rmSync(repo, { recursive: true, force: true }); fs.rmSync(path.join(dir, '.worktrees'), { recursive: true, force: true });
   record('작업 리더 3층 (요금제별 상한 · 층별 훅 · 중첩 깊이 · lead 역할 · kedovi worktree)', rooms && leadCap && memberCap && freed && noNested && treeOk && wired && add1 && listed && moved && stopped,
-    `요금제별 빠듯 1×2·6 · Max 20x 3×2·15(팀 표준) · 최고 4×3·30 ${rooms} · 리더 상한 ${leadCap} · 리더당 팀원 상한 ${memberCap} · 끝나면 다시 ${freed} · 리더 안 리더 금지 ${noNested} · 현황 나무 ${treeOk} · 설정 · 역할 · 지침 · gitignore ${wired} · 작업 폴더 ${add1 && listed} · 커밋 없이 옮김(남의 변경 유지) ${moved} · 겹치면 멈춤 ${stopped}`);
+    `요금제별 빠듯 1×2·6 · Max 2×2·10 · Ultra 3×2·15(팀 표준) · 최고 4×3·30 ${rooms} · 리더 상한 ${leadCap} · 리더당 팀원 상한 ${memberCap} · 끝나면 다시 ${freed} · 리더 안 리더 금지 ${noNested} · 현황 나무 ${treeOk} · 설정 · 역할 · 지침 · gitignore ${wired} · 작업 폴더 ${add1 && listed} · 커밋 없이 옮김(남의 변경 유지) ${moved} · 겹치면 멈춤 ${stopped}`);
 }
 
 // 역할 에이전트 실행 방식 — SessionStart 훅이 환경(팀 기능 · teammateMode · tmux)으로 팀 모드/서브에이전트를 판정한다 (Claude 만)
@@ -1838,9 +1887,9 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   am('ai', 'plan', 'claude', 'max5x');
   const changed = /Claude 요금제가 바뀐 것 같습니다 \(로그인: max20x · 저장: max5x\)/.test(am('ai', 'plan', 'gpt', 'plus').out);
   am('team-mode', 'prefer', 'reviewer', 'codex:gpt-6.1-sol');
-  const opts = /요금제: Claude Max 5x \(넉넉\) · GPT Plus \(빠듯\) · 선호: reviewer = codex:gpt-6.1-sol/.test(local()) && /\| GPT \(빠듯\) \|/.test(local()) && !am('ai', 'plan', 'gpt', 'nope').ok;
-  fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ oauthAccount: { organizationType: 'claude_ultra' } }));
-  const unknown = /Claude 로그인 요금제 값 'claude_ultra' 가 카탈로그에 없습니다/.test(spawnSync(process.execPath, ['bin/kit.js', 'sync'], { cwd: dir, encoding: 'utf8', env }).stderr);
+  const opts = /요금제: Claude Max \(넉넉\) · GPT Plus \(빠듯\) · 선호: reviewer = codex:gpt-6.1-sol/.test(local()) && /\| GPT \(빠듯\) \|/.test(local()) && !am('ai', 'plan', 'gpt', 'nope').ok;
+  fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ oauthAccount: { organizationType: 'claude_mega' } }));
+  const unknown = /Claude 로그인 요금제 값 'claude_mega' 가 카탈로그에 없습니다/.test(spawnSync(process.execPath, ['bin/kit.js', 'sync'], { cwd: dir, encoding: 'utf8', env }).stderr);
   const w0 = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
   w0.catalog = { plans: { claude: [{ id: 'max50x', label: 'Max 50x', room: 'ample', sources: ['https://claude.com/pricing'] }, { id: 'pro', label: 'Pro', room: 'tight' }] } };
   fs.writeFileSync(wsFile, JSON.stringify(w0, null, 2));

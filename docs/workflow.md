@@ -152,7 +152,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     S{"쓰는 AI"} -->|"Claude 만 · GPT 만 · Claude + GPT"| PL{"Claude 요금제 → ChatGPT 요금제<br/>(고른 회사마다 차례로. 이 PC 로그인 정보의 요금제를 미리 골라 둠)"}
-    PL -->|"Pro · Max 5x · Max 20x · Team 좌석 · Enterprise · API 키<br/>Free · Go · Plus · Business · Pro · Enterprise · API 키"| T
+    PL -->|"Pro · Max · Ultra · Team 좌석 · Enterprise · API 키<br/>Free · Go · Plus · Business · Pro · Enterprise · API 키"| T
     S -->|"AI 게이트웨이"| G1{"게이트웨이"}
     G1 -->|"이 PC 설정에서 찾음"| G3["모델 목록 조회 (GET /v1/models)<br/>Claude · GPT · 기타로 묶어 보여 줌"]
     G1 -->|"직접 입력"| G2["게이트웨이 주소 → 키가 든 환경변수 이름"]
@@ -194,7 +194,7 @@ Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 
 
 진행 방식은 새 워크스페이스가 유형마다 정해진다 (신규 구축은 init 에서 MVP · 워터폴, 운영·고도화는 이슈형 · 스프린트 · 전체 중 고른다): 신규 · 운영·고도화 = **MVP · 스프린트**(기능 단위 스프린트. 끝까지 동작하는 최소 기능부터 만들고 나머지는 백로그, 스프린트마다 데모 · 회고하며 하나씩 붙임), 차세대 · 분석·설계 = **워터폴 · 전체**(전체 범위를 설계한 뒤 구축). 신규 구축은 두 방식 모두 첫 단계가 「아이디어 · 전체 그림」(무엇을 왜 만드는지 대화 → 기능 지도 → MVP 범위, 건너뛸 수 있음)이다. `project.approach` 가 없는 옛 워크스페이스는 전체처럼 동작하고, `kedovi upgrade` 가 고르는 법을 알린다. `kedovi approach` 로 바꾼다. 이슈마다 운영에 반영하는 운영 · 유지보수는 **이슈형**(단계 대신 이슈 보드)이다.
 프로필 선택 화면은 시작 도구와 연결 방식을 반영한 표를 보여 준다.
-역할 에이전트 상한은 프로필마다 정해져 있다: 메인이 직접 부르는 동시 · 요청당 모두 · 작업 리더 동시 × 리더당 팀원 동시 (절약 2 · 6 · 1×2, 표준 4 · 15 · 3×2, 최고 6 · 30 · 4×3). 이 PC 의 Claude 요금제 여유도가 리더 · 팀원 · 모두를 더 낮춘다 (빠듯 1×2 · 6, 넉넉 3×2 · 15, Max 20x · 종량 4×3 · 30). `workspace.json`·`.agents/local.json` 의 `agents.limits` 로 바꾼다. 이 PC 값은 팀 값보다 낮게만 적용된다.
+역할 에이전트 상한은 프로필마다 정해져 있다: 메인이 직접 부르는 동시 · 요청당 모두 · 작업 리더 동시 × 리더당 팀원 동시 (절약 2 · 6 · 1×2, 표준 4 · 15 · 3×2, 최고 6 · 30 · 4×3). 이 PC 의 Claude 요금제 여유도가 리더 · 팀원 · 모두를 더 낮춘다 (빠듯 1×2 · 6, Max 2×2 · 10, 넉넉 3×2 · 15, Ultra · 종량 4×3 · 30). `workspace.json`·`.agents/local.json` 의 `agents.limits` 로 바꾼다. 이 PC 값은 팀 값보다 낮게만 적용된다.
 
 서로 독립인 작업 단위가 2개 이상이면 메인 → 작업 리더(`lead`, 단위마다) → 팀원 세 층으로 나눠 함께 돌린다 (Claude Code. Codex 는 2층). 같은 repo 를 여러 리더가 고치면 리더마다 작업 폴더(`kedovi worktree`)를 준다. 자세한 구성은 [팀 에이전트와 모델](team-models.md).
 
@@ -204,6 +204,7 @@ Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 
 | 역할 | 최고 | **표준** (추천 기본) | 절약 |
 |---|---|---|---|
 | 메인(리드) | Opus 5.5 (xhigh) | `opusplan` (계획 Opus · 실행 Sonnet) | Sonnet 5.5 |
+| 작업 리더 | Opus 5.5 (medium) | Sonnet 5.5 (medium) | Sonnet 5.5 (low) |
 | 분석 | Opus 5.5 (xhigh) | Opus 5.5 (high) | GPT-6.1 Sol (Codex 위임 · high) |
 | 설계 | Opus 5.5 (max) | Opus 5.5 (xhigh) | Sonnet 5.5 (high) |
 | 설계 문서 | Opus 5.5 (xhigh) | Sonnet 5.5 (high) | Sonnet 5.5 (medium) |
@@ -211,7 +212,6 @@ Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 
 | 리뷰 | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · medium) |
 | 테스트 | GPT-6.1 Sol (Codex 위임 · high) | Haiku 5.5 (xhigh) | Haiku 5.5 (xhigh) |
 | 문서화 | Haiku 5.5 | Haiku 5.5 | Haiku 5.5 |
-| 작업 리더 | Opus 5.5 (high) | Sonnet 5.5 (medium) | Sonnet 5.5 (low) |
 | 교차 검토 → Codex | GPT-6.1 Sol (high) | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) |
 <!-- /models:claude -->
 
@@ -221,6 +221,7 @@ Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 
 | 역할 | 최고 | **표준** (추천 기본) | 절약 |
 |---|---|---|---|
 | 메인(리드) | GPT-6.1 Sol (high) | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) |
+| 작업 리더 | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) | GPT-6 Luna (high) |
 | 분석 | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) |
 | 설계 | Opus 5.5 (Claude 위임 · max) | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) |
 | 설계 문서 | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) |
@@ -228,7 +229,6 @@ Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 
 | 리뷰 | Opus 5.5 (Claude 위임 · xhigh) | Opus 5.5 (Claude 위임 · high) | Sonnet 5.5 (Claude 위임 · high) |
 | 테스트 | GPT-6.1 Sol (high) | GPT-6 Luna (max) | GPT-6 Luna (max) |
 | 문서화 | GPT-6 Luna (high) | GPT-6 Luna (medium) | GPT-6 Luna (medium) |
-| 작업 리더 | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) | GPT-6 Luna (high) |
 | 교차 검토 → Claude | Opus 5.5 (xhigh) | Opus 5.5 (high) | Sonnet 5.5 |
 <!-- /models:codex -->
 
@@ -318,7 +318,7 @@ flowchart TD
     MW -->|"메인 모델 (팀 기본값)"| TL2["어느 도구의 모델 → 모델"]
     MW -->|"교차 검토 모델"| TL3["어느 도구의 모델 → 모델"]
     Q -->|"퇴역 모델 교체"| MG["kedovi models --migrate"]
-    Q -->|"팀 구성 방식"| TMO["kedovi team-mode auto · fixed<br/>prefer &lt;역할&gt; &lt;도구:모델&gt;<br/>enforce name off · warn · block (팀 모드에서 이름 없는 역할 에이전트)<br/>enforce roster off · warn (첫 역할 에이전트 때 구성표 알림)<br/>enforce review off · warn · block (commit · push 전 리뷰 확인, 기본 꺼짐)<br/>enforce idle off · warn · block (대기로 오래 남은 팀원 알림)<br/>enforce status off · block (기다리며 멈출 때 상태 줄)<br/>enforce ask off · block (결정 질문을 글로 끝낼 때)<br/>enforce run off · warn · block (오래 일하는 팀원 · 위임, 기본 60분)<br/>enforce check off · warn · block (리뷰 전 검사 줄)<br/>enforce plan off · warn · block (코드 수정 전 착수 전 확인)<br/>enforce answer off · warn · block (질문에 먼저 답하기)<br/>--team 은 팀 기본값(팀장) → sync"]
+    Q -->|"팀 구성 방식"| TMO["kedovi team-mode auto · fixed<br/>prefer &lt;역할&gt; &lt;도구:모델&gt;<br/>enforce name off · warn · block (팀 모드에서 이름 없는 역할 에이전트)<br/>enforce roster off · warn (첫 역할 에이전트 때 구성표 알림)<br/>enforce review off · warn · block (commit · push 전 리뷰 확인, 기본 꺼짐)<br/>enforce idle off · warn · block (대기로 오래 남은 팀원 알림)<br/>enforce status off · block (기다리며 멈출 때 상태 줄)<br/>enforce ask off · block (결정 질문을 글로 끝낼 때)<br/>enforce run off · warn · block (오래 일하는 팀원 · 위임, 기본 60분)<br/>enforce check off · warn · block (리뷰 전 검사 줄)<br/>enforce plan off · warn · block (코드 수정 전 착수 전 확인)<br/>enforce answer off · warn · block (질문에 먼저 답하기)<br/>enforce main off · warn · block (메인 대화 전담)<br/>enforce msg off · block (작업 중 받은 메시지)<br/>--team 은 팀 기본값(팀장) → sync"]
     Q -->|"비밀값 (토큰)"| SEC["kedovi secret set &lt;이름&gt; [--global] (숨김 입력)<br/>list · test &lt;이름&gt; · rm · import · exec -- &lt;명령&gt;<br/>→ OS 저장소 (키체인 · 자격 증명 팀장 · libsecret)"]
     Q -->|"남은 파일 정리"| TDY["kedovi tidy [--new]<br/>이번 작업 새 파일 · 안 쓰는 자료 · 링크 없는 문서 · 백업 이름 (읽기만)<br/>지우기는 tidy 스킬: 표 → 승인 → 지움 → 검증"]
     Q -->|"기존 폴더 가져오기"| IMP["kedovi import &lt;폴더&gt;<br/>분류 · 절대경로 · 비밀값 의심 줄 (읽기만)<br/>옮기기는 import 스킬: 계획 → 승인 → 반영"]
@@ -389,7 +389,7 @@ flowchart TD
 | `kedovi handoff find <작업>` | 핸드오프 기록 찾기 (`check` · `index` · `archive` · `organize` 도) |
 | `kedovi budget report` | 시간 예산 월간 집계: 끝낸 작업 수 · 예산 초과율 · 걸린 시간 중앙값 (`--month YYYY-MM`, 이력은 이 PC 만) |
 | `kedovi defects report` | 운영 결함 월간 집계: 분류별 건수 · 잠복 · 해소 시간 (`check` 는 발견 · 분류 · 해소 칸 검사) |
-| `kedovi team-mode` | 팀 구성: 자동(리더가 작업마다 역할 · 모델) · 고정(프로필대로), `prefer` 역할별 선호 모델. `enforce <대상>` 은 훅으로 지키게 하는 수준(off · warn · block)이고, 대상(name · roster · idle · status · ask · run · check · plan · review)과 기본값은 [명령](commands.md). `--team` 은 팀 기본값 |
+| `kedovi team-mode` | 팀 구성: 자동(리더가 작업마다 역할 · 모델) · 고정(프로필대로), `prefer` 역할별 선호 모델. `enforce <대상>` 은 훅으로 지키게 하는 수준(off · warn · block)이고, 대상(name · roster · idle · status · ask · run · check · plan · answer · main · msg · review)과 기본값은 [명령](commands.md). `--team` 은 팀 기본값 |
 | `kedovi ai plan claude\|gpt <요금제>` | 회사별 요금제 (빠듯 · 넉넉 · 종량). 보통은 `kedovi ai` 화면에서 |
 | `kedovi secret` | 비밀값(토큰): `set <이름> [--global]`(숨김 입력) · `list` · `test <이름>`(권한 · 만료) · `rm` · `import`(옛 telegram.env · gitlab-token · 환경변수에서) · `exec -- <명령>`(그 명령에만 주입). OS 저장소에 프로젝트별 · 전역으로, 값은 출력하지 않는다 |
 | `kedovi prefs` | 응답 언어(한국어 · English) · 대화 스타일(학습 · 일반 · 전문가) · 그림 미리보기(claude-mermaid). `language` · `style` 이 PC · 값 `team` 이 PC 값 지우기 · `--team` 팀 기본값(팀장) · `mermaid install` · `setup` 화면. 인자 없이 = 지금 값 |

@@ -20,7 +20,7 @@ const CATALOG = path.join(KIT, 'packs', 'core', 'models.json');
 const DOCS = [path.join('docs', 'team-models.md'), path.join('docs', 'workflow.md')];
 const TOOLS = { claude: 'Claude Code', codex: 'OpenAI Codex' };
 const OTHER = { claude: 'codex', codex: 'claude' };
-const ROLE_ORDER = ['analyst', 'architect', 'spec-writer', 'implementer', 'reviewer', 'tester', 'documenter'];
+const ROLE_ORDER = ['lead', 'analyst', 'architect', 'spec-writer', 'implementer', 'reviewer', 'tester', 'documenter'];
 
 const loadCatalog = () => JSON.parse(fs.readFileSync(CATALOG, 'utf8'));
 const entry = (v) => (typeof v === 'string' ? { model: v } : v || {});

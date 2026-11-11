@@ -20,6 +20,40 @@
 
 > 참고: 역할 정의 원본은 `packs/core/agents/*.md` 하나다. sync 가 Claude Code 용 `.claude/agents/*.md` 와 Codex 용 `.codex/agents/*.toml` 로 만든다.
 
+## 메인 대화 전담
+
+메인이 작업을 붙들고 있으면, 그 사이 보낸 메시지가 작업 중간에 끼어 들어가 놓치는 일이 있다 (Claude Code 에 같은 이슈가 여럿 올라와 있다). 그래서 기본은 **메인은 대화, 작업은 백그라운드 에이전트**다.
+
+```mermaid
+flowchart LR
+    U["사용자"] <--> M["메인 (대화 전담)"]
+    M -->|"작은 수정"| F["대화 사본<br/>(지금 대화를 이어받음)"]
+    M -->|"여러 파일 · 기능"| R["역할 에이전트"]
+    M -->|"독립 단위 2개 이상"| L["작업 리더"]
+    F & R & L -.->|"끝나면 알림"| M
+```
+
+| 장치 | 하는 일 | 바꾸기 |
+|---|---|---|
+| 메인 수정 막기 | 메인이 repo 파일을 직접 고치면 훅이 막고 맡기라고 알린다. 워크스페이스 기록(핸드오프 · 로드맵 · 주제 메모)은 메인이 쓴다 | `kedovi team-mode enforce main off\|warn\|block` (기본 막기) |
+| 작업 중 받은 메시지 | 멈출 때 그 사이 끼어 든 메시지를 대화 기록에서 찾아, 답변에 처리 줄(`작업 중 받은 메시지: … → 처리함 \| 할 일로 남김`)이 없으면 한 번 되돌린다 | `kedovi team-mode enforce msg off\|block` (기본 막기) |
+| 세션 시작 줄 | 「메인 방식: 대화 전담 \| 직접 작업도 한다」 를 알린다 | 위 `main` 값을 따른다 |
+
+- 맡기면 메인은 「맡김: 무엇 → 누구」 한 줄로 보고하고 차례를 끝낸다. 결과는 다음 차례에 알림으로 온다.
+- 비용: 작은 수정도 에이전트를 띄운다. 대화 사본은 대화 캐시를 함께 써서 새 에이전트보다 싸지만, 메인이 직접 고치는 것보다는 토큰이 든다. 사용량 한도가 빠듯하면 `enforce main off` 로 예전 방식(한두 파일은 메인이)으로 돌린다.
+- Codex 는 메인이 작은 수정을 직접 한다 (하위 에이전트가 메인을 비워 두지 않는다).
+
+**작업 중에 쓸 수 있는 키 (Claude Code)**
+
+| 키 | 하는 일 |
+|---|---|
+| `Ctrl+Enter` (어느 터미널이든 `Ctrl+X Ctrl+S`) | 대기 중인 메시지를 지금 보낸다 |
+| `Esc` | 지금 작업을 끊고 대기 중인 메시지를 바로 보낸다 (한 작업은 남는다) |
+| `/btw <질문>` | 작업을 끊지 않고 곁질문 (도구 없이 지금 대화로만 답한다) |
+| 입력창 첫 줄에서 `↑` | 대기 중인 메시지를 되돌려 고친다 |
+
+> 근거: Claude Code 문서 「Queue messages while Claude works」 · 「Run subagents in foreground or background」 · 「Fork the current conversation」, 이슈 #20431 · #1124 · #97575 (2026-11-11 확인)
+
 ## 작업 리더 (3층)
 
 서로 독립인 작업 단위(이슈 · 기능 · 문서 영역 · 테스트 영역)가 2개 이상이면 세 층으로 나눠 함께 돌린다. 단위가 하나거나 서로 강하게 묶였으면 지금처럼 메인이 역할을 직접 부른다.
@@ -51,10 +85,11 @@ flowchart TD
 | 여유도 | 리더 동시 | 리더당 팀원 동시 | 요청당 모두 |
 |---|---|---|---|
 | 빠듯 (Pro · Team 표준 · 요금제 모름이면 팀 값) | 1 (사실상 2층) | 2 | 6 |
-| 넉넉 (Max 5x · Team 프리미엄) | 3 | 2 | 15 |
-| Max 20x · 종량 (API · Enterprise · 게이트웨이) | 4 | 3 | 30 |
+| Max (월 $100 · 5시간 한도에 자주 닿아 따로 낮춤) | 2 | 2 | 10 |
+| 넉넉 (Team 프리미엄) | 3 | 2 | 15 |
+| Ultra (월 $200 · 5시간 제한 없음) · 종량 (API · Enterprise · 게이트웨이) | 4 | 3 | 30 |
 
-- 팀 프로필 상한: 절약 1×2 · 6, 표준 3×2 · 15, 최고 4×3 · 30. 그래서 Max 20x 라도 팀이 표준이면 3×2 · 15 다.
+- 팀 프로필 상한: 절약 1×2 · 6, 표준 3×2 · 15, 최고 4×3 · 30. 그래서 Ultra 라도 팀이 표준이면 3×2 · 15 다.
 - **띄우는 법 (Claude Code)**: 리더는 팀 모드여도 이름 없이 서브에이전트로 띄우고(이름을 주면 팀원이 되어 그 아래 팀원이 병렬로 돌지 않는다), 리더가 팀원을 서브에이전트로 부른다. sync 가 중첩 깊이를 2층(`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=2`)으로 정한다. Codex 는 하위 에이전트 중첩이 공식 문서에 없어 2층이다.
 - **같은 repo**: 리더마다 `kedovi worktree add <repo> <단위>` 로 작업 폴더(`.worktrees/<repo>/<단위>/`, 로컬 임시 브랜치)를 주고, 끝나면 메인이 `kedovi worktree merge` 로 본 작업 트리에 커밋하지 않은 변경으로 옮긴다. 통합 브랜치 직접 운영이어도 쓸 수 있다 (임시 브랜치는 이 PC 에만 있다).
 - **진행 보기**: `kedovi team` 현황의 「지금 도는 에이전트」 줄 (작업 리더 수 · 리더별 팀원 수).
@@ -74,7 +109,7 @@ flowchart TD
 | 여유도 | Claude | ChatGPT |
 |---|---|---|
 | 빠듯 | Pro · Team 표준 좌석 | Free · Go · Plus · Business |
-| 넉넉 | Max 5x · Max 20x · Team 프리미엄 좌석 | Pro · Enterprise · Edu |
+| 넉넉 | Max · Ultra · Team 프리미엄 좌석 | Pro · Enterprise · Edu |
 | 종량 | Enterprise · API 키 | API 키 |
 
 - **새 모델 · 요금제**: 목록은 킷 카탈로그(`packs/core/models.json` 의 `tools` · `plans`, 출처 · 확인일 필수) 한 곳이다. 킷 repo 의 주 1회 예약 점검(`npm run models:watch`)이 새 모델 · 카탈로그 오래됨 · 요금제 페이지 변경을 팀장 텔레그램으로 알리고, 팀장이 `docs/model-catalog.md` 절차로 반영해 새 버전으로 낸다. 그 전에 팀이 먼저 써야 하면 `workspace.json` 의 `catalog.tools` · `catalog.plans` 에 출처와 함께 덧붙인다 (킷에 들어오면 sync 가 지우라고 알린다). 로그인 정보에 목록에 없는 요금제가 보이면 sync 가 가장 가까운 것을 고르라고 알리고, 그전엔 빠듯으로 본다.
@@ -93,6 +128,7 @@ flowchart TD
 | 역할 | 최고 | **표준** (추천 기본) | 절약 |
 |---|---|---|---|
 | 메인(리드) | Opus 5.5 (xhigh) | `opusplan` (계획 Opus · 실행 Sonnet) | Sonnet 5.5 |
+| 작업 리더 | Opus 5.5 (medium) | Sonnet 5.5 (medium) | Sonnet 5.5 (low) |
 | 분석 | Opus 5.5 (xhigh) | Opus 5.5 (high) | GPT-6.1 Sol (Codex 위임 · high) |
 | 설계 | Opus 5.5 (max) | Opus 5.5 (xhigh) | Sonnet 5.5 (high) |
 | 설계 문서 | Opus 5.5 (xhigh) | Sonnet 5.5 (high) | Sonnet 5.5 (medium) |
@@ -100,7 +136,6 @@ flowchart TD
 | 리뷰 | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · medium) |
 | 테스트 | GPT-6.1 Sol (Codex 위임 · high) | Haiku 5.5 (xhigh) | Haiku 5.5 (xhigh) |
 | 문서화 | Haiku 5.5 | Haiku 5.5 | Haiku 5.5 |
-| 작업 리더 | Opus 5.5 (high) | Sonnet 5.5 (medium) | Sonnet 5.5 (low) |
 | 교차 검토 → Codex | GPT-6.1 Sol (high) | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) |
 <!-- /models:claude -->
 
@@ -110,6 +145,7 @@ flowchart TD
 | 역할 | 최고 | **표준** (추천 기본) | 절약 |
 |---|---|---|---|
 | 메인(리드) | GPT-6.1 Sol (high) | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) |
+| 작업 리더 | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) | GPT-6 Luna (high) |
 | 분석 | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) |
 | 설계 | Opus 5.5 (Claude 위임 · max) | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) |
 | 설계 문서 | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) |
@@ -117,7 +153,6 @@ flowchart TD
 | 리뷰 | Opus 5.5 (Claude 위임 · xhigh) | Opus 5.5 (Claude 위임 · high) | Sonnet 5.5 (Claude 위임 · high) |
 | 테스트 | GPT-6.1 Sol (high) | GPT-6 Luna (max) | GPT-6 Luna (max) |
 | 문서화 | GPT-6 Luna (high) | GPT-6 Luna (medium) | GPT-6 Luna (medium) |
-| 작업 리더 | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) | GPT-6 Luna (high) |
 | 교차 검토 → Claude | Opus 5.5 (xhigh) | Opus 5.5 (high) | Sonnet 5.5 |
 <!-- /models:codex -->
 

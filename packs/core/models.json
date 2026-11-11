@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "2026-10-28",
+  "catalogVersion": "2026-11-11",
   "reviewEveryDays": 45,
   "note": "모델 목록과 실행 도구별 추천 프로필. 선택 화면(kedovi agent · kedovi models)이 쓴다. 목록에 없는 모델은 직접 입력할 수 있다. 근거(2026-10-28 확인): Claude — code.claude.com/docs/en/model-config · /sub-agents · platform.claude.com/docs/en/about-claude/pricing, Codex — learn.chatgpt.com/docs/models · /docs/agent-configuration/subagents · developers.openai.com/api/docs/pricing. 두 도구 모두 서브에이전트는 자기 회사 모델만 쓴다. 상대 회사 모델이 맡는 역할은 { tool, model, effort, fallback } 으로 적고, 그 도구의 비대화형 실행(delegate.js)으로 위임한다. fallback = 상대 도구가 없는 PC 에서 대신 쓰는 같은 도구 모델. profiles.<이름>.<도구> = 그 도구로 실행했을 때 역할별 모델 (문자열 또는 { model, effort }). limits = 역할 에이전트 상한 (한 요청에 메인이 직접 부르는 동시 parallel 개 · 모든 층 합계 total 개 · 작업 리더 동시 leaders · 리더당 팀원 동시 members, workspace.json·.agents/local.json 의 agents.limits 로 덮는다). crossReview 는 그 도구 세션이 상대 도구에게 검토를 맡길 때 쓰는 상대 도구 모델이다. profiles 는 높은 순(최고 → 절약)으로 적는다. 팀은 workspace.json agents.profile, 개인은 .agents/local.json agents.profile 인데 개인 값은 팀보다 낮은 것만 적용한다 (높은 것은 workspace.json agents.allowHigherProfile 이 true 일 때만). 상한도 팀 값을 넘지 않는다. 역할별 직접 지정이 그 위에 덮인다. 모델이 새로 나오거나 퇴역하면 이 파일(tools · retired · profiles)을 고치고 catalogVersion 을 올린다. 워크스페이스는 kedovi upgrade 로 받는다.",
   "aliases": {
@@ -18,35 +18,41 @@
     "claude": [
       {
         "id": "fable",
-        "label": "Fable 5.1",
-        "hint": "가장 깊은 추론: 긴 조사·원인 분석 (API $10·$50)",
-        "checked": "2026-10-28",
+        "label": "Fable 5.2",
+        "hint": "가장 깊은 추론: 긴 조사·원인 분석·여러 날 걸리는 작업. 일상 작업은 Opus 가 벤더 권장 (API $8·$40, Max 는 주간 한도의 절반까지)",
+        "checked": "2026-11-11",
         "sources": [
           "https://code.claude.com/docs/en/model-config",
           "https://platform.claude.com/docs/en/about-claude/pricing",
-          "https://www.anthropic.com/claude-fable-and-mythos-5-1",
-          "https://livebench.ai/v1/table_2026_06_25.csv",
-          "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+          "https://www.anthropic.com/claude/fable",
+          "https://claude.com/pricing",
+          "https://livebench.ai/v1/table_2026_06_25.csv"
         ],
-        "released": "2026-09-01",
+        "released": "2026-11-09",
         "bench": [
           {
-            "name": "LiveBench 전체 / 에이전틱 코딩",
-            "score": "83.4 / 66.1",
-            "setting": "max, 독립 측정 2026-06-25 문제 세트, 문항당 $1.01",
-            "source": "https://livebench.ai/v1/table_2026_06_25.csv"
+            "name": "FrontierSWE v2",
+            "score": "69.9% (Fable 5.1 56.3% · Opus 5.5 62.3%)",
+            "setting": "최고 effort, 안전 장치 켬, Anthropic 측정",
+            "source": "https://www.anthropic.com/claude/fable"
           },
           {
-            "name": "Terminal-Bench 4.0",
-            "score": "55.8%",
+            "name": "FrontierCode 2.0",
+            "score": "49.1% (Fable 5.1 32.4% · Opus 5.5 45.5%)",
+            "setting": "xhigh, Anthropic 측정",
+            "source": "https://www.anthropic.com/claude/fable"
+          },
+          {
+            "name": "Terminal-Bench-Science 0.1",
+            "score": "74.6% (Opus 5.5 58.7%)",
             "setting": "effort 미기재, Anthropic 측정",
-            "source": "https://www.anthropic.com/claude-fable-and-mythos-5-1"
+            "source": "https://www.anthropic.com/claude/fable"
           },
           {
-            "name": "HLE (도구 사용)",
-            "score": "65.0%",
-            "setting": "Anthropic 측정",
-            "source": "https://www.anthropic.com/claude-fable-and-mythos-5-1"
+            "name": "LiveBench 전체 / 에이전틱 코딩 (Fable 5.1)",
+            "score": "83.4 / 66.1",
+            "setting": "Fable 5.1 max, 독립 측정 2026-06-25 문제 세트. 5.2 는 아직 측정 없음",
+            "source": "https://livebench.ai/v1/table_2026_06_25.csv"
           }
         ],
         "livebench": [
@@ -563,6 +569,10 @@
           "model": "opus",
           "effort": "xhigh"
         },
+        "lead": {
+          "model": "opus",
+          "effort": "medium"
+        },
         "analyst": {
           "model": "opus",
           "effort": "xhigh"
@@ -595,6 +605,10 @@
       },
       "codex": {
         "main": {
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        },
+        "lead": {
           "model": "gpt-6.1-sol",
           "effort": "high"
         },
@@ -675,6 +689,10 @@
       },
       "claude": {
         "main": "opusplan",
+        "lead": {
+          "model": "sonnet",
+          "effort": "medium"
+        },
         "analyst": {
           "model": "opus",
           "effort": "high"
@@ -713,6 +731,10 @@
         "main": {
           "model": "gpt-6.1-sol",
           "effort": "high"
+        },
+        "lead": {
+          "model": "gpt-6.1-sol",
+          "effort": "medium"
         },
         "analyst": {
           "model": "gpt-6.1-sol",
@@ -786,6 +808,10 @@
       },
       "claude": {
         "main": "sonnet",
+        "lead": {
+          "model": "sonnet",
+          "effort": "low"
+        },
         "analyst": {
           "tool": "codex",
           "model": "gpt-6.1-sol",
@@ -823,6 +849,10 @@
         "main": {
           "model": "gpt-6.1-sol",
           "effort": "medium"
+        },
+        "lead": {
+          "model": "gpt-6-luna",
+          "effort": "high"
         },
         "analyst": {
           "model": "gpt-6.1-sol",
@@ -887,10 +917,10 @@
     "metered": "종량"
   },
   "plans": {
-    "note": "여유도: tight = 기본 한도(Pro·Plus 급) · ample = 그보다 많이 (Max·Pro 등) · metered = 쓴 만큼 비용(API 키·Enterprise·게이트웨이). detect = 로그인 정보(Claude ~/.claude.json organizationType·RateLimitTier·seatTier, Codex ~/.codex/auth.json chatgpt_plan_type)에 맞는 정규식. 2026-10-07 실제 값으로 확인한 것은 Max 5x(default_claude_max_5x)·Plus(plus) 뿐, 나머지는 이름 규칙 추정. 못 맞추면 사용자에게 가장 가까운 것을 묻고 그전엔 tight",
-    "checked": "2026-10-07",
+    "note": "여유도: tight = 기본 한도(Pro·Plus 급) · ample = 그보다 많이 (Max·Pro 등) · metered = 쓴 만큼 비용(API 키·Enterprise·게이트웨이). detect = 로그인 정보(Claude ~/.claude.json organizationType·RateLimitTier·seatTier, Codex ~/.codex/auth.json chatgpt_plan_type)에 맞는 정규식. 2026-10-07 실제 값으로 확인한 것은 Max(옛 Max 5x, default_claude_max_5x)·Plus(plus) 뿐, 나머지는 이름 규칙 추정. 못 맞추면 사용자에게 가장 가까운 것을 묻고 그전엔 tight",
+    "checked": "2026-11-11",
     "roomLimits": {
-      "note": "작업 리더(3층) 상한: 이 PC 의 Claude 요금제 여유도별 leaders(리더 동시) · members(리더당 팀원 동시) · total(요청당 모두). 요금제 항목의 limits 가 있으면 그것. 팀 프로필 상한보다 높게는 안 된다",
+      "note": "작업 리더(3층) 상한: 이 PC 의 Claude 요금제 여유도별 leaders(리더 동시) · members(리더당 팀원 동시) · total(요청당 모두). 요금제 항목의 limits 가 있으면 그것 (Max 는 5시간 한도에 자주 닿아 2×2 · 10). 팀 프로필 상한보다 높게는 안 된다",
       "tight": {
         "leaders": 1,
         "members": 2,
@@ -920,20 +950,26 @@
       },
       {
         "id": "max5x",
-        "label": "Max 5x",
+        "label": "Max",
         "room": "ample",
         "detect": "max_5x",
-        "hint": "Pro 의 5배",
+        "hint": "월 $100 · Pro 의 5배 (5시간 · 주간). 2026-10-30 전 이름 Max 5x",
         "sources": [
           "https://claude.com/pricing"
-        ]
+        ],
+        "limits": {
+          "leaders": 2,
+          "members": 2,
+          "total": 10
+        },
+        "checked": "2026-11-11"
       },
       {
         "id": "max20x",
-        "label": "Max 20x",
+        "label": "Ultra",
         "room": "ample",
-        "detect": "max_20x",
-        "hint": "Pro 의 20배",
+        "detect": "max_20x|ultra",
+        "hint": "월 $200 · 주간 Pro 의 10배 · 인증된 계정은 5시간 제한 없음. 2026-10-30 전 이름 Max 20x",
         "sources": [
           "https://claude.com/pricing"
         ],
@@ -941,7 +977,8 @@
           "leaders": 4,
           "members": 3,
           "total": 30
-        }
+        },
+        "checked": "2026-11-11"
       },
       {
         "id": "team-standard",
@@ -1030,12 +1067,12 @@
         "label": "Pro",
         "room": "ample",
         "detect": "^pro",
-        "hint": "월 $100 = Plus 의 5배 · $200 = 20배 (OpenAI 공지 2026-04-09) · $500 등급도 있다 (배수는 공식 문서에 없음). 로그인 값이 같아 금액은 구분하지 않는다",
+        "hint": "월 $100 · $200 · $500 등급, 5시간 제한 없음 (주간 한도는 있을 수 있음). Ultrafast 모드는 $500 등급. 로그인 값이 같아 금액은 구분하지 않는다",
         "sources": [
           "https://learn.chatgpt.com/docs/pricing",
           "https://community.openai.com/t/introducing-new-100-month-pro-tier/1378752"
         ],
-        "checked": "2026-10-08"
+        "checked": "2026-11-11"
       },
       {
         "id": "enterprise",
@@ -1065,14 +1102,13 @@
           "Enterprise",
           "Free",
           "Max",
-          "Max 20x",
-          "Max 5x",
           "Premium",
           "Pro",
           "Standard",
-          "Team"
+          "Team",
+          "Ultra"
         ],
-        "checked": "2026-10-06"
+        "checked": "2026-11-11"
       },
       "codex": {
         "url": "https://learn.chatgpt.com/docs/pricing",
@@ -1087,7 +1123,7 @@
           "Standard",
           "Team"
         ],
-        "checked": "2026-10-06"
+        "checked": "2026-11-11"
       }
     }
   },
