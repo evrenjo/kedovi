@@ -488,7 +488,10 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   e['질문 판정'] = ['문제없지 않나?', '이거 맞아', '되나요', '다 끝난거임?'].every(q) && !['배포해줘', 'xD 도 같은 서버야', '여기 글자 겹침 고쳐줘', '/loop 5m'].some(q);
   e['첫 문장 판단'] = ['네, 문제없습니다. 이유는 …', '**아니요**. 아직 대기 중입니다.', '이번 작업은 다 끝났습니다.'].every(af) && !af('문서를 고쳤고 커밋했습니다.\n\n문제없습니다.');
   const bad = '문서를 고쳤고 커밋했습니다.\n\n참고로 문제는 없어 보입니다.';
-  e['알림 (기본)'] = /첫 줄은 이 질문의 답/.test(hook('UserPromptSubmit', { prompt: '이거 문제없지 않나?' })) && !hook('Stop', { last_assistant_message: bad }) && !hook('UserPromptSubmit', { prompt: '배포해줘' });
+  e['막기 (기본): 마지막 답변 글'] = /마지막 보고 첫 줄에 그 답을 다시/.test(hook('UserPromptSubmit', { prompt: '이거 문제없지 않나?' })) && /마지막 답변 글의 첫 문장/.test(hook('Stop', { last_assistant_message: bad })) && !hook('UserPromptSubmit', { prompt: '배포해줘' });
+  cli('team-mode', 'enforce', 'answer', 'warn', '--team');
+  hook('UserPromptSubmit', { prompt: '이거 문제없지 않나?' });
+  e['알림 설정은 막지 않음'] = !hook('Stop', { last_assistant_message: bad });
   e['막기 설정'] = cli('team-mode', 'enforce', 'answer', 'block', '--team').status === 0 && /질문에 먼저 답하기  막기/.test(cli('team-mode').stdout);
   hook('UserPromptSubmit', { prompt: '이거 문제없지 않나?' });
   e['막기: 답 없으면 한 번'] = /"decision":"block"/.test(hook('Stop', { last_assistant_message: bad })) && !hook('Stop', { last_assistant_message: bad });
@@ -695,6 +698,103 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   const dead = require(path.join(dw, 'packs', 'core', 'bin', 'check-refs.js')).findDeadRefs(dw).filter((d) => /none-/.test(d.ref));
   p['죽은 참조: 외부 링크 글자 · 제외 구역 · 문서 제외 · 파일 이름'] = dead.map((d) => `${d.file}:${d.line}:${d.ref}`).join() === 'docs/refs.md:2:config/none-b.properties,docs/refs.md:6:config/none-d.properties';
   record('상한 출처 · 에이전트 진행 보기 · 죽은 참조 (프로필 알림 · 표 · ai show · 지우기 · 넣기 · 나무 · 링크 글자 · 제외 구역 · 파일 이름)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
+
+// MCP 역할 지정 · 브라우저 닫기 · 메모리 집계 · 세션 상태 훅
+{
+  const dw = path.join(tmp, 'mcp-ws');
+  spawnSync(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dw, '--type', 'new'], { cwd: tmp, encoding: 'utf8' });
+  const wsFile = path.join(dw, 'workspace.json');
+  const wj = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+  wj.mcp = { playwright: { command: 'npx', args: ['-y', '@playwright/mcp@latest'], roles: ['implementer', 'tester'] }, 'chrome-devtools': { command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }, notes: { command: 'node', args: ['notes.js'], roles: ['nobody'] } };
+  fs.writeFileSync(wsFile, JSON.stringify(wj, null, 2));
+  const sync = spawnSync(process.execPath, [path.join(dw, 'bin', 'kit.js'), 'sync'], { cwd: dw, encoding: 'utf8', env: { ...process.env, KEDOVI_LOGIN_PLANS: 'none' } });
+  const out = `${sync.stdout}${sync.stderr}`;
+  const mcpJson = JSON.parse(fs.readFileSync(path.join(dw, '.mcp.json'), 'utf8')).mcpServers;
+  const impl = fs.readFileSync(path.join(dw, '.claude', 'agents', 'implementer.md'), 'utf8');
+  const analyst = fs.readFileSync(path.join(dw, '.claude', 'agents', 'analyst.md'), 'utf8');
+  const p = {};
+  p['역할 MCP 는 .mcp.json 에서 빠짐'] = !mcpJson.playwright && !!mcpJson['chrome-devtools'] && !mcpJson.notes;
+  p['역할 파일에만 mcpServers'] = /\nmcpServers:\n  - playwright: \{"type":"stdio","command":"npx"/.test(impl) && !/mcpServers/.test(analyst);
+  p['브라우저 MCP 역할 없음 경고 · 없는 역할 경고'] = /MCP chrome-devtools: 브라우저 MCP 가/.test(out) && !/MCP playwright: 브라우저/.test(out) && /MCP notes: roles 에 없는 역할 nobody/.test(out);
+  // 브라우저 닫기 훅
+  const bh = (ev, extra = {}) => spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'hooks', 'browser-close.js'), '--agent=claude'], { cwd: dw, encoding: 'utf8', input: JSON.stringify({ hook_event_name: ev, session_id: 'browser-1', ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: dw } }).stdout.trim();
+  bh('PostToolUse', { tool_name: 'mcp__playwright__browser_navigate' });
+  const b1 = bh('Stop');
+  p['열고 안 닫으면 막기 (한 번)'] = /"block"/.test(b1) && /browser_close/.test(b1) && !bh('Stop');
+  bh('PostToolUse', { tool_name: 'mcp__chrome-devtools__new_page', agent_id: 'sub-9' });
+  bh('PostToolUse', { tool_name: 'mcp__chrome-devtools__close_page', agent_id: 'sub-9' });
+  bh('PostToolUse', { tool_name: 'mcp__playwright__browser_navigate', agent_id: 'sub-8' });
+  p['닫으면 통과 · 서브에이전트마다'] = !bh('SubagentStop', { agent_id: 'sub-9' }) && /"block"/.test(bh('SubagentStop', { agent_id: 'sub-8' }));
+  bh('PostToolUse', { tool_name: 'mcp__notes__read', agent_id: 'sub-7' });
+  p['브라우저 아닌 MCP 는 안 봄'] = !bh('SubagentStop', { agent_id: 'sub-7' });
+  // 메모리 집계 (가짜 프로세스 목록)
+  const P = require(path.join(dw, 'packs', 'core', 'lib', 'procmem.js'));
+  const MB = 1024;
+  const snap = P.snapshot([
+    { pid: 10, ppid: 5, rss: 800 * MB, age: 3600 * 30, cmd: '/Users/u/.local/bin/claude' },
+    { pid: 11, ppid: 10, rss: 90 * MB, age: 100, cmd: 'npm exec @playwright/mcp@latest' },
+    { pid: 12, ppid: 11, rss: 300 * MB, age: 100, cmd: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-pipe' },
+    { pid: 13, ppid: 10, rss: 500 * MB, age: 100, cmd: 'claude --agent-id x' },
+    { pid: 20, ppid: 1, rss: 200 * MB, age: 9000, cmd: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome --user-data-dir=/tmp/ms-playwright/x --remote-debugging-pipe' },
+    { pid: 30, ppid: 1, rss: 4000 * MB, age: 9000, cmd: '/System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine' },
+    { pid: 40, ppid: 1, rss: 100 * MB, age: 50, cmd: '/usr/bin/vim' },
+  ]);
+  p['메모리 집계'] = snap.sessions.length === 1 && snap.sessions[0].rss === 1690 * MB && snap.sessions[0].mcp === 1 && snap.sessions[0].browsers === 1
+    && snap.orphans.length === 1 && snap.orphans[0].pid === 20 && snap.docker === 4000 * MB && snap.total === 1890 * MB && /Claude Code 합계 1\.8GB · 세션 1개 · 주인 없이 남은 브라우저 · MCP 1개 · Docker VM 3\.9GB/.test(P.lines(snap)[0]) && P.seconds('01-02:03:04') === 93784;
+  const hooks = JSON.parse(fs.readFileSync(path.join(dw, '.claude', 'settings.json'), 'utf8')).hooks || {};
+  p['훅 등록'] = JSON.stringify(hooks.PostToolUse || []).includes('browser-close') && JSON.stringify(hooks.SubagentStop || []).includes('browser-close') && JSON.stringify(hooks.UserPromptSubmit || []).includes('session-health');
+  const sh = spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'hooks', 'session-health.js'), '--agent=claude'], { cwd: dw, encoding: 'utf8', input: JSON.stringify({ hook_event_name: 'UserPromptSubmit', session_id: 'health-1' }), env: { ...process.env, CLAUDE_PROJECT_DIR: dw } });
+  p['세션 상태 훅은 조용히 끝남'] = sh.status === 0 && !/\[hook\]/.test(sh.stderr);
+  // 팀원 tmux 창 찾기 (tmux 가 있는 PC 만): 소켓 claude-swarm-* 에서 팀 설정의 창 ID 를 찾아 붙는 명령
+  if (spawnSync('tmux', ['-V'], { encoding: 'utf8' }).status === 0) {
+    const sock = `claude-swarm-selftest${process.pid}`;
+    spawnSync('tmux', ['-L', sock, 'new-session', '-d', '-s', 'claude-swarm', 'sleep 30'], { encoding: 'utf8' });
+    const pane = (spawnSync('tmux', ['-L', sock, 'list-panes', '-a', '-F', '#{pane_id}'], { encoding: 'utf8' }).stdout || '').trim().split('\n')[0];
+    const cfg = path.join(tmp, 'watch-team-cfg');
+    const tdir = path.join(cfg, 'teams', 'session-watch001');
+    fs.mkdirSync(tdir, { recursive: true });
+    fs.writeFileSync(path.join(tdir, 'config.json'), JSON.stringify({ name: 'session-watch001', leadAgentId: 'team-lead@x', members: [{ agentId: 'team-lead@x', name: 'team-lead', agentType: 'team-lead', cwd: fs.realpathSync(dw) }, { agentId: 'w@x', name: 'w', agentType: 'implementer', tmuxPaneId: pane }] }));
+    const printed = spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'team', 'watch', '--print'], { cwd: dw, encoding: 'utf8', env: { ...process.env, CLAUDE_CONFIG_DIR: cfg } }).stdout.trim();
+    const shown = spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'bin', 'team-status.js')], { cwd: dw, encoding: 'utf8', env: { ...process.env, CLAUDE_CONFIG_DIR: cfg } }).stdout;
+    spawnSync('tmux', ['-L', sock, 'kill-server']);
+    p['팀원 tmux 창 찾기 (team watch)'] = printed === `tmux -L ${sock} attach -r -t claude-swarm` && shown.includes(`창 보기: kedovi team watch (= tmux -L ${sock} attach -r -t claude-swarm)`);
+  }
+  record('MCP 역할 지정 · 브라우저 닫기 · 메모리 (역할 MCP · 경고 · 막기 · 서브에이전트 · 집계 · 남은 브라우저 · Docker VM)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
+
+// 보고 페이지 · 긴 답 검사: kedovi report new → 파일 · 링크 · 뒤에서 도는 서버(바뀐 보고 다시 만듦) · 현황판 메뉴, 긴 답은 한 번 되돌림
+{
+  const dw = path.join(tmp, 'report-ws');
+  spawnSync(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dw, '--type', 'new'], { cwd: tmp, encoding: 'utf8' });
+  const env = { ...process.env, KEDOVI_LOGIN_PLANS: 'none' };
+  const rp = (...a) => spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'bin', 'report.js'), ...a], { cwd: dw, encoding: 'utf8', env });
+  const p = {};
+  const made = rp('new', '주문 탭 결과');
+  const file = ((made.stdout.match(/^파일: (.+)$/m) || [])[1] || '').trim();
+  const link = ((made.stdout.match(/^링크: (.+)$/m) || [])[1] || '').trim();
+  p['파일 · 링크'] = /^\.agents\/reports\/\d{4}-\d\d-\d\d\/\d{4}\.md$/.test(file) && /^http:\/\/127\.0\.0\.1:\d+\/reports\/\d{4}-\d\d-\d\d\/\d{4}\.html$/.test(link) && /^# 주문 탭 결과/.test(fs.readFileSync(path.join(dw, file), 'utf8'));
+  const body = fs.readFileSync(path.join(dw, file), 'utf8').replace('(한두 줄: 무엇을 했고 결과가 어떤가)', '시험 12개 통과 REPORT-OK');
+  fs.writeFileSync(path.join(dw, file), body);
+  const get = (u) => spawnSync(process.execPath, ['-e', `require('http').get(${JSON.stringify(u)},(r)=>{let s='';r.on('data',(d)=>s+=d);r.on('end',()=>{process.stdout.write(r.statusCode+'\\n'+s)})}).on('error',(e)=>process.stdout.write('ERR '+e.message))`], { encoding: 'utf8', timeout: 20000 }).stdout;
+  const page = get(link);
+  const home = get(link.replace(/\/reports\/.*$/, '/'));
+  p['서버가 바뀐 보고를 다시 만듦'] = /^200/.test(page) && page.includes('REPORT-OK') && home.includes('보고 (이 PC)');
+  p['목록 · 끄기'] = /주문 탭 결과 · http:\/\/127\.0\.0\.1/.test(rp('list').stdout) && /껐습니다/.test(rp('stop').stdout) && /^ERR/.test(get(link));
+  p['gitignore'] = /\.agents\/reports\//.test(fs.readFileSync(path.join(dw, '.gitignore'), 'utf8'));
+  // 긴 답 검사
+  const lh = (ev, extra = {}) => spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'hooks', 'long-answer.js'), '--agent=claude'], { cwd: dw, encoding: 'utf8', input: JSON.stringify({ hook_event_name: ev, session_id: 'long-1', ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: dw } }).stdout.trim();
+  const long = Array.from({ length: 30 }, (_, i) => `줄 ${i}`).join('\n');
+  lh('UserPromptSubmit', { prompt: '고쳐줘' });
+  const b = lh('Stop', { last_assistant_message: long });
+  p['긴 답 한 번 되돌림'] = /"block"/.test(b) && /kedovi report new/.test(b) && !lh('Stop', { last_assistant_message: long });
+  lh('UserPromptSubmit', { prompt: '고쳐줘' });
+  p['링크 있으면 · 짧으면 통과'] = !lh('Stop', { last_assistant_message: `${long}\n자세히: http://127.0.0.1:8700/reports/x.html` }) && !lh('Stop', { last_assistant_message: '끝났습니다.\n- a' });
+  lh('UserPromptSubmit', { prompt: '전부 자세히 보여줘' });
+  p['길게 요청하면 안 봄'] = !lh('Stop', { last_assistant_message: long });
+  lh('UserPromptSubmit', { prompt: '표로 줘' });
+  p['큰 표도 셈'] = /표 14줄/.test(lh('Stop', { last_assistant_message: ['| a | b |', '|---|---|', ...Array.from({ length: 13 }, (_, i) => `| ${i} | x |`)].join('\n') }));
+  record('보고 페이지 · 긴 답 검사 (파일 · 링크 · 서버 다시 만듦 · 현황판 메뉴 · 목록 · 끄기 · 한 번 되돌림 · 링크 · 길게 요청 · 표)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
 
 // 킷 문서 사이트 — docs-site/ 가 md(README · docs/*.md) 와 같아야 한다 (md 를 고치면 node bin/docs.js). 메뉴 「기타」 로 빠진 문서가 없어야 한다
@@ -1421,6 +1521,27 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const TI = require(path.join(dir, 'packs', 'core', 'lib', 'teamidle.js'));
     i['끝남 알림 한 줄'] = TI.summary({ bg: ['a'], working: [], idle: ['w1', 'w2'], any: true }) === '⏳ 일하는 팀원 0 · 대기 팀원 2 · 리더 백그라운드 작업 1개 대기 중' && TI.summary({ bg: [], working: [], idle: [], any: false }) === '';
     i['팀 없는 세션은 조용'] = !idleHook('Stop') && !idleHook('UserPromptSubmit');
+    // 팀원 실제 상태 (메시지함) · 종료 요청 뒤 남은 팀원
+    {
+      fs.mkdirSync(path.join(teamDir, 'inboxes'), { recursive: true });
+      const at = (min) => new Date(Date.now() - min * 60000).toISOString();
+      const mt = (name, extra = {}) => ({ agentId: `${name}@session-abcdef12`, name, agentType: 'implementer', ...extra });
+      setMembers(mt('s1', { backendType: 'in-process' }), mt('s2', { tmuxPaneId: '%1' }), mt('s3', { backendType: 'in-process' }), mt('s4', { tmuxPaneId: '%2' }));
+      const box = (n, list) => fs.writeFileSync(path.join(teamDir, 'inboxes', `${n}.json`), JSON.stringify(list));
+      box('team-lead', [{ from: 's1', text: '보고', timestamp: at(20) }, { from: 's1', text: JSON.stringify({ type: 'idle_notification' }), timestamp: at(19) }, { from: 's2', text: JSON.stringify({ type: 'idle_notification' }), timestamp: at(30) }]);
+      box('s1', [{ from: 'team-lead', text: '일', timestamp: at(25) }]);
+      box('s2', [{ from: 'team-lead', text: '다시 일', timestamp: at(5) }]);
+      box('s3', [{ from: 'team-lead', text: JSON.stringify({ type: 'shutdown_request', requestId: 'r-1' }), timestamp: at(2) }]);
+      const prev = process.env.CLAUDE_CONFIG_DIR;
+      process.env.CLAUDE_CONFIG_DIR = cfgDir;
+      let st = [];
+      try { st = TI.memberStates({ session_id: sid }, { panes: new Set(['%1']) }); } finally { if (prev == null) delete process.env.CLAUDE_CONFIG_DIR; else process.env.CLAUDE_CONFIG_DIR = prev; }
+      const by = Object.fromEntries(st.map((x) => [x.name, `${x.state}/${x.where}`]));
+      i['팀원 실제 상태'] = by.s1 === 'idle/in-process' && by.s2 === 'working/tmux' && by.s3 === 'stopping/in-process' && by.s4 === 'gone/pane-gone';
+      const stuck = idleHook('Stop');
+      i['종료 요청 뒤 남으면 TaskStop 알림 (한 번)'] = /"decision":"block"/.test(stuck) && /s3\(2분 · 메인 안\(창 없음\)\)/.test(stuck) && /TaskStop/.test(stuck) && !/s3\(/.test(idleHook('Stop'));
+      fs.rmSync(teamDir, { recursive: true, force: true });
+    }
     // 이어서 시작(-c)해 세션 ID 가 바뀐 리더: 팀 이름은 처음 ID 그대로라 대화 기록의 team_name · 설정의 leadSessionId 로 찾는다 (끝남 알림이 일하는 팀원을 놓치지 않게)
     {
       fs.mkdirSync(teamDir, { recursive: true });
@@ -1547,7 +1668,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const head = (f) => fs.readFileSync(path.join(dir, f), 'utf8');
     const wsFile = path.join(dir, 'workspace.json');
     const wsBefore = fs.readFileSync(wsFile, 'utf8');
-    const def = /^응답: 한국어만/.test(line()) && /스타일 일반/.test(line()) && local().language === 'korean' && !local().outputStyle && /## 응답 언어 · 대화 스타일 \(한국어 · 일반/.test(head('CLAUDE.local.md'));
+    const def = /^응답: 한국어만/.test(line()) && /스타일 일반/.test(line()) && local().language === 'korean' && local().outputStyle === 'Concise' && /## 응답 언어 · 대화 스타일 \(한국어 · 일반/.test(head('CLAUDE.local.md'));
     const styles = fs.existsSync(path.join(dir, '.claude', 'output-styles', 'kedovi-expert.md')) && /keep-coding-instructions: true/.test(head('.claude/output-styles/kedovi-learn.md'));
     const expert = cli('style', 'expert').status === 0 && local().outputStyle === 'kedovi-expert' && /스타일 전문가/.test(line()) && /현업에서 쓰는 이름/.test(head('CLAUDE.local.md'));
     const en = cli('language', 'en').status === 0 && local().language === 'english' && /^Reply in English/.test(line()) && /응답 언어: English/.test(head('AGENTS.override.md').split('\n').slice(0, 6).join('\n'));
@@ -1556,7 +1677,11 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const teamFollow = cli('language', 'team').status === 0 && cli('style', 'team').status === 0 && /^응답: 한국어만/.test(line()) && /스타일 학습/.test(line());
     fs.writeFileSync(wsFile, wsBefore);
     spawnSync(process.execPath, ['bin/kit.js', 'sync', '--quiet'], { cwd: dir });
-    const cleared = !local().outputStyle && local().language === 'korean';
+    const cleared = local().outputStyle === 'Concise' && local().language === 'korean';
+    fs.writeFileSync(path.join(dir, '.claude', 'settings.local.json'), JSON.stringify({ ...local(), outputStyle: 'Explanatory' }));
+    spawnSync(process.execPath, ['bin/kit.js', 'sync', '--quiet'], { cwd: dir });
+    const userStyleKept = local().outputStyle === 'Explanatory';
+    fs.writeFileSync(path.join(dir, '.claude', 'settings.local.json'), JSON.stringify({ ...local(), outputStyle: 'Concise' }));
     const bad = cli('style', 'chatty').status !== 0 && cli('language', 'jp').status !== 0;
     const wiredP = /chat-prefs/.test(claudeHooks) && /chat-prefs/.test(codexHooks) && (JSON.parse(codexHooks).hooks.PostToolUse || []).some((g) => JSON.stringify(g).includes('chat-prefs'));
     // 긴 작업 중 다시 알림 (PostToolUse): 요청 시작 뒤 도구 14번은 조용, 15번째에 한 줄, 다시 세기
@@ -1565,8 +1690,8 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const quiet = Array.from({ length: 14 }, tool).every((o) => !o.trim());
     const again = tool();
     const longRun = quiet && /"hookEventName":"PostToolUse"/.test(again) && /한국어만/.test(again) && !tool().trim() && /chat-prefs[^\n]*/.test(claudeHooks) && (JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8')).hooks.PostToolUse || []).some((g) => JSON.stringify(g).includes('chat-prefs'));
-    record('응답 언어 · 대화 스타일 (kedovi prefs · 개인 지침 머리 · 출력 스타일 · 요청마다 한 줄 · 긴 작업 중 다시)', def && styles && expert && en && mineFirst && teamFollow && cleared && bad && wiredP && longRun,
-      `기본 ${def} · 출력 스타일 파일 ${styles} · 전문가 ${expert} · 영어 ${en} · 이 PC 값 먼저 ${mineFirst} · team 이면 팀 값 ${teamFollow} · 되돌리면 킷 스타일 지움 ${cleared} · 잘못된 값 ${bad} · 훅 연결(Claude · Codex) ${wiredP} · 긴 작업 중 다시 알림 ${longRun}`);
+    record('응답 언어 · 대화 스타일 (kedovi prefs · 개인 지침 머리 · 출력 스타일 · 요청마다 한 줄 · 긴 작업 중 다시)', def && styles && expert && en && mineFirst && teamFollow && cleared && userStyleKept && bad && wiredP && longRun,
+      `기본 ${def} · 출력 스타일 파일 ${styles} · 전문가 ${expert} · 영어 ${en} · 이 PC 값 먼저 ${mineFirst} · team 이면 팀 값 ${teamFollow} · 일반 = Concise ${cleared} · 직접 고른 스타일 유지 ${userStyleKept} · 잘못된 값 ${bad} · 훅 연결(Claude · Codex) ${wiredP} · 긴 작업 중 다시 알림 ${longRun}`);
   }
   // 언어 감지 · 클린 코드 팩 (repos[].languages · clean-code · lang-*) · repo 별 바꾸기(repos:) · repo 별 끄기(rules.offIn · --repo) · 옛 워크스페이스 채우기
   {

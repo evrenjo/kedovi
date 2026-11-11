@@ -41,6 +41,9 @@
  *   kedovi budget start|extend "<작업>" <시간> · done ["<작업>"] · status · report [--month YYYY-MM] [--json]   시간 예산: 시작 · 늘림 · 끝 · 지금 · 월간 집계(끝낸 작업 수 · 예산 초과율 · 걸린 시간 중앙값, 이력은 이 PC 의 .agents/history/)
  *   kedovi defects check [--id <id>] · report [--month YYYY-MM] [--json]   운영 결함 기록(작업별 기록 머리 「종류: 운영 결함」): 발견 · 분류 · 해소 칸 검사 · 월간 집계(분류별 잠복 · 해소 시간)
  *   kedovi plan [--short | --json | --stage <번호>] · init · check · external <위치>|off   로드맵(handoffs/PLAN.md): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것 · 다음
+ *   kedovi team watch [--rw] [--print]   팀원 tmux 창 보기 (Claude Code agent teams): 지금 팀의 소켓(claude-swarm-<번호>, 세션마다 바뀜)을 찾아 읽기 전용으로 붙는다
+ *   kedovi report new "<제목>" · link <파일> · list · open [파일] · serve · stop   보고 페이지: 채팅은 결론 · 핵심만, 자세한 보고는 이 PC 의 웹 페이지(현황판 틀, http://127.0.0.1)로. new 가 파일과 링크를 준다
+ *   kedovi tips   출력이 많아 읽기 힘들 때 쓰는 Claude Code 화면 기능 (/tui fullscreen · /focus · Ctrl+O). kedovi start 가 이 PC 에서 처음 한 번 보여 준다
  *   kedovi agents watch [--once] [--all] [--json] [--tmux]   에이전트 진행 보기 (Claude Code): 메인이 부른 작업 리더 · 역할 에이전트 · 그 아래 팀원이 지금 무엇을 하는지 나무 모양으로 (이름 없는 서브에이전트도). 읽기만
  *   kedovi worktree add|merge|remove <repo> <단위> · list   작업 리더 worktree: 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 .worktrees/<repo>/<단위> (merge = 본 작업 트리에 커밋하지 않은 변경으로 옮김)
  *   kedovi docs build [repo|폴더] [--out docs-site] [--force] [--no-source] [--write-config] · check [repo|폴더]   문서 사이트: 기획 repo 의 md · 화면설계서 장 → docs-site/ (가이드와 같은 화면 틀 · 근거 색인 ids.json · 묶음은 docs-site.json) · 어긋남 검사 · 문서 점검 경고
@@ -91,8 +94,10 @@
  *   kedovi team-mode enforce check off|warn|block [--team]   리뷰 전 검사: 리뷰를 맡기는 지시서(delegate.js 리뷰 역할 · Claude 리뷰 에이전트)에 「검사: <명령> 통과」 줄이 없으면 막는다 (기본). 검사가 없는 변경은 「검사: 없음 (사유)」
  *   kedovi team-mode enforce plan off|warn|block [--team]   착수 전 확인 (Claude Code): 요청마다 코드 repo 첫 수정(Edit · Write) 전에 답변에 「착수 전 확인:」 머리말이 없으면 알린다. warn(기본) 요청마다 한 번 · block 머리말을 보일 때까지 수정을 막는다. 문서 · 스타일 두 줄 이하는 제외
  *   kedovi team-mode enforce main off|warn|block [--team]   메인 대화 전담 (Claude Code): 메인이 repo 파일을 직접 고치면 막고(block 기본) 백그라운드 에이전트에 맡기게 한다. 워크스페이스 기록 · 밖은 제외
+ *   kedovi team-mode enforce long off|block [--team]        긴 답은 보고 페이지로 (Claude Code): 마지막 답이 vars.report.maxLines(기본 25)줄 · 표 12줄을 넘는데 「자세히: <링크>」 가 없으면 한 번 되돌린다(block 기본)
+ *   kedovi team-mode enforce browser off|block [--team]     브라우저 닫기 (Claude Code): 브라우저 MCP 로 연 브라우저를 닫지 않고 끝내면(메인 · 서브에이전트 · 팀원) 한 번 막는다(block 기본)
  *   kedovi team-mode enforce msg off|block [--team]         작업 중 받은 메시지 (Claude Code): 작업 사이에 끼어 든 사용자 메시지를 처리했는지 멈출 때 한 번 되묻는다(block 기본)
- *   kedovi team-mode enforce answer off|warn|block [--team]   질문에 먼저 답하기: 사용자 요청이 질문(물음표 · 「~지 않나 · 맞아 · 돼」)이면 답 첫 줄을 그 답으로 하라고 알린다 (warn 기본). block 이면 답변 첫 문장에 판단(예 · 아니오 · 모름)이 없을 때 멈출 때 한 번 막는다
+ *   kedovi team-mode enforce answer off|warn|block [--team]   질문에 먼저 답하기: 사용자 요청이 질문(물음표 · 「~지 않나 · 맞아 · 돼」)이면 답 첫 줄을 그 답으로 하라고 알리고, block(기본)이면 마지막 답변 글 첫 문장에 판단(예 · 아니오 · 모름)이 없을 때 멈출 때 한 번 막는다 (warn = 알림만)
  *   kedovi team-mode enforce ask off|block [--team]   결정 질문 점검 (Claude Code): 결정 질문(번호 선택지 2개 이상)을 질문 창 없이 글로 끝내면 한 번 막고 질문 창으로 다시 묻게 한다 (기본). 자리 비움 세션은 제외
  *   kedovi team-mode enforce status off|block [--team]   상태 줄 점검 (Claude Code): 팀원(일하는 중 · 대기)이나 리더의 백그라운드 작업이 남은 채 멈추는데 답변에 「지금 도는 것: … · 예상 종료: … · 사용자가 할 일: …」 줄이 없으면 한 번 막는다 (기본)
  *   kedovi team-mode enforce idle off|warn|block [--after 분] [--remind 분] [--team]   대기 팀원 점검 (Claude Code agent teams): 일을 마치고 대기로 오래 남은 팀원을 리더에게 알린다. block(기본) 멈출 때 한 번 막기 · warn 요청 시작 때 한 줄 · off. 대기 상한(기본 10분) · 다시 알리는 간격(기본 30분)은 팀 값(--team)
@@ -2853,9 +2858,11 @@ function cmdTeamMode(argv) {
     console.log(`  기다리며 멈출 때 상태 줄  ${enLine('waitStatus')} · 팀원 · 백그라운드 작업이 남았는데 답변에 「지금 도는 것:」 줄이 없으면 · 바꾸기: kedovi team-mode enforce status off|block [--team]`);
     console.log(`  결정 질문을 글로 끝낼 때  ${enLine('decisionAsk')} · 질문 창 없이 번호 선택지로 물으면 한 번 막고 질문 창으로 · 바꾸기: kedovi team-mode enforce ask off|block [--team]`);
     console.log(`  오래 일하는 팀원 · 위임  ${enLine('longRunning')} · ${en.longRun.after}분 넘으면 계속할지 묻게 · 바꾸기: kedovi team-mode enforce run off|warn|block [--after 분] [--team]`);
-    console.log(`  질문에 먼저 답하기  ${enLine('answerFirst')} · 요청이 질문이면 답 첫 줄을 그 답으로 (warn: 알림 · block: 첫 문장에 판단이 없으면 한 번 막기) · 바꾸기: kedovi team-mode enforce answer off|warn|block [--team]`);
+    console.log(`  질문에 먼저 답하기  ${enLine('answerFirst')} · 요청이 질문이면 답 첫 줄을 그 답으로 (block: 마지막 답변 글 첫 문장에 판단이 없으면 한 번 막기 · warn: 알림만) · 바꾸기: kedovi team-mode enforce answer off|warn|block [--team]`);
     console.log(`  착수 전 확인  ${enLine('planFirst')} · 요청마다 코드 repo 첫 수정 전에 답변에 「착수 전 확인:」 이 없으면 · 바꾸기: kedovi team-mode enforce plan off|warn|block [--team]`);
     console.log(`  메인 대화 전담  ${enLine('mainDelegate')} · 메인이 repo 파일을 직접 고치면 막고 백그라운드 에이전트에 맡기게 (Claude Code) · 바꾸기: kedovi team-mode enforce main off|warn|block [--team]`);
+    console.log(`  긴 답은 보고 페이지로  ${enLine('longAnswer')} · 마지막 답이 기준 줄 수(vars.report.maxLines, 기본 25)를 넘는데 「자세히: <링크>」 가 없으면 한 번 되돌리기 (Claude Code) · 바꾸기: kedovi team-mode enforce long off|block [--team]`);
+    console.log(`  브라우저 닫기  ${enLine('browserClose')} · 브라우저 MCP 로 연 브라우저를 닫지 않고 끝내면 한 번 막기 (Claude Code) · 바꾸기: kedovi team-mode enforce browser off|block [--team]`);
     console.log(`  작업 중 받은 메시지  ${enLine('midTurnMessages')} · 작업 사이에 끼어 든 메시지를 처리했는지 멈출 때 한 번 되묻기 (Claude Code) · 바꾸기: kedovi team-mode enforce msg off|block [--team]`);
     console.log(`  리뷰 전 검사  ${enLine('checkBeforeReview')} · 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 · 바꾸기: kedovi team-mode enforce check off|warn|block [--team]`);
     console.log('  요금제 바꾸기: kedovi ai (화면) · kedovi ai plan claude|gpt <요금제>');
@@ -2874,10 +2881,10 @@ function cmdTeamMode(argv) {
     if (!a1 || !a2 || (a2 !== '-' && !/^(claude|codex):\S+$/.test(a2))) fail('사용법: kedovi team-mode prefer <역할> <claude|codex>:<모델> [--team]  (지우기: prefer <역할> -)');
     edit((x) => { const pr = { ...(x.prefer || {}) }; if (a2 === '-') delete pr[a1]; else pr[a1] = a2; const y = { ...x, prefer: pr }; if (!Object.keys(pr).length) delete y.prefer; return y; });
   } else if (cmd === 'enforce') {
-    const key = { name: 'teammateName', roster: 'rosterAnnounce', review: 'reviewBeforePush', idle: 'idleTeammates', status: 'waitStatus', ask: 'decisionAsk', run: 'longRunning', check: 'checkBeforeReview', plan: 'planFirst', answer: 'answerFirst', main: 'mainDelegate', msg: 'midTurnMessages' }[a1];
-    if ((a1 === 'status' || a1 === 'ask' || a1 === 'msg') && a2 === 'warn') fail(`사용법: kedovi team-mode enforce ${a1} off|block [--team]  (멈출 때 한 번 막거나 끈다)`);
+    const key = { name: 'teammateName', roster: 'rosterAnnounce', review: 'reviewBeforePush', idle: 'idleTeammates', status: 'waitStatus', ask: 'decisionAsk', run: 'longRunning', check: 'checkBeforeReview', plan: 'planFirst', answer: 'answerFirst', main: 'mainDelegate', msg: 'midTurnMessages', browser: 'browserClose', long: 'longAnswer' }[a1];
+    if ((a1 === 'status' || a1 === 'ask' || a1 === 'msg' || a1 === 'browser' || a1 === 'long') && a2 === 'warn') fail(`사용법: kedovi team-mode enforce ${a1} off|block [--team]  (멈출 때 한 번 막거나 끈다)`);
     const lv = (v) => kit.ENFORCE_LEVELS.indexOf(v);
-    if (!key || lv(a2) < 0 || lv(a2) > lv(kit.ENFORCE_DEFAULTS[key].max)) fail('사용법: kedovi team-mode enforce name off|warn|block · roster off|warn · review off|warn|block [--repos a,b|*] [--min-lines N] [--paths p1,p2] · idle off|warn|block [--after 분] [--remind 분] · status off|block · ask off|block · run off|warn|block [--after 분] · check off|warn|block · plan off|warn|block · answer off|warn|block · main off|warn|block · msg off|block [--team]  (name: 팀 모드에서 이름 없는 역할 에이전트 · roster: 첫 역할 에이전트 때 구성표 알림 · review: commit · push 전 리뷰 확인 · idle: 대기로 오래 남은 팀원 알림 · status: 남은 것이 있는 채 멈출 때 상태 줄 · ask: 결정 질문을 글로 끝낼 때 · run: 오래 일하는 팀원 · 위임 · check: 리뷰 전 검사 · plan: 코드 수정 전 착수 전 확인 · answer: 질문에 먼저 답하기 · main: 메인 대화 전담 · msg: 작업 중 받은 메시지)');
+    if (!key || lv(a2) < 0 || lv(a2) > lv(kit.ENFORCE_DEFAULTS[key].max)) fail('사용법: kedovi team-mode enforce name off|warn|block · roster off|warn · review off|warn|block [--repos a,b|*] [--min-lines N] [--paths p1,p2] · idle off|warn|block [--after 분] [--remind 분] · status off|block · ask off|block · run off|warn|block [--after 분] · check off|warn|block · plan off|warn|block · answer off|warn|block · main off|warn|block · msg off|block · browser off|block · long off|block [--team]  (name: 팀 모드에서 이름 없는 역할 에이전트 · roster: 첫 역할 에이전트 때 구성표 알림 · review: commit · push 전 리뷰 확인 · idle: 대기로 오래 남은 팀원 알림 · status: 남은 것이 있는 채 멈출 때 상태 줄 · ask: 결정 질문을 글로 끝낼 때 · run: 오래 일하는 팀원 · 위임 · check: 리뷰 전 검사 · plan: 코드 수정 전 착수 전 확인 · answer: 질문에 먼저 답하기 · main: 메인 대화 전담 · msg: 작업 중 받은 메시지 · browser: 브라우저 닫기 · long: 긴 답은 보고 페이지로)');
     const teamNow = kit.resolveModels(root, JSON.parse(read(wsFile))).teamEnforce[key];
     if (!team && lv(a2) < lv(teamNow)) fail(`이 PC 값은 팀 값(${teamNow})보다 세게만 둘 수 있습니다. 팀 값을 바꾸려면 팀장이 kedovi team-mode enforce ${a1} ${a2} --team`);
     // 리뷰 확인의 대상 · 기준은 팀 값만
@@ -2908,7 +2915,7 @@ function cmdTeamMode(argv) {
       extra.runMinutes = n;
     }
     edit((x) => ({ ...x, enforce: { ...(x.enforce || {}), [key]: a2, ...extra } }));
-  } else fail('사용법: kedovi team-mode [auto|fixed] · prefer <역할> <claude|codex>:<모델>|- · enforce name off|warn|block · enforce roster off|warn · enforce review off|warn|block · enforce idle off|warn|block · enforce status off|block · enforce ask off|block · enforce run off|warn|block · enforce check off|warn|block · enforce plan off|warn|block · enforce main off|warn|block · enforce msg off|block · [--team]');
+  } else fail('사용법: kedovi team-mode [auto|fixed] · prefer <역할> <claude|codex>:<모델>|- · enforce name off|warn|block · enforce roster off|warn · enforce review off|warn|block · enforce idle off|warn|block · enforce status off|block · enforce ask off|block · enforce run off|warn|block · enforce check off|warn|block · enforce plan off|warn|block · enforce main off|warn|block · enforce msg off|block · enforce browser off|block · enforce long off|block · [--team]');
   runWorkspaceKit(root, ['sync', '--quiet']);
   console.log(`✔ ${team ? '팀 기본값(workspace.json. commit·push 하면 팀 적용)' : '이 PC(.agents/local.json)'} 에 저장했습니다`);
   show();
@@ -3125,6 +3132,29 @@ async function cmdInstall() {
   process.exit(ok ? 0 : 1);
 }
 
+/**
+ * 출력이 많아 읽기 힘들 때 쓰는 Claude Code 화면 기능 안내. 이 PC 에서 한 번만 (~/.kedovi/tips.json). 다시 보기: kedovi tips
+ * 전체 화면(/tui fullscreen)이 이미 켜져 있으면 /focus 만 알린다
+ */
+function screenTip(force = false) {
+  const file = path.join(path.dirname(registryPath()), 'tips.json');
+  let st = {};
+  try { st = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* 처음 */ }
+  if (st.screen && !force) return;
+  let tui = '';
+  try { tui = JSON.parse(fs.readFileSync(path.join(require('os').homedir(), '.claude', 'settings.json'), 'utf8')).tui || ''; } catch { /* 없음 */ }
+  const lines = [
+    '💡 출력이 많아 읽기 힘들면 (Claude Code 안에서):',
+    ...(tui === 'fullscreen' ? [] : ['   /tui fullscreen   입력창이 아래에 고정되고 도구 결과는 접힌다 (클릭하면 펼침)']),
+    '   /focus            마지막 질문 · 도구 한 줄 요약 · 최종 답만 보인다 (다시 치면 끔, 전체 화면에서)',
+    '   Ctrl+O            상세 기록: / 검색 · { } 질문 단위 이동 · v 편집기로',
+    '   자세히: 킷 문서 「팀 에이전트와 모델」 의 화면 출력 줄임 · 다시 보기: kedovi tips',
+  ];
+  console.log(lines.join('\n'));
+  if (force) return;
+  try { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify({ ...st, screen: new Date().toISOString() })); } catch { /* 기록 실패 */ }
+}
+
 async function cmdStart(argv) {
   const root = locateWorkspace();
   // 리더가 명단 제한을 켰으면 명단에 없는 사람은 시작하지 않는다 (안전장치 — 권한 통제는 GitLab·GitHub 멤버로)
@@ -3257,6 +3287,7 @@ async function cmdStart(argv) {
   const office = flags.includes('--pixel-agents') ? startPixelAgents(root, agent) : null;
   const shown = brief ? [...args.slice(0, -1), brief === '세션 브리핑' ? '세션 브리핑' : '+ 브리핑'] : args;
   console.log(`▶ ${a.label}: ${root}${shown.length ? `  (${shown.join(' ')})` : ''}`);
+  if (agent === 'claude') screenTip();
   const r = spawnSync(findCli(a.command) || a.command, args, { cwd: root, stdio: 'inherit', env });
   if (office) office.stop();
   process.exit(r.status == null ? 1 : r.status);
@@ -3673,7 +3704,7 @@ const HELP_GROUPS = [
   ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'views', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
   ['팀 규칙 점검', '리뷰 확인 · 훅이 알리거나 막는 수준', ['review', 'team-mode enforce']],
-  ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 위임 · 에이전트 진행 · 작업 리더 worktree · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'delegate', 'agents', 'worktree', 'debate', 'import', 'tidy']],
+  ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 보고 페이지 · 위임 · 에이전트 진행 · 화면 안내 · 작업 리더 worktree · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'report', 'delegate', 'agents', 'tips', 'worktree', 'debate', 'import', 'tidy']],
   ['문서', '문서 사이트 · ID 찾기 · 화면설계서 · 데이터 설계 검사', ['docs', 'screens', 'datamodel']],
   ['알림 · 연동', '텔레그램 · 비밀값 · GitLab · 운영 배포 · 운영 검증', ['notify', 'secret', 'gitlab', 'release', 'ops']],
 ];
@@ -3827,6 +3858,7 @@ async function main() {
       if (!fs.existsSync(tool)) fail('이 워크스페이스에는 팀 현황 도구가 없습니다. kedovi upgrade 후 다시 하세요');
       if (['add', 'remove', 'restrict', 'members', 'edit', 'admins', 'lead', 'leads', 'repos', 'nick', 'whoami'].includes(rest[0])) return cmdTeamAdmin(root, rest);
       const [id, ...more] = rest;
+      if (id === 'watch') { const r = spawnSync(process.execPath, [tool, '--watch', ...more], { cwd: root, stdio: 'inherit' }); return process.exit(r.status == null ? 1 : r.status); }
       const toolArgs = !id || id.startsWith('--') ? rest : more.includes('--take') ? ['--take', id, '--items', more[more.indexOf('--take') + 1] || ''] : ['--id', id, ...more];
       const r = spawnSync(process.execPath, [tool, ...toolArgs], { cwd: root, stdio: 'inherit' });
       return process.exit(r.status == null ? 1 : r.status);
@@ -3906,6 +3938,7 @@ async function main() {
     case 'delegate': return runWsTool('delegate.js', rest.length ? rest : ['list']);
     case 'debate': return runWsTool('debate.js', rest.length ? rest : ['list']);
     case 'board': return runWsTool('board.js', rest);
+    case 'report': return runWsTool('report.js', rest);
     case 'tidy': return runWsTool('tidy.js', rest);
     case 'screens': return rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : ['inventory', 'checklist', 'review'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
     case 'datamodel': return runWsTool('check-datamodel.js', rest.filter((x) => x !== 'check'), 'datamodel');
@@ -3917,6 +3950,7 @@ async function main() {
     case 'team-mode': return cmdTeamMode(rest);
     case 'approach': return cmdApproach(rest);
     case 'type': return cmdType(rest);
+    case 'tips': return screenTip(true);
     case 'timestamp': return cmdTimestamp(rest);
     case 'prefs': return cmdPrefs(rest);
     case 'gitlab': return runWsTool('gitlab-mr.js', rest, 'gitlab');

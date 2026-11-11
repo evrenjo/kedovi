@@ -8,6 +8,7 @@
 //     오래 일함: 일하는 팀원 · 위임 작업이 실행 상한을 넘었다. agents.enforce.longRunning (off | warn | block, 기본 block) · runMinutes(기본 60)
 //   UserPromptSubmit(리더): 대기 상한 · 실행 상한을 넘은 것을 평문 한 줄로 (warn · block)
 //   승인 대기 팀원: UserPromptSubmit 은 평문 한 줄, Stop 은 팀원마다 한 번 막고 알린다 (사용자에게 그 창에서 승인하라고 알리게)
+//   종료 요청 뒤 남은 팀원: 종료 요청(shutdown_request)을 보내고 1분이 지나도 팀원 목록에 남으면 TaskStop 하라고 알린다 (idleTeammates 수준. 요청마다 한 번)
 // 판정은 lib/teamidle.js · lib/longrun.js
 'use strict';
 const { readInput, block, context, run, root, isTeammate } = require('../lib/hook');
@@ -45,6 +46,11 @@ run(() => {
   if (team && st.level !== 'off' && (ev !== 'Stop' || st.level === 'block')) {
     const list = T.overdue(ROOT, input, st);
     if (list.length) reasons.push(T.message(list, st));
+  }
+  // 종료 요청 뒤 1분이 지나도 남은 팀원 (승인이 안 와 TaskStop 이 필요). 같은 요청은 한 번만
+  if (team && st.level !== 'off' && (ev !== 'Stop' || st.level === 'block')) {
+    const stuck = T.stuckShutdown(ROOT, input);
+    if (stuck.length) reasons.push(T.shutdownMessage(stuck));
   }
   if (!reasons.length) return;
   if (ev === 'Stop') block(reasons.join('\n'));

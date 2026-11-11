@@ -2,8 +2,9 @@
 /**
  * 물은 것에 먼저 답하기 — 사용자 요청이 질문이면 답의 첫 줄이 그 질문의 답(예 · 아니오 · 모름 + 이유)이게 한다.
  * - UserPromptSubmit: 요청이 질문이면(물음표 · 「~지 않나 · 맞아 · 돼」 꼴로 끝남) 한 줄 알리고 표시를 남긴다. 질문이 아니면 표시를 지운다
- * - Stop: 수준이 block 이고 표시가 있는데 답변 첫 문장에 판단(네 · 아니요 · 됩니다 · 없습니다 · 모릅니다 등)이 없으면 한 번 막는다
- * - 수준 agents.enforce.answerFirst: warn(기본) = 알림만 · block = 알림 + 멈출 때 한 번 막기 · off
+ * - Stop: 수준이 block 이고 표시가 있는데 마지막 답변 글(도구를 쓴 차례면 마지막 보고)의 첫 문장에 판단(네 · 아니요 · 됩니다 · 없습니다 · 모릅니다 등)이 없으면 한 번 막는다.
+ *   도구 앞 글에 답했어도 화면에는 마지막 글만 눈에 들어오므로 마지막 보고 첫 줄에 다시 쓰게 한다
+ * - 수준 agents.enforce.answerFirst: block(기본) = 알림 + 멈출 때 한 번 막기 · warn = 알림만 · off
  * 팀원 · 서브에이전트는 보지 않는다. 항상 exit 0
  */
 'use strict';
@@ -42,13 +43,13 @@ if (require.main === module) run(() => {
   if (ev === 'UserPromptSubmit') {
     if (!looksLikeQuestion(input.prompt)) { try { fs.unlinkSync(mark); } catch { /* 없음 */ } return; }
     fs.writeFileSync(mark, '1');
-    context('질문으로 끝난 요청입니다: 답의 첫 줄은 이 질문의 답(예 · 아니오 · 모름 + 이유 한 줄)으로 쓰고, 작업 보고는 그 뒤에 둡니다.');
+    context('질문으로 끝난 요청입니다: 답의 첫 줄은 이 질문의 답(예 · 아니오 · 모름 + 이유 한 줄)으로 쓰고, 작업 보고는 그 뒤에 둡니다. 도구를 쓰고 끝내면 마지막 보고 첫 줄에 그 답을 다시 씁니다 (사용자 화면에는 마지막 글만 눈에 들어온다).');
     return;
   }
   if (ev !== 'Stop' || input.stop_hook_active || level !== 'block' || !fs.existsSync(mark)) return;
   try { fs.unlinkSync(mark); } catch { /* 없음 */ } // 한 번만 막는다
   if (!input.last_assistant_message || answersFirst(input.last_assistant_message)) return;
-  block('사용자가 질문했는데 답변 첫 문장에 그 답(예 · 아니오 · 모름 + 이유)이 없습니다. 첫 줄을 질문의 답으로 고쳐 다시 씁니다. 이미 답했으면 그대로 멈춥니다. 수준 바꾸기: kedovi team-mode enforce answer off|warn|block');
+  block('사용자가 질문했는데 마지막 답변 글의 첫 문장에 그 답(예 · 아니오 · 모름 + 이유)이 없습니다. 도구 앞 글에 답했어도 사용자 화면에는 마지막 글만 눈에 들어옵니다. 마지막 보고의 첫 줄을 질문의 답으로 다시 씁니다. 수준 바꾸기: kedovi team-mode enforce answer off|warn|block');
 });
 
 module.exports = { looksLikeQuestion, answersFirst };

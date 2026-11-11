@@ -2,7 +2,7 @@
 
 에이전트 도구의 서브에이전트 기능으로 **역할 에이전트**를 만든다 (core 일반 역할 7개와 작업 리더 + 팩·프로젝트가 더한 역할). 리드(메인 세션)는 합의된 작업 안에서 일을 나눌 때는 **묻지 않고** 역할 에이전트를 불러 나누고, 끝나면 정리한다 (규칙 `core--29-agents` · `team` 스킬). 단계 전환(분석 → 기획 → 설계 → 구축)과 그 단계의 진행 방식은 사용자와 정한 뒤 시작한다 (규칙 `core--10-communication`). 조사처럼 많이 읽는 일을 맡기고 결론만 받아 메인 대화 context 를 아끼므로 더 오래 일할 수 있다.
 
-실행 방식은 세션 시작 때 훅(`team-mode.js`)이 환경으로 정한다 (이어서 시작 · 대화 요약 뒤에도 그 줄을 다시 넣는다). 팀 모드인데 역할 에이전트를 이름 없이 띄우면 서브에이전트로 돌기 때문에 훅이 막는다 (`kedovi team-mode enforce name`, `agents.enforce.teammateName`). 한 요청의 첫 역할 에이전트 때는 실행 방식과 구성표를 알렸는지 훅이 한 줄로 짚는다 (`enforce roster`, `agents.enforce.rosterAnnounce`). 일을 마친 팀원이 대기로 10분 넘게 남으면 리더가 멈출 때 훅(`team-idle.js`)이 한 번 막고 알린다 (`enforce idle`, `agents.enforce.idleTeammates`). 팀원이나 백그라운드 작업이 남은 채 멈출 때 답변에 상태 줄(`지금 도는 것:`)이 없어도 한 번 막는다 (`enforce status`, `agents.enforce.waitStatus`). Claude Code 의 agent teams(팀원 세션)가 가능하면 **팀 모드**, 아니면 **서브에이전트**. `teammateMode` 가 `tmux` 면 tmux 가 설치돼 있어야 하고(세션 밖이면 Claude Code 가 tmux 세션을 만들어 입력창 오른쪽에 이름을 보여 준다. 다른 터미널에서 `tmux attach -t <이름>`), 없으면 사유와 함께 서브에이전트로 간다. 어느 쪽이든 상한·역할 모델은 같고, 리더는 작업 시작 때 어느 방식인지 한 줄로 알린다.
+실행 방식은 세션 시작 때 훅(`team-mode.js`)이 환경으로 정한다 (이어서 시작 · 대화 요약 뒤에도 그 줄을 다시 넣는다). 팀 모드인데 역할 에이전트를 이름 없이 띄우면 서브에이전트로 돌기 때문에 훅이 막는다 (`kedovi team-mode enforce name`, `agents.enforce.teammateName`). 한 요청의 첫 역할 에이전트 때는 실행 방식과 구성표를 알렸는지 훅이 한 줄로 짚는다 (`enforce roster`, `agents.enforce.rosterAnnounce`). 일을 마친 팀원이 대기로 10분 넘게 남으면 리더가 멈출 때 훅(`team-idle.js`)이 한 번 막고 알린다 (`enforce idle`, `agents.enforce.idleTeammates`). 팀원이나 백그라운드 작업이 남은 채 멈출 때 답변에 상태 줄(`지금 도는 것:`)이 없어도 한 번 막는다 (`enforce status`, `agents.enforce.waitStatus`). 종료 요청(shutdown_request)을 보내고 1분이 지나도 팀원이 남으면 TaskStop 하라고 한 번 막는다 (같은 `enforce idle`). 화면의 팀원 목록은 대기여도 일하는 중처럼 돌아가 보이므로, 실제 상태(일하는 중 · 대기 · 종료 요청 뒤 남음 · 종료됨(등록만 남음))는 `kedovi team` 이 팀 메시지함으로 판정해 보여 준다. Claude Code 의 agent teams(팀원 세션)가 가능하면 **팀 모드**, 아니면 **서브에이전트**. `teammateMode` 가 `tmux` 면 tmux 가 설치돼 있어야 하고(세션 밖이면 Claude Code 가 tmux 세션을 만들어 입력창 오른쪽에 이름을 보여 준다. 다른 터미널에서 `tmux attach -t <이름>`), 없으면 사유와 함께 서브에이전트로 간다. 어느 쪽이든 상한·역할 모델은 같고, 리더는 작업 시작 때 어느 방식인지 한 줄로 알린다.
 
 | 역할 | 하는 일 | 권한 | 등급 |
 |---|---|---|---|
@@ -19,6 +19,25 @@
 - project 팩의 `agents/` 에 같은 이름을 두면 덮어쓰고, 새 이름이면 역할이 추가된다. 역할 머리말에 `grade: high | standard | low` 를 두면 프로필에 그 역할이 없어도 성향에 맞는 모델이 정해진다 (예: 표준의 high = Sonnet high).
 
 > 참고: 역할 정의 원본은 `packs/core/agents/*.md` 하나다. sync 가 Claude Code 용 `.claude/agents/*.md` 와 Codex 용 `.codex/agents/*.toml` 로 만든다.
+
+## 화면 출력 줄임
+
+작업이 길면 도구 실행 · 중간 글이 계속 올라가 결론을 찾기 어렵다. 킷은 답을 짧게 쓰게 하고, 보는 쪽은 Claude Code 화면 기능으로 줄인다.
+
+| 무엇 | 하는 일 | 켜는 법 |
+|---|---|---|
+| 대화 스타일 「일반」 | Claude Code 공식 Concise 스타일 위에 킷의 「결론 먼저」 규칙. 첫 문장이 결과이고 앞뒤 설명 · 단계 중계 · 마무리 요약이 없다. 오류 · 실패 · 경고는 다 쓴다 | 기본 (`kedovi prefs`). 직접 고른 다른 출력 스타일이 있으면 그대로 둔다 |
+| 구성 한 줄 | 역할 에이전트를 부를 때 구성을 표 대신 한 줄로. 같은 세션에서 같으면 생략 | 기본. 표는 승인이 필요할 때만 |
+| `/tui fullscreen` | 입력창이 아래에 고정되고 도구 결과는 접힌다 (클릭하면 펼침). 위로 올려 읽는 동안 끌려 내려가지 않는다 | Claude Code 안에서 |
+| `/focus` | 마지막 질문 · 도구 한 줄 요약 · 최종 답만 보인다. 다음 세션에도 유지 | 전체 화면에서, 다시 치면 끔 |
+| `Ctrl+O` | 상세 기록: `/` 검색 · `{` `}` 질문 단위 이동 · `v` 편집기로 | 작업 중 언제든 |
+| **보고 페이지** | 답이 길면(기본 25줄 · 표 12줄 초과) 채팅은 결론 · 핵심 · `자세히: <링크>` 만, 자세한 보고(바뀐 파일 · 검증 표 · 근거 · 남은 것)는 이 PC 웹 페이지(현황판 틀)로. 링크를 누르면 브라우저가 열린다 | 기본 (`kedovi report`, 긴 답은 훅이 한 번 되돌림 `enforce long`) |
+| 끝남 알림 | 화면을 지켜보지 않고 결과만 텔레그램으로 | `kedovi notify` |
+
+- `kedovi start` 가 이 PC 에서 처음 한 번 위 화면 기능을 알려 준다. 다시 보기: `kedovi tips`.
+- 너무 줄이면 AI 가 지나가며 본 문제까지 빠질 수 있다. 오류 · 실패 · 경고는 Concise 에서도 다 쓴다.
+
+> 근거: Claude Code 문서 「Output styles」 · 「Fullscreen rendering」 · 「Interactive mode」, 이슈 #25066 (도구 출력을 아예 숨기는 모드는 요청만 있고 없음). 2026-11-11 확인
 
 ## 메인 대화 전담
 
@@ -91,6 +110,7 @@ flowchart TD
 
 - 팀 프로필 상한: 절약 1×2 · 6, 표준 3×2 · 15, 최고 4×3 · 30. 그래서 Ultra 라도 팀이 표준이면 3×2 · 15 다.
 - **띄우는 법 (Claude Code)**: 리더는 팀 모드여도 이름 없이 서브에이전트로 띄우고(이름을 주면 팀원이 되어 그 아래 팀원이 병렬로 돌지 않는다), 리더도 팀원을 **이름 없이** 서브에이전트로 부르고 완료 알림을 받을 때까지 기다린다 (리더 안에서 이름을 주면 팀원 세션이 되어 보고가 메인으로 가고 리더는 결과 없이 끝난다. 훅이 막는다). sync 가 중첩 깊이를 2층(`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=2`)으로 정한다. Codex 는 하위 에이전트 중첩이 공식 문서에 없어 2층이다.
+- **세션 · 메모리**: 팀원(agent teams)은 각자 따로 프로세스라 프로젝트 MCP 를 팀원마다 새로 띄운다. 브라우저 MCP 는 `workspace.json mcp.<이름>.roles` 로 화면 작업 역할에만 붙인다 ([워크스페이스 구조](workspace.md)). 브라우저를 열고 닫지 않고 끝내면 훅이 막는다(`enforce browser`). Claude Code 프로세스 합계가 `vars.session.memoryWarnGB`(기본 8GB)를 넘거나 한 세션이 `vars.session.longHours`(기본 8시간)를 넘으면 요청 시작 때 한 줄로 알리고, 자세한 목록은 `kedovi doctor` 의 「메모리」. tmux 서버가 돌면 팀원 창 기록을 `vars.session.tmuxHistory`(기본 50000줄)로 올린다.
 - **진행 보기**: 이름 없는 리더 · 팀원은 tmux 창이 없다. `kedovi agents watch` 가 메인 → 리더 → 팀원 나무로 상태와 마지막 행동을 2초마다 보여 준다 (tmux 안이면 `--tmux` 로 오른쪽 창에).
 - **상한 확인**: `kedovi models limits` 가 실제 적용 값과 정한 곳(프로필 · 팀 직접 값 · 이 PC 직접 값 · 요금제)을 보여 준다. 프로필을 올렸는데 예전에 넣어 둔 `agents.limits` 가 더 낮으면 `kedovi models profile` 이 알리고 화면이면 지울지 묻는다. 지우기: `kedovi models limits clear [--team]`.
 - **같은 repo**: 리더마다 `kedovi worktree add <repo> <단위>` 로 작업 폴더(`.worktrees/<repo>/<단위>/`, 로컬 임시 브랜치)를 주고, 끝나면 메인이 `kedovi worktree merge` 로 본 작업 트리에 커밋하지 않은 변경으로 옮긴다. 통합 브랜치 직접 운영이어도 쓸 수 있다 (임시 브랜치는 이 PC 에만 있다).
@@ -102,7 +122,7 @@ flowchart TD
 
 | 모드 | 동작 |
 |---|---|
-| **자동** (새 워크스페이스 기본) | 리더가 작업마다 필요한 역할 · 등급 · 모델을 골라 구성표를 알리고 바로 시작한다. 웹 검색으로 고른 모델이 있거나 high 가 4개 이상이면 승인을 받는다 |
+| **자동** (새 워크스페이스 기본) | 리더가 작업마다 필요한 역할 · 등급 · 모델을 골라 구성을 한 줄로 알리고 바로 시작한다. 웹 검색으로 고른 모델이 있거나 high 가 4개 이상이면 이유 표를 보이고 승인을 받는다 |
 | **고정** (옛 워크스페이스 기본) | 역할마다 프로필 모델 그대로 |
 
 - **옵션**: 성향(최고 · 표준 · 절약 = 프로필) · 역할별 선호 모델(`kedovi team-mode`). 대화로 "품질 우선" 처럼 말하면 그 세션 동안 따른다.

@@ -2,6 +2,22 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.91.0
+
+| 구분 | 내용 |
+|---|---|
+| 기능 | 보고 페이지: 긴 보고는 `kedovi report new "<제목>"` 의 파일에 쓰고 채팅은 결론 · 핵심 · `자세히: <링크>` (이 PC 웹 페이지, 현황판 틀 · 「보고 (이 PC)」 메뉴). 긴 답은 훅이 한 번 되돌림 (`enforce long`, `vars.report.maxLines` 25) |
+| 변경 | 대화 스타일 「일반」 = Claude Code 공식 Concise 위에 (직접 고른 다른 스타일은 그대로), 역할 구성은 표 대신 한 줄 (표는 승인 필요할 때만) |
+| 명령 | `kedovi tips`: 화면 출력 줄이기 (`/tui fullscreen` · `/focus` · `Ctrl+O`). `kedovi start` 가 처음 한 번 알림 |
+| 명령 | `kedovi team watch`: 팀원 tmux 창(소켓 `claude-swarm-<번호>`)에 바로 붙기 (`--rw` · `--print`). 팀원을 띄울 때 · 상태 줄 · `kedovi team` 에 그 명령 |
+| 기능 | `kedovi team` 이 팀원마다 실제 상태(일하는 중 · 대기 · 종료 요청 뒤 남음 · 종료됨(등록만 남음)) · 경과 · 창 위치 |
+| 기능 | 종료 요청 뒤 1분 넘게 남은 팀원은 TaskStop 하라고 한 번 막음 (`enforce idle`) |
+| 변경 | 질문 답 검사 기본 막기: 마지막 답변 글 첫 줄에 답이 없으면 한 번 되돌림 (`enforce answer`) |
+| 기능 | MCP 를 역할에만: `workspace.json mcp.<이름>.roles` 면 `.mcp.json` 에서 빼고 그 역할 파일 `mcpServers` 로. 브라우저 MCP 에 roles 가 없으면 sync 경고 |
+| 기능 | 브라우저 닫기 검사: 브라우저 MCP 로 연 브라우저를 닫지 않고 끝내면 한 번 막음 (`enforce browser`) |
+| 기능 | 메모리: Claude Code 프로세스 합계 8GB 초과 · 세션 8시간 초과면 요청 시작 때 한 줄, `kedovi doctor` 「메모리」 (세션 · 남은 브라우저 · MCP · Docker VM). 팀원 tmux 기록 50000줄 (`vars.session.*`) |
+| 적용 | `kedovi upgrade`. 브라우저 MCP 는 `workspace.json` 에 `roles` 를 적고 `kedovi sync` |
+
 ## 0.90.0
 
 | 구분 | 내용 |

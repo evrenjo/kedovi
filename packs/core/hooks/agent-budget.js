@@ -2,7 +2,7 @@
 // 역할 에이전트 상한 (Claude Code) — 한 요청(사용자 메시지 하나)에 동시 parallel 개 · 모두 total 개까지 Agent 도구를 허용한다.
 //   UserPromptSubmit: 요청마다 개수를 새로 센다 · PreToolUse(Agent): 넘으면 막고 사용자에게 물으라고 알린다 · SubagentStop: 동시 개수를 줄인다
 //   팀 모드(agent teams)인데 킷 역할을 이름(name) 없이 띄우면 막는다: 이름이 없으면 팀원이 아니라 서브에이전트로 돈다. 수준은 agents.enforce.teammateName (off | warn | block, 기본 block)
-//   한 요청의 첫 킷 역할 에이전트 때 실행 방식 · 구성표를 알렸는지 한 줄 넣는다 (막지 않는다). agents.enforce.rosterAnnounce (off | warn, 기본 warn)
+//   한 요청의 첫 킷 역할 에이전트 때 실행 방식 · 구성 한 줄을 알렸는지 넣는다 (막지 않는다). agents.enforce.rosterAnnounce (off | warn, 기본 warn)
 // 상한은 bin/kit.js resolveModels 의 limits (프로필 ← workspace.json ← .agents/local.json 의 agents.limits). Codex 는 config.toml 의 동시 상한과 규칙으로.
 // 3층 (작업 리더): 메인이 부르는 lead 역할은 leaders 상한, 리더(또는 역할 에이전트)가 부르는 팀원은 부른 쪽마다 members 상한, 모든 층 합계는 total.
 //   누가 불렀는지 = PreToolUse 입력의 agent_id (서브에이전트 안이면 그 id, 메인이면 없음). SubagentStart 의 agent_id 를 앞서 허용한 호출과 짝지어 부모를 적고, SubagentStop 에 그 칸을 뺀다.
@@ -102,7 +102,7 @@ function handle(input, ws, file) {
   // 작업 리더는 팀 모드여도 서브에이전트로 띄운다 (이름을 주면 팀원이 되어 그 아래 팀원이 병렬로 못 돈다)
   if (isLead && parent === 'main' && String(ti.name || '').trim() && judge(ws).team) return deny('작업 리더(lead)는 팀 모드여도 이름(name) 없이 서브에이전트로 띄운다. 이름을 주면 팀원이 되어 그 아래 팀원이 병렬로 돌지 않는다 (team 스킬 「작업 리더」)');
   if (nameCheck !== 'off' && kitRole && !isLead && parent === 'main' && !String(ti.name || '').trim() && !ti.isolation && judge(ws).team) {
-    const msg = `팀 모드입니다. 역할 에이전트(${type})를 이름 없이 띄우면 팀원이 아니라 서브에이전트로 돕니다. Agent 도구에 name(역할 이름, 예: ${type})을 주어 팀원으로 띄우세요. 처음 띄우는 것이면 먼저 실행 방식 한 줄과 구성표를 사용자에게 알립니다 (team 스킬)`;
+    const msg = `팀 모드입니다. 역할 에이전트(${type})를 이름 없이 띄우면 팀원이 아니라 서브에이전트로 돕니다. Agent 도구에 name(역할 이름, 예: ${type})을 주어 팀원으로 띄우세요. 처음 띄우는 것이면 먼저 구성 한 줄(실행 방식 포함)을 사용자에게 알립니다 (team 스킬)`;
     if (nameCheck === 'block') return deny(`${msg}. 수준 바꾸기: kedovi team-mode enforce name warn|off`);
     warns.push(msg);
   }
@@ -131,7 +131,7 @@ function handle(input, ws, file) {
   if (parent !== 'main' && count(st, parent) >= limits.members) {
     return deny(`팀원 상한: 이 에이전트가 부른 팀원이 이미 ${count(st, parent)}명 돌고 있습니다 (리더당 팀원 동시 ${limits.members}명). 끝난 팀원의 결과를 받고 부르거나, 같은 역할은 앞 팀원에게 이어서 맡기세요`);
   }
-  if (parent === 'main' && roster !== 'off' && kitRole && st.turn === 0) warns.push('이번 요청의 첫 역할 에이전트입니다. 실행 방식 한 줄("팀 모드로 진행" 또는 "서브에이전트로 진행 · 사유")과 구성표(역할 · 모델 · 강도 · 이유)를 사용자에게 아직 알리지 않았으면 지금 알립니다 (team 스킬)');
+  if (parent === 'main' && roster !== 'off' && kitRole && st.turn === 0) warns.push('이번 요청의 첫 역할 에이전트입니다. 「구성 (팀 모드 | 서브에이전트): 역할 모델·강도 · …」 한 줄을 사용자에게 아직 알리지 않았으면 지금 알립니다. 같은 세션에서 앞과 같은 구성이면 생략. 표는 승인이 필요할 때만 (team 스킬)');
   st.pending.push({ parent, type, at: Date.now() });
   st.turn += 1;
   save();

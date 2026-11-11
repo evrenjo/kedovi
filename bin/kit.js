@@ -25,7 +25,7 @@ const { execFileSync, spawnSync } = require('child_process');
 const GEN_NOTE = '생성 파일: `node bin/kit.js sync` 로 다시 만든다. 직접 고치지 말 것 (정본 = packs/ · workspace.json)';
 const DEFAULT_AGENTS_MD_BYTES = 32 * 1024; // Codex project_doc_max_bytes 기본값
 const ENFORCE_LEVELS = ['off', 'warn', 'block']; // agents.enforce.* 훅 강제 수준 (약한 것부터)
-const ENFORCE_DEFAULTS = { teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'warn', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
+const ENFORCE_DEFAULTS = { teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'block', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' }, browserClose: { level: 'block', max: 'block' }, longAnswer: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
 const MAX_AGENTS_MD_BYTES = 96 * 1024; // 이 위로는 sync 가 막는다 (context 낭비)
 const PERSONAL_HEADROOM = 12 * 1024; // 개인 지침(응답 언어 · 대화 스타일 약 1.7KB · 역할 상한 · 팀 구성(역할 · 모델 메뉴) · 위임 표 · 잠금)이 AGENTS.override.md 에 더해지는 몫. 자동 모드에서 약 8KB
 const MANIFEST = '.agents/.generated.json';
@@ -1075,9 +1075,15 @@ function buildCodexConfig(ws, agentsBytes, team = {}, limitBytes = null) {
   return lines.join('\n') + '\n';
 }
 
+/** 역할에만 붙이는 MCP (workspace.json mcp.<이름>.roles). .mcp.json 에 넣지 않아 메인 · 다른 역할 · 팀원마다 뜨지 않는다 */
+const mcpRoles = (srv) => (Array.isArray(srv && srv.roles) ? srv.roles.filter((x) => typeof x === 'string' && x) : []);
+const mcpEntry = (srv) => ({ type: 'stdio', command: srv.command, args: srv.args || [], env: srv.env || {} });
+/** 브라우저를 띄우는 MCP 로 보이는가 (역할 지정 권장 경고) */
+const BROWSER_MCP = /playwright|chrome|browser|puppeteer|devtools/i;
+
 function buildMcpJson(ws) {
   const servers = {};
-  for (const [name, srv] of Object.entries(ws.mcp || {})) servers[name] = { type: 'stdio', command: srv.command, args: srv.args || [], env: srv.env || {} };
+  for (const [name, srv] of Object.entries(ws.mcp || {})) if (!mcpRoles(srv).length) servers[name] = mcpEntry(srv);
   return JSON.stringify({ mcpServers: servers }, null, 2) + '\n';
 }
 
@@ -1086,7 +1092,7 @@ const GITIGNORE_END = '# <<< kit <<<';
 
 function buildGitignore(current, ws) {
   const block = [GITIGNORE_BEGIN, '# 개인 지침: 공유하지 않는다',
-    '.agents/local.md', LOCAL_CONFIG, 'CLAUDE.local.md', 'AGENTS.override.md', '.claude/settings.local.json', '.handoff-snooze', '.agents/bin/', '.agents/board/', '.agents/history/', '.worktrees/',
+    '.agents/local.md', LOCAL_CONFIG, 'CLAUDE.local.md', 'AGENTS.override.md', '.claude/settings.local.json', '.handoff-snooze', '.agents/bin/', '.agents/board/', '.agents/board.serve.json', '.agents/reports/', '.agents/history/', '.worktrees/',
     '# 팀 에이전트: 모델이 사람마다 다를 수 있어 각자 sync 가 만든다', '.claude/agents/', '.codex/agents/', LOCAL_MANIFEST,
     '# repo: 각자 kedovi install 로 clone 한다', `/${REPOS_DIR}/`, GITIGNORE_END].join('\n');
   const re = new RegExp(`${GITIGNORE_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${GITIGNORE_END}`);
@@ -1167,6 +1173,10 @@ function generate(root) {
   const chat = chatPrefsLib(root);
   if (chat) for (const [rel, content] of chat.outputStyleFiles()) files.set(rel, content);
   if (ws.mcp && Object.keys(ws.mcp).length) files.set('.mcp.json', buildMcpJson(ws));
+  // 브라우저 MCP 가 모든 세션 · 팀원에 뜨면 (세션마다 MCP · Chrome 한 벌) 역할 지정을 권한다
+  for (const [name, srv] of Object.entries(ws.mcp || {})) {
+    if (!mcpRoles(srv).length && BROWSER_MCP.test(`${name} ${srv.command} ${(srv.args || []).join(' ')}`)) warnings.push(`MCP ${name}: 브라우저 MCP 가 메인 · 모든 역할 · 팀원 세션마다 따로 뜹니다 (세션마다 프로세스 · Chrome 한 벌). 화면 작업 역할에만 붙이려면 workspace.json mcp.${name}.roles = ["implementer", "tester"] 처럼 두고 kedovi sync`);
+  }
   // Codex 는 계정 설정으로 서명을 넣게 해 규칙으로 못 막는다 — 커밋 단계에서 지운다 (repos/* 는 installCommitMsgHooks)
   files.set('.githooks/pre-commit', PRE_COMMIT_HOOK);
   files.set('.githooks/commit-msg', COMMIT_MSG_HOOK('"$(git rev-parse --show-toplevel)/packs/core/bin/strip-ai-trailers.js"'));
@@ -1332,7 +1342,7 @@ function resolveModels(root, ws) {
   }));
   // 규칙 강제 수준 (훅) — 팀 값이 기준이고 이 PC 값은 더 세게만 한다 (상한과 같은 방침). teammateName = 팀 모드에서 이름 없는 역할 에이전트
   const lvl = (v) => ENFORCE_LEVELS.indexOf(v);
-  //   rosterAnnounce = 한 요청의 첫 역할 에이전트 때 실행 방식 · 구성표를 알렸는지 한 줄 (off | warn)
+  //   rosterAnnounce = 한 요청의 첫 역할 에이전트 때 실행 방식 · 구성 한 줄을 알렸는지 (off | warn)
   const enforce = {};
   const teamEnforce = {};
   for (const [key, def] of Object.entries(ENFORCE_DEFAULTS)) {
@@ -1353,8 +1363,10 @@ function resolveModels(root, ws) {
   const idle = { after: mins(te.idleMinutes, 10), remind: mins(te.idleRemindMinutes, 30) };
   //   longRunning = 일하는 팀원 · 위임 작업이 상한(runMinutes, 팀 값만, 기본 60분)을 넘으면 계속할지 묻게 한다 (기본 block: 멈출 때 한 번 막는다)
   //   planFirst = 요청마다 코드 repo 첫 수정 전에 답변에 「착수 전 확인:」 이 없으면 알린다 (warn 기본: 요청마다 한 번 · block: 보일 때까지 수정을 막는다)
-  //   answerFirst = 사용자 요청이 질문이면 답 첫 줄을 그 답으로 (warn 기본: 요청 때 한 줄 알림 · block: 답변 첫 문장에 판단이 없으면 멈출 때 한 번 막기)
+  //   answerFirst = 사용자 요청이 질문이면 답 첫 줄을 그 답으로 (block 기본: 마지막 답변 글 첫 문장에 판단이 없으면 멈출 때 한 번 막기 · warn: 요청 때 한 줄 알림만)
   //   mainDelegate = 메인 대화 전담: 메인 세션이 repo 파일을 직접 고치려 하면 막고 백그라운드 에이전트에 맡기게 한다 (Claude Code. block 기본 · warn: 요청마다 한 번 알림 · off)
+  //   longAnswer = 마지막 답변 글이 길면(vars.report.maxLines 기본 25줄 · 표 12줄 초과) 보고 페이지(kedovi report)로 옮기라고 한 번 되돌린다 (Claude Code. block 기본 · off)
+  //   browserClose = 브라우저 MCP 로 브라우저를 열고 닫지 않은 채 끝내면 한 번 막는다 (Claude Code. block 기본 · off)
   //   midTurnMessages = 작업 중 끼어 든 사용자 메시지를 답변에서 처리했는지 멈출 때 한 번 되묻는다 (Claude Code. block 기본 · off)
   //   checkBeforeReview = 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 막는다 (리뷰 위임 · 리뷰 역할 에이전트)
   const longRun = { after: mins(te.runMinutes, 60) };
@@ -1813,7 +1825,7 @@ function teamSection(tool, { roles, run, access, opts, cat, profile, dele = [], 
         '2. 모델은 아래 「쓸 수 있는 모델」 안에서. 그 등급의 모델(등급 칸)에서 출발해, 작업 유형 점수가 뚜렷이 높은 모델이 같은 값대면 바꾼다.',
         `3. 요금제 여유도대로 나눈다. **빠듯**한 회사 모델은 선호로 지정된 역할과, high 이면서 다른 회사로 대신할 수 없을 때만 쓰고 그 회사 최상위 모델(가장 비싼 것)은 기본으로 쓰지 않는다. 기본 모델이 빠듯한 회사여도 여유 있는 회사 모델로 바꾼다. **넉넉**한 회사에 high 작업을 먼저 준다. **종량**은 같은 품질이면 싼 모델. 요금제를 모르면 등급대로. ${prefer ? `**선호**(${prefer})는 그 역할에 우선한다. ` : ''}리뷰는 두 회사를 다 쓸 수 있으면 구현과 다른 회사 모델로.`,
         '4. 목록에 없는 역할이 필요하면 지시서에 임시 역할(목적 · 소유 파일 · 금지)을 적어 가장 가까운 역할로 띄운다.',
-        '5. 시작 전에 구성표를 알린다: `| 역할 | 모델 · 강도 | 이유 |` + 근거 한 줄(카탈로그 확인일 · 점수 출처, 검색했으면 그 출처). 웹 검색으로 고른 모델이 있거나 high 가 4개 이상이면 승인 뒤 시작, 아니면 바로 시작.',
+        '5. 시작 전에 구성을 한 줄로 알린다: `구성 (실행 방식): 역할 모델·강도 · …` (같은 세션에서 앞과 같으면 생략). 웹 검색으로 고른 모델이 있거나 high 가 4개 이상이면 `| 역할 | 모델 · 강도 | 이유 |` 표 + 근거 한 줄(카탈로그 확인일 · 점수 출처)로 알리고 승인 뒤 시작.',
       ].join('\n')
       : '고정: 역할마다 아래 모델을 쓴다. 바꾸지 않는다 (바꾸려면 사용자가 kedovi models).',
     ...(tool === 'codex' ? ['', 'Codex 는 역할 파일을 하위 에이전트에 스스로 적용하지 않는다. `spawn_agent` 에 모델 · 추론 강도를 넣고(메인과 같게면 모델을 비운다), 지시 첫 줄에 "packs/<팩>/agents/<역할>.md 를 읽고 그 역할로만 일한다" 를 적는다.'] : []),
@@ -1891,7 +1903,7 @@ function delegationSection(tool, rows, mode = 'fixed') {
     '## 역할 위임: 이 PC 의 모델 설정 (kedovi models)',
     '',
     mode === 'auto'
-      ? '아래 역할의 **기본값**은 상대 회사 모델이다. 그 모델을 쓸 때는 서브에이전트를 띄우지 말고 **리더가 직접** 위임 도구를 부른다. 자동 모드라 작업에 따라 위 「팀 구성」 메뉴의 다른 모델로 바꿀 수 있다 (바꾸면 구성표에 이유를 적는다).'
+      ? '아래 역할의 **기본값**은 상대 회사 모델이다. 그 모델을 쓸 때는 서브에이전트를 띄우지 말고 **리더가 직접** 위임 도구를 부른다. 자동 모드라 작업에 따라 위 「팀 구성」 메뉴의 다른 모델로 바꿀 수 있다 (바꾸면 구성 줄에 이유를 짧게 적는다).'
       : '아래 역할은 **상대 회사 모델**이 맡는다. 이 역할에게 일을 맡길 때(team 스킬 포함)는 서브에이전트를 띄우지 말고 **리더가 직접** 위임 도구를 부른다. 이 역할을 직접 하거나 같은 도구 모델로 대신하지 않는다.',
     '',
     '| 역할 | 맡는 모델 | 권한 | 시작 명령 (작업 지시서는 heredoc) |',
@@ -1909,7 +1921,7 @@ function delegationSection(tool, rows, mode = 'fixed') {
 }
 
 /** 역할 → 도구별 에이전트 파일 (Claude Code · Codex). 모델이 사람마다 다를 수 있어 git 에 넣지 않고 각자 sync 가 만든다. 위임 역할은 그 도구 파일을 만들지 않는다 */
-function buildAgentFiles(roles, models, { cliFor = () => true, warnings = [] } = {}) {
+function buildAgentFiles(roles, models, { cliFor = () => true, warnings = [], mcp = {} } = {}) {
   const files = new Map();
   const note = (r) => `${GEN_NOTE} · 출처: ${r.src} · 모델은 프로필 → workspace.json agents(팀) → .agents/local.json agents(개인, 팀보다 낮추기만). kedovi models`;
   const dele = delegations(roles, models, { cliFor, warnings });
@@ -1922,6 +1934,9 @@ function buildAgentFiles(roles, models, { cliFor = () => true, warnings = [] } =
     if (!delegated('claude', r.name)) {
       const cl = ['---', `name: ${r.name}`, `description: ${yamlStr(r.description)}`, `model: ${own('claude') || 'inherit'}`, `effort: ${effortOf(m, 'claude') || r.effort}`];
       if (r.access === 'read-only') cl.push('disallowedTools: Write, Edit, NotebookEdit');
+      // 이 역할에만 붙이는 MCP: 역할이 시작할 때 연결하고 끝나면 끊는다 (tmux 팀원도. in-process 팀원은 이 칸을 무시한다)
+      const ownMcp = Object.entries(mcp || {}).filter(([, srv]) => mcpRoles(srv).includes(r.name) || mcpRoles(srv).includes('*'));
+      if (ownMcp.length) cl.push('mcpServers:', ...ownMcp.map(([name, srv]) => `  - ${name}: ${JSON.stringify(mcpEntry(srv))}`));
       cl.push('---', '', `<!-- ${note(r)} -->`, '', r.body, '');
       files.set(`.claude/agents/${r.name}.md`, cl.join('\n'));
     }
@@ -2072,7 +2087,11 @@ function cmdSync(root, { quiet, soft } = {}) {
   try { const { findCli } = require(path.join(root, 'packs', 'core', 'lib', 'cli.js')); cliFor = (t) => !!findCli(t); } catch { /* 옛 워크스페이스 */ }
   const agentWarnings = [];
   const resolved = resolveModels(root, ws);
-  const built = buildAgentFiles(generated.roles, resolved.run, { cliFor, warnings: agentWarnings });
+  const built = buildAgentFiles(generated.roles, resolved.run, { cliFor, warnings: agentWarnings, mcp: ws.mcp });
+  for (const [name, srv] of Object.entries(ws.mcp || {})) {
+    const bad = mcpRoles(srv).filter((x) => x !== '*' && !generated.roles.some((r) => r.name === x));
+    if (bad.length) warnings.push(`MCP ${name}: roles 에 없는 역할 ${bad.join(', ')} (있는 역할: ${generated.roles.map((r) => r.name).join(', ')})`);
+  }
   writeLocalGenerated(root, built.files);
   warnings.push(...resolved.runWarnings, ...agentWarnings);
   const lockText = lockSection(root, ws);
@@ -2274,7 +2293,7 @@ function chatPrefsLib(root) {
 }
 
 /**
- * 응답 언어 · 대화 스타일을 이 PC 에 적용한다: .claude/settings.local.json 의 language · outputStyle (킷이 넣은 kedovi-* 스타일만 관리, 사용자가 고른 다른 스타일은 그대로).
+ * 응답 언어 · 대화 스타일을 이 PC 에 적용한다: .claude/settings.local.json 의 language · outputStyle (일반 = 공식 Concise, 학습 · 전문가 = 킷의 kedovi-* 스타일. 일반일 때 사용자가 직접 고른 다른 스타일은 그대로).
  * 반환: 개인 지침 머리 글 (없으면 '')
  */
 function applyChatPrefs(root, ws) {
@@ -2286,8 +2305,10 @@ function applyChatPrefs(root, ws) {
   let conf = {};
   try { conf = JSON.parse(read(file)); } catch { /* 없음 */ }
   const next = { ...conf, language: want.language };
-  if (want.outputStyle) next.outputStyle = want.outputStyle;
-  else if (String(conf.outputStyle || '').startsWith(lib.OUTPUT_STYLE_PREFIX)) delete next.outputStyle;
+  const owned = lib.kitOwned ? lib.kitOwned(conf.outputStyle) : !conf.outputStyle || String(conf.outputStyle).startsWith(lib.OUTPUT_STYLE_PREFIX);
+  // 학습 · 전문가는 고른 대로. 일반(Concise)은 사용자가 직접 고른 다른 스타일이 없을 때만
+  if (want.outputStyle && (!want.soft || owned)) next.outputStyle = want.outputStyle;
+  else if (!want.outputStyle && String(conf.outputStyle || '').startsWith(lib.OUTPUT_STYLE_PREFIX)) delete next.outputStyle;
   if (JSON.stringify(next) !== JSON.stringify(conf)) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify(next, null, 2) + '\n');

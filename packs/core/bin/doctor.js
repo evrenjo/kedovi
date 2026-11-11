@@ -224,6 +224,19 @@ try {
   add(dead.length ? WARN : OK, '죽은 참조', dead.length ? `${dead.length}건` : '0건', 'node packs/core/bin/check-refs.js 로 목록 확인');
 } catch (e) { add(WARN, '죽은 참조', `검사 실패: ${e.message}`); }
 
+// 7-1. 메모리 (Claude Code 세션 나무 · 주인 없이 남은 브라우저 · MCP · Docker VM)
+try {
+  const P = require('../lib/procmem');
+  const snap = P.snapshot();
+  if (snap) {
+    const limit = Number((((ws.vars || {}).session) || {}).memoryWarnGB || 8);
+    const ls = P.lines(snap);
+    const over = limit > 0 && snap.total > limit * P.GB;
+    add(over || snap.orphans.length ? WARN : OK, '메모리', `${ls[0]}${ls.length > 1 ? `\n${ls.slice(1).map((l) => `      ${l.trim()}`).join('\n')}` : ''}`,
+      over || snap.orphans.length ? `안 쓰는 Claude 세션 · 대기 팀원을 닫는다${snap.orphans.length ? ` · 남은 브라우저 · MCP 는 kill <pid>` : ''} (기준 vars.session.memoryWarnGB = ${limit}GB)` : '');
+  }
+} catch (e) { add(WARN, '메모리', `확인 실패: ${e.message}`); }
+
 // 8. 에이전트 CLI
 const clis = [['claude', 'Claude Code'], ['codex', 'Codex']].map(([cmd, label]) => ({ cmd, label, at: which(cmd) }));
 for (const c of clis) add(c.at ? OK : WARN, `CLI: ${c.label}`, c.at ? (version(c.at) || c.at) : '설치 안 됨 (선택)', `${c.label} 를 쓸 거면 설치`);

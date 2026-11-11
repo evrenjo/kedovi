@@ -112,6 +112,22 @@
         true
       ],
       "desc": "머지가 확인된 로컬 브랜치 · worktree 를 에이전트가 머지 직후 정리할지. false(기본) = 지우지도 제안하지도 않는다. true = git status 와 merge-base 로 잃을 것이 없음을 보인 뒤 지운다 (원격 브랜치 삭제는 건마다 승인)"
+    },
+    "session.memoryWarnGB": {
+      "default": "8",
+      "desc": "이 PC 의 Claude Code 세션 나무(MCP · 셸 · 브라우저 포함) 메모리 합계가 이 GB 를 넘으면 요청 시작 때 한 줄로 알린다 (30분에 한 번, 0 이면 끔). 자세히: kedovi doctor 의 메모리"
+    },
+    "session.longHours": {
+      "default": "8",
+      "desc": "한 세션이 이 시간을 넘으면 핸드오프 뒤 새로 시작하자고 알린다 (2시간마다, 0 이면 끔)"
+    },
+    "session.tmuxHistory": {
+      "default": "50000",
+      "desc": "tmux 서버가 돌면 history-limit 을 이 줄 수 이상으로 올린다 (팀원 tmux 창 기록, 새 창부터. 0 이면 하지 않음)"
+    },
+    "report.maxLines": {
+      "default": "25",
+      "desc": "마지막 답이 이 줄 수(빈 줄 제외)를 넘거나 표가 12줄을 넘는데 「자세히: <링크>」 가 없으면 보고 페이지(kedovi report)로 옮기라고 한 번 되돌린다 (kedovi team-mode enforce long)"
     }
   },
   "secrets": [

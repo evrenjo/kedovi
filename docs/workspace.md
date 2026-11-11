@@ -24,10 +24,12 @@
 | on-demand 룰 | `.agents/rules/*.md` | 같음 |
 | `packs/*/skills/` | `.claude/skills/` (`/이름`) | `.agents/skills/` (`$이름`) |
 | `packs/*/hooks.json` | `.claude/settings.json` | `.codex/hooks.json` |
-| `workspace.json` mcp | `.mcp.json` | `.codex/config.toml` |
+| `workspace.json` mcp | `.mcp.json` (역할 지정 MCP 는 빼고 `.claude/agents/<역할>.md` 의 `mcpServers` 로) | `.codex/config.toml` |
 | `.agents/local.md` | `CLAUDE.local.md` | `AGENTS.override.md` |
 
 **생성 파일은 직접 고치지 않는다.** `packs/` 나 `workspace.json` 을 고치고 `kedovi sync`. 고친 채 커밋하면 pre-commit 이 막는다.
+
+**MCP 를 역할에만**: `workspace.json` 의 `mcp.<이름>.roles` 에 역할 이름(예: `["implementer", "tester"]`, `"*"` = 모든 역할)을 두면 그 MCP 는 `.mcp.json` 에 넣지 않고 그 역할 파일에만 붙는다. 메인 · 다른 역할 · 팀원 세션마다 따로 뜨지 않고, 그 역할이 시작할 때 연결해 끝나면 끊는다. 브라우저 MCP(playwright · chrome-devtools 등)에 `roles` 가 없으면 sync 가 알린다. Claude Code 만 해당하고(Codex 는 전체), 같은 터미널 안(in-process) 팀원은 이 칸을 무시해 그 MCP 를 쓰지 못하므로 화면 작업은 서브에이전트나 tmux 팀원으로 맡긴다.
 
 **죽은 참조 검사**: 커밋 전에 워크스페이스 문서(`AGENTS.md` · `docs/` · 팩 문서)의 백틱 · 링크 경로가 실제로 있는지 본다. 외부 주소로 가는 링크의 글자는 보지 않는다. 설치 서버 경로처럼 워크스페이스 파일이 아닌 경로를 적는 자리는 줄 끝에 `refs:ignore`, 여러 줄이면 `<!-- refs:ignore-start -->` … `<!-- refs:ignore-end -->`, 문서 전체면 `<!-- refs:ignore-file -->` 를 둔다. 목록: `node packs/core/bin/check-refs.js`.
 

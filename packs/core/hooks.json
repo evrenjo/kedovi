@@ -6,13 +6,16 @@
     { "matcher": "startup", "script": "hooks/session-brief.js", "timeout": 10 },
     { "matcher": "startup", "script": "hooks/model-profile.js", "timeout": 5 },
     { "matcher": "startup|resume|clear|compact", "script": "hooks/team-mode.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/channel-mode.js", "timeout": 5, "agents": "claude" }
+    { "script": "hooks/channel-mode.js", "timeout": 5, "agents": "claude" },
+    { "matcher": "startup|resume", "script": "hooks/session-health.js", "timeout": 5, "agents": "claude" }
   ],
   "Stop": [
     { "script": "hooks/task-check.js", "timeout": 10, "statusMessage": "완료 조건 점검" },
     { "script": "hooks/decision-ask.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/mid-turn-messages.js", "timeout": 5, "agents": "claude" },
+    { "script": "hooks/browser-close.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/answer-first.js", "timeout": 5 },
+    { "script": "hooks/long-answer.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/handoff-reminder.js", "timeout": 15, "statusMessage": "핸드오프 점검" },
     { "script": "hooks/agent-cleanup.js", "timeout": 10 },
     { "script": "hooks/budget-check.js", "timeout": 5 },
@@ -30,6 +33,8 @@
     { "script": "hooks/decision-ask.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/plan-first.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/main-delegate.js", "timeout": 5, "agents": "claude" },
+    { "script": "hooks/session-health.js", "timeout": 8, "agents": "claude" },
+    { "script": "hooks/long-answer.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/answer-first.js", "timeout": 5 },
     { "script": "hooks/notify.js", "timeout": 5 }
   ],
@@ -48,6 +53,8 @@
     { "matcher": "Bash", "script": "hooks/spec-commit.js", "timeout": 30, "agents": "claude" }
   ],
   "PostToolUse": [
+    { "matcher": "Agent|Task", "script": "hooks/session-health.js", "timeout": 5, "agents": "claude" },
+    { "matcher": "mcp__.*", "script": "hooks/browser-close.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/channel-progress.js", "timeout": 10, "agents": "claude" },
     { "script": "hooks/chat-prefs.js", "timeout": 5, "agents": "all" },
     { "matcher": "Bash", "script": "hooks/secret-guard.js", "timeout": 5, "agents": "all" },
@@ -63,6 +70,7 @@
     { "script": "hooks/agent-budget.js", "timeout": 10, "agents": "claude" }
   ],
   "SubagentStop": [
+    { "script": "hooks/browser-close.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/agent-budget.js", "timeout": 10, "agents": "claude" },
     { "script": "hooks/notify.js", "timeout": 5, "agents": "claude" }
   ],

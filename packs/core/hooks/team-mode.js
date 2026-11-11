@@ -16,7 +16,7 @@ run(() => {
   const { team, verdict } = judge(ROOT);
   const check = team ? nameCheck(ROOT) : 'off';
   const how = team
-    ? `역할마다 Agent 도구에 name(역할 이름)을 주어 팀원으로 띄우고 SendMessage·TaskList 로 결과를 받는다${check === 'block' ? ' (이름 없이 띄우면 훅이 막는다)' : ''}. 팀원을 띄울 때 사용자에게 「팀원 창에 승인 질문이 뜨면 그 창에서 승인해야 시작합니다」 를 함께 알린다 (리더 화면에는 안 보인다)`
+    ? `역할마다 Agent 도구에 name(역할 이름)을 주어 팀원으로 띄우고 SendMessage·TaskList 로 결과를 받는다${check === 'block' ? ' (이름 없이 띄우면 훅이 막는다)' : ''}. 팀원을 띄울 때 사용자에게 「팀원 창에 승인 질문이 뜨면 그 창에서 승인해야 시작합니다」${/tmux/.test(verdict) ? ' 와 「팀원 창 보기: 다른 터미널에서 kedovi team watch (읽기 전용)」' : ''} 를 함께 알린다 (리더 화면에는 안 보인다)`
     : 'Agent 도구(서브에이전트)로 띄운다';
   let main = 'block';
   try { const kit = require(path.join(ROOT, 'bin', 'kit.js')); main = (kit.resolveModels(ROOT, kit.loadWorkspace(ROOT)).enforce || {}).mainDelegate || main; } catch { /* 옛 워크스페이스 */ }

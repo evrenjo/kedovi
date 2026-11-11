@@ -188,6 +188,71 @@ function agentTree() {
   } catch { return ''; }
 }
 
+/** 이 워크스페이스에서 띄운 agent teams 팀원의 실제 상태 (최근 24시간에 바뀐 팀). 화면의 팀원 목록은 대기여도 돌아가 보여 이것으로 본다 */
+/** 이 워크스페이스에서 띄운 agent teams 팀 (최근 24시간에 바뀐 것, 최근 것 먼저) */
+function myTeams(T) {
+  const dir = T.teamsDir();
+  const real = (p) => { try { return fs.realpathSync(p); } catch { return p; } };
+  const here = real(ROOT);
+  let teams = [];
+  try { teams = fs.readdirSync(dir); } catch { return []; }
+  const now = Date.now();
+  const out = [];
+  for (const t of teams) {
+    const f = path.join(dir, t, 'config.json');
+    try {
+      const mt = fs.statSync(f).mtimeMs;
+      if (now - mt > 86400000) continue;
+      const c = JSON.parse(fs.readFileSync(f, 'utf8'));
+      const lead = (c.members || []).find((m) => m.agentId === c.leadAgentId || m.agentType === 'team-lead') || {};
+      if (lead.cwd && real(lead.cwd) === here) out.push({ team: t, mt });
+    } catch { /* 없음 */ }
+  }
+  return out.sort((a, b) => b.mt - a.mt).map((x) => x.team);
+}
+
+/** kedovi team watch: 지금 팀의 팀원 tmux 창에 붙는다 (기본 읽기 전용, --rw 면 입력도). 화면이 아니거나 --print 면 명령만 */
+function watch() {
+  let T;
+  try { T = require('../lib/teamidle'); } catch { return console.log('이 워크스페이스에는 팀원 상태 도구가 없습니다 (kedovi upgrade)'); }
+  for (const t of myTeams(T)) {
+    const at = T.tmuxAttach({ team: t });
+    if (!at) continue;
+    const cmd = args.includes('--rw') ? at.cmdRw : at.cmd;
+    if (args.includes('--print') || !process.stdout.isTTY) return console.log(cmd);
+    console.log(`${cmd}  (나오기: Ctrl+B 뒤 D${args.includes('--rw') ? '' : ' · 읽기 전용, 입력하려면 --rw'})`);
+    const env = { ...process.env };
+    delete env.TMUX; // tmux 안에서도 다른 소켓에 붙는다
+    const r = require('child_process').spawnSync('tmux', ['-L', at.socket, 'attach', ...(args.includes('--rw') ? [] : ['-r']), '-t', at.session], { stdio: 'inherit', env });
+    return process.exit(r.status == null ? 1 : r.status);
+  }
+  console.log('지금 이 워크스페이스의 팀원 tmux 창이 없습니다. 같은 터미널 안(in-process) 팀원은 메인 화면 아래 패널에서 ↑↓ 뒤 Enter, 작업 리더 · 서브에이전트는 kedovi agents watch');
+  process.exitCode = 1;
+}
+
+function teammates() {
+  let T;
+  try { T = require('../lib/teamidle'); } catch { return []; }
+  const out = [];
+  const now = Date.now();
+  let after = 10;
+  try { after = T.settings(ROOT).after; } catch { /* 기본 */ }
+  for (const t of myTeams(T)) {
+    const states = T.memberStates({ team: t });
+    if (!states.length) continue;
+    const at = (() => { try { return T.tmuxAttach({ team: t }); } catch { return null; } })();
+    out.push(`agent teams 팀원 (이 PC · 팀 ${t}): ${states.length}명${at ? ` · 창 보기: kedovi team watch (= ${at.cmd})` : ''}`);
+    for (const x of states) {
+      const min = x.since ? Math.max(0, Math.floor((now - x.since) / 60000)) : null;
+      const warn = x.state === 'stopping' && min >= 1 ? '  ⚠ 승인 없음: TaskStop 필요'
+        : x.state === 'gone' ? '  ⚠ 창이 없어졌는데 등록만 남음: TaskStop 으로 정리'
+          : x.state === 'idle' && min >= after ? `  ⚠ 대기 ${min}분: 맡길 일이 없으면 종료` : '';
+      out.push(`  ${x.name} · ${x.type || '-'} · ${T.STATE_TEXT[x.state]}${min !== null ? ` ${min}분` : ''} · ${T.WHERE_TEXT[x.where]}${warn}`);
+    }
+  }
+  return out;
+}
+
 function overview() {
   const list = collect();
   if (JSON_OUT) return console.log(JSON.stringify({ source, me, roster: ROSTER, restrict: !!(ws.team || {}).restrict, people: list.map((p) => ({ ...p, latest: undefined, todoRaw: undefined, taken: Object.fromEntries(p.taken) })) }, null, 2));
@@ -202,6 +267,7 @@ function overview() {
   }
   const running = agentTree();
   if (running) console.log(running);
+  for (const l of teammates()) console.log(l);
   console.log('');
   if (!list.length) return console.log('핸드오프가 아직 없습니다 (handoffs/<id>/ 가 비어 있음)');
   for (const p of list) {
@@ -222,6 +288,7 @@ function overview() {
   console.log('자세히: --id <id> · 인수: --take <id> --items <번호,…|all>');
 }
 
-if (val('take')) take(val('take'), val('items'));
+if (args.includes('--watch')) watch();
+else if (val('take')) take(val('take'), val('items'));
 else if (val('id')) detail(val('id'));
 else overview();

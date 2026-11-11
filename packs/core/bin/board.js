@@ -105,12 +105,22 @@ function main() {
   const t = team();
   const plan = P.read(ROOT);
   const rec = records();
-  const files = { 'README.md': dashboard(t, plan), '설정.md': settings(t), ...rec.files };
+  // 보고 (이 PC 의 .agents/reports, kedovi report) — 최근 것 먼저
+  const reps = [];
+  (function walk(rel) {
+    let es = [];
+    try { es = fs.readdirSync(path.join(ROOT, '.agents', 'reports', rel), { withFileTypes: true }); } catch { return; }
+    for (const e of es) { const r = rel ? `${rel}/${e.name}` : e.name; if (e.isDirectory()) walk(r); else if (e.name.endsWith('.md')) reps.push(r); }
+  })('');
+  reps.sort().reverse();
+  const repFiles = Object.fromEntries(reps.map((r) => [`reports/${r}`, read(`.agents/reports/${r}`) || '']));
+  const files = { 'README.md': dashboard(t, plan), '설정.md': settings(t), ...rec.files, ...repFiles };
   const ids = [...new Set(Object.keys(rec.files).map((f) => (f.match(/^handoffs\/([^/]+)\//) || [])[1]).filter((x) => x && !/\.md$/.test(x)))].sort((x, y) => (x === me ? -1 : y === me ? 1 : x.localeCompare(y)));
   const config = {
     title: `${ws.project.title || ws.project.name} 워크스페이스`, version: `kedovi ${(ws.kit || {}).version || ''}`.trim(),
     groups: [
       { group: '현황', icon: '◆', files: ['README.md', '설정.md'] },
+      ...(reps.length ? [{ group: '보고 (이 PC)', icon: '▤', files: reps.slice(0, 200).map((r) => `reports/${r}`) }] : []),
       { group: '로드맵 · 공용 기록', icon: '⇢', files: ['handoffs/PLAN.md', 'handoffs/MODELS.md', 'handoffs/README.md'] },
       ...ids.map((id) => ({ group: id === me ? `${id} (나)` : id, icon: '●', files: [`handoffs/${id}/LATEST.md`, `handoffs/${id}/TODO.md`, `handoffs/${id}/topics/*.md`, `handoffs/${id}/*.md`] })),
     ],
@@ -123,7 +133,7 @@ function main() {
     fs.writeFileSync(path.join(OUT, p), c);
   }
   const index = path.join(OUT, 'index.html');
-  console.log(`✔ 현황판: ${path.relative(ROOT, index)} (팀원 ${ids.length} · 기록 ${Object.keys(rec.files).length}개 · 기준 ${t.source})`);
+  if (!has('quiet')) console.log(`✔ 현황판: ${path.relative(ROOT, index)} (팀원 ${ids.length} · 기록 ${Object.keys(rec.files).length}개 · 기준 ${t.source})`);
   if (!has('no-open')) {
     const opener = process.platform === 'darwin' ? ['open', [index]] : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', index]] : ['xdg-open', [index]];
     spawnSync(opener[0], opener[1], { stdio: 'ignore' });

@@ -14,7 +14,7 @@ const LANGUAGES = {
 };
 const STYLES = {
   learn: { label: '학습', hint: '진행하는 일마다 왜 · 어떻게를 자세히 설명' },
-  normal: { label: '일반', hint: '결론 먼저 · 간결하게 (지금 수준)' },
+  normal: { label: '일반', hint: '결론 먼저 · 간결하게 (Claude Code 는 공식 Concise 스타일 위에)' },
   expert: { label: '전문가', hint: '부가 설명 없이 현업 용어 · 결과 · 근거 표와 그림 위주' },
 };
 const DEFAULT_STYLE = 'normal';
@@ -104,9 +104,14 @@ function outputStyleFiles() {
   return out;
 }
 
-/** settings.local.json 에 넣을 값 (outputStyle 이 null 이면 킷이 넣은 값만 지운다) */
+// 일반 스타일은 Claude Code 기본 제공 Concise (결과 먼저 · 앞뒤 설명 · 단계 중계 · 마무리 요약 없음, 오류 · 실패 · 경고는 그대로 다). 2.1.237 미만이면 모르는 값이라 기본 스타일로 돈다
+const BUILTIN_CONCISE = 'Concise';
+/** 킷이 관리하는 값인가 (사용자가 직접 고른 다른 스타일은 건드리지 않는다) */
+const kitOwned = (v) => !v || String(v).startsWith(OUTPUT_STYLE_PREFIX) || v === BUILTIN_CONCISE;
+
+/** settings.local.json 에 넣을 값. 일반 = Concise (사용자가 다른 스타일을 직접 골랐으면 그대로 둔다) */
 function claudeSettings(p) {
-  return { language: LANGUAGES[p.language].claude, outputStyle: p.style === 'normal' ? null : `${OUTPUT_STYLE_PREFIX}${p.style}` };
+  return { language: LANGUAGES[p.language].claude, outputStyle: p.style === 'normal' ? BUILTIN_CONCISE : `${OUTPUT_STYLE_PREFIX}${p.style}`, soft: p.style === 'normal' };
 }
 
-module.exports = { LANGUAGES, STYLES, DEFAULT_STYLE, OUTPUT_STYLE_PREFIX, resolve, headSection, reminder, outputStyleFiles, claudeSettings, languageFromVars };
+module.exports = { BUILTIN_CONCISE, kitOwned, LANGUAGES, STYLES, DEFAULT_STYLE, OUTPUT_STYLE_PREFIX, resolve, headSection, reminder, outputStyleFiles, claudeSettings, languageFromVars };
