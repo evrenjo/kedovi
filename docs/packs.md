@@ -807,4 +807,24 @@ Swift 소스가 있는 repo 에: 문장처럼 읽히는 이름 · 인자 레이�
 **도구**: `bin/check-screens.js` · `bin/compare-screens.js` · `bin/screens-inventory.js`
 
 </details>
+
+<details>
+<summary><b>trace</b> · 실행 흐름 디버깅: API · 함수 · 배치를 줄마다 값과 함께 기록해 웹으로</summary>
+
+테스트 한 건이나 로컬 서버 요청 한 번을 디버거로 기록해 이 PC 웹 페이지로 본다 (kedovi trace · debug-trace 스킬). 왼쪽 = 탄 함수 단계(필터 · 컨트롤러 · 서비스 · 저장소 · 배치, 프로젝트 코드만), 오른쪽 = 코드(실행된 줄을 펼치면 회차마다 바뀐 값 · 부른 함수 · SQL), 아래 = 데이터 상세(객체 나무 · SQL 과 바인딩 값). 지금은 JVM(Java · Kotlin, Gradle · Maven, Spring 등). 프로젝트 코드는 고치지 않고 디버그 포트로 붙는다. 값은 필드만 읽어 실행을 바꾸지 않고(JPA 지연 로딩 그대로), 비밀번호 · 토큰 이름의 값은 가린다. SQL 은 기록할 때만 datasource-proxy 를 붙인다(Gradle, 빌드 파일 안 고침). 기록은 이 PC 에만(.agents/traces/)
+
+| 항목 | 내용 |
+|---|---|
+| 붙는 조건 | kedovi upgrade --add trace |
+| 함께 붙는 팩 | `core` |
+
+**스킬**
+
+| 이름 | 설명 |
+|---|---|
+| `debug-trace` | API · 함수 · 배치 한 번의 실행 흐름을 줄마다 값과 함께 기록해 이 PC 웹 페이지로 보여 준다 (kedovi trace). 테스트나 로컬 서버 요청을 디버거로 기록하고, 왼쪽에 탄 함수 단계 · 오른쪽에 코드와 줄별 값 · 아래에 데이터 상세(SQL 포함)를 띄운다. "○○ API 디버깅 보여줘", "이 함수 어떻게 도는지 보여줘", "배치 흐름 보여줘", "값이 어디서 바뀌는지", "실행 흐름" 요청에 쓴다. |
+
+**도구**: `bin/trace.js`
+
+</details>
 <!-- /packs:catalog -->

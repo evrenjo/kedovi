@@ -42,6 +42,7 @@
  *   kedovi defects check [--id <id>] · report [--month YYYY-MM] [--json]   운영 결함 기록(작업별 기록 머리 「종류: 운영 결함」): 발견 · 분류 · 해소 칸 검사 · 월간 집계(분류별 잠복 · 해소 시간)
  *   kedovi plan [--short | --json | --stage <번호>] · init · check · external <위치>|off   로드맵(handoffs/PLAN.md): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것 · 다음
  *   kedovi team watch [--rw] [--print]   팀원 tmux 창 보기 (Claude Code agent teams): 지금 팀의 소켓(claude-swarm-<번호>, 세션마다 바뀜)을 찾아 읽기 전용으로 붙는다
+ *   kedovi trace run --test <클래스>#<메서드> · run --request "<METHOD> <localhost 주소>" [--data …] · list · open [파일]   실행 흐름 디버깅 (trace 팩, JVM): 테스트 한 건 · 로컬 서버 요청 한 번을 줄마다 값 · SQL 과 함께 기록해 이 PC 웹 페이지(왼쪽 함수 단계 · 오른쪽 코드와 줄별 값 · 아래 데이터 상세)로
  *   kedovi report new "<제목>" · link <파일> · list · open [파일] · serve · stop   보고 페이지: 채팅은 결론 · 핵심만, 자세한 보고는 이 PC 의 웹 페이지(현황판 틀, http://127.0.0.1)로. new 가 파일과 링크를 준다
  *   kedovi tips   출력이 많아 읽기 힘들 때 쓰는 Claude Code 화면 기능 (/tui fullscreen · /focus · Ctrl+O). kedovi start 가 이 PC 에서 처음 한 번 보여 준다
  *   kedovi agents watch [--once] [--all] [--json] [--tmux]   에이전트 진행 보기 (Claude Code): 메인이 부른 작업 리더 · 역할 에이전트 · 그 아래 팀원이 지금 무엇을 하는지 나무 모양으로 (이름 없는 서브에이전트도). 읽기만
@@ -3706,7 +3707,7 @@ const HELP_GROUPS = [
   ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'views', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
   ['팀 규칙 점검', '리뷰 확인 · 훅이 알리거나 막는 수준', ['review', 'team-mode enforce']],
-  ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 보고 페이지 · 위임 · 에이전트 진행 · 화면 안내 · 작업 리더 worktree · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'report', 'delegate', 'agents', 'tips', 'worktree', 'debate', 'import', 'tidy']],
+  ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 보고 페이지 · 실행 흐름 디버깅 · 위임 · 에이전트 진행 · 화면 안내 · 작업 리더 worktree · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'report', 'trace', 'delegate', 'agents', 'tips', 'worktree', 'debate', 'import', 'tidy']],
   ['문서', '문서 사이트 · ID 찾기 · 화면설계서 · 데이터 설계 검사', ['docs', 'screens', 'datamodel']],
   ['알림 · 연동', '텔레그램 · 비밀값 · GitLab · 운영 배포 · 운영 검증', ['notify', 'secret', 'gitlab', 'release', 'ops']],
 ];
@@ -3941,6 +3942,7 @@ async function main() {
     case 'debate': return runWsTool('debate.js', rest.length ? rest : ['list']);
     case 'board': return runWsTool('board.js', rest);
     case 'report': return runWsTool('report.js', rest);
+    case 'trace': return runWsTool('trace.js', rest, 'trace');
     case 'tidy': return runWsTool('tidy.js', rest);
     case 'screens': return rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : ['inventory', 'checklist', 'review'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
     case 'datamodel': return runWsTool('check-datamodel.js', rest.filter((x) => x !== 'check'), 'datamodel');

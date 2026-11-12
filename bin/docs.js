@@ -17,10 +17,13 @@ const MC = require('../packs/core/lib/mermaid-check');
 const KIT = path.resolve(__dirname, '..');
 const OUT = path.join(KIT, 'docs-site');
 const MANIFEST = 'assets/site.json';
-// 사이트에 넣는 md: README 와 docs/ 바로 아래 md (docs-site.json groups 에 없는 문서는 메뉴 「기타」 로 가고 경고한다)
+// 사이트에 넣는 md: README 와 docs/ 바로 아래 md · docs/images/ 그림 (docs-site.json groups 에 없는 문서는 메뉴 「기타」 로 가고 경고한다)
 const sources = () => {
   const files = { 'README.md': fs.readFileSync(path.join(KIT, 'README.md'), 'utf8') };
   for (const f of fs.readdirSync(path.join(KIT, 'docs')).filter((x) => x.endsWith('.md')).sort()) files[`docs/${f}`] = fs.readFileSync(path.join(KIT, 'docs', f), 'utf8');
+  // 문서 그림 (docs/images/): md 의 상대 경로 그림이 사이트에서도 보이게
+  const img = path.join(KIT, 'docs', 'images');
+  if (fs.existsSync(img)) for (const f of fs.readdirSync(img).filter((x) => /\.(png|jpe?g|gif|svg|webp)$/i.test(x)).sort()) files[`docs/images/${f}`] = fs.readFileSync(path.join(img, f));
   return files;
 };
 
@@ -62,9 +65,9 @@ function changed(pages) {
 function warnLines(res) {
   const out = [];
   if ((res.unlisted || []).length) out.push(`⚠ 메뉴 「기타」 문서 ${res.unlisted.length}개 (docs-site.json groups 어느 묶음에도 안 맞음): ${res.unlisted.join(' · ')}`);
-  const docs = Object.entries(res.files).map(([rel, text]) => ({ rel, text }));
+  const docs = Object.entries(res.files).filter(([rel]) => rel.endsWith('.md')).map(([rel, text]) => ({ rel, text }));
   for (const w of DR.health(null, { docs })) out.push(`⚠ 문서 점검: ${w}`);
-  const art = MC.asciiArt(res.files);
+  const art = MC.asciiArt(Object.fromEntries(Object.entries(res.files).filter(([rel]) => rel.endsWith('.md'))));
   if (art.length) out.push(`⚠ ASCII 그림 ${art.length}개: ${art.map((a) => `${a.file}:${a.line}`).join(' · ')}. mermaid 로 바꿀 수 있는지 본다 (폴더 나무 · 화면 모양은 그대로 둬도 된다)`);
   return out;
 }

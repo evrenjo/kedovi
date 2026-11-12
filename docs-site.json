@@ -21,7 +21,8 @@
         "docs/write-report.md",
         "docs/notify.md",
         "docs/ops-verify.md",
-        "docs/team-models.md"
+        "docs/team-models.md",
+        "docs/trace.md"
       ],
       "split": [
         "docs/workflow.md"

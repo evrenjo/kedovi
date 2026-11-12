@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>실행 흐름 기록</title>
+<style>
+:root {
+  --bg: #f5f6f8; --panel: #ffffff; --line: #e3e6eb; --text: #1d2330; --muted: #6b7280; --faint: #9aa1ad;
+  --accent: #2563eb; --accent-bg: #e8effd; --hit: #fff7d6; --hit-strong: #ffe9a3; --cur: #dbeafe;
+  --ok: #16803c; --warn: #b45309; --err: #c0262d; --sql: #7c3aed; --sql-bg: #f1eafe;
+  --kw: #a626a4; --str: #50a14f; --num: #986801; --com: #a0a1a7; --ann: #c18401; --chip: #f1f3f6;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14161b; --panel: #1b1e24; --line: #2b2f37; --text: #e5e7eb; --muted: #9ca3af; --faint: #6b7280;
+    --accent: #60a5fa; --accent-bg: #1e2a3d; --hit: #2c2a1c; --hit-strong: #3d3720; --cur: #1e3350;
+    --ok: #4ade80; --warn: #fbbf24; --err: #f87171; --sql: #c4b5fd; --sql-bg: #2a2340;
+    --kw: #c678dd; --str: #98c379; --num: #d19a66; --com: #7f848e; --ann: #e5c07b; --chip: #252932;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14161b; --panel: #1b1e24; --line: #2b2f37; --text: #e5e7eb; --muted: #9ca3af; --faint: #6b7280;
+  --accent: #60a5fa; --accent-bg: #1e2a3d; --hit: #2c2a1c; --hit-strong: #3d3720; --cur: #1e3350;
+  --ok: #4ade80; --warn: #fbbf24; --err: #f87171; --sql: #c4b5fd; --sql-bg: #2a2340;
+  --kw: #c678dd; --str: #98c379; --num: #d19a66; --com: #7f848e; --ann: #e5c07b; --chip: #252932;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+button { font: inherit; color: inherit; background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:disabled { opacity: .4; cursor: default; }
+input { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; width: 100%; }
+header { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+header h1 { font-size: 15px; margin: 0; font-weight: 650; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.chip { background: var(--chip); border-radius: 999px; padding: 1px 9px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.chip b { color: var(--text); font-weight: 600; }
+.chip.err { color: var(--err); } .chip.warn { color: var(--warn); }
+.spacer { flex: 1; }
+.notes { padding: 6px 16px; background: var(--hit); color: var(--warn); border-bottom: 1px solid var(--line); font-size: 12px; }
+main { flex: 1; display: grid; grid-template-columns: var(--left, 420px) 6px 1fr; min-height: 0; }
+.gut { cursor: col-resize; background: var(--line); opacity: .35; }
+.gut:hover, .gutr:hover { opacity: 1; background: var(--accent); }
+aside { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-right: 1px solid var(--line); }
+.side-head { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.side-head .row { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.tree { flex: 1; overflow: auto; padding: 6px 0 24px; }
+.node { display: flex; align-items: center; gap: 6px; padding: 3px 10px 3px calc(10px + var(--ind) * 14px); cursor: pointer; white-space: nowrap; border-left: 3px solid transparent; }
+.node:hover { background: var(--chip); }
+.node.sel { background: var(--accent-bg); border-left-color: var(--accent); }
+.node .no { color: var(--faint); font-size: 11px; min-width: 24px; text-align: right; font-variant-numeric: tabular-nums; }
+.node .nm { overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; max-width: 70%; }
+.node .layer, .node .badge { flex: none; }
+.node .fl { margin-left: auto; flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.node .cls { color: var(--muted); }
+.node .fl { color: var(--faint); font-size: 11px; padding-left: 6px; }
+.node.sql .nm { color: var(--sql); font-family: var(--mono); font-size: 12px; }
+.node.ex .nm { color: var(--err); }
+.badge { font-size: 10px; border-radius: 4px; padding: 0 5px; background: var(--sql-bg); color: var(--sql); }
+.badge.err { background: transparent; color: var(--err); border: 1px solid var(--err); }
+.layer { font-size: 10px; border-radius: 4px; padding: 0 5px; border: 1px solid var(--line); color: var(--muted); }
+section.right { display: grid; grid-template-rows: 1fr 6px var(--bottom, 34%); min-height: 0; min-width: 0; }
+.gutr { cursor: row-resize; background: var(--line); opacity: .35; }
+.code { display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+.code-head { padding: 8px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+.code-head .path { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.code-head .path b { font-family: var(--mono); font-size: 12.5px; }
+.code-head .sig { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.stepbar { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.src { flex: 1; overflow: auto; font: 12.5px/1.6 var(--mono); padding-bottom: 40px; }
+.ln { display: grid; grid-template-columns: 28px 52px 1fr; align-items: start; }
+.ln .mk { text-align: center; color: var(--faint); font-size: 11px; user-select: none; padding-top: 1px; }
+.ln .num { text-align: right; padding-right: 12px; color: var(--faint); user-select: none; }
+.ln .tx { white-space: pre; padding-right: 20px; }
+.ln.other .tx { opacity: .45; }
+.ln.hit { background: var(--hit); cursor: pointer; }
+.ln.hit .mk { color: var(--warn); font-weight: 700; }
+.ln.hit:hover { background: var(--hit-strong); }
+.ln.cur { background: var(--cur) !important; box-shadow: inset 3px 0 0 var(--accent); }
+.ln.open .mk::after { content: ""; }
+.vals { margin: 2px 12px 6px 80px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; font-size: 12px; white-space: normal; }
+.it { display: flex; gap: 8px; padding: 6px 10px; border-top: 1px solid var(--line); align-items: flex-start; }
+.it:first-child { border-top: 0; }
+.it .k { color: var(--faint); min-width: 44px; font-variant-numeric: tabular-nums; }
+.it .body { display: flex; flex-wrap: wrap; gap: 6px; }
+.v { font-family: var(--mono); font-size: 11.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; cursor: pointer; max-width: 520px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v:hover { border-color: var(--accent); }
+.v .n { color: var(--accent); }
+.v.sql { color: var(--sql); background: var(--sql-bg); border-color: transparent; }
+.v.call { color: var(--accent); }
+.v.ex { color: var(--err); }
+.v.skip { color: var(--faint); cursor: default; }
+.hint { color: var(--faint); font-size: 12px; }
+.detail { background: var(--panel); display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line); }
+.detail-head { padding: 7px 14px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: center; }
+.detail-head b { font-size: 12.5px; }
+.detail-body { flex: 1; overflow: auto; padding: 10px 14px 30px; font: 12px/1.6 var(--mono); }
+.tv { list-style: none; margin: 0; padding-left: 16px; }
+.tv > li { position: relative; }
+.tv .key { color: var(--accent); }
+.tv .typ { color: var(--faint); font-size: 11px; }
+.tv .tog { cursor: pointer; user-select: none; color: var(--faint); display: inline-block; width: 14px; margin-left: -14px; }
+.s { color: var(--str); } .nu { color: var(--num); } .nl { color: var(--faint); } .lz { color: var(--warn); }
+pre.q { white-space: pre-wrap; margin: 0 0 10px; color: var(--sql); background: var(--sql-bg); padding: 8px 10px; border-radius: 8px; }
+table.ps { border-collapse: collapse; margin: 6px 0 12px; }
+table.ps th, table.ps td { border: 1px solid var(--line); padding: 3px 10px; text-align: left; }
+table.ps th { color: var(--muted); font-weight: 500; }
+.tk-kw { color: var(--kw); } .tk-s { color: var(--str); } .tk-n { color: var(--num); } .tk-c { color: var(--com); font-style: italic; } .tk-a { color: var(--ann); }
+.empty { padding: 30px; color: var(--muted); }
+@media (max-width: 900px) {
+  body { overflow: auto; }
+  main { display: block; }
+  .gut, .gutr { display: none; }
+  aside { max-height: 40vh; }
+  section.right { display: block; }
+  .src { max-height: 60vh; }
+  .detail { min-height: 30vh; }
+  .vals { margin-left: 16px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">실행 흐름 기록</h1>
+  <div class="chips" id="meta"></div>
+  <div class="spacer"></div>
+  <button id="theme" title="밝게 · 어둡게">◐</button>
+</header>
+<div class="notes" id="notes" hidden></div>
+<main>
+  <aside>
+    <div class="side-head">
+      <input id="q" placeholder="함수 · 클래스 · SQL 찾기" autocomplete="off">
+      <div class="row"><label><input type="checkbox" id="onlySql" style="width:auto"> SQL · 예외만</label><span class="spacer"></span><span id="count"></span></div>
+    </div>
+    <div class="tree" id="tree"></div>
+  </aside>
+  <div class="gut" id="gut"></div>
+  <section class="right">
+    <div class="code">
+      <div class="code-head" id="codeHead"></div>
+      <div class="src" id="src"><div class="empty">왼쪽에서 함수를 고르세요</div></div>
+    </div>
+    <div class="gutr" id="gutr"></div>
+    <div class="detail">
+      <div class="detail-head"><b id="dTitle">데이터 상세</b><span class="hint" id="dHint">코드의 값 · SQL 을 누르면 여기에 나옵니다</span></div>
+      <div class="detail-body" id="detail"></div>
+    </div>
+  </section>
+</main>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const simple = (t) => String(t || '').split('.').pop();
+
+// ── 테마 ──
+(function theme() {
+  let saved = null;
+  try { saved = localStorage.getItem('trace-theme'); } catch (e) { /* 저장소 없음 */ }
+  if (saved) document.documentElement.dataset.theme = saved;
+  $('theme').onclick = () => {
+    const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('trace-theme', document.documentElement.dataset.theme); } catch (e) { /* 저장소 없음 */ }
+  };
+})();
+
+// ── 값 표시 ──
+function short(v, max = 80) {
+  let s;
+  if (v === null || v === undefined) s = 'null';
+  else if (typeof v === 'string') s = v === '***' ? '***' : JSON.stringify(v);
+  else if (typeof v !== 'object') s = String(v);
+  else if (v.lazy) s = `${simple(v.t)} (지연 로딩)`;
+  else if ('v' in v && !v.f) s = v.t === 'Optional' ? `Optional(${short(v.v, max)})` : (typeof v.v === 'string' && /^[A-Z_]+$/.test(v.v) ? v.v : String(v.v));
+  else if (v.items) s = `${simple(v.t)}[${v.n}]`;
+  else if (v.entries) s = `${simple(v.t)}{${v.n}}`;
+  else if (v.msg !== undefined) s = `${simple(v.t)}: ${v.msg}`;
+  else if (v.f) {
+    const keys = Object.keys(v.f);
+    const pick = keys.slice(0, 3).map((k) => `${k}=${short(v.f[k], 20)}`).join(', ');
+    s = `${simple(v.t)}{${pick}${keys.length > 3 ? ', …' : ''}}`;
+  } else s = simple(v.t) + (v.n !== undefined ? `[${v.n}]` : '');
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+function tree(v, key) {
+  const li = document.createElement('li');
+  const k = key !== undefined ? `<span class="key">${esc(key)}</span>: ` : '';
+  const kids = v && typeof v === 'object' ? (v.f ? Object.entries(v.f) : v.items ? v.items.map((x, i) => [i, x]) : v.entries ? v.entries.map((e) => [short(e[0], 40), e[1]]) : null) : null;
+  if (v === null || v === undefined) li.innerHTML = `${k}<span class="nl">null</span>`;
+  else if (typeof v === 'string') li.innerHTML = `${k}<span class="s">${esc(JSON.stringify(v))}</span>`;
+  else if (typeof v !== 'object') li.innerHTML = `${k}<span class="nu">${esc(v)}</span>`;
+  else if (!kids || !kids.length) {
+    const note = v.lazy ? ` <span class="lz">${esc(v.note || '지연 로딩')}</span>` : v.ref ? ' <span class="typ">(더 깊어 생략)</span>' : v.cycle ? ' <span class="typ">(순환)</span>' : '';
+    li.innerHTML = `${k}${esc(short(v, 200))} <span class="typ">${esc(v.t || '')}</span>${note}`;
+  } else {
+    const more = v.n !== undefined && v.n > kids.length ? ` <span class="typ">(${v.n}개 중 ${kids.length}개)</span>` : '';
+    li.innerHTML = `<span class="tog">▾</span>${k}<span class="typ">${esc(v.t)}</span>${more}`;
+    const ul = document.createElement('ul');
+    ul.className = 'tv';
+    for (const [kk, vv] of kids) ul.appendChild(tree(vv, kk));
+    li.appendChild(ul);
+    li.querySelector('.tog').onclick = (e) => { e.stopPropagation(); const h = ul.hidden = !ul.hidden; e.target.textContent = h ? '▸' : '▾'; };
+  }
+  return li;
+}
+
+function showValue(title, v) {
+  $('dTitle').textContent = title;
+  $('dHint').textContent = typeof v === 'object' && v && v.t ? v.t : '';
+  const ul = document.createElement('ul');
+  ul.className = 'tv';
+  ul.style.paddingLeft = '14px';
+  ul.appendChild(tree(v));
+  $('detail').replaceChildren(ul);
+}
+
+function showSql(st) {
+  const x = st.x || {};
+  $('dTitle').textContent = `SQL · ${x.ms ?? '?'}ms${x.ok === false ? ' · 실패' : ''}`;
+  $('dHint').textContent = where(st);
+  const box = document.createElement('div');
+  for (const q of x.qs || []) {
+    let html = `<pre class="q">${esc(fmtSql(q.q))}</pre>`;
+    (q.ps || []).forEach((set, i) => {
+      if (!set.length) return;
+      html += `<div class="hint">바인딩 값${q.ps.length > 1 ? ` (묶음 ${i + 1})` : ''}</div><table class="ps"><tr><th>#</th><th>값</th></tr>${set.map((p) => `<tr><td>${esc(p ? p[0] : '')}</td><td>${esc(short(p ? p[1] : null, 200))}</td></tr>`).join('')}</table>`;
+    });
+    box.insertAdjacentHTML('beforeend', html);
+  }
+  if (x.res !== undefined) box.insertAdjacentHTML('beforeend', `<div class="hint">바뀐 행 수: ${esc(x.res)}</div>`);
+  box.insertAdjacentHTML('beforeend', '<div class="hint" style="margin-top:8px">조회 결과는 이 SQL 을 부른 줄 다음의 값(리포지토리 반환값)으로 보입니다</div>');
+  $('detail').replaceChildren(box);
+}
+
+function showEx(st) {
+  const x = st.x || {};
+  $('dTitle').textContent = `예외 · ${simple(x.type)}`;
+  $('dHint').textContent = where(st);
+  $('detail').innerHTML = `<div><b>${esc(x.type)}</b></div><div class="s">${esc(x.msg || '')}</div><div class="hint">던진 곳 ${esc(x.at || '')} · 잡은 곳 ${esc(x.caught || '잡히지 않음')}</div>`;
+}
+
+function fmtSql(q) {
+  return String(q || '').replace(/\s+(from|where|and|or|order by|group by|left join|inner join|join|values|set)\s+/gi, (m, k) => `\n${k.toUpperCase()} `).replace(/^(select|insert into|update|delete from)\s+/i, (m) => `${m.trim().toUpperCase()} `);
+}
+
+// ── 코드 색 ──
+const KW = new Set('abstract assert boolean break byte case catch char class const continue default do double else enum extends final finally float for goto if implements import instanceof int interface long native new package private protected public return short static strictfp super switch synchronized this throw throws transient try void volatile while var record yield null true false fun val when object companion data sealed override open internal lateinit by in is as'.split(' '));
+function highlight(line) {
+  const re = /(\/\/.*$|\/\*.*?\*\/|\/\*.*$|^\s*\*.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(@[A-Za-z_][\w.]*)|\b(\d[\d_.]*[LlFfDd]?)\b|\b([A-Za-z_]\w*)\b/g;
+  let out = '';
+  let last = 0;
+  let m;
+  while ((m = re.exec(line))) {
+    out += esc(line.slice(last, m.index));
+    if (m[1]) out += `<span class="tk-c">${esc(m[1])}</span>`;
+    else if (m[2]) out += `<span class="tk-s">${esc(m[2])}</span>`;
+    else if (m[3]) out += `<span class="tk-a">${esc(m[3])}</span>`;
+    else if (m[4]) out += `<span class="tk-n">${esc(m[4])}</span>`;
+    else out += KW.has(m[5]) ? `<span class="tk-kw">${m[5]}</span>` : esc(m[5]);
+    last = re.lastIndex;
+  }
+  return out + esc(line.slice(last));
+}
+
+// ── 자료 ──
+let B;
+let steps = [];
+const calls = new Map(); // 호출 번호 → { c, first, steps:[], lines: Map(줄→[step]), ret, kids }
+let lineSteps = []; // 줄 단계 (다음 · 이전 이동)
+let selCall = null;
+let curStep = null;
+const open = new Set(); // 펼친 줄 (호출:줄)
+
+function where(st) {
+  const c = calls.get(st.c);
+  return c ? `${simple(c.first.cls)}.${c.first.m}()${st.ln ? ` ${st.ln}줄` : ''}` : '';
+}
+
+function layer(cls) {
+  const s = String(cls).toLowerCase();
+  if (/test$/.test(s) || /\.test\./.test(s)) return '테스트';
+  if (/filter|interceptor|advice|aspect/.test(s)) return '필터';
+  if (/controller|resource|endpoint|handler|api$/.test(s)) return '컨트롤러';
+  if (/service|usecase|facade|manager/.test(s)) return '서비스';
+  if (/repository|repo$|dao|mapper|query/.test(s)) return '저장소';
+  if (/job|batch|scheduler|task|step|tasklet/.test(s)) return '배치';
+  return '';
+}
+
+function build() {
+  steps = B.trace.steps || [];
+  for (const st of steps) {
+    if (st.k === 'line' && st.call) calls.set(st.c, { c: st.c, first: st, steps: [], lines: new Map(), kids: [], sql: 0, ex: 0 });
+  }
+  for (const st of steps) {
+    const c = calls.get(st.c);
+    if (!c) continue;
+    c.steps.push(st);
+    if (st.k === 'line') { if (!c.lines.has(st.ln)) c.lines.set(st.ln, []); c.lines.get(st.ln).push(st); lineSteps.push(st); }
+    if (st.k === 'return') c.ret = st;
+    if (st.k === 'sql') c.sql += (st.x && st.x.qs || []).length;
+    if (st.k === 'ex') c.ex += 1;
+  }
+}
+
+// ── 머리 ──
+function header() {
+  const m = B.meta;
+  const t = B.trace;
+  document.title = `${m.title} · 실행 흐름`;
+  $('title').textContent = m.title;
+  const nCalls = calls.size;
+  const nSql = steps.filter((s) => s.k === 'sql').reduce((n, s) => n + ((s.x && s.x.qs) || []).length, 0);
+  const nEx = steps.filter((s) => s.k === 'ex').length;
+  const chips = [
+    `<span class="chip">${m.mode === 'request' ? '요청' : '테스트'} <b>${esc(m.mode === 'request' ? `${m.request.method} ${m.request.url}` : m.entry)}</b></span>`,
+    `<span class="chip">repo <b>${esc(m.repo)}</b></span>`,
+    `<span class="chip">함수 <b>${nCalls}</b></span>`,
+    `<span class="chip">SQL <b>${nSql}</b></span>`,
+    nEx ? `<span class="chip err">예외 <b>${nEx}</b></span>` : '',
+    `<span class="chip">${Math.max(0, (t.endedAt || 0) - (t.startedAt || 0))}ms (기록 중 느려짐 포함)</span>`,
+    m.response ? `<span class="chip ${m.response.status >= 400 || !m.response.status ? 'err' : ''}">응답 <b>${esc(m.response.status || m.response.error)}</b></span>` : '',
+    `<span class="chip">${esc(new Date(m.at).toLocaleString())}</span>`,
+  ];
+  $('meta').innerHTML = chips.join('');
+  const notes = [...(m.notes || [])];
+  if (t.truncated) notes.push('단계 상한에서 멈췄습니다');
+  if (notes.length) { $('notes').hidden = false; $('notes').textContent = `⚠ ${notes.join(' · ')}`; }
+}
+
+// ── 왼쪽: 실행 단계 ──
+function renderTree() {
+  const q = $('q').value.trim().toLowerCase();
+  const onlySql = $('onlySql').checked;
+  const minD = Math.min(...steps.filter((s) => s.call).map((s) => s.d), 99);
+  const box = document.createDocumentFragment();
+  let n = 0;
+  for (const st of steps) {
+    let row = null;
+    if (st.k === 'line' && st.call) {
+      if (onlySql) continue;
+      const c = calls.get(st.c);
+      const label = `${simple(st.cls)}.${st.m}`;
+      if (q && !`${st.cls}.${st.m}`.toLowerCase().includes(q)) continue;
+      const ly = layer(st.cls);
+      row = mk(`node${selCall === st.c ? ' sel' : ''}`, st.d - minD, `<span class="no">${++n}</span><span class="nm"><span class="cls">${esc(simple(st.cls))}.</span>${esc(st.m)}()</span>${ly ? `<span class="layer">${ly}</span>` : ''}${c.sql ? `<span class="badge">SQL ${c.sql}</span>` : ''}${c.ex ? '<span class="badge err">예외</span>' : ''}<span class="fl">${esc(fileOf(st).split('/').pop())}:${st.ln}</span>`);
+      row.onclick = () => selectCall(st.c, st);
+    } else if (st.k === 'sql') {
+      const text = ((st.x && st.x.qs) || []).map((x) => x.q).join('; ');
+      if (q && !text.toLowerCase().includes(q)) continue;
+      row = mk('node sql', st.d - minD + 1, `<span class="no"></span><span class="nm">${esc(text.slice(0, 90))}</span><span class="fl">${esc(st.x.ms)}ms</span>`);
+      row.onclick = () => { selectCall(st.c, st.site >= 0 ? steps[st.site] : null); showSql(st); };
+    } else if (st.k === 'ex') {
+      if (q && !String(st.x.type).toLowerCase().includes(q)) continue;
+      row = mk('node ex', st.d - minD + 1, `<span class="no"></span><span class="nm">⚠ ${esc(simple(st.x.type))}: ${esc(st.x.msg || '')}</span>`);
+      row.onclick = () => { selectCall(st.c, null); showEx(st); };
+    }
+    if (row) { row.dataset.c = st.c; box.appendChild(row); }
+  }
+  $('tree').replaceChildren(box);
+  $('count').textContent = `함수 ${calls.size}개`;
+}
+
+function mk(cls, ind, html) {
+  const d = document.createElement('div');
+  d.className = cls;
+  d.style.setProperty('--ind', Math.max(0, ind));
+  d.innerHTML = html;
+  return d;
+}
+
+function fileOf(st) { const f = B.files[st.src]; return f ? f.path : st.src || ''; }
+
+// ── 오른쪽: 코드 ──
+function selectCall(c, step) {
+  selCall = c;
+  const call = calls.get(c);
+  if (!call) return;
+  if (step && step.k === 'line') curStep = step;
+  else if (!curStep || curStep.c !== c) curStep = call.first;
+  for (const el of document.querySelectorAll('.node')) el.classList.toggle('sel', el.dataset.c === String(c) && !el.classList.contains('sql') && !el.classList.contains('ex'));
+  renderCode();
+}
+
+function renderCode() {
+  const call = calls.get(selCall);
+  const st = call.first;
+  const f = B.files[st.src];
+  const args = st.args || {};
+  const sig = Object.entries(args).map(([k, v]) => `<span class="v" data-v="arg:${esc(k)}"><span class="n">${esc(k)}</span> = ${esc(short(v, 40))}</span>`).join(' ');
+  const ret = call.ret ? `<span>→</span><span class="v" data-v="ret"><span class="n">반환</span> = ${esc(short(call.ret.ret, 60))}</span>` : '';
+  const parent = st.p >= 0 && calls.get(st.p) ? `<button id="up">↑ 부른 곳: ${esc(simple(calls.get(st.p).first.cls))}.${esc(calls.get(st.p).first.m)}()</button>` : '';
+  const idx = lineSteps.indexOf(curStep);
+  $('codeHead').innerHTML = `
+    <div class="path"><b>${esc(f ? f.path : st.src)}</b><span class="chip">${esc(st.cls)}.${esc(st.m)}()</span>${parent}</div>
+    <div class="sig">${sig || '<span class="hint">인자 없음</span>'} ${ret}</div>
+    <div class="stepbar"><button id="prev" ${idx <= 0 ? 'disabled' : ''}>◀ 이전 단계</button><button id="next" ${idx >= lineSteps.length - 1 ? 'disabled' : ''}>다음 단계 ▶</button><span>단계 ${idx + 1} / ${lineSteps.length}</span><span class="hint">· 노란 줄이 실행된 줄 (누르면 그 줄의 값) · 키보드 ← →</span></div>`;
+  for (const el of $('codeHead').querySelectorAll('.v')) {
+    el.onclick = () => {
+      const k = el.dataset.v;
+      if (k === 'ret') showValue(`${st.m}() 반환값`, call.ret.ret);
+      else showValue(`인자 ${k.slice(4)}`, args[k.slice(4)]);
+    };
+  }
+  if ($('up')) $('up').onclick = () => selectCall(st.p, steps[st.site] || null);
+  $('prev').onclick = () => go(-1);
+  $('next').onclick = () => go(1);
+  if (!f || !f.text) { $('src').innerHTML = `<div class="empty">소스 파일을 찾지 못했습니다 (${esc(st.src)})</div>`; return; }
+  const lines = f.text.split('\n');
+  const otherHits = new Set();
+  for (const s of steps) if (s.k === 'line' && s.src === st.src && s.c !== selCall) otherHits.add(s.ln);
+  const frag = document.createDocumentFragment();
+  lines.forEach((text, i) => {
+    const no = i + 1;
+    const hits = call.lines.get(no);
+    const row = document.createElement('div');
+    row.className = `ln${hits ? ' hit' : ''}${!hits && otherHits.has(no) ? ' other' : ''}${curStep && curStep.c === selCall && curStep.ln === no ? ' cur' : ''}`;
+    row.id = `L${no}`;
+    const mark = hits ? (hits.length > 1 || hits[0].skipped ? `×${hits.length + (hits.reduce((n, h) => n + (h.skipped || 0), 0))}` : '●') : '';
+    row.innerHTML = `<span class="mk">${mark}</span><span class="num">${no}</span><span class="tx">${highlight(text) || ' '}</span>`;
+    frag.appendChild(row);
+    if (hits) {
+      const key = `${selCall}:${no}`;
+      row.onclick = () => { if (open.has(key)) open.delete(key); else open.add(key); curStep = hits[0]; renderCode(); };
+      if (open.has(key)) frag.appendChild(values(hits));
+    }
+  });
+  $('src').replaceChildren(frag);
+  const target = curStep && curStep.c === selCall ? $(`L${curStep.ln}`) : $(`L${st.ln}`);
+  if (target) {
+    const box = $('src');
+    const top = target.offsetTop - box.offsetTop;
+    if (top < box.scrollTop || top > box.scrollTop + box.clientHeight - 60) box.scrollTop = Math.max(0, top - box.clientHeight / 3);
+  }
+}
+
+/** 펼친 줄: 회차마다 이 줄을 실행한 뒤 바뀐 값 · 이 줄에서 부른 함수 · SQL · 예외 */
+function values(hits) {
+  const box = document.createElement('div');
+  box.className = 'vals';
+  hits.forEach((h, n) => {
+    const it = document.createElement('div');
+    it.className = 'it';
+    const parts = [];
+    for (const [k, v] of Object.entries(h.after || {})) parts.push({ html: `<span class="n">${esc(k)}</span> = ${esc(short(v))}`, cls: 'v', on: () => showValue(`${k} (${h.ln}줄 실행 뒤${hits.length > 1 ? ` · ${n + 1}회차` : ''})`, v) });
+    for (const s of steps) {
+      if (s.site !== h.i) continue;
+      if (s.k === 'line' && s.call) parts.push({ html: `→ ${esc(simple(s.cls))}.${esc(s.m)}()${calls.get(s.c) && calls.get(s.c).ret ? ` = ${esc(short(calls.get(s.c).ret.ret, 40))}` : ''}`, cls: 'v call', on: () => selectCall(s.c, null) });
+      if (s.k === 'sql') parts.push({ html: `SQL ${esc(((s.x.qs || [])[0] || {}).q || '').slice(0, 60)}`, cls: 'v sql', on: () => showSql(s) });
+      if (s.k === 'ex') parts.push({ html: `⚠ ${esc(simple(s.x.type))}`, cls: 'v ex', on: () => showEx(s) });
+    }
+    for (const s of steps) if (s.k === 'ex' && s.c === h.c && s.ln === h.ln && s.site !== h.i && !parts.some((p) => p.cls === 'v ex')) parts.push({ html: `⚠ ${esc(simple(s.x.type))}: ${esc(s.x.msg || '')}`, cls: 'v ex', on: () => showEx(s) });
+    if (h.skipped) parts.push({ html: `이 뒤 ${h.skipped}회는 값을 생략 (반복 상한 ${B.trace.maxHits})`, cls: 'v skip' });
+    if (h.skippedCalls) parts.push({ html: `부른 함수 ${h.skippedCalls}번 생략`, cls: 'v skip' });
+    it.innerHTML = `<span class="k">${hits.length > 1 ? `${n + 1}회` : ''}</span><span class="body">${parts.length ? '' : '<span class="hint">바뀐 값 없음</span>'}</span>`;
+    const body = it.querySelector('.body');
+    for (const p of parts) {
+      const el = document.createElement('span');
+      el.className = p.cls;
+      el.innerHTML = p.html;
+      if (p.on) el.onclick = (e) => { e.stopPropagation(); p.on(); };
+      body.appendChild(el);
+    }
+    box.appendChild(it);
+  });
+  box.onclick = (e) => e.stopPropagation();
+  return box;
+}
+
+function go(dir) {
+  const i = lineSteps.indexOf(curStep) + dir;
+  if (i < 0 || i >= lineSteps.length) return;
+  curStep = lineSteps[i];
+  open.add(`${curStep.c}:${curStep.ln}`);
+  selectCall(curStep.c, curStep);
+  const row = document.querySelector(`.node[data-c="${curStep.c}"]:not(.sql):not(.ex)`);
+  if (row) row.scrollIntoView({ block: 'nearest' });
+}
+
+// ── 나눔선 끌기 ──
+function drag(el, onMove) {
+  el.onmousedown = (e) => {
+    e.preventDefault();
+    const move = (ev) => onMove(ev);
+    const up = () => { removeEventListener('mousemove', move); removeEventListener('mouseup', up); };
+    addEventListener('mousemove', move);
+    addEventListener('mouseup', up);
+  };
+}
+drag($('gut'), (e) => document.querySelector('main').style.setProperty('--left', `${Math.min(Math.max(e.clientX, 220), innerWidth - 400)}px`));
+drag($('gutr'), (e) => {
+  const r = document.querySelector('section.right').getBoundingClientRect();
+  document.querySelector('section.right').style.setProperty('--bottom', `${Math.min(Math.max(r.bottom - e.clientY, 80), r.height - 120)}px`);
+});
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight' || e.key === 'j') go(1);
+  if (e.key === 'ArrowLeft' || e.key === 'k') go(-1);
+});
+$('q').oninput = renderTree;
+$('onlySql').onchange = renderTree;
+
+// ── 시작 ──
+fetch(location.pathname.replace(/\.html$/, '.json'), { cache: 'no-store' })
+  .then((r) => { if (!r.ok) throw new Error(`기록 파일이 없습니다 (${r.status})`); return r.json(); })
+  .then((data) => {
+    B = data;
+    build();
+    header();
+    renderTree();
+    const firstCall = steps.find((s) => s.call);
+    if (firstCall) { curStep = firstCall; open.add(`${firstCall.c}:${firstCall.ln}`); selectCall(firstCall.c, firstCall); }
+    else $('src').innerHTML = '<div class="empty">기록된 단계가 없습니다</div>';
+    if (B.meta.response) showValue(`응답 ${B.meta.response.status}`, { t: 'HTTP 응답', f: { status: B.meta.response.status, body: B.meta.response.body } });
+  })
+  .catch((e) => { $('src').innerHTML = `<div class="empty">${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

@@ -9,7 +9,7 @@
  *   serve [--port N]    현황판 · 보고를 http://127.0.0.1:<포트>/ 로 (앞에서 계속). 보통은 new · link 가 뒤에서 띄운다
  *   stop                뒤에서 띄운 서버를 끈다
  * 보고는 이 PC 에만 둔다 (.agents/reports/, gitignore). 남길 것은 핸드오프로. 페이지는 kedovi board 와 같은 문서 사이트 틀
- * 서버는 이 PC 에서만 열린다(127.0.0.1). 페이지를 열 때 보고 · 기록이 바뀌었으면 다시 만든다
+ * 서버는 이 PC 에서만 열린다(127.0.0.1). 페이지를 열 때 보고 · 기록이 바뀌었으면 다시 만든다. /traces/ 는 실행 흐름 기록(trace 팩, kedovi trace)
  */
 'use strict';
 const fs = require('fs');
@@ -115,8 +115,11 @@ function serve() {
     let rel = decodeURIComponent(String(req.url || '/').split('?')[0]).replace(/^\/+/, '');
     if (rel.includes('\0') || rel.split('/').includes('..')) { res.writeHead(400); res.end(); return; }
     if (!rel || rel.endsWith('/')) rel += 'index.html';
-    if (rel.endsWith('.html')) fresh();
-    const f = path.join(BOARD, rel);
+    let f = path.join(BOARD, rel);
+    if (rel.startsWith('traces/')) { // 실행 흐름 기록 (trace 팩): 페이지는 뷰어 하나, 자료는 .agents/traces/<…>.json
+      const sub = rel.slice('traces/'.length);
+      f = sub.endsWith('.json') ? path.join(ROOT, '.agents', 'traces', sub) : path.join(__dirname, '..', '..', 'trace', 'assets', 'viewer', 'index.html');
+    } else if (rel.endsWith('.html')) fresh();
     fs.readFile(f, (err, buf) => {
       if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('없는 페이지입니다. 보고가 지워졌거나 아직 쓰지 않았습니다'); return; }
       res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-store' });

@@ -19,6 +19,7 @@
   "docs/quickstart.md": "docs/quickstart.html",
   "docs/rules.md": "docs/rules.html",
   "docs/team-models.md": "docs/team-models.html",
+  "docs/trace.md": "docs/trace.html",
   "docs/workflow.md": "docs/workflow.html",
   "docs/workspace.md": "docs/workspace.html",
   "docs/write-report.md": "docs/write-report.html",
@@ -32,6 +33,7 @@
   "quickstart.md": "docs/quickstart.html",
   "rules.md": "docs/rules.html",
   "team-models.md": "docs/team-models.html",
+  "trace.md": "docs/trace.html",
   "workflow.md": "docs/workflow.html",
   "workspace.md": "docs/workspace.html",
   "write-report.md": "docs/write-report.html"
