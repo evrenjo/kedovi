@@ -1,0 +1,195 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - heading "OrderApiTraceTest#placeOrder" [level=1] [ref=e3]
+    - generic [ref=e4]:
+      - generic [ref=e5]: 테스트 com.example.shop.OrderApiTraceTest#placeOrder
+      - generic [ref=e6]: repo shop
+      - generic [ref=e7]: 함수 8
+      - generic [ref=e8]: SQL 8
+      - generic [ref=e9]: 4457ms (기록 중 느려짐 포함)
+      - generic [ref=e10]: 2026. 11. 13. 오전 2:56:09
+    - button "◐" [ref=e11] [cursor=pointer]
+  - main [ref=e12]:
+    - complementary [ref=e13]:
+      - generic [ref=e14]:
+        - textbox "함수 · 클래스 · SQL 찾기" [ref=e15]
+        - generic [ref=e16]:
+          - generic [ref=e17]: 보기
+          - combobox "어디부터 보일지" [ref=e18]:
+            - option "진입점부터 (필터 · 가로채기 · 테스트 숨김)" [selected]
+            - option "필터 · 가로채기 포함"
+            - option "테스트 코드까지 전체"
+        - generic [ref=e19]:
+          - generic [ref=e20]: 파일
+          - combobox "이 파일의 함수만" [ref=e21]:
+            - option "모든 파일" [selected]
+            - option "OrderController.java (1)"
+            - option "OrderService.java (2)"
+            - option "Product.java (2)"
+            - option "PurchaseOrder.java (1)"
+        - generic [ref=e22]:
+          - generic [ref=e23]:
+            - checkbox "SQL · 예외만" [ref=e24]
+            - text: SQL · 예외만
+          - generic [ref=e25]: 함수 6 / 8개
+      - generic [ref=e26]:
+        - generic [ref=e27] [cursor=pointer]:
+          - generic [ref=e28]: "1"
+          - generic [ref=e29]: OrderController.place()
+          - generic [ref=e30]: 진입점
+          - generic [ref=e31]: SQL 3
+          - generic [ref=e32]: OrderController.java:21
+        - generic [ref=e33] [cursor=pointer]:
+          - generic [ref=e34]: "2"
+          - generic [ref=e35]: OrderService.place()
+          - generic [ref=e36]: 서비스
+          - generic [ref=e37]: SQL 5
+          - generic [ref=e38]: OrderService.java:28
+        - generic [ref=e39] [cursor=pointer]:
+          - generic [ref=e40]: select m1_0.id,m1_0.grade,m1_0.name,m1_0.password from member m1_0 where m1_0.id=?
+          - generic [ref=e41]: 24ms
+        - generic [ref=e42] [cursor=pointer]:
+          - generic [ref=e43]: select p1_0.id,p1_0.name,p1_0.price,p1_0.stock from product p1_0 where p1_0.id=?
+          - generic [ref=e44]: 1ms
+        - generic [ref=e45] [cursor=pointer]:
+          - generic [ref=e46]: "3"
+          - generic [ref=e47]: Product.decrease()
+          - generic [ref=e48]: Product.java:22
+        - generic [ref=e49] [cursor=pointer]:
+          - generic [ref=e50]: select p1_0.id,p1_0.name,p1_0.price,p1_0.stock from product p1_0 where p1_0.id=?
+          - generic [ref=e51]: 1ms
+        - generic [ref=e52] [cursor=pointer]:
+          - generic [ref=e53]: select p1_0.id,p1_0.name,p1_0.price,p1_0.stock from product p1_0 where p1_0.id=?
+          - generic [ref=e54]: 1ms
+        - generic [ref=e55] [cursor=pointer]:
+          - generic [ref=e56]: "4"
+          - generic [ref=e57]: Product.decrease()
+          - generic [ref=e58]: Product.java:22
+        - generic [ref=e59] [cursor=pointer]:
+          - generic [ref=e60]: "5"
+          - generic [ref=e61]: OrderService.discount()
+          - generic [ref=e62]: 서비스
+          - generic [ref=e63]: OrderService.java:47
+        - generic [ref=e64] [cursor=pointer]:
+          - generic [ref=e65]: "6"
+          - generic [ref=e66]: PurchaseOrder.<init>()
+          - generic [ref=e67]: PurchaseOrder.java:23
+        - generic [ref=e68] [cursor=pointer]:
+          - generic [ref=e69]: select next value for purchase_order_seq
+          - generic [ref=e70]: 12ms
+        - generic [ref=e71] [cursor=pointer]:
+          - generic [ref=e72]: insert into purchase_order (member_id,ordered_on,status,total,id) values (?,?,?,?,?)
+          - generic [ref=e73]: 1ms
+        - generic [ref=e74] [cursor=pointer]:
+          - generic [ref=e75]: update product set name=?,price=?,stock=? where id=?
+          - generic [ref=e76]: 1ms
+        - generic [ref=e77] [cursor=pointer]:
+          - generic [ref=e78]: update product set name=?,price=?,stock=? where id=?
+          - generic [ref=e79]: 1ms
+    - generic [ref=e81]:
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - button "◀ 이전 단계" [disabled] [ref=e84]
+          - button "다음 단계 ▶" [ref=e85] [cursor=pointer]
+          - generic [ref=e86]: 단계 1 / 39
+          - generic [ref=e87]: 노란 줄이 실행된 줄 (누르면 그 줄의 값) · 키보드 ← →
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - generic [ref=e90]: src/main/java/com/example/shop/web/OrderController.java
+            - generic [ref=e91]: com.example.shop.web.OrderController.place()
+            - 'button "↑ 부른 곳: RequestIdFilter.doFilterInternal()" [ref=e92] [cursor=pointer]'
+          - generic [ref=e93]:
+            - generic [ref=e94] [cursor=pointer]: "request = OrderRequest{memberId=1, lines=ArrayLis…"
+            - generic [ref=e95] [cursor=pointer]: longArgumentName0 = "value0"
+            - generic [ref=e96] [cursor=pointer]: longArgumentName1 = "value1"
+            - generic [ref=e97] [cursor=pointer]: longArgumentName2 = "value2"
+            - generic [ref=e98] [cursor=pointer]: longArgumentName3 = "value3"
+            - generic [ref=e99] [cursor=pointer]: longArgumentName4 = "value4"
+            - generic [ref=e100] [cursor=pointer]: longArgumentName5 = "value5"
+            - generic [ref=e101] [cursor=pointer]: longArgumentName6 = "value6"
+            - generic [ref=e102] [cursor=pointer]: longArgumentName7 = "value7"
+            - generic [ref=e103] [cursor=pointer]: longArgumentName8 = "value8"
+            - generic [ref=e104] [cursor=pointer]: longArgumentName9 = "value9"
+            - generic [ref=e105] [cursor=pointer]: longArgumentName10 = "value10"
+            - generic [ref=e106] [cursor=pointer]: longArgumentName11 = "value11"
+            - generic [ref=e107] [cursor=pointer]: longArgumentName12 = "value12"
+            - generic [ref=e108] [cursor=pointer]: longArgumentName13 = "value13"
+            - generic [ref=e109]: →
+            - generic [ref=e110] [cursor=pointer]: "반환 = ResponseEntity{status=200, body=OrderResult{orderId…}"
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e114]: "1"
+            - generic [ref=e115]: package com.example.shop.web;
+          - generic [ref=e116]: "2"
+          - generic [ref=e120]:
+            - generic [ref=e122]: "3"
+            - generic [ref=e123]: import com.example.shop.order.OrderRequest;
+          - generic [ref=e124]:
+            - generic [ref=e126]: "4"
+            - generic [ref=e127]: import com.example.shop.order.OrderResult;
+          - generic [ref=e128]:
+            - generic [ref=e130]: "5"
+            - generic [ref=e131]: import com.example.shop.order.OrderService;
+          - generic [ref=e132]:
+            - generic [ref=e134]: "6"
+            - generic [ref=e135]: import org.springframework.http.ResponseEntity;
+          - generic [ref=e136]:
+            - generic [ref=e138]: "7"
+            - generic [ref=e139]: import org.springframework.web.bind.annotation.PostMapping;
+          - generic [ref=e140]:
+            - generic [ref=e142]: "8"
+            - generic [ref=e143]: import org.springframework.web.bind.annotation.RequestBody;
+          - generic [ref=e144]:
+            - generic [ref=e146]: "9"
+            - generic [ref=e147]: import org.springframework.web.bind.annotation.RestController;
+          - generic [ref=e148]: "10"
+          - generic [ref=e152]:
+            - generic [ref=e154]: "11"
+            - generic [ref=e155]: "@RestController"
+          - generic [ref=e156]:
+            - generic [ref=e158]: "12"
+            - generic [ref=e159]: "public class OrderController {"
+          - generic [ref=e160]:
+            - generic [ref=e162]: "13"
+            - generic [ref=e163]: private final OrderService orderService;
+          - generic [ref=e164]: "14"
+          - generic [ref=e168]:
+            - generic [ref=e170]: "15"
+            - generic [ref=e171]: "public OrderController(OrderService orderService) {"
+          - generic [ref=e172]:
+            - generic [ref=e174]: "16"
+            - generic [ref=e175]: this.orderService = orderService;
+          - generic [ref=e176]:
+            - generic [ref=e178]: "17"
+            - generic [ref=e179]: "}"
+          - generic [ref=e180]: "18"
+          - generic [ref=e184]:
+            - generic [ref=e186]: "19"
+            - generic [ref=e187]: "@PostMapping(\"/api/orders\")"
+          - generic [ref=e188]:
+            - generic [ref=e190]: "20"
+            - generic [ref=e191]: "public ResponseEntity<OrderResult> place(@RequestBody OrderRequest request) {"
+          - generic [ref=e192] [cursor=pointer]:
+            - generic [ref=e193]: ●
+            - generic [ref=e194]: "21"
+            - generic [ref=e195]: OrderResult result = orderService.place(request);
+          - generic [ref=e198]:
+            - generic [ref=e199] [cursor=pointer]: "result = OrderResult{orderId=1, total=288000.0000, status=PARTIAL, …}"
+            - generic [ref=e200] [cursor=pointer]: "→ OrderService.place() = OrderResult{orderId=1, total=288000.000…"
+            - generic [ref=e201] [cursor=pointer]: SQL insert into purchase_order (member_id,ordered_on,status,tota
+            - generic [ref=e202] [cursor=pointer]: SQL update product set name=?,price=?,stock=? where id=?
+            - generic [ref=e203] [cursor=pointer]: SQL update product set name=?,price=?,stock=? where id=?
+          - generic [ref=e204] [cursor=pointer]:
+            - generic [ref=e205]: ●
+            - generic [ref=e206]: "22"
+            - generic [ref=e207]: return ResponseEntity.ok(result);
+          - generic [ref=e208]:
+            - generic [ref=e210]: "23"
+            - generic [ref=e211]: "}"
+          - generic [ref=e212]:
+            - generic [ref=e214]: "24"
+            - generic [ref=e215]: "}"
+          - generic [ref=e216]: "25"
+      - generic [ref=e222]:
+        - generic [ref=e223]: 데이터 상세
+        - generic [ref=e224]: 코드의 값 · SQL 을 누르면 여기에 나옵니다
