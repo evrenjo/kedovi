@@ -256,7 +256,7 @@ npm i -g kedovi
 kedovi --version
 ```
 
-처음 실행할 때 kedovi 은 Node 버전과 상관없는 고정 위치에 실행 파일을 두고 PATH 에 넣는다. 그래서 nvm 등으로 기본 Node 를 바꾸거나 설치했던 버전을 지워도 `kedovi` 명령은 그대로 동작한다 (다른 Node 버전에 깔린 kedovi 중 가장 최근 것을 쓴다). 새 터미널부터 적용된다.
+처음 실행할 때 kedovi 은 Node 버전과 상관없는 고정 위치에 실행 파일을 두고 PATH 에 넣는다. 그래서 nvm 등으로 기본 Node 를 바꾸거나 설치했던 버전을 지워도 `kedovi` 명령은 그대로 동작한다 (여러 Node 버전에 깔려 있으면 버전이 가장 높은 kedovi 을 쓴다. Windows 는 지금 Node 에 깔린 것을 먼저). 새 터미널부터 적용된다.
 
 | PC | 실행 파일 | PATH |
 |---|---|---|

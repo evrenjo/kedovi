@@ -2,6 +2,13 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.93.1
+
+| 구분 | 내용 |
+|---|---|
+| 수정 | Node 버전을 바꾼 뒤 `npm i -g` 로 올려도 `kedovi --version` 이 옛 버전으로 나오던 문제: `~/.local/bin/kedovi` 이 여러 Node 버전에 깔린 kedovi 중 버전이 가장 높은 것을 실행 (Windows 는 지금 Node 의 것을 먼저) |
+| 바로 고치기 | 이미 옛 버전이 도는 PC: `node "$(npm root -g)/kedovi/bin/kedovi.js" --version` 한 번 |
+
 ## 0.93.0
 
 | 구분 | 내용 |

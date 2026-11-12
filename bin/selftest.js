@@ -2230,10 +2230,20 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const once = r1.pathAdded.length === 1 && r2.pathAdded.length === 0 && rc.split(G.MARK).length === 2 && /export PATH="\$HOME\/\.local\/bin:\$PATH"/.test(rc);
   const run = process.platform === 'win32' ? { stdout: 'nvm-kit a b' } : spawnSync(r1.file, ['a', 'b'], { encoding: 'utf8', env: { HOME: home, PATH: '/usr/bin:/bin' } });
   const found = /nvm-kit a b/.test(run.stdout || '');
+  // Node 버전을 바꾼 뒤 npm i -g 로 올린 경우: 처음 기록한 옛 Node 의 0.91.0 이 남아 있어도 다른 Node 의 0.93.0 을 실행
+  const pkgAt = (bin, v, tag) => { fs.mkdirSync(bin, { recursive: true }); fs.writeFileSync(path.join(bin, 'kedovi.js'), `console.log('${tag}')\n`); fs.writeFileSync(path.join(bin, '..', 'package.json'), `{\n  "name": "kedovi",\n  "version": "${v}"\n}\n`); return path.join(bin, 'kedovi.js'); };
+  const oldKit = pkgAt(path.join(home, '.nvm', 'versions', 'node', 'v22.1.0', 'lib', 'node_modules', 'kedovi', 'bin'), '0.91.0', 'old-0.91');
+  fs.mkdirSync(path.join(home, '.nvm', 'versions', 'node', 'v22.1.0', 'bin'), { recursive: true });
+  fs.symlinkSync(process.execPath, path.join(home, '.nvm', 'versions', 'node', 'v22.1.0', 'bin', 'node'));
+  pkgAt(nvmKit, '0.93.0', 'new-0.93');
+  G.ensure({ kit: oldKit, node: '/nope/node', home, env, platform: process.platform === 'linux' ? 'linux' : 'darwin' });
+  const newer = process.platform === 'win32' || /new-0\.93/.test(spawnSync(r1.file, [], { encoding: 'utf8', env: { HOME: home, PATH: '/usr/bin:/bin' } }).stdout || '');
+  pkgAt(nvmKit, '0.9.0', 'low-0.9');
+  const higher = process.platform === 'win32' || /old-0\.91/.test(spawnSync(r1.file, [], { encoding: 'utf8', env: { HOME: home, PATH: '/usr/bin:/bin' } }).stdout || ''); // 0.91 > 0.9 (숫자 비교)
   const dev = G.ensure({ kit: path.join(KIT, 'bin', 'kedovi.js'), home: path.join(tmp, 'shim-dev'), env }) === null && !fs.existsSync(path.join(tmp, 'shim-dev'));
   const cmd = G.cmdBody({ kit: 'C:\\n\\node_modules\\kedovi\\bin\\kedovi.js', node: 'C:\\n\\node.exe', pkg: 'kedovi' });
-  const winOk = /%NVM_HOME%\\v\*/.test(cmd) && /npm root -g/.test(cmd) && /"%N%" "%K%" %\*/.test(cmd) && !/[가-힣]/.test(cmd);
-  record('Node 버전과 상관없는 kedovi 명령', once && found && dev && winOk, `PATH 한 줄 한 번 ${once} · 지운 버전 대신 nvm 의 다른 버전 kedovi 실행 ${found} · 킷 repo 실행은 안 함 ${dev} · Windows .cmd ${winOk}${found ? '' : ` · ${(run.stderr || '').trim()}`}`);
+  const winOk = /where node/.test(cmd) && /%NVM_HOME%\\v\*/.test(cmd) && /npm root -g/.test(cmd) && /"%N%" "%K%" %\*/.test(cmd) && !/[가-힣]/.test(cmd);
+  record('Node 버전과 상관없는 kedovi 명령', once && found && newer && higher && dev && winOk, `PATH 한 줄 한 번 ${once} · 지운 버전 대신 nvm 의 다른 버전 kedovi 실행 ${found} · 옛 Node 에 남은 0.91 대신 새 Node 의 0.93 ${newer} · 버전은 숫자로 비교 ${higher} · 킷 repo 실행은 안 함 ${dev} · Windows .cmd ${winOk}${found ? '' : ` · ${(run.stderr || '').trim()}`}`);
 }
 
 // 워크스페이스 현황판 — kedovi board 가 .agents/board/ 에 현황 · 기록 쪽을 만들고(gitignore), 문서 사이트와 같은 틀이다

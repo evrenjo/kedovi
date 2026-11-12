@@ -1,6 +1,7 @@
 // Node 버전과 상관없는 kedovi 명령: 고정 위치(~/.local/bin · %LOCALAPPDATA%\kedovi\bin)에 실행 파일을 두고 PATH 에 넣는다.
 // nvm 등은 전역 npm 명령을 Node 버전마다 따로 두어, 기본 Node 가 바뀌면 kedovi 이 PATH 에서 빠진다.
-// 실행 파일은 ① 이번에 실행한 kedovi · Node → ② 다른 Node 버전에 깔린 kedovi → ③ 지금 node 의 전역 kedovi 순으로 찾아 실행한다.
+// 실행 파일은 이번 kedovi · 지금 node 의 전역 · 다른 Node 버전(nvm · fnm · volta)에 깔린 kedovi 중 버전이 가장 높은 것을 실행한다
+// (Windows 는 지금 node 의 전역 → 이번 kedovi → nvm-windows 순). 없으면 npm root -g.
 // kedovi 이 실행될 때마다 갱신한다. 전역 설치(node_modules 안)일 때만, KEDOVI_NO_GLOBAL_SHIM=1 이면 하지 않는다.
 'use strict';
 
@@ -21,19 +22,24 @@ function shBody({ kit, node, pkg }) {
 ${MARK}. 직접 고치지 않는다 (kedovi 이 실행될 때마다 다시 쓴다)
 K="${kit}"
 N="${node}"
-if [ ! -f "$K" ]; then
-  # 다른 Node 버전에 깔린 kedovi 중 가장 최근에 설치한 것
-  # (npm 은 패키지 파일 시각을 고정값으로 풀어서 패키지 폴더 시각으로 비교)
-  D="$(ls -td "\${NVM_DIR:-$HOME/.nvm}"/versions/node/*/${mod} "$HOME"/.local/share/fnm/node-versions/*/installation/${mod} "$HOME"/.volta/tools/image/packages/${pkg}/${mod} 2>/dev/null | head -n 1)"
-  K=""
-  [ -n "$D" ] && [ -f "$D/bin/kedovi.js" ] && K="$D/bin/kedovi.js" && N="\${D%/lib/node_modules/*}/bin/node"
+# 깔린 kedovi 중 버전이 가장 높은 것 (같으면 이번 kedovi). Node 버전을 바꾼 뒤 npm i -g 로 올리면 새 버전은 그 Node 폴더에 깔린다
+P="$(command -v node 2>/dev/null)"
+B="$(for d in "\${NVM_DIR:-$HOME/.nvm}"/versions/node/*/${mod} "$HOME"/.local/share/fnm/node-versions/*/installation/${mod} "$HOME"/.volta/tools/image/packages/${pkg}/${mod} "\${P%/bin/node}/${mod}" "\${K%/bin/kedovi.js}"; do
+  [ -f "$d/bin/kedovi.js" ] || continue
+  v="$(sed -n 's/^ *"version": *"\\([0-9][0-9.]*\\)".*/\\1/p' "$d/package.json" 2>/dev/null | head -n 1)"
+  printf '%s\\t%s\\n' "\${v:-0}" "$d"
+done | sort -s -t. -k1,1n -k2,2n -k3,3n | tail -n 1 | cut -f2-)"
+if [ -n "$B" ] && [ "$B/bin/kedovi.js" != "$K" ]; then
+  K="$B/bin/kedovi.js"
+  N="\${B%/lib/node_modules/*}/bin/node"
 fi
-if [ -z "$K" ] && command -v npm >/dev/null 2>&1; then
+if [ ! -f "$K" ] && command -v npm >/dev/null 2>&1; then
   f="$(npm root -g 2>/dev/null)/${pkg}/bin/kedovi.js"
   [ -f "$f" ] && K="$f" && N=node
 fi
+[ -x "$N" ] || N="\${K%/lib/node_modules/*}/bin/node"
 [ -x "$N" ] || N=node
-if [ -z "$K" ]; then echo "kedovi 을 찾지 못했습니다. 설치: npm i -g ${pkg}" >&2; exit 127; fi
+if [ ! -f "$K" ]; then echo "kedovi 을 찾지 못했습니다. 설치: npm i -g ${pkg}" >&2; exit 127; fi
 exec "$N" "$K" "$@"
 `;
 }
@@ -47,6 +53,8 @@ function cmdBody({ kit, node, pkg }) {
     'setlocal',
     `set "K=${kit}"`,
     `set "N=${node}"`,
+    // 지금 Node(PATH 의 node.exe)에 깔린 kedovi 먼저: Node 버전을 바꾼 뒤 npm i -g 로 올린 새 버전
+    `for /f "delims=" %%P in ('where node 2^>nul') do if exist "%%~dpPnode_modules\\${w}\\bin\\kedovi.js" (set "K=%%~dpPnode_modules\\${w}\\bin\\kedovi.js"& set "N=%%P"& goto run)`,
     'if exist "%K%" goto run',
     // nvm-windows: 최근에 만든 Node 버전 폴더부터, kedovi 이 있는 첫 버전
     `if defined NVM_HOME for /f "delims=" %%D in ('dir /b /ad /o-d "%NVM_HOME%\\v*" 2^>nul') do if exist "%NVM_HOME%\\%%D\\node_modules\\${w}\\bin\\kedovi.js" (set "K=%NVM_HOME%\\%%D\\node_modules\\${w}\\bin\\kedovi.js"& set "N=%NVM_HOME%\\%%D\\node.exe"& goto run)`,
