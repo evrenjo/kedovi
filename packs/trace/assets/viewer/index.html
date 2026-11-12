@@ -9,7 +9,7 @@
   --bg: #f5f6f8; --panel: #ffffff; --line: #e3e6eb; --text: #1d2330; --muted: #6b7280; --faint: #9aa1ad;
   --accent: #2563eb; --accent-bg: #e8effd; --hit: #fff7d6; --hit-strong: #ffe9a3; --cur: #dbeafe;
   --ok: #16803c; --warn: #b45309; --err: #c0262d; --sql: #7c3aed; --sql-bg: #f1eafe;
-  --kw: #a626a4; --str: #50a14f; --num: #986801; --com: #a0a1a7; --ann: #c18401; --chip: #f1f3f6;
+  --sb: #c9ced6; --sb-h: #9aa1ad; --kw: #a626a4; --str: #50a14f; --num: #986801; --com: #a0a1a7; --ann: #c18401; --chip: #f1f3f6;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
@@ -17,16 +17,21 @@
     --bg: #14161b; --panel: #1b1e24; --line: #2b2f37; --text: #e5e7eb; --muted: #9ca3af; --faint: #6b7280;
     --accent: #60a5fa; --accent-bg: #1e2a3d; --hit: #2c2a1c; --hit-strong: #3d3720; --cur: #1e3350;
     --ok: #4ade80; --warn: #fbbf24; --err: #f87171; --sql: #c4b5fd; --sql-bg: #2a2340;
-    --kw: #c678dd; --str: #98c379; --num: #d19a66; --com: #7f848e; --ann: #e5c07b; --chip: #252932;
+    --sb: #3a3f49; --sb-h: #565c68; --kw: #c678dd; --str: #98c379; --num: #d19a66; --com: #7f848e; --ann: #e5c07b; --chip: #252932;
   }
 }
 :root[data-theme="dark"] {
   --bg: #14161b; --panel: #1b1e24; --line: #2b2f37; --text: #e5e7eb; --muted: #9ca3af; --faint: #6b7280;
   --accent: #60a5fa; --accent-bg: #1e2a3d; --hit: #2c2a1c; --hit-strong: #3d3720; --cur: #1e3350;
   --ok: #4ade80; --warn: #fbbf24; --err: #f87171; --sql: #c4b5fd; --sql-bg: #2a2340;
-  --kw: #c678dd; --str: #98c379; --num: #d19a66; --com: #7f848e; --ann: #e5c07b; --chip: #252932;
+  --sb: #3a3f49; --sb-h: #565c68; --kw: #c678dd; --str: #98c379; --num: #d19a66; --com: #7f848e; --ann: #e5c07b; --chip: #252932;
 }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: var(--sb) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--sb); border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--sb-h); }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+select { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; min-width: 0; flex: 1; }
 html, body { margin: 0; height: 100%; }
 body { background: var(--bg); color: var(--text); font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; display: flex; flex-direction: column; overflow: hidden; }
 button { font: inherit; color: inherit; background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
@@ -47,6 +52,7 @@ main { flex: 1; display: grid; grid-template-columns: var(--left, 420px) 6px 1fr
 aside { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-right: 1px solid var(--line); }
 .side-head { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
 .side-head .row { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.side-head .row > span:first-child { flex: none; width: 52px; }
 .tree { flex: 1; overflow: auto; padding: 6px 0 24px; }
 .node { display: flex; align-items: center; gap: 6px; padding: 3px 10px 3px calc(10px + var(--ind) * 14px); cursor: pointer; white-space: nowrap; border-left: 3px solid transparent; }
 .node:hover { background: var(--chip); }
@@ -69,7 +75,10 @@ section.right { display: grid; grid-template-rows: 1fr 6px var(--bottom, 34%); m
 .code-head .path { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .code-head .path b { font-family: var(--mono); font-size: 12.5px; }
 .code-head .sig { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.stepbar { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.stepbar { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); padding: 7px 14px; border-bottom: 1px solid var(--line); background: var(--panel); white-space: nowrap; overflow: hidden; }
+.stepbar button { width: 92px; flex: none; text-align: center; }
+.stepbar #stepNo { min-width: 104px; flex: none; font-variant-numeric: tabular-nums; }
+.stepbar .hint { overflow: hidden; text-overflow: ellipsis; }
 .src { flex: 1; overflow: auto; font: 12.5px/1.6 var(--mono); padding-bottom: 40px; }
 .ln { display: grid; grid-template-columns: 28px 52px 1fr; align-items: start; }
 .ln .mk { text-align: center; color: var(--faint); font-size: 11px; user-select: none; padding-top: 1px; }
@@ -110,6 +119,10 @@ table.ps th, table.ps td { border: 1px solid var(--line); padding: 3px 10px; tex
 table.ps th { color: var(--muted); font-weight: 500; }
 .tk-kw { color: var(--kw); } .tk-s { color: var(--str); } .tk-n { color: var(--num); } .tk-c { color: var(--com); font-style: italic; } .tk-a { color: var(--ann); }
 .empty { padding: 30px; color: var(--muted); }
+.var { border-bottom: 1px dotted var(--accent); cursor: help; }
+.var:hover { background: var(--accent-bg); }
+.tip { position: fixed; z-index: 10; max-width: 520px; max-height: 360px; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 8px 10px; font: 12px/1.6 var(--mono); }
+.tip .th { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; color: var(--muted); font-size: 11.5px; margin-bottom: 4px; }
 @media (max-width: 900px) {
   body { overflow: auto; }
   main { display: block; }
@@ -134,6 +147,12 @@ table.ps th { color: var(--muted); font-weight: 500; }
   <aside>
     <div class="side-head">
       <input id="q" placeholder="함수 · 클래스 · SQL 찾기" autocomplete="off">
+      <div class="row"><span>보기</span><select id="scope" title="어디부터 보일지">
+        <option value="api">진입점부터 (필터 · 가로채기 · 테스트 숨김)</option>
+        <option value="app">필터 · 가로채기 포함</option>
+        <option value="all">테스트 코드까지 전체</option>
+      </select></div>
+      <div class="row"><span>파일</span><select id="file" title="이 파일의 함수만"></select></div>
       <div class="row"><label><input type="checkbox" id="onlySql" style="width:auto"> SQL · 예외만</label><span class="spacer"></span><span id="count"></span></div>
     </div>
     <div class="tree" id="tree"></div>
@@ -141,6 +160,7 @@ table.ps th { color: var(--muted); font-weight: 500; }
   <div class="gut" id="gut"></div>
   <section class="right">
     <div class="code">
+      <div class="stepbar"><button id="prev" disabled>◀ 이전 단계</button><button id="next" disabled>다음 단계 ▶</button><span id="stepNo"></span><span class="hint">노란 줄이 실행된 줄 (누르면 그 줄의 값) · 키보드 ← →</span></div>
       <div class="code-head" id="codeHead"></div>
       <div class="src" id="src"><div class="empty">왼쪽에서 함수를 고르세요</div></div>
     </div>
@@ -151,6 +171,7 @@ table.ps th { color: var(--muted); font-weight: 500; }
     </div>
   </section>
 </main>
+<div class="tip" id="tip" hidden></div>
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
@@ -251,7 +272,7 @@ function fmtSql(q) {
 
 // ── 코드 색 ──
 const KW = new Set('abstract assert boolean break byte case catch char class const continue default do double else enum extends final finally float for goto if implements import instanceof int interface long native new package private protected public return short static strictfp super switch synchronized this throw throws transient try void volatile while var record yield null true false fun val when object companion data sealed override open internal lateinit by in is as'.split(' '));
-function highlight(line) {
+function highlight(line, vars) {
   const re = /(\/\/.*$|\/\*.*?\*\/|\/\*.*$|^\s*\*.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(@[A-Za-z_][\w.]*)|\b(\d[\d_.]*[LlFfDd]?)\b|\b([A-Za-z_]\w*)\b/g;
   let out = '';
   let last = 0;
@@ -262,7 +283,9 @@ function highlight(line) {
     else if (m[2]) out += `<span class="tk-s">${esc(m[2])}</span>`;
     else if (m[3]) out += `<span class="tk-a">${esc(m[3])}</span>`;
     else if (m[4]) out += `<span class="tk-n">${esc(m[4])}</span>`;
-    else out += KW.has(m[5]) ? `<span class="tk-kw">${m[5]}</span>` : esc(m[5]);
+    else if (KW.has(m[5])) out += `<span class="tk-kw">${m[5]}</span>`;
+    else if (vars && vars.has(m[5]) && line[m.index - 1] !== '.') out += `<span class="var" data-k="${esc(m[5])}">${esc(m[5])}</span>`;
+    else out += esc(m[5]);
     last = re.lastIndex;
   }
   return out + esc(line.slice(last));
@@ -272,7 +295,9 @@ function highlight(line) {
 let B;
 let steps = [];
 const calls = new Map(); // 호출 번호 → { c, first, steps:[], lines: Map(줄→[step]), ret, kids }
-let lineSteps = []; // 줄 단계 (다음 · 이전 이동)
+let lineSteps = []; // 줄 단계 전체
+let navSteps = []; // 지금 보이는 함수의 줄 단계 (다음 · 이전 이동)
+const shown = new Set(); // 지금 보이는 호출 번호
 let selCall = null;
 let curStep = null;
 const open = new Set(); // 펼친 줄 (호출:줄)
@@ -282,10 +307,12 @@ function where(st) {
   return c ? `${simple(c.first.cls)}.${c.first.m}()${st.ln ? ` ${st.ln}줄` : ''}` : '';
 }
 
-function layer(cls) {
+function layer(cls, c) {
   const s = String(cls).toLowerCase();
-  if (/test$/.test(s) || /\.test\./.test(s)) return '테스트';
-  if (/filter|interceptor|advice|aspect/.test(s)) return '필터';
+  if (c && c.test) return '테스트';
+  if (c && c.cross) return '가로채기';
+  if (c && !c.api && /filter/.test(s)) return '필터';
+  if (c && c.entry) return '진입점';
   if (/controller|resource|endpoint|handler|api$/.test(s)) return '컨트롤러';
   if (/service|usecase|facade|manager/.test(s)) return '서비스';
   if (/repository|repo$|dao|mapper|query/.test(s)) return '저장소';
@@ -307,6 +334,75 @@ function build() {
     if (st.k === 'sql') c.sql += (st.x && st.x.qs || []).length;
     if (st.k === 'ex') c.ex += 1;
   }
+  classify();
+}
+
+// ── 진입점 · 필터 · 테스트 가리기 ──
+// 진입점: 컨트롤러(@Controller · @…Mapping) 호출. 없으면 테스트가 부른 첫 함수(필터 아닌 것). 기본 보기는 진입점과 그 아래만
+const CROSS = /interceptor|aspect|advice|filter$/i;
+function classify() {
+  const ctl = (c) => {
+    const f = B.files[c.first.src];
+    const text = f && f.text || '';
+    if (/@(Rest)?Controller\b/.test(text)) return true;
+    if (text) {
+      const lines = text.split('\n');
+      const re = new RegExp(`\\b${String(c.first.m).replace(/[^\w$]/g, '')}\\s*\\(`);
+      const at = lines.findIndex((l) => re.test(l) && !/^\s*(return|\/\/|\*)/.test(l) && /\b(public|private|protected|fun|def)\b|^\s+[\w<>,\[\]? ]+\s+\w+\s*\(/.test(l));
+      if (at > 0 && lines.slice(Math.max(0, at - 4), at).some((l) => /@(Get|Post|Put|Patch|Delete|Request)Mapping\b/.test(l))) return true;
+    }
+    return /(controller|resource|endpoint)$/i.test(simple(c.first.cls));
+  };
+  for (const c of calls.values()) {
+    c.test = /(^|\/)src\/test\//.test(fileOf(c.first)) || /(Test|Tests|IT|Spec)$/.test(simple(c.first.cls));
+    c.ctl = !c.test && ctl(c);
+  }
+  const up = (c, fn) => { for (let p = calls.get(c.first.p); p; p = calls.get(p.first.p)) if (fn(p)) return true; return false; };
+  let entries = [...calls.values()].filter((c) => c.ctl && !up(c, (p) => p.ctl));
+  if (!entries.length) entries = [...calls.values()].filter((c) => !c.test && !CROSS.test(simple(c.first.cls)) && (!calls.get(c.first.p) || calls.get(c.first.p).test));
+  if (!entries.length) entries = [...calls.values()].filter((c) => !c.test && !calls.get(c.first.p));
+  for (const c of entries) c.entry = true;
+  for (const c of calls.values()) {
+    c.api = c.entry || up(c, (p) => p.entry);
+    c.cross = !c.test && !c.entry && (/interceptor|aspect|advice/i.test(simple(c.first.cls)) || (c.api && /filter$/i.test(simple(c.first.cls)) && /^doFilter/.test(c.first.m)));
+    c.underCross = up(c, (p) => p.cross);
+  }
+  if (!entries.length) $('scope').value = 'app';
+}
+
+function applyScope() {
+  const scope = $('scope').value;
+  const file = $('file').value;
+  shown.clear();
+  for (const c of calls.values()) {
+    let ok = scope === 'all' || (scope === 'app' ? !c.test : c.api && !c.cross && !c.underCross);
+    if (ok && file && c.first.src !== file) ok = false;
+    if (ok) shown.add(c.c);
+  }
+  navSteps = lineSteps.filter((s) => shown.has(s.c));
+}
+
+/** 숨긴 호출 안의 SQL · 예외는 가장 가까운 보이는 호출 아래에 */
+function shownOwner(c) {
+  for (let x = calls.get(c); x; x = calls.get(x.first.p)) if (shown.has(x.c)) return x.c;
+  return null;
+}
+
+function fillFiles() {
+  const scope = $('scope').value;
+  const prev = $('file').value;
+  const files = new Map();
+  for (const c of calls.values()) {
+    if (!(scope === 'all' || (scope === 'app' ? !c.test : c.api && !c.cross && !c.underCross))) continue;
+    const k = c.first.src;
+    if (!files.has(k)) files.set(k, { n: 0, path: fileOf(c.first) });
+    files.get(k).n += 1;
+  }
+  const opts = ['<option value="">모든 파일</option>'];
+  for (const [k, v] of files) opts.push(`<option value="${esc(k)}">${esc(v.path.split('/').pop())} (${v.n})</option>`);
+  $('file').innerHTML = opts.join('');
+  $('file').value = files.has(prev) ? prev : '';
+  applyScope();
 }
 
 // ── 머리 ──
@@ -338,33 +434,35 @@ function header() {
 function renderTree() {
   const q = $('q').value.trim().toLowerCase();
   const onlySql = $('onlySql').checked;
-  const minD = Math.min(...steps.filter((s) => s.call).map((s) => s.d), 99);
+  const minD = Math.min(...steps.filter((s) => s.call && shown.has(s.c)).map((s) => s.d), 99);
   const box = document.createDocumentFragment();
   let n = 0;
   for (const st of steps) {
     let row = null;
     if (st.k === 'line' && st.call) {
-      if (onlySql) continue;
+      if (onlySql || !shown.has(st.c)) continue;
       const c = calls.get(st.c);
       const label = `${simple(st.cls)}.${st.m}`;
       if (q && !`${st.cls}.${st.m}`.toLowerCase().includes(q)) continue;
-      const ly = layer(st.cls);
+      const ly = layer(st.cls, c);
       row = mk(`node${selCall === st.c ? ' sel' : ''}`, st.d - minD, `<span class="no">${++n}</span><span class="nm"><span class="cls">${esc(simple(st.cls))}.</span>${esc(st.m)}()</span>${ly ? `<span class="layer">${ly}</span>` : ''}${c.sql ? `<span class="badge">SQL ${c.sql}</span>` : ''}${c.ex ? '<span class="badge err">예외</span>' : ''}<span class="fl">${esc(fileOf(st).split('/').pop())}:${st.ln}</span>`);
       row.onclick = () => selectCall(st.c, st);
     } else if (st.k === 'sql') {
+      if (shownOwner(st.c) === null) continue;
       const text = ((st.x && st.x.qs) || []).map((x) => x.q).join('; ');
       if (q && !text.toLowerCase().includes(q)) continue;
-      row = mk('node sql', st.d - minD + 1, `<span class="no"></span><span class="nm">${esc(text.slice(0, 90))}</span><span class="fl">${esc(st.x.ms)}ms</span>`);
-      row.onclick = () => { selectCall(st.c, st.site >= 0 ? steps[st.site] : null); showSql(st); };
+      row = mk('node sql', Math.min(st.d, calls.get(shownOwner(st.c)).first.d) - minD + 1, `<span class="no"></span><span class="nm">${esc(text.slice(0, 90))}</span><span class="fl">${esc(st.x.ms)}ms</span>`);
+      row.onclick = () => { const o = shownOwner(st.c); selectCall(o, o === st.c && st.site >= 0 ? steps[st.site] : null); showSql(st); };
     } else if (st.k === 'ex') {
+      if (shownOwner(st.c) === null) continue;
       if (q && !String(st.x.type).toLowerCase().includes(q)) continue;
-      row = mk('node ex', st.d - minD + 1, `<span class="no"></span><span class="nm">⚠ ${esc(simple(st.x.type))}: ${esc(st.x.msg || '')}</span>`);
-      row.onclick = () => { selectCall(st.c, null); showEx(st); };
+      row = mk('node ex', Math.min(st.d, calls.get(shownOwner(st.c)).first.d) - minD + 1, `<span class="no"></span><span class="nm">⚠ ${esc(simple(st.x.type))}: ${esc(st.x.msg || '')}</span>`);
+      row.onclick = () => { selectCall(shownOwner(st.c), null); showEx(st); };
     }
-    if (row) { row.dataset.c = st.c; box.appendChild(row); }
+    if (row) { row.dataset.c = st.k === 'line' ? st.c : shownOwner(st.c); box.appendChild(row); }
   }
   $('tree').replaceChildren(box);
-  $('count').textContent = `함수 ${calls.size}개`;
+  $('count').textContent = shown.size === calls.size ? `함수 ${calls.size}개` : `함수 ${shown.size} / ${calls.size}개`;
 }
 
 function mk(cls, ind, html) {
@@ -396,11 +494,13 @@ function renderCode() {
   const sig = Object.entries(args).map(([k, v]) => `<span class="v" data-v="arg:${esc(k)}"><span class="n">${esc(k)}</span> = ${esc(short(v, 40))}</span>`).join(' ');
   const ret = call.ret ? `<span>→</span><span class="v" data-v="ret"><span class="n">반환</span> = ${esc(short(call.ret.ret, 60))}</span>` : '';
   const parent = st.p >= 0 && calls.get(st.p) ? `<button id="up">↑ 부른 곳: ${esc(simple(calls.get(st.p).first.cls))}.${esc(calls.get(st.p).first.m)}()</button>` : '';
-  const idx = lineSteps.indexOf(curStep);
+  const idx = navSteps.indexOf(curStep);
   $('codeHead').innerHTML = `
     <div class="path"><b>${esc(f ? f.path : st.src)}</b><span class="chip">${esc(st.cls)}.${esc(st.m)}()</span>${parent}</div>
-    <div class="sig">${sig || '<span class="hint">인자 없음</span>'} ${ret}</div>
-    <div class="stepbar"><button id="prev" ${idx <= 0 ? 'disabled' : ''}>◀ 이전 단계</button><button id="next" ${idx >= lineSteps.length - 1 ? 'disabled' : ''}>다음 단계 ▶</button><span>단계 ${idx + 1} / ${lineSteps.length}</span><span class="hint">· 노란 줄이 실행된 줄 (누르면 그 줄의 값) · 키보드 ← →</span></div>`;
+    <div class="sig">${sig || '<span class="hint">인자 없음</span>'} ${ret}</div>`;
+  $('prev').disabled = idx === 0 || !navSteps.length;
+  $('next').disabled = idx >= navSteps.length - 1;
+  $('stepNo').textContent = idx >= 0 ? `단계 ${idx + 1} / ${navSteps.length}` : `단계 - / ${navSteps.length}`;
   for (const el of $('codeHead').querySelectorAll('.v')) {
     el.onclick = () => {
       const k = el.dataset.v;
@@ -409,12 +509,17 @@ function renderCode() {
     };
   }
   if ($('up')) $('up').onclick = () => selectCall(st.p, steps[st.site] || null);
-  $('prev').onclick = () => go(-1);
-  $('next').onclick = () => go(1);
   if (!f || !f.text) { $('src').innerHTML = `<div class="empty">소스 파일을 찾지 못했습니다 (${esc(st.src)})</div>`; return; }
   const lines = f.text.split('\n');
   const otherHits = new Set();
   for (const s of steps) if (s.k === 'line' && s.src === st.src && s.c !== selCall) otherHits.add(s.ln);
+  const names = new Set(Object.keys(args));
+  for (const s of call.steps) for (const k of Object.keys(s.after || {})) names.add(k);
+  const hitNos = [...call.lines.keys()];
+  const lo = hitNos.length ? Math.min(...hitNos) : st.ln;
+  const hi = hitNos.length ? Math.max(...hitNos) : st.ln;
+  let sigAt = lo;
+  for (let n = lo; n >= Math.max(1, lo - 15); n--) if (new RegExp(`(^|[^.\\w$])${st.m === '<init>' ? simple(st.cls) : String(st.m).replace(/[^\w$]/g, '')}\\s*\\(`).test(lines[n - 1] || '')) { sigAt = n; break; }
   const frag = document.createDocumentFragment();
   lines.forEach((text, i) => {
     const no = i + 1;
@@ -423,7 +528,7 @@ function renderCode() {
     row.className = `ln${hits ? ' hit' : ''}${!hits && otherHits.has(no) ? ' other' : ''}${curStep && curStep.c === selCall && curStep.ln === no ? ' cur' : ''}`;
     row.id = `L${no}`;
     const mark = hits ? (hits.length > 1 || hits[0].skipped ? `×${hits.length + (hits.reduce((n, h) => n + (h.skipped || 0), 0))}` : '●') : '';
-    row.innerHTML = `<span class="mk">${mark}</span><span class="num">${no}</span><span class="tx">${highlight(text) || ' '}</span>`;
+    row.innerHTML = `<span class="mk">${mark}</span><span class="num">${no}</span><span class="tx">${highlight(text, i + 1 >= sigAt && i + 1 <= hi + 1 ? names : null) || ' '}</span>`;
     frag.appendChild(row);
     if (hits) {
       const key = `${selCall}:${no}`;
@@ -432,6 +537,11 @@ function renderCode() {
     }
   });
   $('src').replaceChildren(frag);
+  for (const el of $('src').querySelectorAll('.var')) {
+    el.onmouseenter = () => tipShow(el, el.dataset.k);
+    el.onmouseleave = tipHideSoon;
+    el.onclick = (e) => { e.stopPropagation(); const v = varValue(el.dataset.k); if (v) showValue(`${el.dataset.k} (${v.when})`, v.v); };
+  }
   const target = curStep && curStep.c === selCall ? $(`L${curStep.ln}`) : $(`L${st.ln}`);
   if (target) {
     const box = $('src');
@@ -439,6 +549,47 @@ function renderCode() {
     if (top < box.scrollTop || top > box.scrollTop + box.clientHeight - 60) box.scrollTop = Math.max(0, top - box.clientHeight / 3);
   }
 }
+
+/** 변수 값: 지금 단계까지 이 함수에서 마지막으로 바뀐 값, 없으면 인자 · 처음 값 */
+function varValue(k) {
+  const call = calls.get(selCall);
+  if (!call) return null;
+  const upto = curStep && curStep.c === selCall ? curStep.i : Infinity;
+  let found = null;
+  for (const s of call.steps) {
+    if (s.k !== 'line' || !s.after || !(k in s.after)) continue;
+    if (s.i <= upto || !found) found = { v: s.after[k], when: `${s.ln}줄 실행 뒤` };
+    if (s.i > upto) break;
+  }
+  const args = call.first.args || {};
+  if (k in args && (!found || (curStep && curStep.c === selCall && curStep === call.first))) return { v: args[k], when: '들어온 인자' };
+  return found;
+}
+
+let tipTimer = null;
+function tipShow(el, k) {
+  clearTimeout(tipTimer);
+  const v = varValue(k);
+  if (!v) return;
+  const tip = $('tip');
+  const ul = document.createElement('ul');
+  ul.className = 'tv';
+  ul.style.paddingLeft = '14px';
+  ul.style.margin = '0';
+  ul.appendChild(tree(v.v, k));
+  tip.innerHTML = `<div class="th">${esc(v.when)}${v.v && v.v.t ? ` · ${esc(v.v.t)}` : ''} · 누르면 아래에 고정</div>`;
+  tip.appendChild(ul);
+  tip.hidden = false;
+  const r = el.getBoundingClientRect();
+  const w = tip.offsetWidth;
+  const h = tip.offsetHeight;
+  tip.style.left = `${Math.max(8, Math.min(r.left, innerWidth - w - 8))}px`;
+  tip.style.top = `${r.bottom + 6 + h > innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6}px`;
+}
+function tipHideSoon() { clearTimeout(tipTimer); tipTimer = setTimeout(() => { $('tip').hidden = true; }, 250); }
+$('tip').onmouseenter = () => clearTimeout(tipTimer);
+$('tip').onmouseleave = tipHideSoon;
+$('src').addEventListener('scroll', () => { $('tip').hidden = true; });
 
 /** 펼친 줄: 회차마다 이 줄을 실행한 뒤 바뀐 값 · 이 줄에서 부른 함수 · SQL · 예외 */
 function values(hits) {
@@ -474,9 +625,10 @@ function values(hits) {
 }
 
 function go(dir) {
-  const i = lineSteps.indexOf(curStep) + dir;
-  if (i < 0 || i >= lineSteps.length) return;
-  curStep = lineSteps[i];
+  let i = navSteps.indexOf(curStep);
+  if (i < 0) { i = navSteps.findIndex((s) => s.i > (curStep ? curStep.i : -1)); i = dir > 0 ? i : i - 1; } else i += dir;
+  if (i < 0 || i >= navSteps.length) return;
+  curStep = navSteps[i];
   open.add(`${curStep.c}:${curStep.ln}`);
   selectCall(curStep.c, curStep);
   const row = document.querySelector(`.node[data-c="${curStep.c}"]:not(.sql):not(.ex)`);
@@ -505,6 +657,16 @@ addEventListener('keydown', (e) => {
 });
 $('q').oninput = renderTree;
 $('onlySql').onchange = renderTree;
+$('prev').onclick = () => go(-1);
+$('next').onclick = () => go(1);
+function refilter() {
+  renderTree();
+  if (selCall !== null && shown.has(selCall)) { renderCode(); return; }
+  const first = navSteps[0];
+  if (first) { curStep = first; selectCall(first.c, first); } else if (selCall !== null) renderCode();
+}
+$('scope').onchange = () => { fillFiles(); refilter(); };
+$('file').onchange = () => { applyScope(); refilter(); };
 
 // ── 시작 ──
 fetch(location.pathname.replace(/\.html$/, '.json'), { cache: 'no-store' })
@@ -513,8 +675,9 @@ fetch(location.pathname.replace(/\.html$/, '.json'), { cache: 'no-store' })
     B = data;
     build();
     header();
+    fillFiles();
     renderTree();
-    const firstCall = steps.find((s) => s.call);
+    const firstCall = steps.find((s) => s.call && calls.get(s.c).entry) || steps.find((s) => s.call && shown.has(s.c)) || steps.find((s) => s.call);
     if (firstCall) { curStep = firstCall; open.add(`${firstCall.c}:${firstCall.ln}`); selectCall(firstCall.c, firstCall); }
     else $('src').innerHTML = '<div class="empty">기록된 단계가 없습니다</div>';
     if (B.meta.response) showValue(`응답 ${B.meta.response.status}`, { t: 'HTTP 응답', f: { status: B.meta.response.status, body: B.meta.response.body } });

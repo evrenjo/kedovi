@@ -1,0 +1,192 @@
+{
+  "_note": "기능 추천 지도 (feature-suggest 훅 · kedovi suggest). 대화 주제(topic 정규식, 대소문자 무시)가 맞고 상태 조건(when)이 맞으면 한 세션에 몇 개까지 에이전트가 답 끝에 한 줄로 쓸지 묻는다. 사용자가 정하면(kedovi suggest set <id> yes|no) 다시 묻지 않는다. anytime = 주제 없이도 세션 중간에 추천해도 되는 항목. when: packOn · packOff (팩 켜짐 · 꺼짐) · unset (workspace.json 값이 비었을 때) · localUnset (.agents/local.json) · not { 경로: 값 } (그 값이 아닐 때) · localNot · stack (repo 스택 · 언어 정규식) · notify on|off (개인 알림). 위에 있는 항목이 먼저다. 새 기능 명령을 만들면 맞는 항목을 더한다 (packs/core/skills/kedovi/SKILL.md 표와 짝)",
+  "entries": [
+    {
+      "id": "trace",
+      "topic": "디버깅|디버거|어디서\\s*(?:값이\\s*)?바뀌|(?:실행|호출)\\s*흐름|로직.{0,8}(?:어떻게\\s*(?:돌|흘러|타)|따라가)|어느\\s*(?:함수|메서드|서비스)를?\\s*(?:타|거치)|NPE|NullPointer|SQL.{0,8}(?:뭐가|어떤|몇\\s*번)\\s*(?:나가|실행)",
+      "when": { "packOff": "trace", "stack": "spring|java|kotlin|android" },
+      "say": "실행 흐름 디버깅 (trace 팩)",
+      "why": "API · 함수 · 배치 한 번을 줄마다 값 · SQL 과 함께 웹 화면으로 본다",
+      "cmd": "kedovi upgrade --add trace",
+      "scope": "팀 (workspace.json)"
+    },
+    {
+      "id": "screens-pack",
+      "topic": "프로토타입|화면\\s*설계|퍼블리싱|퍼블\\b|와이어프레임|figma|피그마",
+      "when": { "packOff": "screens" },
+      "say": "화면 정본 대조 (screens 팩)",
+      "why": "프로토타입 · 화면설계서를 정본으로 요소 체크리스트 · 나란히 비교 · 착수 전 확인을 해 화면이 정본과 달라지지 않게 한다",
+      "cmd": "kedovi upgrade --add screens",
+      "scope": "팀 (workspace.json)"
+    },
+    {
+      "id": "screens-locate",
+      "topic": "프로토타입.{0,12}(?:다르|달라|달랐|틀리|틀려|안\\s*맞|못\\s*찾|어디)|화면.{0,8}(?:프로토타입|정본).{0,8}(?:다르|달라)|정본을?\\s*못\\s*찾",
+      "when": { "packOn": "screens", "unset": ["vars.screens.dir", "vars.screens.prototype"] },
+      "say": "화면 위치 설정 (kedovi screens locate)",
+      "why": "기획 repo 의 화면 폴더 · 한 페이지 앱 프로토타입이 기본 위치가 아니면 정본을 못 찾아 체크리스트 없이 만들게 된다",
+      "cmd": "kedovi screens locate",
+      "scope": "팀 (workspace.json)"
+    },
+    {
+      "id": "notify",
+      "topic": "끝나면\\s*알려|다\\s*(?:되면|끝나면)|오래\\s*걸리|자리\\s*비|외출|퇴근|기다리기\\s*(?:힘|싫)|폰으로|텔레그램",
+      "when": { "notify": "off" },
+      "say": "텔레그램 알림",
+      "why": "작업이 끝나거나 결정이 필요할 때 폰으로 알림을 받는다",
+      "cmd": "kedovi notify setup",
+      "scope": "이 PC",
+      "anytime": true
+    },
+    {
+      "id": "away",
+      "topic": "자리\\s*비|외출|퇴근|밖에서|이동\\s*중|회의\\s*(?:들어|가)",
+      "when": { "notify": "on", "localNot": { "notify.away": true } },
+      "say": "자리 비움",
+      "why": "결정 질문을 텔레그램 버튼으로 받아 자리에 없어도 작업이 멈추지 않는다",
+      "cmd": "kedovi notify my away on",
+      "scope": "이 PC"
+    },
+    {
+      "id": "debate",
+      "topic": "어느\\s*쪽이\\s*(?:나|좋|맞)|(?:설계|아키텍처|구조).{0,10}(?:검토|맞는지|괜찮)|장단점|다른\\s*모델|교차\\s*검증|두\\s*번째\\s*의견",
+      "say": "토론 모드 (Claude · Codex 가 서로 검토)",
+      "why": "설계 · 판단이 갈리는 문제를 다른 모델과 토론해 합의안과 이견을 받는다",
+      "cmd": "채팅에서 \"토론해줘\" (진행 보기: kedovi debate watch)",
+      "scope": "이번 작업"
+    },
+    {
+      "id": "budget",
+      "topic": "얼마나\\s*걸|시간\\s*안에|오늘\\s*(?:안에|중으로)|마감|데드라인|\\d+\\s*시간\\s*(?:안|만)|타임\\s*박스",
+      "say": "시간 예산",
+      "why": "작업에 시간 상한을 걸어 넘으면 알리고, 달마다 예측과 실제를 비교한다",
+      "cmd": "kedovi budget start \"<작업>\" <시간>",
+      "scope": "이 작업"
+    },
+    {
+      "id": "plan",
+      "topic": "로드맵|마일스톤|다음에\\s*(?:뭐|무엇)|전체\\s*진행|남은\\s*(?:일|작업)|일정\\s*(?:관리|정리)",
+      "when": { "unset": ["vars.plan.external"] },
+      "say": "로드맵 (kedovi plan)",
+      "why": "단계 · 할 일 · 진행률을 한 파일로 두고 세션 시작마다 다음 할 일을 보여 준다",
+      "cmd": "kedovi plan",
+      "scope": "팀 (repo)"
+    },
+    {
+      "id": "handoff",
+      "topic": "이어서\\s*(?:하|작업)|어제\\s*하던|인수\\s*인계|다른\\s*PC|집에서\\s*이어|지난번\\s*(?:작업|하던)",
+      "say": "핸드오프 찾기",
+      "why": "티켓 · 기능 이름으로 지난 작업 기록(결정 · 남은 일)을 찾아 이어서 한다",
+      "cmd": "kedovi handoff find <티켓·기능>",
+      "scope": "팀 (repo)"
+    },
+    {
+      "id": "board",
+      "topic": "현황판|누가\\s*뭐|(?:팀|전체)\\s*진행\\s*상황|대시보드|한눈에\\s*(?:보|볼)",
+      "say": "현황판 (kedovi board)",
+      "why": "팀원별 작업 · 브랜치 · MR · 핸드오프를 한 페이지로 본다",
+      "cmd": "kedovi board",
+      "scope": "읽기만"
+    },
+    {
+      "id": "agents-watch",
+      "topic": "(?:팀원|에이전트|리더|서브\\s*에이전트).{0,10}(?:뭐\\s*하|어디까지|진행|멈췄|살아)",
+      "say": "에이전트 진행 보기",
+      "why": "작업 중인 팀원 · 리더 · 위임 세션이 지금 무엇을 하는지 실시간으로 본다",
+      "cmd": "kedovi agents watch",
+      "scope": "읽기만"
+    },
+    {
+      "id": "team-auto",
+      "topic": "동시에|병렬로|나눠서\\s*(?:해|작업)|여러\\s*(?:개|작업)를?\\s*(?:같이|한꺼번에)|빨리\\s*(?:끝내|처리)",
+      "when": { "not": { "agents.mode": "auto" } },
+      "say": "팀 구성 자동",
+      "why": "작업 리더 · 팀원 에이전트가 나눠서 병렬로 처리한다 (요금제별 상한)",
+      "cmd": "kedovi team-mode auto",
+      "scope": "이 PC · 팀"
+    },
+    {
+      "id": "models-profile",
+      "topic": "토큰.{0,6}(?:많|아끼|비용)|사용량|한도|limit|비용이?\\s*(?:많|비싸)|요금",
+      "say": "모델 프로필 (최고 · 표준 · 절약)",
+      "why": "역할마다 모델을 한 번에 바꿔 사용량을 줄이거나 품질을 높인다",
+      "cmd": "kedovi models profile rich|standard|lean",
+      "scope": "이 PC · 팀"
+    },
+    {
+      "id": "report",
+      "topic": "(?:답|설명|보고).{0,8}(?:길|길어서|한\\s*번에\\s*안)|표로\\s*(?:정리|보고)|문서로\\s*(?:남|정리)|공유\\s*(?:하게|할\\s*수)",
+      "say": "보고 페이지 (kedovi report)",
+      "why": "긴 결과는 웹 페이지로 남기고 채팅에는 결론과 링크만 둔다",
+      "cmd": "kedovi report list · open",
+      "scope": "읽기만"
+    },
+    {
+      "id": "docs-serve",
+      "topic": "(?:기획|설계|요구)\\s*문서.{0,10}(?:보기|웹|사이트|공유|찾기)|문서\\s*사이트",
+      "say": "문서 사이트",
+      "why": "기획 · 설계 문서를 검색 · 필기되는 웹 사이트로 띄운다",
+      "cmd": "kedovi docs serve",
+      "scope": "이 PC"
+    },
+    {
+      "id": "archrules",
+      "topic": "레이어|계층\\s*구조|의존\\s*방향|패키지\\s*구조|구조\\s*(?:규칙|가\\s*깨|어긋)|순환\\s*참조",
+      "when": { "stack": "spring|react|fastapi|nestjs|django" },
+      "say": "구조 규칙 검사 (kedovi archrules)",
+      "why": "레이어 · 의존 방향 규칙을 테스트로 만들어 어긋난 코드를 커밋 전에 잡는다",
+      "cmd": "kedovi archrules spring|react|fastapi|nestjs|django",
+      "scope": "팀 (repo)"
+    },
+    {
+      "id": "datamodel",
+      "topic": "ERD|테이블\\s*관계|스키마\\s*(?:그림|정리|문서)|엔티티\\s*관계",
+      "when": { "packOff": "datamodel" },
+      "say": "데이터 모델 (datamodel 팩)",
+      "why": "테이블 · 관계를 문서와 ERD 화면으로 관리한다",
+      "cmd": "kedovi upgrade --add datamodel",
+      "scope": "팀 (workspace.json)"
+    },
+    {
+      "id": "ops-preflight",
+      "topic": "배포\\s*(?:전|하기\\s*전)\\s*(?:점검|확인)|배포\\s*(?:했는데|후에?)\\s*(?:안|에러|장애)|헬스\\s*체크|운영\\s*(?:장애|에러)",
+      "when": { "stack": "docker|docker-compose|kubernetes|helm" },
+      "say": "배포 전 점검 (kedovi ops)",
+      "why": "배포 전에 설정 · 포트 · 헬스체크를 점검하고 통과해야 배포 명령을 실행한다",
+      "cmd": "kedovi ops add all",
+      "scope": "팀 (repo)"
+    },
+    {
+      "id": "secret",
+      "topic": "비밀\\s*번호|api\\s*키|토큰을?\\s*(?:어디|넣|저장)|\\.env|시크릿|자격\\s*증명",
+      "say": "비밀값 보관 (kedovi secret)",
+      "why": "토큰 · 비밀번호를 repo 밖 OS 저장소에 두고 에이전트에는 이름만 보인다",
+      "cmd": "kedovi secret set <이름> · kedovi secret exec -- <명령>",
+      "scope": "이 PC"
+    },
+    {
+      "id": "tidy",
+      "topic": "(?:브랜치|파일|폴더).{0,8}(?:지저분|정리|많아)|안\\s*쓰는\\s*(?:브랜치|파일|코드)",
+      "say": "정리 후보 찾기 (kedovi tidy)",
+      "why": "머지된 브랜치 · 오래된 임시 파일 · 안 쓰는 코드 후보를 모아 보여 준다",
+      "cmd": "kedovi tidy",
+      "scope": "읽기만"
+    },
+    {
+      "id": "import",
+      "topic": "예전\\s*(?:대화|세션|작업)|이전\\s*(?:세션|대화)|옛\\s*작업|다른\\s*폴더에서\\s*하던",
+      "say": "옛 작업 가져오기 (kedovi import)",
+      "why": "다른 폴더에서 하던 세션 · 메모를 이 워크스페이스 기록으로 가져온다",
+      "cmd": "kedovi import <폴더>",
+      "scope": "이 워크스페이스"
+    },
+    {
+      "id": "tips",
+      "topic": "(?:화면|출력|로그)이?\\s*너무\\s*(?:많|길)|스크롤이?\\s*(?:너무|계속)|읽기\\s*힘들|정신\\s*없",
+      "say": "화면 출력 줄이기",
+      "why": "Claude Code 의 전체 화면 · 집중 보기로 도구 출력을 접고 답만 본다",
+      "cmd": "kedovi tips",
+      "scope": "이 PC"
+    }
+  ]
+}

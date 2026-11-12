@@ -407,6 +407,7 @@ flowchart TD
 | `kedovi report new "<제목>"` · `link` · `list` · `open` · `serve` · `stop` | 보고 페이지: 채팅은 결론 · 핵심 · `자세히: <링크>`, 자세한 보고는 `.agents/reports/` → 이 PC 웹 페이지(현황판 틀) |
 | `kedovi trace run --test <클래스>#<메서드>` · `run --request "<METHOD> <주소>"` · `list` · `open` | 실행 흐름 디버깅 (trace 팩): 테스트 · 로컬 서버 요청 한 번을 줄마다 값 · SQL 과 함께 기록 → 이 PC 웹 페이지 |
 | `kedovi tips` | 화면 보기 안내: `/tui fullscreen` · `/focus` · `Ctrl+O` (start 가 처음 한 번) |
+| `kedovi suggest` | 기능 추천 기록: 대화 중 추천받은 기능 · 결정(씀 · 안 씀) 보기 · 다시 묻기 · 끄기 |
 | `kedovi agents watch` | 에이전트 진행 보기: 메인 → 작업 리더 → 팀원 나무로 상태 · 마지막 행동 (Claude Code, 이름 없는 서브에이전트도). `--once` · `--all` · `--json` · `--tmux` |
 | `kedovi worktree add <repo> <단위>` · `merge` · `remove` · `list` | 작업 리더 작업 폴더: 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 `.worktrees/<repo>/<단위>`, merge 는 본 작업 트리에 커밋하지 않은 변경으로 옮김 |
 | `kedovi debate list` · `watch [id]` · `status [id]` · `models` | 토론 모드: 목록 · 실시간 보기(모델별 주장 · 판정) · 지금 회차와 모델별 상태 · 쓸 수 있는 모델과 패널 예시 (시작은 채팅에서 "토론해줘") |

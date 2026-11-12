@@ -44,6 +44,7 @@
  *   kedovi team watch [--rw] [--print]   팀원 tmux 창 보기 (Claude Code agent teams): 지금 팀의 소켓(claude-swarm-<번호>, 세션마다 바뀜)을 찾아 읽기 전용으로 붙는다
  *   kedovi trace run --test <클래스>#<메서드> · run --request "<METHOD> <localhost 주소>" [--data …] · list · open [파일]   실행 흐름 디버깅 (trace 팩, JVM): 테스트 한 건 · 로컬 서버 요청 한 번을 줄마다 값 · SQL 과 함께 기록해 이 PC 웹 페이지(왼쪽 함수 단계 · 오른쪽 코드와 줄별 값 · 아래 데이터 상세)로
  *   kedovi report new "<제목>" · link <파일> · list · open [파일] · serve · stop   보고 페이지: 채팅은 결론 · 핵심만, 자세한 보고는 이 PC 의 웹 페이지(현황판 틀, http://127.0.0.1)로. new 가 파일과 링크를 준다
+ *   kedovi suggest [list] · set <id> yes|no [--all] · reset [<id>] · off|on [--all]   기능 추천: 대화 주제 · 상태에 맞는 킷 기능을 에이전트가 가끔 답 끝에 한 줄로 묻는다. 정한 것(씀 · 안 씀)은 다시 묻지 않는다 (--all = 이 PC 의 모든 프로젝트)
  *   kedovi tips   출력이 많아 읽기 힘들 때 쓰는 Claude Code 화면 기능 (/tui fullscreen · /focus · Ctrl+O). kedovi start 가 이 PC 에서 처음 한 번 보여 준다
  *   kedovi agents watch [--once] [--all] [--json] [--tmux]   에이전트 진행 보기 (Claude Code): 메인이 부른 작업 리더 · 역할 에이전트 · 그 아래 팀원이 지금 무엇을 하는지 나무 모양으로 (이름 없는 서브에이전트도). 읽기만
  *   kedovi worktree add|merge|remove <repo> <단위> · list   작업 리더 worktree: 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 .worktrees/<repo>/<단위> (merge = 본 작업 트리에 커밋하지 않은 변경으로 옮김)
@@ -3706,7 +3707,7 @@ function upgradeSummary(root, from) {
 /** 도움말 분류: [제목, 한 줄 설명, 명령(첫 낱말 · 「team-mode enforce」 처럼 두 낱말)]. 도움말 머리의 명령은 모두 어딘가에 들어가야 한다 (npm test) */
 const HELP_GROUPS = [
   ['시작 · 설치', '워크스페이스 만들기 · 받기 · 작업 시작 · 킷 새 버전', ['init', 'init-docs', 'install', 'start', 'upgrade', 'list', 'remove', 'help']],
-  ['AI · 모델', '연결 방식 · 메인 에이전트 · 모델 프로필 · 응답 언어 · 대화 스타일', ['agent', 'ai', 'models', 'prefs', 'timestamp']],
+  ['AI · 모델', '연결 방식 · 메인 에이전트 · 모델 프로필 · 응답 언어 · 대화 스타일 · 기능 추천', ['agent', 'ai', 'models', 'prefs', 'timestamp', 'suggest']],
   ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'views', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
   ['팀 규칙 점검', '리뷰 확인 · 훅이 알리거나 막는 수준', ['review', 'team-mode enforce']],
@@ -3958,6 +3959,7 @@ async function main() {
     case 'approach': return cmdApproach(rest);
     case 'type': return cmdType(rest);
     case 'tips': return screenTip(true);
+    case 'suggest': return runWsTool('suggest.js', rest);
     case 'timestamp': return cmdTimestamp(rest);
     case 'prefs': return cmdPrefs(rest);
     case 'gitlab': return runWsTool('gitlab-mr.js', rest, 'gitlab');

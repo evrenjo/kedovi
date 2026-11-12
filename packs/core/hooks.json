@@ -28,6 +28,7 @@
     { "script": "hooks/prompt-time.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/chat-prefs.js", "timeout": 5, "agents": "all" },
     { "script": "hooks/settings-hint.js", "timeout": 5, "agents": "all" },
+    { "script": "hooks/feature-suggest.js", "timeout": 5, "agents": "all" },
     { "script": "hooks/budget-check.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/team-idle.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/decision-ask.js", "timeout": 5, "agents": "claude" },
