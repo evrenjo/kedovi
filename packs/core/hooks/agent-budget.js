@@ -114,7 +114,7 @@ function handle(input, ws, file) {
       if (lv === 'block') return deny(R.CHECK_MESSAGE);
       if (lv === 'warn') warns.push(R.CHECK_MESSAGE);
     }
-    if (kitRole && R.REVIEW_ROLE.test(type) && R.prototypeGap) { const gap = R.prototypeGap(ws, ti.prompt); if (gap) warns.push(gap); }
+    if (kitRole && R.prototypeGap) { const gap = R.prototypeGap(ws, ti.prompt, R.REVIEW_ROLE.test(type) ? 'review' : 'implement'); if (gap) warns.push(gap); }
   } catch { /* 옛 워크스페이스 */ }
   // 리더(또는 역할 에이전트) 안에서 이름을 주면 팀원(agent teams)이 되어 보고가 메인으로 가고, 리더는 결과를 못 받고 끝난다
   if (parent !== 'main' && String(ti.name || '').trim()) return deny('작업 리더 · 역할 에이전트 안에서는 팀원을 이름(name) 없이 부른다. 이름을 주면 팀원 세션이 되어 보고가 메인으로 가고 리더는 결과를 못 받는다. 이름 없이 다시 부르고, 팀원 결과를 받을 때까지 기다린 뒤 보고한다');

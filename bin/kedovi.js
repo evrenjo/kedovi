@@ -59,8 +59,9 @@
  *   kedovi screens check [repo|폴더]   화면설계서 검사: 근거 ID 가 색인에 있는지 · 화면 ID 중복 · 기능 ID 누락 (screens 팩)
  *   kedovi screens compare <화면 ID> [--proto 파일|주소] [--impl 주소|/경로] [--widths 1280,390] [--storage 상태.json] [--mock 픽스처.json|.har] [--find]   프로토타입과 구현 화면을 같은 폭(PC · 폰)으로 찍어 나란히 보는 compare.html (screens 팩, Playwright). 구현 주소는 @spec 줄의 @route
  *   kedovi screens inventory <화면 ID> [--proto 파일|주소] [--force]   화면 정본 판정(프로토타입 · 화면설계서 · 둘 다 · 없음) + 정본 요소 체크리스트 handoffs/<나>/screens/<화면 ID>.md (영역 · 요소 · 상태 · 데이터 원천 · 판정, screens 팩)
- *   kedovi screens checklist <화면 ID> [--start] [--md]   체크리스트 점검: --start 는 착수 전(데이터 원천 빈 칸 · 원천 없음), 기본은 완료 전(판정 빈 칸 · 비교 미실행), --md 는 MR 본문 표
- *   kedovi screens review <화면 ID…>   리뷰 지시서에 넣을 화면 정본 대조 블록 (정본 경로 · 체크리스트 · 비교 스크린샷 · 정본에 있는데 없는 요소 = 블로커)
+ *   kedovi screens checklist <화면 ID> [--start] [--md]   체크리스트 점검: --start 는 착수 전(데이터 원천 빈 칸 · 원천 없음), 기본은 완료 전(판정 빈 칸 · 결정 없는 다름 · 후속 없는 보류 · 배치 차이 · 비교 미실행), --md 는 MR 본문 표
+ *   kedovi screens review <화면 ID…> [--implement]   지시서에 넣을 화면 정본 대조 블록: 리뷰(정본 경로 · 체크리스트 · 비교 스크린샷 · 정본에 있는데 없는 요소 = 블로커) · --implement 구현(정본대로 · 못 하면 멈춤)
+ *   kedovi screens locate [--dir <폴더,…>] [--prototype "<파일>#{id}"] [--scope <CSS>]   화면 폴더 · 프로토타입 위치 보기 · 정하기 (workspace.json vars.screens, 못 찾으면 후보를 알림)
  *   kedovi datamodel check [repo|폴더]   데이터 설계 검사: 참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조 (datamodel 팩)
  *   kedovi archrules spring|react|fastapi|nestjs|django [--repo R] [--dir 모듈 경로] [--dry-run] [--json]   구조 검사 템플릿을 repo 에 넣는다: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사 · NestJS dependency-cruiser 설정 · Django import-linter 계약과 web 배치 검사 (backend.layout = component-web 이면 web → feature → shared 방향까지). 구조 · 기준 패키지 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다
  *   kedovi views check [--json]   화면 이름 대조 (backend.layout = component-web): 프론트 화면 폴더(@spec 화면 ID 가 있는 폴더)와 백엔드 web/views/<화면> 폴더를 상대 경로로 비교해 한쪽에만 있는 것 (대소문자 · - · _ 무시, backend 팩)
@@ -96,6 +97,7 @@
  *   kedovi team-mode enforce plan off|warn|block [--team]   착수 전 확인 (Claude Code): 요청마다 코드 repo 첫 수정(Edit · Write) 전에 답변에 「착수 전 확인:」 머리말이 없으면 알린다. warn(기본) 요청마다 한 번 · block 머리말을 보일 때까지 수정을 막는다. 문서 · 스타일 두 줄 이하는 제외
  *   kedovi team-mode enforce main off|warn|block [--team]   메인 대화 전담 (Claude Code): 메인이 repo 파일을 직접 고치면 막고(block 기본) 백그라운드 에이전트에 맡기게 한다. 워크스페이스 기록 · 밖은 제외
  *   kedovi team-mode enforce long off|block [--team]        긴 답은 보고 페이지로 (Claude Code): 마지막 답이 vars.report.maxLines(기본 25)줄 · 표 12줄을 넘는데 「자세히: <링크>」 가 없으면 한 번 되돌린다(block 기본)
+ *   kedovi team-mode enforce screens off|warn|block [--team]   화면 착수 전 확인 (screens 팩): 정본(프로토타입 · 화면설계서)이 있는 화면의 진입 파일(@spec 화면 ID)을 정본 요소 체크리스트 없이 고치면 막는다(block 기본 · warn 화면마다 한 번 알림). 팀원 · 서브에이전트 · 위임 안에서도
  *   kedovi team-mode enforce report off|warn|block [--team]   에이전트 보고 보관 (Claude Code): 서브에이전트 · 리더의 마지막 보고가 vars.report.agentLines(기본 20)줄을 넘으면 원문을 보고 페이지 파일로 보관하고, 킷 역할 에이전트면 결론 · 핵심 · 링크로 다시 끝내게 한다(block 기본 · warn 보관만)
  *   kedovi team-mode enforce browser off|block [--team]     브라우저 닫기 (Claude Code): 브라우저 MCP 로 연 브라우저를 닫지 않고 끝내면(메인 · 서브에이전트 · 팀원) 한 번 막는다(block 기본)
  *   kedovi team-mode enforce msg off|block [--team]         작업 중 받은 메시지 (Claude Code): 작업 사이에 끼어 든 사용자 메시지를 처리했는지 멈출 때 한 번 되묻는다(block 기본)
@@ -2864,6 +2866,7 @@ function cmdTeamMode(argv) {
     console.log(`  착수 전 확인  ${enLine('planFirst')} · 요청마다 코드 repo 첫 수정 전에 답변에 「착수 전 확인:」 이 없으면 · 바꾸기: kedovi team-mode enforce plan off|warn|block [--team]`);
     console.log(`  메인 대화 전담  ${enLine('mainDelegate')} · 메인이 repo 파일을 직접 고치면 막고 백그라운드 에이전트에 맡기게 (Claude Code) · 바꾸기: kedovi team-mode enforce main off|warn|block [--team]`);
     console.log(`  긴 답은 보고 페이지로  ${enLine('longAnswer')} · 마지막 답이 기준 줄 수(vars.report.maxLines, 기본 25)를 넘는데 「자세히: <링크>」 가 없으면 한 번 되돌리기 (Claude Code) · 바꾸기: kedovi team-mode enforce long off|block [--team]`);
+    console.log(`  화면 착수 전 확인   ${enLine('screenChecklist')} · 정본이 있는 화면의 진입 파일(@spec 화면 ID)을 정본 요소 체크리스트 없이 고치면 막기 (screens 팩, 알림 = 화면마다 한 번) · 바꾸기: kedovi team-mode enforce screens off|warn|block [--team]`);
     console.log(`  에이전트 보고 보관  ${enLine('agentReport')} · 서브에이전트 · 리더의 보고가 기준 줄 수(vars.report.agentLines, 기본 20)를 넘으면 원문을 보고 페이지에 보관하고 짧게 다시 쓰게 (Claude Code. 알림 = 보관만) · 바꾸기: kedovi team-mode enforce report off|warn|block [--team]`);
     console.log(`  브라우저 닫기  ${enLine('browserClose')} · 브라우저 MCP 로 연 브라우저를 닫지 않고 끝내면 한 번 막기 (Claude Code) · 바꾸기: kedovi team-mode enforce browser off|block [--team]`);
     console.log(`  작업 중 받은 메시지  ${enLine('midTurnMessages')} · 작업 사이에 끼어 든 메시지를 처리했는지 멈출 때 한 번 되묻기 (Claude Code) · 바꾸기: kedovi team-mode enforce msg off|block [--team]`);
@@ -2884,10 +2887,10 @@ function cmdTeamMode(argv) {
     if (!a1 || !a2 || (a2 !== '-' && !/^(claude|codex):\S+$/.test(a2))) fail('사용법: kedovi team-mode prefer <역할> <claude|codex>:<모델> [--team]  (지우기: prefer <역할> -)');
     edit((x) => { const pr = { ...(x.prefer || {}) }; if (a2 === '-') delete pr[a1]; else pr[a1] = a2; const y = { ...x, prefer: pr }; if (!Object.keys(pr).length) delete y.prefer; return y; });
   } else if (cmd === 'enforce') {
-    const key = { name: 'teammateName', roster: 'rosterAnnounce', review: 'reviewBeforePush', idle: 'idleTeammates', status: 'waitStatus', ask: 'decisionAsk', run: 'longRunning', check: 'checkBeforeReview', plan: 'planFirst', answer: 'answerFirst', main: 'mainDelegate', msg: 'midTurnMessages', browser: 'browserClose', long: 'longAnswer', report: 'agentReport' }[a1];
+    const key = { name: 'teammateName', roster: 'rosterAnnounce', review: 'reviewBeforePush', idle: 'idleTeammates', status: 'waitStatus', ask: 'decisionAsk', run: 'longRunning', check: 'checkBeforeReview', plan: 'planFirst', answer: 'answerFirst', main: 'mainDelegate', msg: 'midTurnMessages', browser: 'browserClose', long: 'longAnswer', report: 'agentReport', screens: 'screenChecklist' }[a1];
     if ((a1 === 'status' || a1 === 'ask' || a1 === 'msg' || a1 === 'browser' || a1 === 'long') && a2 === 'warn') fail(`사용법: kedovi team-mode enforce ${a1} off|block [--team]  (멈출 때 한 번 막거나 끈다)`);
     const lv = (v) => kit.ENFORCE_LEVELS.indexOf(v);
-    if (!key || lv(a2) < 0 || lv(a2) > lv(kit.ENFORCE_DEFAULTS[key].max)) fail('사용법: kedovi team-mode enforce name off|warn|block · roster off|warn · review off|warn|block [--repos a,b|*] [--min-lines N] [--paths p1,p2] · idle off|warn|block [--after 분] [--remind 분] · status off|block · ask off|block · run off|warn|block [--after 분] · check off|warn|block · plan off|warn|block · answer off|warn|block · main off|warn|block · msg off|block · browser off|block · long off|block · report off|warn|block [--team]  (name: 팀 모드에서 이름 없는 역할 에이전트 · roster: 첫 역할 에이전트 때 구성표 알림 · review: commit · push 전 리뷰 확인 · idle: 대기로 오래 남은 팀원 알림 · status: 남은 것이 있는 채 멈출 때 상태 줄 · ask: 결정 질문을 글로 끝낼 때 · run: 오래 일하는 팀원 · 위임 · check: 리뷰 전 검사 · plan: 코드 수정 전 착수 전 확인 · answer: 질문에 먼저 답하기 · main: 메인 대화 전담 · msg: 작업 중 받은 메시지 · browser: 브라우저 닫기 · long: 긴 답은 보고 페이지로 · report: 에이전트 보고 보관)');
+    if (!key || lv(a2) < 0 || lv(a2) > lv(kit.ENFORCE_DEFAULTS[key].max)) fail('사용법: kedovi team-mode enforce name off|warn|block · roster off|warn · review off|warn|block [--repos a,b|*] [--min-lines N] [--paths p1,p2] · idle off|warn|block [--after 분] [--remind 분] · status off|block · ask off|block · run off|warn|block [--after 분] · check off|warn|block · plan off|warn|block · answer off|warn|block · main off|warn|block · msg off|block · browser off|block · long off|block · report off|warn|block · screens off|warn|block [--team]  (name: 팀 모드에서 이름 없는 역할 에이전트 · roster: 첫 역할 에이전트 때 구성표 알림 · review: commit · push 전 리뷰 확인 · idle: 대기로 오래 남은 팀원 알림 · status: 남은 것이 있는 채 멈출 때 상태 줄 · ask: 결정 질문을 글로 끝낼 때 · run: 오래 일하는 팀원 · 위임 · check: 리뷰 전 검사 · plan: 코드 수정 전 착수 전 확인 · answer: 질문에 먼저 답하기 · main: 메인 대화 전담 · msg: 작업 중 받은 메시지 · browser: 브라우저 닫기 · long: 긴 답은 보고 페이지로 · report: 에이전트 보고 보관 · screens: 화면 착수 전 체크리스트)');
     const teamNow = kit.resolveModels(root, JSON.parse(read(wsFile))).teamEnforce[key];
     if (!team && lv(a2) < lv(teamNow)) fail(`이 PC 값은 팀 값(${teamNow})보다 세게만 둘 수 있습니다. 팀 값을 바꾸려면 팀장이 kedovi team-mode enforce ${a1} ${a2} --team`);
     // 리뷰 확인의 대상 · 기준은 팀 값만
@@ -3944,7 +3947,7 @@ async function main() {
     case 'report': return runWsTool('report.js', rest);
     case 'trace': return runWsTool('trace.js', rest, 'trace');
     case 'tidy': return runWsTool('tidy.js', rest);
-    case 'screens': return rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : ['inventory', 'checklist', 'review'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
+    case 'screens': return rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : ['inventory', 'checklist', 'review', 'locate'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
     case 'datamodel': return runWsTool('check-datamodel.js', rest.filter((x) => x !== 'check'), 'datamodel');
     case 'archrules': return runWsTool('archrules.js', rest);
     case 'views': return runWsTool('check-views.js', rest, 'backend');

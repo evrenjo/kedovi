@@ -1,8 +1,8 @@
 {
   "name": "kedovi",
-  "version": "0.93.1",
+  "version": "0.94.0",
   "private": false,
-  "description": "Claude Code · Codex 팀 개발 워크스페이스 킷: 메인은 대화만, 작업은 리더 · 팀원 에이전트가 병렬로(3층 · 요금제별 상한) · 질문엔 답 먼저 · 채팅은 결론 + 자세히 링크(보고 페이지) · 착수 전 확인 → 검사 → 리뷰를 훅으로 지킴 · API · 배치 실행 흐름 디버깅(줄마다 값 · SQL 을 웹으로) · 한 규칙 두 도구 · 핸드오프 · 로드맵 · 기획 문서 사이트 · 화면 정본 대조",
+  "description": "Claude Code · Codex 팀 개발 워크스페이스 킷: 메인은 대화만, 작업은 리더 · 팀원 에이전트가 병렬로(3층 · 요금제별 상한) · 질문엔 답 먼저 · 채팅은 결론 + 자세히 링크(보고 페이지) · 착수 전 확인 → 검사 → 리뷰를 훅으로 지킴 · API · 배치 실행 흐름 디버깅(줄마다 값 · SQL 을 웹으로) · 한 규칙 두 도구 · 핸드오프 · 로드맵 · 기획 문서 사이트 · 화면 정본 대조(착수 전 막기 · 배치 대조 · 결정 없는 다름 막기)",
   "keywords": [
     "claude-code",
     "codex",
@@ -17,6 +17,7 @@
     "team",
     "handoff",
     "agents-md",
+    "prototype-fidelity",
     "developer-tools"
   ],
   "license": "MIT",

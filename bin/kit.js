@@ -25,7 +25,8 @@ const { execFileSync, spawnSync } = require('child_process');
 const GEN_NOTE = '생성 파일: `node bin/kit.js sync` 로 다시 만든다. 직접 고치지 말 것 (정본 = packs/ · workspace.json)';
 const DEFAULT_AGENTS_MD_BYTES = 32 * 1024; // Codex project_doc_max_bytes 기본값
 const ENFORCE_LEVELS = ['off', 'warn', 'block']; // agents.enforce.* 훅 강제 수준 (약한 것부터)
-const ENFORCE_DEFAULTS = { teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'block', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' }, browserClose: { level: 'block', max: 'block' }, longAnswer: { level: 'block', max: 'block' }, agentReport: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
+const ENFORCE_DEFAULTS = { teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'block', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' }, browserClose: { level: 'block', max: 'block' }, longAnswer: { level: 'block', max: 'block' }, agentReport: { level: 'block', max: 'block' }, screenChecklist: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
+const UI_LAYER_PACKS = ['frontend', 'mobile', 'desktop', 'tv', 'watch']; // 화면을 만드는 레이어 팩 (repo 별 작업 규칙에 화면 정본 규칙을 앞에 둔다)
 const MAX_AGENTS_MD_BYTES = 96 * 1024; // 이 위로는 sync 가 막는다 (context 낭비)
 const PERSONAL_HEADROOM = 12 * 1024; // 개인 지침(응답 언어 · 대화 스타일 약 1.7KB · 역할 상한 · 팀 구성(역할 · 모델 메뉴) · 위임 표 · 잠금)이 AGENTS.override.md 에 더해지는 몫. 자동 모드에서 약 8KB
 const MANIFEST = '.agents/.generated.json';
@@ -883,6 +884,7 @@ function repoRulesSection(ws, rules, repoMap, catalog, extra = new Map(), langua
   };
   const where = (r, pack) => { const m = packModules(r, pack); return m ? `: ${m.map((x) => `\`${x}/\``).join(', ')}` : ''; };
   const anyModules = code.some((r) => r.stackPaths && Object.keys(r.stackPaths).length);
+  const screenRule = rules.find((x) => x.pack === 'screens' && /implement-from-prototype/.test(x.out || '') && x.load === 'always');
   const out = ['## repo 별 작업 규칙. 그 repo 를 고치기 전에 읽는다', '',
     '스택(기술)과 협업 도구(GitHub·GitLab)마다 규칙이 다르다. **아래 표의 문서를 읽기 전에는 그 repo 를 고치지 않는다.** 스택이 틀렸으면 `kedovi detect`.' +
       (anyModules ? ' 규칙 뒤에 모듈 경로(`api/` 등)가 붙어 있으면 그 모듈을 고칠 때만 읽는다.' : ''), '',
@@ -893,6 +895,9 @@ function repoRulesSection(ws, rules, repoMap, catalog, extra = new Map(), langua
     const label = r.kind === 'issues' ? `이슈 기록 · ${host}` : (!Array.isArray(r.stacks) ? '스택 미확인: `kedovi detect`' : !stacks.length ? ((r.languages || []).length ? '스택 없음' : '스택 없음: 공통 규칙만') :
       stacksLabel(catalog, stacks, (s) => !(s.pack && packsOf(r.name).includes(s.pack)), r.stackPaths)) + (r.kind === 'code' ? `${langLabel(r)} · ${host}` : '');
     const docs = scoped.filter((x) => x.load === 'always' && applies(x, r.name)).map((x) => `\`${x.out}\`${x.repos && !x.forPack ? '' : where(r, x.forPack || x.pack)}`);
+    // 화면을 만드는 repo(frontend · mobile 등 UI 레이어 팩)는 「프로토타입대로 구현」 을 맨 앞에 (디자인 시스템 · 기존 관례 규칙보다 먼저 읽게)
+    const ui = UI_LAYER_PACKS.find((pk) => packsOf(r.name).includes(pk));
+    if (screenRule && ui && r.kind === 'code') docs.unshift(`\`${screenRule.out}\`${where(r, ui)}`);
     out.push(`| **${r.name}** | ${label} | ${docs.length ? docs.join('<br>') : '—'} |`);
   }
   const od = scoped.filter((x) => x.load === 'on-demand' && repoNames(x).length); // 끄거나 바꿔 걸리는 repo 가 없는 규칙은 뺀다
@@ -1195,10 +1200,12 @@ function generate(root) {
     effective = Math.ceil((withPersonal * 1.1) / 8192) * 8192;
     // AGENTS.md 자체는 한도 안이고 개인 지침 몫 때문에만 넘으면 조용히 올린다 (.codex/config.toml 변경으로 보인다)
     if (bytes > limit) {
+    const bigRules = rules.filter((r) => r.load === 'always' && r.agents === 'all' && r.scope !== 'repo').map((r) => [Buffer.byteLength(r.body || ''), r.id]).sort((a, b) => b[0] - a[0]).slice(0, 4);
     const big = agentsMd.split(/^(?=## )/m).map((s) => [Buffer.byteLength(s), (s.match(/^## ([^.\n—]*)/) || ['', ''])[1].trim()]).filter((x) => x[1]).sort((a, b) => b[0] - a[0]).slice(0, 2);
     warnings.push([`AGENTS.md ${kb(bytes)} + 개인 지침 몫 ${kb(PERSONAL_HEADROOM)} = 약 ${kb(withPersonal)}: Codex 기본 한도 ${kb(limit)} 를 넘어 한도를 ${kb(effective)} 로 올렸습니다 (Claude 는 상관없음)`,
       `큰 절: ${big.map(([b, h]) => `${h} ${kb(b)}`).join(' · ')}`,
-      `줄이기: kedovi rules ondemand ${REPO_TASKS} 또는 kedovi rules ondemand <규칙 ID> (필요할 때만 읽게. 목록은 kedovi rules list)`].join('\n'));
+      `큰 상시 규칙: ${bigRules.map(([b, id]) => `${id} ${kb(b)}`).join(' · ')}`,
+      `줄이기: kedovi rules ondemand ${REPO_TASKS} 또는 kedovi rules ondemand <규칙 ID> (필요할 때만 읽게. 목록은 kedovi rules list). 길수록 뒤쪽 규칙(화면 · 검증 등)이 덜 지켜진다`].join('\n'));
     }
   } else if (withPersonal > limit * 0.9) warnings.push(`AGENTS.md ${kb(bytes)}: 개인 지침을 더하면 한도 ${kb(limit)} 에 가깝습니다`);
   files.set('.codex/config.toml', buildCodexConfig(ws, bytes, team, effective));
@@ -1367,6 +1374,7 @@ function resolveModels(root, ws) {
   //   mainDelegate = 메인 대화 전담: 메인 세션이 repo 파일을 직접 고치려 하면 막고 백그라운드 에이전트에 맡기게 한다 (Claude Code. block 기본 · warn: 요청마다 한 번 알림 · off)
   //   longAnswer = 마지막 답변 글이 길면(vars.report.maxLines 기본 25줄 · 표 12줄 초과) 보고 페이지(kedovi report)로 옮기라고 한 번 되돌린다 (Claude Code. block 기본 · off)
   //   agentReport = 서브에이전트 · 리더의 긴 마지막 보고(vars.report.agentLines 기본 20줄 초과)를 보고 페이지 파일로 보관하고, 킷 역할 에이전트면 결론 · 핵심 · 링크로 다시 끝내게 한 번 되돌린다 (Claude Code. block 기본 · warn 보관만 · off)
+  //   screenChecklist = 정본(프로토타입 · 화면설계서)이 있는 화면의 진입 파일(@spec 화면 ID)을 정본 요소 체크리스트 없이 고치면 막는다 (screens 팩. 팀원 · 서브에이전트 · 위임 안에서도. block 기본 · warn 화면마다 한 번 알림 · off)
   //   browserClose = 브라우저 MCP 로 브라우저를 열고 닫지 않은 채 끝내면 한 번 막는다 (Claude Code. block 기본 · off)
   //   midTurnMessages = 작업 중 끼어 든 사용자 메시지를 답변에서 처리했는지 멈출 때 한 번 되묻는다 (Claude Code. block 기본 · off)
   //   checkBeforeReview = 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 막는다 (리뷰 위임 · 리뷰 역할 에이전트)

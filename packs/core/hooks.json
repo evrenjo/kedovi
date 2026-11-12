@@ -50,7 +50,8 @@
     { "matcher": "Bash", "script": "hooks/git-guard.js", "timeout": 5, "agents": "all" },
     { "matcher": "Bash|Read", "script": "hooks/secret-guard.js", "timeout": 5, "agents": "all" },
     { "matcher": "Bash", "script": "hooks/review-gate.js", "timeout": 30, "agents": "claude" },
-    { "matcher": "Bash", "script": "hooks/spec-commit.js", "timeout": 30, "agents": "claude" }
+    { "matcher": "Bash", "script": "hooks/spec-commit.js", "timeout": 30, "agents": "claude" },
+    { "matcher": "Edit|Write|MultiEdit|NotebookEdit|apply_patch", "script": "hooks/screen-gate.js", "timeout": 15, "agents": "all" }
   ],
   "PostToolUse": [
     { "matcher": "Agent|Task", "script": "hooks/session-health.js", "timeout": 5, "agents": "claude" },

@@ -56,6 +56,7 @@
 | `kedovi team-mode enforce long off\|block` `[--team]` | 답이 길게 올라올 때 | 마지막 답이 `vars.report.maxLines`(기본 25)줄이나 표 12줄을 넘는데 `자세히: <링크>` 가 없으면 보고 페이지로 옮기라고 한 번 되돌린다(기본). 요청에 「자세히 · 전부 · 길게」 가 있으면 보지 않는다. Claude Code |
 | `kedovi trace run --test <클래스>#<메서드>` · `run --request "<METHOD> http://localhost:<포트>/<경로>"` `[--data '<본문>'] [-H 'K: V'] [--attach <디버그 포트>]` · `list` · `open [파일]` | API · 함수 · 배치가 어떤 값으로 어떻게 도는지 볼 때 (trace 팩) | 테스트 한 건이나 로컬 서버 요청 한 번을 디버거로 기록해 이 PC 웹 페이지로 연다: 왼쪽 탄 함수 단계 · 오른쪽 코드(실행된 줄을 펼치면 회차마다 바뀐 값 · 부른 함수 · SQL) · 아래 데이터 상세. JVM(Gradle · Maven)만. 공통 `[--repo <이름>] [--include 패키지,…] [--sql off] [--max-steps 5000] [--max-hits 30]`. 기록은 `.agents/traces/`(커밋 안 함). 자세히: [실행 흐름 디버깅](trace.md) |
 | `kedovi team-mode enforce report off\|warn\|block` `[--team]` | 서브에이전트 · 리더 보고가 길게 넘어올 때 | 마지막 보고가 `vars.report.agentLines`(기본 20)줄을 넘으면 원문을 `.agents/reports/` 보고 페이지 파일로 보관하고, 킷 역할 에이전트(구현 · 테스트 · 리뷰 · 리더 등)면 결론 · 핵심 · `자세히: <링크>` 로 다시 끝내게 한 번 되돌린다(기본). 알림이면 보관만. 조사 · 계획 같은 다른 에이전트는 보관만. Claude Code |
+| `kedovi team-mode enforce screens off\|warn\|block` `[--team]` | 화면을 체크리스트 없이 고치기 시작할 때 (screens 팩) | 정본(프로토타입 · 화면설계서)이 있는 화면의 진입 파일(`@spec` 화면 ID)을 정본 요소 체크리스트 없이 고치면 막는다(기본). 알림이면 화면마다 한 번. 팀원 · 서브에이전트 · 위임 세션 안에서도 돈다. Claude Code · Codex |
 | `kedovi tips` | 출력이 너무 많이 올라가 읽기 힘들 때 | Claude Code 화면 기능 안내: `/tui fullscreen`(입력창 고정 · 도구 결과 접힘) · `/focus`(마지막 질문 · 도구 한 줄 요약 · 최종 답만) · `Ctrl+O`(상세 기록 검색). `kedovi start` 가 이 PC 에서 처음 한 번 보여 준다 |
 | `kedovi agents watch` `[--once] [--all] [--json] [--tmux]` | 작업 리더 · 역할 에이전트가 지금 무엇을 하는지 볼 때 (Claude Code) | 메인 → 리더 → 팀원 나무로 상태(도는 중 · 기록 없이 5분 넘음 · 끝남)와 마지막 행동을 2초마다 다시 그린다. 이름 없는 서브에이전트(리더 · 리더 아래 팀원)는 tmux 창이 없어 이것으로 본다. `--tmux` 는 tmux 안이면 오른쪽 창으로. 읽기만 |
 | `kedovi worktree add <repo> <단위>` · `merge <repo> <단위>` · `remove <repo> <단위> [--force]` · `list [--json]` | 독립 단위를 작업 리더 여럿이 나눠 맡는데 같은 repo 를 함께 고칠 때 (메인이 한다) | `add` = `.worktrees/<repo>/<단위>/` 에 지금 브랜치 HEAD 로 작업 폴더 (로컬 임시 브랜치 `kedovi/<단위>`, 원격에 안 올림. 통합 브랜치 직접 운영이어도 된다). `merge` = 변경을 repo 본 작업 트리에 **커밋하지 않은 변경**으로 옮기고(3-way) 작업 폴더 · 임시 브랜치를 지운다. 겹쳐서 못 옮기면 아무것도 지우지 않고 겹친 파일을 알린다. 커밋은 평소처럼 |
@@ -75,10 +76,11 @@
 | `kedovi gitlab busy [--repo R]` | 로컬 장애 · 시간 시험 전 · CI 가 느릴 때 | 같은 repo · 러너 그룹의 도는 파이프라인과 이 PC 의 무거운 프로세스. 러너가 이 PC 면(`vars.gitlab.localRunner`) 둘이 겹칠 때 경고하고 끝 코드 2. 읽기만 한다 |
 | `kedovi gitlab runner-watch add [--repo R] [--interval 초] [--dry-run]` · `check` · `status` | CI 러너 디스크가 차거나 대기열이 밀리는 것을 미리 알고 싶을 때 | 디스크 사용률 · 대기 작업 수와 대기 시간 · 작업 시간 급증(최근 중앙값 대비)을 텔레그램으로 알리고 docker 캐시를 상한에 맞춰 정리한다. 아래 「runner-watch 자세히」 |
 | `kedovi board` | 팀 · 프로젝트 현황을 한눈에 볼 때 | 워크스페이스 현황판(로드맵 · 팀원별 마지막 핸드오프 · 미완 작업 · 공지)과 기록 쪽을 이 PC 의 `.agents/board/` 에 만들어 연다. 보기 전용 |
-| `kedovi screens compare <화면 ID>` | 프로토타입이 있는 화면을 구현한 뒤 | 프로토타입과 구현을 같은 폭(`--widths`, 기본 PC 1280 · 폰 390)으로 찍어 나란히 보는 `compare.html` 을 만든다 (screens 팩, Playwright). 프로토타입 = `--proto` · 화면 목록의 「프로토타입」 칸 · `prototype/` 아래 이름에 화면 ID 가 든 파일. 구현 = `--impl <주소 · /경로>` · 화면 진입점 `@spec` 줄의 `@route /경로` (앞부분 `vars.screens.appUrl`). 로그인은 `--storage <상태.json>`, 백엔드 없이는 `--mock <픽스처.json · .har>`(구현 화면의 API 요청을 픽스처로 답한다, 기본 `vars.screens.mock`), `--find` 는 찍지 않고 찾은 것만. 찍으면 요소 체크리스트의 「비교」 줄에 적힌다. 못 찍으면 「미실행」 이고 완료로 보고하지 않는다 |
+| `kedovi screens compare <화면 ID>` | 프로토타입이 있는 화면을 구현한 뒤 | 프로토타입과 구현을 같은 폭(기본 PC 1280 · 폰 390)으로 찍어 나란히 보는 `compare.html` 과 배치 대조(옆 · 아래 · 폭이 바뀐 영역)를 만든다 (screens 팩, Playwright). 결과는 체크리스트 「비교」 · 「배치」 줄로 들어간다. 못 찍으면 「미실행」 이고 완료가 아니다. 찾는 곳 · 옵션은 아래 |
 | `kedovi screens inventory <화면 ID>` | 화면 개발 착수 전 | 정본을 정한다: 프로토타입이 있으면 프로토타입, 화면설계서만 있으면 화면설계서, 둘 다 있는데 요소 이름이 다르면 다른 점 표를 보이고 멈춘다(끝 코드 3), 둘 다 없으면 물을 선택지를 보인다(끝 코드 3). 정본의 영역별 요소를 `handoffs/<나>/screens/<화면 ID>.md` 체크리스트(영역 · 요소 · 종류 · 상태 · 데이터 원천 · 판정)로 만든다. 다시 하면 채운 칸을 살려 합친다(`--force` 는 새로) |
-| `kedovi screens checklist <화면 ID>` | 착수 전(`--start`) · 완료 전 | `--start`: 데이터 원천 빈 칸이면 실패, 원천 없는 요소는 사용자에게 알릴 목록. 기본: 판정(`구현` · `다름 (이유)` · `뺌 (결정 ID)`) 빈 칸 · 비교 미실행이면 실패(완료 아님). `--md` 는 MR 본문 표 |
-| `kedovi screens review <화면 ID…>` | 화면 변경 리뷰를 맡길 때 | 지시서에 넣을 화면 정본 대조 블록: 정본 경로 · 요소 체크리스트 · 비교 스크린샷 · 「정본에 있는데 구현에 없는 요소 = 블로커」. `kedovi delegate` 리뷰는 저절로 넣는다 |
+| `kedovi screens checklist <화면 ID>` | 착수 전(`--start`) · 완료 전 | `--start`: 데이터 원천 빈 칸이면 실패, 원천 없는 요소는 사용자에게 알릴 목록. 기본: 판정(`구현` · `다름 (이유)` · `뺌 (결정 ID)` · `보류 (후속: 위치)`) 빈 칸, 계약 · 데이터 원천 · 범위 때문에 다른데 결정 ID 없음, 후속 위치에 없는 보류, 판정 없는 배치 차이, 비교 미실행(대체는 사용자 확인이 있어야)이면 실패(완료 아님). 손으로 만든 체크리스트도 열 이름으로 읽는다. `--md` 는 MR 본문 표 |
+| `kedovi screens review <화면 ID…> [--implement]` | 화면 구현 · 리뷰를 맡길 때 | 지시서에 넣을 화면 정본 대조 블록: 정본 경로 · 프로토타입 소스 · 요소 체크리스트 · 비교 스크린샷 · 리뷰 기준 「정본에 있는데 구현에 없는 요소 = 블로커」. `--implement` 는 구현 기준 「정본대로 만들고, 계약 · 원천 때문에 못 하면 멈추고 알린다」. `kedovi delegate` 는 역할에 맞게 저절로 넣는다 |
+| `kedovi screens locate [--dir <폴더,…>] [--prototype "<파일>#{id}"] [--scope <CSS>]` | 화면 폴더 · 프로토타입을 못 찾을 때 | 지금 설정 · 화면 ID 수 · 프로토타입을 찾은 화면 수와, 기획 repo 의 후보(「화면 ID」 표가 있는 폴더 · `prototype/…/index.html`)를 보인다. 인자를 주면 workspace.json `vars.screens` 에 적는다. 한 페이지 앱 프로토타입은 `#{id}` 처럼 화면 ID 자리를 둔다 |
 | `kedovi screens check [repo]` | 화면설계서를 쓴 뒤 | 근거 ID 가 색인에 있는지 · 화면 ID 중복 · Description 줄이 결론 한 줄인지(60자 넘음 · 날짜 · 결정 경위는 ⚠) · 기능 ID 누락(`vars.screens.functionIds`, 화면 목록의 「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |
 | `kedovi datamodel check [repo]` | 테이블 정의서를 쓴 뒤 | ✖ 참조 대상 없음 · 기본키 없음 · 테이블 · 컬럼 중복 · 표 형식. ⚠ 논리명 없음 · 컨벤션 위반(`vars.datamodel`) · 기능 ID 없는 테이블 · 테이블 없는 기능(「없음」 으로 적은 것은 뺀다) |
 | `kedovi archrules spring\|react\|fastapi\|nestjs\|django [--repo R] [--dry-run]` | 패키지 구조를 정했을 때 · 구조 규칙을 문장 대신 검사로 지키게 할 때 | 구조 검사 템플릿을 repo 에 쓴다 (있는 파일은 덮지 않고, 넣을 의존성 · 실행 명령을 알려 준다). 무엇이 들어가는지는 아래 「archrules 자세히」 |
@@ -108,6 +110,15 @@
 | `kedovi sync` · `check` · `doctor` · `packs` | 필요할 때 | 생성 · 생성물 검사 · 환경 진단 · 팩 목록. `doctor` 의 「메모리」 는 이 PC 의 Claude Code 세션마다 메모리 · 경과 · 하위 프로세스(MCP · 브라우저)와 주인 없이 남은 브라우저 · MCP, Docker VM 을 보인다 (macOS · Linux) |
 | `kedovi upgrade [--add 팩]` | 킷 새 버전 후 | 워크스페이스의 `bin/kit.js` 와 팩을 이 킷 버전으로 (project 팩은 그대로). 몇 버전 뒤져도 한 번에 올라가고 그 사이 변경 기록을 모두 보여 준다. 저절로 켜지 않는 것은 한 줄씩 알린다: 그 유형의 기본 팩인데 꺼진 팩(`--add` 로 켬) · 진행 방식 · 새로 감지되는 스택 |
 | `kedovi upgrade --all` `[--scan <폴더>] [--yes]` | `npm i -g` 로 새 버전을 받은 뒤 이 PC 의 워크스페이스를 모두 올릴 때 | `kedovi list` 의 워크스페이스(`--scan` 이면 그 폴더 아래에서 찾아 더함)를 버전과 함께 보이고, 옛 버전만 묻고 올린다. 팀장 아님 · 원격에 받지 않은 커밋(팀원이 먼저 올렸을 수 있음) · 커밋 안 한 변경이 있으면 건너뛴다. 끝나면 워크스페이스마다 commit · push 명령을 보여 준다. 새 버전을 받은 뒤 첫 kedovi 명령이 옛 버전 워크스페이스 수를 한 번 알린다 |
+
+`kedovi screens compare` 찾는 곳 · 옵션:
+
+| 항목 | 내용 |
+|---|---|
+| 프로토타입 | `--proto` → 화면 목록의 「프로토타입」 칸 → `prototype/` 아래 이름에 화면 ID 가 든 파일 → `vars.screens.prototype` 주소 틀 (`kedovi screens locate`) |
+| 구현 | `--impl <주소 · /경로 · 파일>` → 화면 진입점 `@spec` 줄의 `@route /경로` (앞부분 `vars.screens.appUrl`) |
+| 배치 대조 | 제목이 있는 영역(카드 · 패널 · section · `data-area`)을 제목으로 짝지어 비교. 범위 `--scope <CSS>` · `vars.screens.scope` |
+| 그 밖 | `--widths` · 로그인 `--storage <상태.json>` · 백엔드 없이 `--mock <픽스처.json · .har>`(기본 `vars.screens.mock`) · `--find`(찍지 않고 찾은 것만) |
 
 ### docs build 자세히
 

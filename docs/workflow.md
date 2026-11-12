@@ -320,7 +320,7 @@ flowchart TD
     MW -->|"메인 모델 (팀 기본값)"| TL2["어느 도구의 모델 → 모델"]
     MW -->|"교차 검토 모델"| TL3["어느 도구의 모델 → 모델"]
     Q -->|"퇴역 모델 교체"| MG["kedovi models --migrate"]
-    Q -->|"팀 구성 방식"| TMO["kedovi team-mode auto · fixed<br/>prefer &lt;역할&gt; &lt;도구:모델&gt;<br/>enforce name off · warn · block (팀 모드에서 이름 없는 역할 에이전트)<br/>enforce roster off · warn (첫 역할 에이전트 때 구성표 알림)<br/>enforce review off · warn · block (commit · push 전 리뷰 확인, 기본 꺼짐)<br/>enforce idle off · warn · block (대기로 오래 남은 팀원 알림)<br/>enforce status off · block (기다리며 멈출 때 상태 줄)<br/>enforce ask off · block (결정 질문을 글로 끝낼 때)<br/>enforce run off · warn · block (오래 일하는 팀원 · 위임, 기본 60분)<br/>enforce check off · warn · block (리뷰 전 검사 줄)<br/>enforce plan off · warn · block (코드 수정 전 착수 전 확인)<br/>enforce answer off · warn · block (질문에 먼저 답하기)<br/>enforce main off · warn · block (메인 대화 전담)<br/>enforce msg off · block (작업 중 받은 메시지)<br/>enforce browser off · block (브라우저 닫기)<br/>enforce long off · block (긴 답은 보고 페이지로)<br/>enforce report off · warn · block (에이전트 보고 보관)<br/>--team 은 팀 기본값(팀장) → sync"]
+    Q -->|"팀 구성 방식"| TMO["kedovi team-mode auto · fixed<br/>prefer &lt;역할&gt; &lt;도구:모델&gt;<br/>enforce name off · warn · block (팀 모드에서 이름 없는 역할 에이전트)<br/>enforce roster off · warn (첫 역할 에이전트 때 구성표 알림)<br/>enforce review off · warn · block (commit · push 전 리뷰 확인, 기본 꺼짐)<br/>enforce idle off · warn · block (대기로 오래 남은 팀원 알림)<br/>enforce status off · block (기다리며 멈출 때 상태 줄)<br/>enforce ask off · block (결정 질문을 글로 끝낼 때)<br/>enforce run off · warn · block (오래 일하는 팀원 · 위임, 기본 60분)<br/>enforce check off · warn · block (리뷰 전 검사 줄)<br/>enforce plan off · warn · block (코드 수정 전 착수 전 확인)<br/>enforce answer off · warn · block (질문에 먼저 답하기)<br/>enforce main off · warn · block (메인 대화 전담)<br/>enforce msg off · block (작업 중 받은 메시지)<br/>enforce browser off · block (브라우저 닫기)<br/>enforce long off · block (긴 답은 보고 페이지로)<br/>enforce report off · warn · block (에이전트 보고 보관)<br/>enforce screens off · warn · block (화면 착수 전 체크리스트)<br/>--team 은 팀 기본값(팀장) → sync"]
     Q -->|"비밀값 (토큰)"| SEC["kedovi secret set &lt;이름&gt; [--global] (숨김 입력)<br/>list · test &lt;이름&gt; · rm · import · exec -- &lt;명령&gt;<br/>→ OS 저장소 (키체인 · 자격 증명 팀장 · libsecret)"]
     Q -->|"남은 파일 정리"| TDY["kedovi tidy [--new]<br/>이번 작업 새 파일 · 안 쓰는 자료 · 링크 없는 문서 · 백업 이름 (읽기만)<br/>지우기는 tidy 스킬: 표 → 승인 → 지움 → 검증"]
     Q -->|"기존 폴더 가져오기"| IMP["kedovi import &lt;폴더&gt;<br/>분류 · 절대경로 · 비밀값 의심 줄 (읽기만)<br/>옮기기는 import 스킬: 계획 → 승인 → 반영"]
@@ -331,9 +331,10 @@ flowchart TD
     Q -->|"운영 배포"| REL["kedovi release [repo] [--deploy] [--yes] [--dry-run]<br/>판정(같은 트리 develop 파이프라인 · CI 설정 · 확인 명령, 실패면 develop 부터)<br/>→ release MR → MR 파이프라인 → 머지 → release 파이프라인 → 배포 작업<br/>파이프라인은 하나씩 · 일시 오류만 다시 실행 · --yes 없으면 계획만"]
     Q -->|"CI 러너 감시"| RW["kedovi gitlab runner-watch add [--repo R] [--dry-run]<br/>디스크 · 대기열 · 작업 시간 급증 → 알림, docker 캐시 상한<br/>→ launchd plist · systemd timer (등록은 사람이) · kedovi gitlab busy (겹침 확인)"]
     Q -->|"compose 운영 검증"| OPS["kedovi ops add lifecycle · alerts · preflight · all [--repo R] [--dry-run]<br/>수명 시험 + CI job · 지표 cron + 경보 규칙(anon · file) · preflight + 설정 → repo 의 ops/<br/>kedovi ops preflight [서비스…] [-- 배포 명령] (위험하면 멈춤, --force) · kedovi ops lifecycle"]
-    Q -->|"화면 정본 · 요소"| SCI["kedovi screens inventory &lt;화면 ID&gt;<br/>정본 판정(프로토타입 · 화면설계서 · 둘 다 · 없음)<br/>→ handoffs/나/screens/화면 ID.md 요소 체크리스트<br/>kedovi screens checklist --start · 완료 전 · kedovi screens review"]
+    Q -->|"화면 정본 · 요소"| SCI["kedovi screens inventory &lt;화면 ID&gt;<br/>정본 판정(프로토타입 · 화면설계서 · 둘 다 · 없음)<br/>→ handoffs/나/screens/화면 ID.md 요소 체크리스트<br/>kedovi screens checklist --start · 완료 전 · kedovi screens review [--implement]"]
+    Q -->|"화면 위치"| SCL["kedovi screens locate [--dir 폴더] [--prototype 파일#{id}] [--scope main]<br/>후보 폴더 · 프로토타입 찾기 → workspace.json vars.screens"]
     Q -->|"화면 이름 대조"| VWC["kedovi views check<br/>component-web: 프론트 화면 폴더 ↔ 백엔드 web/views/화면<br/>대소문자 · - · _ 무시 · 화면 폴더 커밋 때 훅이 알림"]
-    Q -->|"화면 비교"| SCC["kedovi screens compare &lt;화면 ID&gt; [--mock 픽스처]<br/>프로토타입 ↔ 구현을 같은 폭(PC · 폰)으로 찍어 compare.html<br/>구현 주소 = @spec 줄의 @route 또는 --impl · 체크리스트 비교 줄"]
+    Q -->|"화면 비교"| SCC["kedovi screens compare &lt;화면 ID&gt; [--mock 픽스처]<br/>프로토타입 ↔ 구현을 같은 폭(PC · 폰)으로 찍어 compare.html<br/>구현 주소 = @spec 줄의 @route 또는 --impl · 배치 대조(옆 · 아래 · 폭)<br/>→ 체크리스트 비교 · 배치 줄 · 배치 행"]
     Q -->|"응답 언어 · 대화 스타일"| PRF["kedovi prefs language ko · en · style learn · normal · expert [--team]<br/>값 team = 이 PC 값 지우기 · mermaid [install] · setup (화면)<br/>→ .agents/local.json (팀은 workspace.json) → sync"]
     Q -->|"답변 시각 표시"| TS["kedovi timestamp on · off · team [--team]<br/>답변 첫 줄에 요청 받은 시각 (기본 켜짐, Claude Code)<br/>→ .agents/local.json (팀은 workspace.json)"]
     Q -->|"진행 방식"| APR["kedovi approach sprint · full · issue (팀장)<br/>스프린트: 최소 기능부터, 스프린트마다 데모 · 회고 · 전체: 전체 설계 뒤 구축 · 이슈형: 단계 대신 이슈 보드<br/>→ sync · 기본 단계 그대로인 로드맵은 새 뼈대 (이슈형은 고친 로드맵 앞에도 이슈 보드)"]
@@ -424,9 +425,10 @@ flowchart TD
 | `kedovi gitlab busy` · `runner-watch` | 자원 경합 확인(같은 러너의 도는 파이프라인 · 이 PC 의 무거운 프로세스) · 러너 감시 넣기(디스크 · 대기열 · 작업 시간 급증 알림, docker 캐시 상한, launchd · systemd 파일) |
 | `kedovi board` | 워크스페이스 현황판: 로드맵 · 팀원별 마지막 핸드오프 · 미완 작업 · 공지 + 기록(핸드오프 · 로드맵 · 모델 조사 · 설정 요약). 이 PC 의 `.agents/board/` 에 만들어 브라우저로 연다 (보기 전용) |
 | `kedovi screens inventory <화면 ID>` | 화면 정본 판정 + 정본 요소 체크리스트 `handoffs/<나>/screens/<화면 ID>.md` (screens 팩). 둘 다 있고 다르거나 둘 다 없으면 멈추고 묻는다 |
-| `kedovi screens checklist <화면 ID>` | 체크리스트 점검: `--start` 착수 전(데이터 원천) · 기본 완료 전(판정 · 비교) · `--md` MR 본문 표 |
-| `kedovi screens review <화면 ID…>` | 리뷰 지시서용 화면 정본 대조 블록 (`kedovi delegate` 리뷰는 저절로) |
-| `kedovi screens compare <화면 ID>` | 프로토타입과 구현 화면을 같은 폭(PC 1280 · 폰 390)으로 찍어 나란히 보는 `compare.html` (screens 팩, Playwright). 프로토타입 = 화면 목록의 「프로토타입」 칸 · `prototype/` 파일 이름, 구현 = `@spec` 줄의 `@route` · `--impl`. 백엔드 없이 `--mock <픽스처>` |
+| `kedovi screens checklist <화면 ID>` | 체크리스트 점검: `--start` 착수 전(데이터 원천) · 기본 완료 전(판정 · 결정 없는 다름 · 후속 없는 보류 · 배치 · 비교) · `--md` MR 본문 표 |
+| `kedovi screens review <화면 ID…> [--implement]` | 구현 · 리뷰 지시서용 화면 정본 대조 블록 (`kedovi delegate` 는 역할에 맞게 저절로) |
+| `kedovi screens locate` | 화면 폴더 · 프로토타입 위치 보기 · 정하기 (`--dir` · `--prototype "<파일>#{id}"` · `--scope`, workspace.json `vars.screens`) |
+| `kedovi screens compare <화면 ID>` | 프로토타입과 구현 화면을 같은 폭(PC 1280 · 폰 390)으로 찍어 나란히 보는 `compare.html` 과 배치 대조(옆 · 아래 · 폭이 바뀐 영역) (screens 팩, Playwright). 프로토타입 = 화면 목록의 「프로토타입」 칸 · `prototype/` 파일 이름, 구현 = `@spec` 줄의 `@route` · `--impl`. 백엔드 없이 `--mock <픽스처>` |
 | `kedovi screens check [repo]` | 화면설계서 검사 (screens 팩): 근거 ID 가 색인에 있는지 · 화면 ID 중복 · 기능 ID 누락(「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |
 | `kedovi datamodel check [repo]` | 데이터 설계 검사 (datamodel 팩): 참조 대상 · 기본키 · 중복 · 표 형식(✖), 논리명 · 컨벤션(`vars.datamodel`) · 기능 ID 대조 · 논리 참조 대상 · 고정 스키마 기본키(⚠). ERD 는 `kedovi docs build` 가 정의서 폴더마다 `erd.html` 로 만든다 |
 | `kedovi archrules spring\|react\|fastapi\|nestjs\|django` | 구조 검사 템플릿을 repo 에: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사 · NestJS dependency-cruiser · Django import-linter (component-web 이면 web → feature → shared 방향까지, 구조 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다) |

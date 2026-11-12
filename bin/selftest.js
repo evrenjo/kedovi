@@ -2494,7 +2494,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     S.recordCompare(wsObj, 'SCR-ORD-01', path.join(tmp, 'compare.html'));
     const d2 = inv('checklist', 'SCR-ORD-01');
     const md = inv('checklist', 'SCR-ORD-01', '--md');
-    const doneOk = d2.status === 0 && md.status === 0 && /\| 주문 요약 \| 주문 분석 \| 뺌 \(DEC-007\) \|/.test(md.stdout) && S.verdictOk('다름 (API 가 일 단위만 줌)') && !S.verdictOk('다름') && !S.verdictOk('뺌 (나중에)');
+    const doneOk = d2.status === 0 && md.status === 0 && /\| 주문 요약 \| 주문 분석 \| 뺌 \(DEC-007\) \|/.test(md.stdout) && !S.verdictOk('다름 (API 가 일 단위만 줌)') && S.verdictOk('다름 (API 가 일 단위만 줌 · DEC-008)') && S.verdictOk('다름 (축 글자를 소수 2자리로)') && !S.verdictOk('다름') && !S.verdictOk('뺌 (나중에)');
     // 다시 뽑아도 채운 칸 · 비교 줄이 남는다
     inv('inventory', 'SCR-ORD-01');
     const kept = /\| 주문 요약 \| 주문 분석 \| 버튼 \|  \| 없음 \| 뺌 \(DEC-007\) \|/.test(fs.readFileSync(ckFile, 'utf8')) && /^- 비교: `.*compare\.html`/m.test(fs.readFileSync(ckFile, 'utf8'));
@@ -2529,6 +2529,88 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const rule2 = /kedovi screens inventory/.test(agentsMd) && /둘 다 없음/.test(agentsMd);
     record('화면 정본 · 요소 체크리스트 (inventory · checklist · review · 커밋 훅 · compare --mock)', protoCanon && startFail && startOk && doneFail && doneOk && kept && sbCanon && both && bothWait && picked && none && review && hook && hookOff && mock && mockErr && rule2,
       `프로토타입 정본 · 요소 ${protoCanon} · 착수 전 원천 빈 칸 막음 ${startFail} · 원천 없음 알림 ${startOk} · 완료 전 판정 · 비교 ${doneFail} · 통과 · MR 표 ${doneOk} · 다시 뽑아도 판정 유지 ${kept} · 화면설계서 정본 ${sbCanon} · 둘 다 다름 묻기 ${both} · 답 전엔 체크리스트 안 만듦 ${bothWait} · 고른 정본 ${picked} · 없음 묻기 ${none} · 리뷰 블록 ${review} · 커밋 훅 ${hook} · 끄기 ${hookOff} · 픽스처 ${mock} · 없는 픽스처 ${mockErr} · 상시 규칙 ${rule2}`);
+  }
+
+  // 화면 위치 설정 · 손 체크리스트 · 결정 없는 다름 · 보류 후속 · 착수 전 훅 · 구현 지시서 블록 · 배치 대조 · UI repo 규칙 표
+  {
+    const S = require(path.join(ws, 'packs', 'screens', 'bin', 'screens-inventory.js'));
+    const C = require(path.join(ws, 'packs', 'screens', 'bin', 'compare-screens.js'));
+    const W = require(path.join(ws, 'packs', 'core', 'lib', 'workspace.js'));
+    const inv = (...a) => spawnSync(process.execPath, [path.join(ws, 'packs', 'screens', 'bin', 'screens-inventory.js'), ...a], { cwd: ws, encoding: 'utf8' });
+    // 기획 repo 가 킷 뼈대가 아님: 화면 목록 md/tobe/50-screens · 한 페이지 앱 프로토타입 site/prototype/app/index.html#<화면 ID>
+    const sd2 = path.join(docs, 'md', 'tobe', '50-screens');
+    fs.mkdirSync(sd2, { recursive: true });
+    fs.writeFileSync(path.join(sd2, 'README.md'), '# 화면\n\n| 화면 ID | 화면 | 경로 | 기능 ID |\n|---|---|---|---|\n| SCR-PAY-01 | 결제 | 결제 | FN-PAY-001 |\n| SCR-PAY-02 | 환불 | 결제 | FN-PAY-002 |\n| SCR-PAY-03 | 정산 | 결제 | FN-PAY-003 |\n');
+    const papp = path.join(docs, 'site', 'prototype', 'app');
+    fs.mkdirSync(path.join(papp, 'screens'), { recursive: true });
+    fs.writeFileSync(path.join(papp, 'index.html'), '<!doctype html><body><header><h1>앱</h1></header><main><section><h2>결제 요약</h2><button>결제하기</button></section></main><script src="screens/pay.js"></script></body>');
+    fs.writeFileSync(path.join(papp, 'screens', 'pay.js'), "APP.screen('SCR-PAY-01', {});\nAPP.screen('SCR-PAY-02', {});\n");
+    const lc = inv('locate');
+    const hinted = /후보/.test(lc.stdout) && /md\/tobe\/50-screens/.test(lc.stdout) && /site\/prototype\/app\/index\.html/.test(lc.stdout);
+    const set = inv('locate', '--dir', '30-screens,md/tobe/50-screens', '--prototype', 'site/prototype/app/index.html#{id}', '--scope', 'main');
+    const wj = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+    const f1 = json(cmp('SCR-PAY-01', '--impl', '/pay'));
+    const r9 = cmp('SCR-PAY-03');
+    const located = set.status === 0 && wj.vars.screens.dir === '30-screens,md/tobe/50-screens' && wj.vars.screens.scope === 'main' && /프로토타입을 찾은 화면: \d+\/\d+/.test(set.stdout)
+      && /site\/prototype\/app\/index\.html#SCR-PAY-01$/.test(f1.prototype.url || '') && f1.prototype.how === 'vars.screens.prototype' && /pay\.js:1/.test((f1.prototype.src || []).join())
+      && r9.status === 1 && /SCR-PAY-03 가 프로토타입 소스/.test(r9.stderr) && S.screenIds(W.load(ws)).includes('SCR-PAY-02');
+    // 손으로 만든 체크리스트: 열 순서 · 이름이 달라도 읽는다. 계약 때문에 다름(결정 없음) · 후속 없는 보류 · 사용자 확인 없는 대체 비교는 통과 못 함
+    const wsObj = W.load(ws);
+    const ck = S.checklistPath(wsObj, 'SCR-PAY-01');
+    const topic = path.join(path.dirname(path.dirname(ck)), 'topics', 'pay.md');
+    fs.mkdirSync(path.dirname(ck), { recursive: true });
+    const hand = (cmpLine, diffVerdict) => fs.writeFileSync(ck, `# SCR-PAY-01 체크리스트\n\n- 정본: 프로토타입 (pay.js:1 손으로 봄)\n- API 정본: API-PAY-01\n${cmpLine}\n\n| 영역 | 요소 | 프로토타입 위치 | 데이터 원천 | 판정 |\n|---|---|---|---|---|\n| 결제 요약 | 결제하기 | pay.js:1 | API-PAY-01 | 구현 |\n| 결제 요약 | 카드별 한도 | pay.js:3 | API-PAY-01 (한도 없음) | ${diffVerdict} |\n| 결제 요약 | 영수증 | pay.js:5 | 없음 | 보류 (후속: ${path.relative(ws, topic)}) |\n\n## 다른 점\n\n- 한도는 계약에 없다\n`);
+    hand('', '다름 (계약에 카드별 한도 없음)');
+    const h1 = inv('checklist', 'SCR-PAY-01');
+    const handRead = h1.status === 1 && !/판정 없는 요소/.test(h1.stdout) && /결정 없이 정본과 다르게 한 요소 1개 \(이유가 계약 · 데이터 원천 · 범위\): 결제 요약 > 카드별 한도/.test(h1.stdout) && /보류의 후속 위치에 그 요소가 없습니다 1개/.test(h1.stdout);
+    fs.mkdirSync(path.dirname(topic), { recursive: true });
+    fs.writeFileSync(topic, '# pay\n\n## 완료 조건\n- [ ] 영수증 화면 (SCR-PAY-01)\n');
+    hand('- 비교: 대체: e2e 스크린샷', '다름 (계약에 카드별 한도 없음 · DEC-12)');
+    const h2 = inv('checklist', 'SCR-PAY-01');
+    hand('- 비교: 대체: e2e 스크린샷 1280 · 390 (사용자 확인 2026-11-12)', '다름 (계약에 카드별 한도 없음 · DEC-12)');
+    const h3 = inv('checklist', 'SCR-PAY-01');
+    const md3 = inv('checklist', 'SCR-PAY-01', '--md');
+    const decided = h2.status === 1 && /사용자 확인이 없습니다/.test(h2.stdout) && !/결정 없이/.test(h2.stdout) && h3.status === 0 && /보류 1개는 후속 위치 확인됨/.test(h3.stdout) && /보류 1개 \(후속\): 영수증/.test(md3.stdout);
+    // 다시 뽑아도 손으로 쓴 열 · 머리 메모 · 표 뒤 절 · 판정이 남는다
+    inv('inventory', 'SCR-PAY-01');
+    const after = fs.readFileSync(ck, 'utf8');
+    const merged = /\| 영역 \| 요소 \| 종류 \| 상태\(빈 값 · 오류 · 로딩\) \| 데이터 원천 \| 프로토타입 위치 \| 판정 \|/.test(after) && /^- API 정본: API-PAY-01$/m.test(after) && /^- 정본 메모: 프로토타입 \(pay\.js:1 손으로 봄\)$/m.test(after)
+      && /## 다른 점\n\n- 한도는 계약에 없다/.test(after) && /\| 결제 요약 \| 카드별 한도 \|.*\| pay\.js:3 \| 다름 \(계약에 카드별 한도 없음 · DEC-12\) \|/.test(after) && /^- 프로토타입 소스: `.*pay\.js:1`/m.test(after);
+    // 착수 전 훅: 정본 있는 화면(SCR-PAY-02) 진입 파일을 체크리스트 없이 고치면 막는다. 체크리스트가 있는 화면 · 정본 없는 화면 · off 는 통과. 서브에이전트 안에서도
+    fs.writeFileSync(path.join(app, 'src', 'Refund.tsx'), '// @spec SCR-PAY-02 FN-PAY-002 @route /refund\nexport default function Refund() {}\n');
+    fs.writeFileSync(path.join(app, 'src', 'Pay.tsx'), '// @spec SCR-PAY-01 FN-PAY-001 @route /pay\n');
+    fs.writeFileSync(path.join(app, 'src', 'Settle.tsx'), '// @spec SCR-PAY-03 FN-PAY-003\n');
+    const gate = (file, extra = {}) => spawnSync(process.execPath, [path.join(ws, 'packs', 'core', 'hooks', 'screen-gate.js')], { cwd: ws, encoding: 'utf8', input: JSON.stringify({ session_id: 'sg-1', hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input: { file_path: path.join(app, 'src', file) }, cwd: ws, ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: ws } }).stdout;
+    const g1 = gate('Refund.tsx', { agent_id: 'impl-1' });
+    const newFile = spawnSync(process.execPath, [path.join(ws, 'packs', 'core', 'hooks', 'screen-gate.js')], { cwd: ws, encoding: 'utf8', input: JSON.stringify({ session_id: 'sg-1', hook_event_name: 'PreToolUse', tool_name: 'Write', tool_input: { file_path: path.join(app, 'src', 'New.tsx'), content: '// @spec SCR-PAY-02\n' }, cwd: ws }), env: { ...process.env, CLAUDE_PROJECT_DIR: ws } }).stdout;
+    const gateOn = /"deny"/.test(g1) && /SCR-PAY-02/.test(g1) && /kedovi screens inventory SCR-PAY-02/.test(g1) && /"deny"/.test(newFile) && !gate('Pay.tsx') && !gate('Settle.tsx');
+    const w4 = JSON.parse(fs.readFileSync(wsFile, 'utf8')); w4.agents = { ...(w4.agents || {}), enforce: { ...((w4.agents || {}).enforce || {}), screenChecklist: 'off' } }; fs.writeFileSync(wsFile, JSON.stringify(w4, null, 2));
+    const gateOff = !gate('Refund.tsx');
+    // 구현 지시서 블록 · 구현 역할 알림
+    const ib = R.screenBlock(ws, ['SCR-PAY-01'], 'implement');
+    const implBlock = /## 화면 정본 대조: SCR-PAY-01/.test(ib) && /구현 기준 \(화면\)/.test(ib) && /멈추고 알린다/.test(ib) && /프로토타입 소스/.test(ib) && !/리뷰 기준/.test(ib) && /--implement/.test(R.prototypeGap(ws, 'SCR-PAY-02 구현', 'implement'));
+    // 배치 대조: 정본에서 보드 오른쪽이던 체결 이력이 구현에서 아래로 → 차이 (같은 제목끼리 짝)
+    const proto = { width: 1280, regions: [{ label: '보드', x: 0, y: 0, w: 840, h: 600 }, { label: '체결 이력', x: 860, y: 0, w: 400, h: 600 }, { label: '주문 1', x: 0, y: 620, w: 840, h: 100 }] };
+    const impl2 = { width: 1280, regions: [{ label: '보드', x: 0, y: 0, w: 1280, h: 600 }, { label: '체결이력', x: 0, y: 640, w: 1280, h: 200 }, { label: '주문 2', x: 0, y: 860, w: 1280, h: 100 }] };
+    const L = C.compareLayout(proto, impl2);
+    const same = C.compareLayout(proto, proto);
+    const layoutOk = L.matched === 3 && L.diffs.some((d) => /「체결 이력」: 정본에서 「보드」 오른쪽 → 구현에서 아래/.test(d.text)) && L.diffs.some((d) => /「체결 이력」: 폭 정본 31% → 구현 100%/.test(d.text)) && !same.diffs.length
+      && /차이 \d+건 \(1280px \d+\) · 영역 3\/3개 짝지음/.test(C.layoutSummary([{ width: 1280, diff: L }]));
+    S.recordCompare(wsObj, 'SCR-PAY-01', path.join(tmp, 'compare.html'), { line: C.layoutSummary([{ width: 1280, diff: L }]), rows: L.diffs.map((d) => ({ ...d, width: 1280 })) });
+    const rec = fs.readFileSync(ck, 'utf8');
+    const h4 = inv('checklist', 'SCR-PAY-01');
+    S.recordCompare(wsObj, 'SCR-PAY-01', path.join(tmp, 'compare.html'), { line: '차이 없음 · 영역 3/3개 짝지음', rows: [] });
+    const fixed = fs.readFileSync(ck, 'utf8');
+    const layoutRec = /^- 배치: 차이 \d+건/m.test(rec) && /\| 배치 \| 체결 이력 위치 \(1280px\) \| 배치 \|/.test(rec) && h4.status === 1 && /판정 없는 요소 \d+개: 배치 > 체결 이력 위치/.test(h4.stdout)
+      && /^- 배치: 차이 없음/m.test(fixed) && !/\| 배치 \| 체결 이력/.test(fixed) && /## 다른 점/.test(fixed);
+    // UI repo(frontend 팩)의 「먼저 읽을 규칙」 맨 앞에 화면 정본 규칙
+    const w5 = JSON.parse(fs.readFileSync(wsFile, 'utf8')); const appRepo = w5.repos.find((r) => r.name === 'app'); appRepo.stacks = ['react']; fs.writeFileSync(wsFile, JSON.stringify(w5, null, 2));
+    spawnSync(process.execPath, [path.join(ws, 'bin', 'kit.js'), 'sync', '--quiet'], { cwd: ws, encoding: 'utf8' });
+    const am = fs.readFileSync(path.join(ws, 'AGENTS.md'), 'utf8');
+    const row = ((am.split('## repo 별 작업 규칙')[1] || '').match(/^\| \*\*app\*\* \|.*$/m) || [''])[0];
+    const uiRule = /\| `\.agents\/rules\/screens--20-implement-from-prototype\.md`(<br>|[^|]*)`\.agents\/rules\/frontend--/.test(row) && /정본이 디자인 시스템 · 기존 화면 관례보다 먼저다/.test(am);
+    record('화면 위치 설정 · 손 체크리스트 · 결정 없는 다름 · 착수 전 훅 · 배치 대조', hinted && located && handRead && decided && merged && gateOn && gateOff && implBlock && layoutOk && layoutRec && uiRule,
+      `후보 안내 ${hinted} · locate · 주소 틀 {id} · 소스 위치 ${located} · 손 체크리스트 열 이름으로 · 결정 없는 다름 · 후속 없는 보류 ${handRead} · 결정 · 후속 · 대체 사용자 확인 ${decided} · 다시 뽑아도 손 열 · 메모 · 뒤 절 ${merged} · 착수 전 막기(서브에이전트 · 새 파일) ${gateOn} · 끄기 ${gateOff} · 구현 지시서 블록 ${implBlock} · 배치 대조 ${layoutOk} · 배치 행 기록 · 고치면 지움 ${layoutRec} · UI repo 규칙 표 ${uiRule}${uiRule ? '' : ` · ${row.slice(0, 300)}`}${handRead ? '' : ` · ${h1.stdout.slice(0, 400)}`}${layoutOk ? '' : ` · ${JSON.stringify(L.diffs)}`}${located ? '' : ` · ${set.stdout.slice(-300)} ${r9.stderr.slice(-200)}`}`);
   }
 }
 

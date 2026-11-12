@@ -109,8 +109,10 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 기획 repo 새로 만들기 | `kedovi init-docs <폴더>` 로 뼈대를 만들고 `kedovi repo add <폴더> --kind docs` 로 등록 | 팀 |
 | 화면 비교 (프로토타입 ↔ 구현) | `kedovi screens compare <화면 ID> [--impl <주소\|/경로>] [--proto <파일\|주소>] [--widths 1280,390] [--storage <상태.json>] [--mock <픽스처.json\|.har>] [--find]` (같은 폭으로 두 장씩 찍어 `compare.html`. 구현 주소는 진입점 `@spec` 줄의 `@route`, 백엔드 없이는 `--mock`, screens 팩 · Playwright). "프로토타입이랑 비교해 줘" · "디자인 맞게 됐어?" 같은 말에 쓴다. 찍으면 체크리스트의 비교 줄에 적힌다 | 보기 |
 | 화면 정본 · 요소 체크리스트 | `kedovi screens inventory <화면 ID> [--proto <파일\|주소>] [--force]` (정본 판정: 프로토타입 · 화면설계서 · 둘 다 · 없음, 정본의 영역별 요소를 `handoffs/<나>/screens/<화면 ID>.md` 로. 끝 코드 3 = 사용자에게 물을 것). "이 화면 만들기 전에 요소 세 줘" · "정본이 뭐야?" 같은 말에 쓴다 | 쓰기 |
-| 요소 체크리스트 점검 | `kedovi screens checklist <화면 ID> [--start] [--md]` (`--start` = 착수 전 데이터 원천 빈 칸 · 원천 없음, 기본 = 완료 전 판정 빈 칸 · 비교 미실행, `--md` = MR 본문 표). "빠진 요소 없어?" 같은 말에 쓴다 | 보기 |
-| 화면 리뷰 지시서 블록 | `kedovi screens review <화면 ID…>` (정본 경로 · 요소 체크리스트 · 비교 스크린샷 · 「정본에 있는데 구현에 없는 요소 = 블로커」. `kedovi delegate` 리뷰는 저절로 넣는다) | 보기 |
+| 요소 체크리스트 점검 | `kedovi screens checklist <화면 ID> [--start] [--md]` (`--start` = 착수 전 데이터 원천 빈 칸 · 원천 없음, 기본 = 완료 전 판정 빈 칸 · 결정 없는 다름(계약 · 원천 · 범위) · 후속 없는 보류 · 배치 차이 · 비교 미실행, `--md` = MR 본문 표). "빠진 요소 없어?" 같은 말에 쓴다 | 보기 |
+| 화면 지시서 블록 | `kedovi screens review <화면 ID…> [--implement]` (리뷰: 정본 경로 · 요소 체크리스트 · 비교 스크린샷 · 「정본에 있는데 구현에 없는 요소 = 블로커」, `--implement`: 구현 기준 「정본대로 만들고, 계약 · 원천 때문에 못 하면 멈추고 알린다」. `kedovi delegate` 는 역할에 맞게 저절로 넣는다) | 보기 |
+| 화면 폴더 · 프로토타입 위치 | `kedovi screens locate [--dir <폴더,…>] [--prototype "<파일>#{id}"] [--scope <CSS>]` (인자 없으면 지금 설정 · 찾은 화면 수 · 후보 폴더. 기획 repo 가 `30-screens` 가 아니거나 한 페이지 앱 프로토타입이면 정한다: workspace.json `vars.screens`). "프로토타입을 못 찾아" · "화면 폴더 바꿔줘" 같은 말에 쓴다 | 팀 |
+| 화면 착수 전 확인 (screens 팩) | `kedovi team-mode enforce screens off\|warn\|block [--team]`. 막기(기본): 정본이 있는 화면의 진입 파일(`@spec` 화면 ID)을 정본 요소 체크리스트 없이 고치면 막음. 팀원 · 서브에이전트 · 위임 안에서도 | 이 PC · 팀 |
 | 화면설계서 검사 | `kedovi screens check [기획 repo]` (근거 ID · 화면 ID 중복 · 기능 ID 누락). 화면설계서 작성 절차는 `screens` 스킬 | 보기 |
 | 데이터 설계 검사 | `kedovi datamodel check [기획 repo]` (참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조). 작성 절차는 `datamodel` 스킬 | 보기 |
 | 화면 이름 대조 (component-web) | `kedovi views check [--json]` (프론트 화면 폴더 ↔ 백엔드 `web/views/<화면>` 을 상대 경로로 비교, 대소문자 · `-` · `_` 무시, 한쪽에만 있으면 exit 1). "화면 API 폴더 맞아?" 같은 말에 쓴다 | 보기 |

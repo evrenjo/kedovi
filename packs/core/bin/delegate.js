@@ -208,10 +208,10 @@ function start() {
   const checkLv = REVIEW_ROLE.test(job.role) && !hasCheckLine(task) ? checkLevel(ROOT) : 'off';
   if (checkLv === 'block') { fs.rmSync(dir, { recursive: true, force: true }); console.log(`✖ ${CHECK_MESSAGE}`); process.exit(6); }
   if (checkLv === 'warn') console.log(`⚠ ${CHECK_MESSAGE}`);
-  // 화면 정본 대조: 정본이 있는 화면을 다루는 리뷰면 정본 경로 · 요소 체크리스트 · 비교 스크린샷 · 블로커 기준을 지시서에 넣는다 (screens 팩)
-  if (REVIEW_ROLE.test(job.role)) {
+  // 화면 정본 대조: 정본이 있는 화면을 다루면 정본 경로 · 요소 체크리스트를 지시서에 넣는다 (screens 팩). 리뷰 = 블로커 기준 · 그 밖 = 구현 기준(정본대로, 못 하면 멈춤)
+  {
     const ids = screenGapIds(ROOT, task);
-    const block = screenBlock(ROOT, ids);
+    const block = screenBlock(ROOT, ids, REVIEW_ROLE.test(job.role) ? 'review' : 'implement');
     if (block) { task = `${task.replace(/\s+$/, '')}\n\n${block}\n`; console.log(`ℹ 화면 정본 대조 블록을 지시서에 넣었습니다: ${ids.join(' · ')}`); }
   }
   const prior = priorReviews(job.role, job.scope);

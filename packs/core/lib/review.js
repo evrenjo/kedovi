@@ -163,16 +163,18 @@ function screenGapIds(ROOT, text) {
   const done = (id) => new RegExp(`화면 정본 대조:\\s*${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(t);
   return S.screenIds(ws).filter((id) => has(id) && !done(id)).filter((id) => { try { return S.canonOf(ws, id).verdict !== 'none'; } catch { return true; } });
 }
-/** 지시서에 넣을 화면 정본 대조 블록 (해당 없으면 '') */
-function screenBlock(ROOT, ids) {
+/** 지시서에 넣을 화면 정본 대조 블록 (해당 없으면 ''). mode: review(리뷰 기준) · implement(구현 기준) */
+function screenBlock(ROOT, ids, mode = 'review') {
   if (!ids.length) return '';
-  try { const ws = require('./workspace').load(ROOT); return require(path.join(ws.root, 'packs', 'screens', 'bin', 'screens-inventory.js')).reviewBlock(ws, ids); } catch { return ''; }
+  try { const ws = require('./workspace').load(ROOT); return require(path.join(ws.root, 'packs', 'screens', 'bin', 'screens-inventory.js')).reviewBlock(ws, ids, mode); } catch { return ''; }
 }
-/** 알릴 말 (해당 없으면 ''). 막지 않는다 (screens 팩 「프로토타입대로 구현」) */
-function prototypeGap(ROOT, text) {
+/** 알릴 말 (해당 없으면 ''). 막지 않는다 (screens 팩 「프로토타입대로 구현」). 구현 역할이면 구현 기준 블록을 넣으라고 한다 */
+function prototypeGap(ROOT, text, mode = 'review') {
   const ids = screenGapIds(ROOT, text);
   if (!ids.length) return '';
-  return `지시서가 정본이 있는 화면(${ids.slice(0, 4).join(' · ')})을 다루는데 화면 정본 대조 블록이 없습니다. kedovi screens review ${ids.slice(0, 4).join(' ')} 의 출력(정본 경로 · 요소 체크리스트 · 비교 스크린샷 · 「정본에 있는데 구현에 없는 요소 = 블로커」)을 지시서에 넣습니다`;
+  return mode === 'implement'
+    ? `지시서가 정본이 있는 화면(${ids.slice(0, 4).join(' · ')})을 다루는데 화면 정본 블록이 없습니다. kedovi screens review ${ids.slice(0, 4).join(' ')} --implement 의 출력(정본 경로 · 프로토타입 소스 · 요소 체크리스트 · 「정본대로 만들고, 계약 · 원천 때문에 못 하면 멈추고 알린다」)을 지시서에 넣습니다`
+    : `지시서가 정본이 있는 화면(${ids.slice(0, 4).join(' · ')})을 다루는데 화면 정본 대조 블록이 없습니다. kedovi screens review ${ids.slice(0, 4).join(' ')} 의 출력(정본 경로 · 요소 체크리스트 · 비교 스크린샷 · 「정본에 있는데 구현에 없는 요소 = 블로커」)을 지시서에 넣습니다`;
 }
 /** 수준 (off | warn | block, 기본 block) */
 function checkLevel(ROOT) {

@@ -2,11 +2,23 @@
   "name": "screens",
   "title": "화면설계서",
   "summary": "화면설계서 양식 · 뷰어 · screens 스킬 · 검사 · 정본 요소 체크리스트 · 화면 비교",
-  "description": "화면의 정본은 프로토타입(기본: 화면 목록 · 정책 · 스크린샷만) 또는 화면설계서 중 하나로 고른다. 화면설계서(스토리보드)를 같은 양식 · 같은 뷰어로: 장 양식(표지 · 변경 이력 · 메뉴 구조 · 정책 · 화면, 가로 1280×760), 뷰어(썸네일 · 발표 · A4 가로 인쇄 · 한 쪽 넘침 표시 · 내부 정보(Check Point · 근거 ID · sb-dev) 숨김과 I 키 토글 · 근거 ID 를 누르면 오른쪽 패널에 근거 문서), 화면설계 절차(screens 스킬: 진행 방식 합의 → 화면 정책 → 화면 목록 → 장 작성 → 문서 사이트 반영), 정본 결정 · 요소 체크리스트(상시 규칙 + kedovi screens inventory <화면 ID>: 프로토타입 있음 → 프로토타입, 화면설계서만 → 화면설계서, 둘 다 다름 · 둘 다 없음 → 묻기. 정본의 영역별 요소를 체크리스트로 만들어 착수 전 데이터 원천, 완료 전 요소마다 판정(구현 · 다름 (이유) · 뺌 (결정 ID))을 kedovi screens checklist 가 점검, MR 본문 표), 화면 비교(kedovi screens compare <화면 ID>: 프로토타입과 구현을 같은 폭 PC · 폰으로 찍어 나란히 보는 compare.html, 백엔드 없이 --mock 픽스처), 리뷰 지시서 블록(kedovi screens review: 정본에 있는데 구현에 없는 요소 = 블로커, kedovi delegate 리뷰는 저절로), 커밋 전 알림(화면 진입 파일이 바뀌었는데 판정이 없으면), 검사(Related ID · 근거 ID 가 색인에 있는지 · Description 이 결론 한 줄인지 · 화면 ID 중복 · 기능 ID 누락). 문서 사이트는 core 의 kedovi docs build 가 만든다. 신규 · 차세대 유형은 기본으로 켜진다",
+  "description": "화면의 정본은 프로토타입(기본: 화면 목록 · 정책 · 스크린샷만) 또는 화면설계서 중 하나로 고른다. 화면설계서(스토리보드)를 같은 양식 · 같은 뷰어로: 장 양식(표지 · 변경 이력 · 메뉴 구조 · 정책 · 화면, 가로 1280×760), 뷰어(썸네일 · 발표 · A4 가로 인쇄 · 한 쪽 넘침 표시 · 내부 정보(Check Point · 근거 ID · sb-dev) 숨김과 I 키 토글 · 근거 ID 를 누르면 오른쪽 패널에 근거 문서), 화면설계 절차(screens 스킬: 진행 방식 합의 → 화면 정책 → 화면 목록 → 장 작성 → 문서 사이트 반영), 정본 결정 · 요소 체크리스트(상시 규칙 + kedovi screens inventory <화면 ID>: 프로토타입 있음 → 프로토타입, 화면설계서만 → 화면설계서, 둘 다 다름 · 둘 다 없음 → 묻기. 정본의 영역별 요소를 체크리스트로 만들어 착수 전 데이터 원천, 완료 전 요소마다 판정(구현 · 다름 (이유) · 뺌 (결정 ID) · 보류 (후속: 위치))을 kedovi screens checklist 가 점검. 계약 · 데이터 원천 · 범위 때문에 다르면 결정 ID 가 있어야 통과, MR 본문 표), 화면 비교(kedovi screens compare <화면 ID>: 프로토타입과 구현을 같은 폭 PC · 폰으로 찍어 나란히 보는 compare.html, 영역 배치 대조(정본에서 옆이던 영역이 아래로 가는 등)를 체크리스트 「배치」 줄로, 백엔드 없이 --mock 픽스처), 위치 설정(kedovi screens locate: 기획 repo 화면 폴더 · 한 페이지 앱 프로토타입 주소 틀 {id}), 착수 전 확인 훅(정본 있는 화면을 체크리스트 없이 고치면 막기, enforce screens), 지시서 블록(kedovi screens review: 리뷰는 정본에 있는데 구현에 없는 요소 = 블로커, --implement 는 정본대로 · 못 하면 멈춤, kedovi delegate 는 역할에 맞게 저절로), 커밋 전 알림(화면 진입 파일이 바뀌었는데 판정이 없으면), 검사(Related ID · 근거 ID 가 색인에 있는지 · Description 이 결론 한 줄인지 · 화면 ID 중복 · 기능 ID 누락). 문서 사이트는 core 의 kedovi docs build 가 만든다. 신규 · 차세대 유형은 기본으로 켜진다",
   "requires": [
     "core"
   ],
   "vars": {
+    "screens.dir": {
+      "default": "",
+      "desc": "기획 repo 안 화면 폴더 (화면 목록 README.md 가 있는 곳, 쉼표로 여럿, 예: md/tobe/50-screens). 비우면 30-screens · 02-screens. 정하기: kedovi screens locate --dir <폴더>"
+    },
+    "screens.prototype": {
+      "default": "",
+      "desc": "프로토타입 주소 틀. 화면 ID 자리는 {id} (예: 한 페이지 앱 docs-site/prototype/app/index.html#{id}, 기획 repo 기준 경로 또는 주소). 화면 목록 「프로토타입」 칸 · prototype/ 아래 파일 이름으로 못 찾을 때 쓴다. 정하기: kedovi screens locate --prototype \"<파일>#{id}\""
+    },
+    "screens.scope": {
+      "default": "",
+      "desc": "프로토타입에서 요소 · 배치를 뽑는 범위 (태그 · #id · .class, 예: main). 비우면 화면 전체. 메뉴 · 상단 바 같은 공통 틀을 빼려면 정한다"
+    },
     "screens.functionIds": {
       "default": "",
       "desc": "기능 ID 머리말 (쉼표로, 예: FN). 화면 검사가 어느 화면의 Related ID 에도 없는 기능을 알린다. 비우면 그 검사를 건너뛴다"

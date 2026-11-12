@@ -81,12 +81,13 @@ function screenChecklistNote(ws, repo) {
   for (const id of ids) {
     const f = S.findChecklist(ws, id);
     if (!f) { gaps.push(`${id} 체크리스트 없음`); continue; }
-    const ck = S.checkChecklist(f);
+    const ck = S.checkChecklist(f, ws, id);
     const left = ck.missingVerdict.length + ck.badVerdict.length;
     if (ck.empty) gaps.push(`${id} 요소 0개`);
     else if (left) gaps.push(`${id} 판정 없음 ${left}개`);
-    else if (!ck.compareDone) gaps.push(`${id} 비교 미실행`);
+    if (ck.undecided && ck.undecided.length) gaps.push(`${id} 결정 없는 다름 ${ck.undecided.length}개`);
+    if (!ck.empty && !left && !ck.compareDone) gaps.push(`${id} 비교 미실행`);
   }
   if (!gaps.length) return '';
-  return `⚠ 화면 진입 파일이 바뀌었는데 정본 요소 판정이 없습니다: ${gaps.join(' · ')}. kedovi screens inventory <화면 ID> 로 체크리스트를 만들고 판정(구현 · 다름 (이유) · 뺌 (결정 ID))을 채운 뒤 kedovi screens checklist <화면 ID>. 작업 중 커밋이면 그대로 진행해도 된다 (끄기: vars.screens.checklistOnCommit off)`;
+  return `⚠ 화면 진입 파일이 바뀌었는데 정본 요소 판정이 덜 됐습니다: ${gaps.join(' · ')}. 판정(구현 · 다름 (이유) · 뺌 (결정 ID) · 보류 (후속: 위치))을 채우고 kedovi screens checklist <화면 ID>. 「결정 없는 다름」 은 계약 · 원천 · 범위 때문에 정본과 다르게 한 것이라 사용자에게 물어 결정 ID 를 받는다. 작업 중 커밋이면 그대로 진행해도 된다 (끄기: vars.screens.checklistOnCommit off)`;
 }
