@@ -5,8 +5,8 @@
  *   run --test <테스트> [--repo <이름> | --dir <경로>]      테스트 한 건 (Java 클래스#메서드 · Python tests/x.py::이름 · JS 파일::이름)
  *                                                          Playwright e2e 면 계측한 개발 서버로 화면까지 (사용자 동작 · 요청 포함)
  *   run --request "<METHOD> <http://localhost:포트/경로>" [--data '<본문>'] [-H 'K: V'] [--serve "<명령>"] [--attach <디버그 포트>]
- *                                                          로컬 서버를 띄워 실제 요청 한 번 (Java bootRun · Python uvicorn 등 · Node npm start). --attach = 이미 띄운 JVM
- *   run --web "<조작 단계>" | --web --manual [--headed]     화면 (Vite): goto · click · fill … 단계 또는 직접 조작
+ *                                                          로컬 서버를 띄워 실제 요청 한 번 (Java bootRun · Python uvicorn 등 · Next.js 계측 개발 서버 · Node npm start). --attach = 이미 띄운 JVM
+ *   run --web "<조작 단계>" | --web --manual [--headed]     화면 (Vite · Next.js): goto · click · fill … 단계 또는 직접 조작
  *   공통: [--sql on|off] [--max-steps] [--max-hits 30] [--title "<제목>"] [--timeout 초]. Java 만 [--include 패키지,…], 웹만 [--project <Playwright 프로젝트>]
  *   list [--n 10]                                          최근 기록
  *   open [파일]                                            브라우저로 (없으면 가장 최근)

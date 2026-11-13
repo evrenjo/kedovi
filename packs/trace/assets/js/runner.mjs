@@ -1,7 +1,7 @@
-// kedovi trace JS 실행기: 프로젝트의 Vite · Vitest · Playwright 로 계측한 실행 한 번을 돌리고 기록을 모은다. kedovi trace run 이 띄운다 (cwd = 프로젝트)
+// kedovi trace JS 실행기: 프로젝트의 Vite · Next.js · Vitest · Playwright 로 계측한 실행 한 번을 돌리고 기록을 모은다. kedovi trace run 이 띄운다 (cwd = 프로젝트)
 /*
  * 설정은 환경 변수 KEDOVI_TRACE_JOB (JSON)
- *   { mode: 'web-steps' | 'web-pw' | 'web-manual' | 'vitest', root, ts, out, raw, maxSteps, maxHits,
+ *   { mode: 'web-steps' | 'web-pw' | 'web-manual' | 'vitest' | 'next-request', framework: 'vite' | 'next', root, ts, out, raw, maxSteps, maxHits,
  *     steps(문자열), spec, grep, project, pwConfig, tmp, timeout }
  * 결과: out 에 { trace, notes, response? } 를 쓴다
  */
@@ -23,34 +23,46 @@ const fromProject = async (name) => {
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const reEsc = (x) => String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // 테스트 이름 · 경로를 글자 그대로 (실행기들은 정규식으로 받는다)
+process.once('SIGTERM', () => process.exit(143)); // 시간 초과로 끊겨도 exit 정리(Next.js 가 건드린 파일 되돌리기)가 돌게
 const done = (trace, extra = {}) => { fs.writeFileSync(job.out, JSON.stringify({ trace, notes, ...extra })); };
 
-/** 브라우저 기록 묶음(페이지마다) → 단계 하나로 이어 붙이기 (번호 · 부모 · 호출 자리를 다시 매김) */
-function merge(raw) {
-  const sessions = (raw && raw.sessions || []).sort((a, b) => a.at - b.at);
-  const steps = [];
-  let cBase = 0;
-  let truncated = false;
-  for (const s of sessions) {
-    const map = new Map();
-    const list = s.steps.sort((a, b) => a.i - b.i);
-    list.forEach((st, k) => map.set(st.i, steps.length + k));
-    let maxC = 0;
-    for (const st of list) {
-      const n = { ...st, i: map.get(st.i), c: st.c + cBase };
-      if (st.c > maxC) maxC = st.c;
-      if (st.call) n.p = st.p >= 0 ? st.p + cBase : -1;
-      if (st.site !== undefined) n.site = map.has(st.site) ? map.get(st.site) : -1;
-      steps.push(n);
-    }
-    cBase += maxC + 1;
-    truncated = truncated || s.truncated;
-    for (const x of s.notes || []) if (!notes.includes(x)) notes.push(x);
+/** 기록 묶음들 → 하나 (merge.cjs). 묶음의 알림은 이 실행의 알림으로 */
+function merge(raw, extra = []) {
+  const { merge: m } = req(path.join(HERE, 'merge.cjs'));
+  const r = m([...(raw && raw.sessions || []), ...extra], job.maxHits || 30);
+  for (const x of r.notes) if (!notes.includes(x)) notes.push(x);
+  r.notes = [];
+  return r;
+}
+
+/** Next.js: 프로젝트의 next 를 이 프로세스에서 띄운다 (화면 · 서버 코드 모두 기록). 처음 여는 경로를 미리 컴파일해 테스트 시간 초과를 피한다 */
+async function nextServer(paths) {
+  const { startNext } = req(path.join(HERE, 'next-dev.cjs'));
+  const nx = await startNext({ root, port: job.port, ts: job.ts, out: job.raw, maxSteps: job.maxSteps, maxHits: job.maxHits });
+  process.stdout.write(`… 계측한 Next.js 개발 서버 ${nx.url} (next ${nx.info.version} · ${nx.info.turbo ? 'Turbopack' : 'webpack'})\n`);
+  for (const p of [...new Set(paths)].slice(0, 5)) {
+    process.stdout.write(`… 미리 컴파일 ${p}\n`);
+    try { await fetch(nx.url + p, { signal: AbortSignal.timeout(180000) }).then((r) => r.text()); } catch (e) { notes.push(`미리 열기 실패 ${p} (${e.message})`); }
   }
-  return { version: 1, lang: 'js', startedAt: 0, endedAt: steps.length ? Math.max(...steps.map((x) => x.t || 0)) : 0, truncated, maxHits: job.maxHits || 30, notes: [], steps };
+  nx.start();
+  return { server: { close: () => nx.close() }, url: nx.url, next: nx };
+}
+
+/** 처음 여는 경로: 단계 목록의 goto · 테스트 파일의 page.goto('…') */
+function firstPaths() {
+  if (job.mode === 'next-request') return []; // 요청 하나만: 컴파일도 그 요청 안에서 (미리 열면 다른 코드가 돈다)
+  if (job.mode === 'web-pw') {
+    let text = '';
+    try { text = fs.readFileSync(path.resolve(root, job.spec), 'utf8'); } catch { /* 없음 */ }
+    const list = [...text.matchAll(/\.goto\(\s*['"`](\/[^'"`$]*)['"`]/g)].map((m) => m[1]);
+    return list.length ? list : ['/'];
+  }
+  if (job.mode === 'web-steps') { const list = parseSteps(job.steps).filter((x) => /^(goto|open)$/.test(x.verb) && /^\//.test(x.args[0] || '')).map((x) => x.args[0]); return list.length ? list : ['/']; }
+  return ['/'];
 }
 
 async function devServer() {
+  if (job.framework === 'next') return nextServer(firstPaths());
   const vite = await fromProject('vite');
   if (!vite) throw new Error('이 프로젝트에서 vite 를 찾지 못했습니다 (npm install 을 먼저)');
   const plugin = (await import(pathToFileURL(path.join(HERE, 'vite-plugin.mjs')).href)).default({ root, ts: job.ts, out: job.raw, maxSteps: job.maxSteps, maxHits: job.maxHits });
@@ -185,6 +197,18 @@ export default {
   try { fs.unlinkSync(wrapper); } catch { /* 없음 */ }
 }
 
+/** Next.js 로컬 요청 한 번 (kedovi trace run --request) */
+async function sendRequest(url) {
+  const r = job.request;
+  process.stdout.write(`… ${r.method} ${r.path}\n`);
+  try {
+    const res = await fetch(url + r.path, { method: r.method, headers: r.headers, body: r.body || undefined, redirect: 'manual', signal: AbortSignal.timeout((job.timeout || 900) * 1000) });
+    const body = (await res.text()).slice(0, 20000);
+    await sleep(300);
+    return { status: res.status, headers: Object.fromEntries(res.headers), body };
+  } catch (e) { return { status: 0, error: e.message }; }
+}
+
 async function runVitest() {
   const vn = await fromProject('vitest/node');
   if (!vn) throw new Error('이 프로젝트에서 vitest 를 찾지 못했습니다');
@@ -205,16 +229,23 @@ async function runVitest() {
 (async () => {
   try {
     if (job.mode === 'vitest') { const t = await runVitest(); for (const n of t.notes || []) notes.push(n); t.notes = []; done(t); process.exit(0); }
-    const { server, url } = await devServer();
+    const { server, url, next } = await devServer();
+    let serverDump = null;
+    let response = null;
     try {
-      if (job.mode === 'web-pw') await runPlaywrightTest(url);
+      if (job.mode === 'next-request') response = await sendRequest(url);
+      else if (job.mode === 'web-pw') await runPlaywrightTest(url);
       else if (job.mode === 'web-manual') await runManual(url);
       else await runSteps(url, job.headed !== true);
-    } finally { await server.close(); }
+    } finally {
+      if (next) serverDump = next.dump();
+      await server.close();
+    }
     let raw = null;
     try { raw = JSON.parse(fs.readFileSync(job.raw, 'utf8')); } catch { /* 없음 */ }
-    if (!raw) notes.push('브라우저 기록이 오지 않았습니다 (화면이 열리지 않았거나 프로젝트 코드가 불리지 않음)');
-    done(merge(raw));
+    if (!raw && !(serverDump && serverDump.steps.length)) notes.push('브라우저 기록이 오지 않았습니다 (화면이 열리지 않았거나 프로젝트 코드가 불리지 않음)');
+    const extra = serverDump ? [{ sid: 'server', page: '(서버)', epoch: serverDump.epoch, notes: serverDump.notes, truncated: serverDump.truncated, steps: serverDump.steps }] : [];
+    done(merge(raw, extra), response ? { response } : {});
     process.exit(0);
   } catch (e) {
     fs.writeFileSync(job.out, JSON.stringify({ error: e.message }));

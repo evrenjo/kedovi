@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// 실행 흐름 디버깅 전체 점검 (npm run test:trace [-- --only java,python,react,node]): 예제 앱마다 테스트 기록 · 로컬 서버 요청 기록 → 페이지 · 자료 주소까지
-// java = Spring (JDK 17+ · Gradle) · python = FastAPI (uv) · react = Vite + React (npm · Playwright 브라우저) · node = Express + Jest (npm, Node 22.15+)
+// 실행 흐름 디버깅 전체 점검 (npm run test:trace [-- --only java,python,react,next,node]): 예제 앱마다 테스트 기록 · 로컬 서버 요청 기록 → 페이지 · 자료 주소까지
+// java = Spring (JDK 17+ · Gradle) · python = FastAPI (uv) · react = Vite + React (npm · Playwright 브라우저) · next = Next.js App Router (화면 + 서버) · node = Express + Jest (npm, Node 22.15+)
 // 도구가 없는 언어는 건너뛴다. 처음에는 의존성을 받느라 몇 분 걸린다. npm test 는 이것을 돌리지 않는다
 'use strict';
 const assert = require('assert');
@@ -69,6 +69,35 @@ const check = (name, cond, extra = '') => { ok.push([name, !!cond]); console.log
     const V = json(v.stdout);
     check('Vitest 기록', V && ['add', 'total'].every((m) => callsOf(V).includes(m)), (v.stdout + v.stderr).slice(-300));
   } else if (want('react')) console.log('… React 건너뜀 (npm 없음)');
+
+  // ── Next.js (Turbopack · webpack: 서버 컴포넌트 · API 라우트 · 서버 액션 + 화면, e2e · 단계 목록 · 로컬 요청) ──
+  if (want('next') && have('npm')) {
+    fixtureCopy('next-shop', 'next');
+    const nx = path.join(ws, 'repos', 'next');
+    const inst = spawnSync('npm', ['i', '--no-audit', '--no-fund'], { cwd: nx, encoding: 'utf8', timeout: 600000 });
+    const br = spawnSync('npx', ['playwright', 'install', 'chromium'], { cwd: nx, encoding: 'utf8', timeout: 600000 });
+    check('Next.js 예제 설치', inst.status === 0 && br.status === 0, (inst.stderr || br.stderr || '').slice(-300));
+    const before = ['tsconfig.json', 'AGENTS.md', 'next-env.d.ts'].map((f) => { try { return fs.readFileSync(path.join(nx, f), 'utf8'); } catch { return null; } });
+    for (const bundler of ['turbopack', 'webpack']) {
+      if (bundler === 'webpack') { const pj = path.join(nx, 'package.json'); fs.writeFileSync(pj, fs.readFileSync(pj, 'utf8').replace('next dev -p', 'next dev --webpack -p')); }
+      const e = run([tool, 'run', '--dir', 'repos/next', '--test', 'e2e/order.spec.ts::담고 주문하기']);
+      const E = json(e.stdout);
+      if (!a.stdout) a = e;
+      const by = (m) => (E ? E.trace.steps.find((s) => s.call && s.m === m) : null);
+      check(`Next.js e2e (${bundler}): 서버 컴포넌트 · 클릭 → 핸들러 → API 라우트 → 서비스`, E && by('Page') && by('listProducts') && by('add') && by('order') && by('placeOrder') && by('POST /api/orders').p === by('order').c && by('POST /api/orders').src === 'app/api/orders/route.ts', (e.stdout + e.stderr).slice(-300));
+      check(`Next.js 원본 줄 · 소스 (${bundler})`, E && by('placeOrder').ln === 6 && by('order').ln === 14 && E.files['lib/order.ts'] && E.files['app/shop.tsx']);
+      check(`Next.js 프레임워크 요청은 뺌 (${bundler})`, E && !E.trace.steps.some((s) => s.k === 'net' && (!/^\/|127\.0\.0\.1/.test(s.x.url) || /\/_next\//.test(s.x.url))));
+    }
+    const w = run([tool, 'run', '--dir', 'repos/next', '--web', 'goto /; click text=bag 채우기; wait [role=note]']);
+    const W = json(w.stdout);
+    const rs = W ? W.trace.steps.find((s) => s.call && s.m === 'restock') : null;
+    check('Next.js 서버 액션: 클릭 아래에 서버 함수', rs && rs.src === 'app/actions.ts' && rs.p >= 0 && W.trace.steps.some((s) => s.k === 'return' && s.c === rs.c && s.ret.f && s.ret.f.stock === 3), (w.stdout + w.stderr).slice(-300));
+    const q = run([tool, 'run', '--dir', 'repos/next', '--request', 'POST http://localhost:3000/api/orders', '--data', '{"lines":[{"id":10,"qty":1}]}']);
+    const Q = json(q.stdout);
+    check('Next.js 로컬 요청: 응답 · 라우트 → 서비스', Q && Q.meta.response.status === 200 && /PLACED/.test(Q.meta.response.body) && Q.trace.steps.some((s) => s.call && s.m === 'saveOrder'), (q.stdout + q.stderr).slice(-300));
+    const after = ['tsconfig.json', 'AGENTS.md', 'next-env.d.ts'].map((f) => { try { return fs.readFileSync(path.join(nx, f), 'utf8'); } catch { return null; } });
+    check('Next.js 기록 뒤 프로젝트 파일 그대로 (tsconfig · AGENTS.md · next-env.d.ts)', JSON.stringify(before) === JSON.stringify(after));
+  } else if (want('next')) console.log('… Next.js 건너뜀 (npm 없음)');
 
   // ── Node 서버 (Express · Jest · tsc 빌드 · tsx) ──
   const nodeOk = Number(process.versions.node.split('.')[0]) > 22 || Number(process.versions.node.split('.')[1]) >= 15;

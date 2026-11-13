@@ -79,7 +79,7 @@ flowchart LR
 | "된다" 고 했는데 안 된다 | AI 가 근거(확인됨 · 추정 · 미확인)와 **실행한 검증 결과(표)** 로 보고한다 |
 | "보통은 이렇게 한다" 가 AI 기억이라 낡거나 틀린다 | 흔한 방식 · 업계 관례는 **웹 검색으로 출처를 확인해 비교표로** 답한다 (`common-practice` 스킬). 검색할 수 없으면 "내 지식 기준" 이라고 밝힌다 |
 | 규칙을 문서에 써 두면 지켜지지 않는다 | 중요한 규칙은 **검사 도구**(훅 · pre-commit · 스택별 검사)로 강제한다 |
-| 코드가 실제로 어떤 값으로 도는지 보려면 IDE 디버거를 붙여 한 줄씩 따라가야 한다 | **실행 흐름 디버깅**: "주문 API 디버깅 보여줘" 한마디에 테스트 · 로컬 요청 · 화면 조작 한 번을 기록해, 지나간 함수 · 줄마다 값 · SQL · 요청을 웹 페이지로 보여 준다. Java · Python · React 같은 웹 화면 · Node (`trace` 팩) |
+| 코드가 실제로 어떤 값으로 도는지 보려면 IDE 디버거를 붙여 한 줄씩 따라가야 한다 | **실행 흐름 디버깅**: "주문 API 디버깅 보여줘" 한마디에 테스트 · 로컬 요청 · 화면 조작 한 번을 기록해, 지나간 함수 · 줄마다 값 · SQL · 요청을 웹 페이지로 보여 준다. Java · Python · React 같은 웹 화면 · Next.js(화면 + 서버 한 기록) · Node (`trace` 팩) |
 
 ### 추구하는 방향
 
@@ -191,7 +191,7 @@ GitLab · GitHub 그룹
 
 #### 실행 흐름 디버깅 (`trace` 팩)
 
-API · 함수 · 배치 · 화면 동작 한 번이 **어떤 값으로 들어와 어느 함수를 거치고, 줄마다 값이 어떻게 바뀌고, 어떤 SQL · 요청이 나갔는지**를 IDE 디버거처럼 웹 페이지로 본다. Java · Kotlin, Python, JS · TS(React 같은 웹 화면, Node 서버)를 같은 화면으로 본다. 프로젝트 코드는 고치지 않는다.
+API · 함수 · 배치 · 화면 동작 한 번이 **어떤 값으로 들어와 어느 함수를 거치고, 줄마다 값이 어떻게 바뀌고, 어떤 SQL · 요청이 나갔는지**를 IDE 디버거처럼 웹 페이지로 본다. Java · Kotlin, Python, JS · TS(React 같은 웹 화면, Next.js, Node 서버)를 같은 화면으로 본다. Next.js 는 클릭 → 핸들러 → 서버의 API 라우트 · 서버 액션까지 한 흐름으로 잇는다. 프로젝트 코드는 고치지 않는다.
 
 | 채팅에서 이렇게 말하면 | 에이전트가 하는 것 |
 |---|---|
@@ -217,7 +217,7 @@ API · 함수 · 배치 · 화면 동작 한 번이 **어떤 값으로 들어와
 |---|---|
 | 켜기 | `kedovi upgrade --add trace` (선택 팩) |
 | 직접 실행 | 테스트 `kedovi trace run --test <테스트>` (Java `<클래스>#<메서드>` · Python `tests/<파일>.py::<이름>` · JS `<파일>::<이름>`) · 로컬 서버 `--request "POST http://localhost:8080/api/orders" --data '{…}'` · 화면 `--web "goto /orders; click text=주문하기"` · `--web --manual` · `kedovi trace list` · `kedovi trace open` |
-| 지원 | Java · Kotlin(Gradle · Maven, Spring Boot 2 · 3 · 4) · Python 3.10+(pytest, FastAPI · Flask · Django) · 웹 화면(Vite: React 등, Playwright e2e) · JS · TS 단위 테스트(Vitest · Jest) · Node 서버(Express · NestJS 등, 빌드한 JS · tsx) |
+| 지원 | Java · Kotlin(Gradle · Maven, Spring Boot 2 · 3 · 4) · Python 3.10+(pytest, FastAPI · Flask · Django) · 웹 화면(Vite: React 등 · Next.js: 화면 + 서버 컴포넌트 · API 라우트 · 서버 액션, Playwright e2e) · JS · TS 단위 테스트(Vitest · Jest) · Node 서버(Express · NestJS 등, 빌드한 JS · tsx) |
 | 기록 방식 | Java 는 디버거(JDI), Python 은 `sys.monitoring`(3.11 이하는 settrace), JS 는 원본 소스에 기록 호출을 같은 줄 안에 끼워 넣는다 (원본 줄 번호가 그대로 맞는다) |
 | 안전 | 값은 필드 · 속성 값만 읽어 실행을 바꾸지 않는다 (지연 로딩 · 게터 · `toString` 을 부르지 않는다). 비밀번호 · 토큰 이름의 값은 `***`. 서버는 localhost 만. 기록은 이 PC 의 `.agents/traces/`(커밋 안 함) |
 | SQL · 요청 | Java: datasource-proxy(Gradle 은 기록할 때만 붙인다). Python: sqlite3 · psycopg · SQLAlchemy. Node: node:sqlite · pg · mysql2. 웹 화면 · Node: fetch · XHR 요청과 응답 본문 |

@@ -35,6 +35,14 @@ function instrument(code, file, opts) {
   const classes = new Set(); // 이 파일에서 선언한 클래스 (런타임이 값을 속까지 읽는 기준)
   const lineOf = (pos) => { const p = sf.getLineAndCharacterOfPosition(pos); return opts.mapLine ? opts.mapLine(p.line + 1, p.character) : p.line + 1; }; // 빌드된 JS 면 소스맵으로 원본 줄
   const base = (file.split(/[\\/]/).pop() || '').replace(/\.[^.]+$/, '');
+  const nextRoute = (() => { // Next.js 라우트 파일이면 주소
+    const rel = String(opts.src || '').replace(/^src\//, '');
+    const seg = (p) => `/${p.split('/').filter((x) => x && !/^\(.*\)$/.test(x) && !x.startsWith('@')).join('/')}`.replace(/\/index$/, '') || '/';
+    let m = rel.match(/^app\/(.*?)\/?route\.[cm]?[jt]sx?$/);
+    if (m) return { app: true, path: seg(m[1]) };
+    m = rel.match(/^pages\/(api\/.*)\.[cm]?[jt]sx?$/);
+    return m ? { app: false, path: seg(m[1]) } : null;
+  })();
   let depth = 0;
   const open = (pos, text) => edits.push({ pos, text, ord: depth });
   const close = (pos, text) => edits.push({ pos, text, ord: 1e6 - depth });
@@ -107,7 +115,12 @@ function instrument(code, file, opts) {
   function doFn(fn) {
     if (skipFn(fn)) { ts.forEachChild(fn, visit); return; }
     const id = fns.length;
-    const { name, ent, mw } = nameOf(fn);
+    let { name, ent, mw } = nameOf(fn);
+    // Next.js 라우트 처리기: app/**/route.ts 의 GET · POST … · pages/api/** 의 기본 내보내기 → 「POST /api/orders」 진입점
+    if (!fnCtx && nextRoute) {
+      if (nextRoute.app && /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/.test(name)) { name = `${name} ${nextRoute.path}`; ent = true; }
+      else if (!nextRoute.app && name === 'default' || (!nextRoute.app && fn.modifiers && fn.modifiers.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword))) { name = `API ${nextRoute.path}`; ent = true; }
+    }
     const params = [];
     for (const p of fn.parameters) if (!(ts.isIdentifier(p.name) && p.name.text === 'this')) names(p.name, params);
     const withThis = ts.isMethodDeclaration(fn) || ts.isConstructorDeclaration(fn) || ts.isFunctionExpression(fn) && ts.isPropertyAssignment(fn.parent);
@@ -122,7 +135,7 @@ function instrument(code, file, opts) {
       let at = body.getStart(sf) + 1;
       let i = 0;
       while (i < body.statements.length && ts.isExpressionStatement(body.statements[i]) && ts.isStringLiteral(body.statements[i].expression)) { at = body.statements[i].end; i += 1; } // "use strict" 같은 지시문 뒤
-      open(at, head);
+      open(at, `${i ? ';' : ''}${head}`); // 지시문 뒤에 세미콜론이 없어도 끼운 코드가 붙지 않게
       block(body.statements.slice(i), params);
       close(body.end - 1, tail);
     } else {
@@ -248,7 +261,7 @@ function instrument(code, file, opts) {
   // 맨 위 (지시문 "use client" 등 뒤): 기록 객체 · 이 파일 함수 목록
   let top = 0;
   for (const s of sf.statements) { if (ts.isExpressionStatement(s) && ts.isStringLiteral(s.expression)) top = s.end; else break; }
-  edits.push({ pos: top, text: `${NOOP}const __f=${RT}.d(${JSON.stringify(opts.src || file)},${JSON.stringify(fns)},${JSON.stringify([...classes])});`, ord: -1 });
+  edits.push({ pos: top, text: `${top ? ';' : ''}${NOOP}const __f=${RT}.d(${JSON.stringify(opts.src || file)},${JSON.stringify(fns)},${JSON.stringify([...classes])});`, ord: -1 });
 
   edits.sort((a, b) => a.pos - b.pos || a.ord - b.ord);
   let out = '';

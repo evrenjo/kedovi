@@ -2,7 +2,7 @@
 
 API · 함수 · 배치 · 화면 동작 한 번이 어떤 값으로 들어와 어느 함수를 거치고, 줄마다 값이 어떻게 바뀌고, 어떤 SQL · 요청이 나갔는지를 IDE 디버거처럼 웹 페이지로 본다. `trace` 팩을 켜면 쓸 수 있다 (`kedovi upgrade --add trace`).
 
-Java · Kotlin(JVM), Python, JS · TS(React 같은 웹 화면, Node 서버)를 같은 화면으로 본다. 프로젝트 코드는 고치지 않는다.
+Java · Kotlin(JVM), Python, JS · TS(React 같은 웹 화면, Next.js, Node 서버)를 같은 화면으로 본다. 프로젝트 코드는 고치지 않는다.
 
 채팅에서 "주문 API 디버깅 보여줘" · "주문하기 버튼 누르면 어떻게 도는지 보여줘" 라고 하면 에이전트가 `debug-trace` 스킬로 대상을 찾아 기록하고 `자세히: <링크>` 를 준다.
 
@@ -13,7 +13,7 @@ Java · Kotlin(JVM), Python, JS · TS(React 같은 웹 화면, Node 서버)를 �
 | "주문 API 디버깅 보여줘" · "`POST /api/orders` 실행 흐름 보여줘" | 그 경로를 받는 컨트롤러 · 라우트를 찾아 테스트로 기록 |
 | "`OrderService.place` 어떻게 도는지 보여줘" · "정산 배치 흐름 보여줘" | 그 함수 · 배치를 부르는 테스트로 기록 |
 | "주문 API 로컬 데이터로 디버깅 보여줘" | 로컬 서버를 띄워 실제 요청 한 번을 기록하고 끈다 |
-| "주문 화면에서 취소 누르면 어떻게 도는지 보여줘" | 그 화면의 e2e 테스트가 있으면 그것으로, 없으면 화면 조작 단계를 만들어 브라우저에서 기록 |
+| "주문 화면에서 취소 누르면 어떻게 도는지 보여줘" | 그 화면의 e2e 테스트가 있으면 그것으로, 없으면 화면 조작 단계를 만들어 브라우저에서 기록. Next.js 는 API 라우트 · 서버 액션 · 서버 컴포넌트까지 한 기록으로 |
 | "할인 금액이 어디서 바뀌는지 보여줘" | 그 값이 지나는 흐름을 기록 |
 | "지난 디버깅 기록 보여줘" | 최근 기록 목록 |
 
@@ -28,7 +28,7 @@ flowchart LR
   B --> C{"실행 방식"}
   C -->|"기본"| D["테스트 한 건<br/>JUnit · pytest · Vitest · Jest"]
   C -->|"로컬 데이터로"| E["로컬 서버 + 요청 한 번"]
-  C -->|"화면 동작"| W["계측한 개발 서버 + 브라우저<br/>e2e 테스트 · 조작 단계 · 직접 조작"]
+  C -->|"화면 동작"| W["계측한 개발 서버 + 브라우저<br/>Vite · Next.js<br/>e2e 테스트 · 조작 단계 · 직접 조작"]
   D --> F["프로젝트 코드만 줄마다 기록"]
   E --> F
   W --> F
@@ -51,6 +51,8 @@ flowchart LR
 
 ![웹 화면 기록: 「주문하기」 클릭 뒤 핸들러 · 요청 · 다시 그리기, 아래에 요청 본문](images/trace-web.png)
 
+![Next.js 기록: 「주문하기」 클릭 → 핸들러 → 서버의 API 라우트 → 주문 처리, 위에 「부른 곳」 으로 화면 호출에 이어짐](images/trace-next.png)
+
 ![SQL 상세: 트랜잭션 커밋 때 나간 update 문과 바인딩 값](images/trace-sql.png)
 
 ## 실행 방식
@@ -62,15 +64,31 @@ flowchart LR
 | | 이미 띄운 서버 | 위 명령 + `--attach <디버그 포트>` |
 | Python | 테스트 (기본) | `kedovi trace run --test tests/test_order.py::test_place` (함수 이름만 줘도 찾는다) |
 | | 로컬 서버 요청 | `kedovi trace run --request "POST http://localhost:8000/api/orders" --data '{…}'` (FastAPI · Starlette = uvicorn, Flask, Django 를 찾아 띄운다. 다르면 `--serve "<명령>"`) |
-| 웹 화면 (Vite) | 기존 e2e 테스트 (추천) | `kedovi trace run --test e2e/order.spec.ts::<테스트 이름>` (Playwright 테스트를 계측한 개발 서버로 돌린다. API 흉내 · 조작은 테스트 그대로) |
+| 웹 화면 (Vite · Next.js) | 기존 e2e 테스트 (추천) | `kedovi trace run --test e2e/order.spec.ts::<테스트 이름>` (Playwright 테스트를 계측한 개발 서버로 돌린다. API 흉내 · 조작은 테스트 그대로) |
 | | 조작 단계 | `kedovi trace run --web "goto /orders; click text=주문하기; wait [role=status]"` |
 | | 직접 조작 | `kedovi trace run --web --manual` (브라우저가 뜨고, 다 했으면 터미널에서 Enter) |
 | JS · TS 단위 | Vitest · Jest | `kedovi trace run --test src/cart.test.ts::<테스트 이름>` (package.json 의 test 스크립트로 고른다) |
+| Next.js | 로컬 요청 | `kedovi trace run --request "POST http://localhost:3000/api/orders" --data '{…}'` (킷이 계측한 Next.js 개발 서버를 따로 띄운다. 주소의 포트는 쓰지 않는다. API 라우트 · 서버 액션 · 페이지) |
 | Node 서버 | 로컬 서버 요청 | `kedovi trace run --request "POST http://localhost:3000/api/orders" --data '{…}' [--serve "npm run start"]` (빌드한 JS · tsx 모두) |
 
 공통 옵션: `--repo <이름>` · `--dir <경로>` · `--sql off` · `--max-steps`(테스트 · 서버 5000, 화면 30000) · `--max-hits 30`(반복 줄마다 값을 남기는 회차) · `--title`. Java 만 `--include 패키지,…`, 웹만 `--project <Playwright 프로젝트>` · `--headed`. 지난 기록은 `kedovi trace list` · `kedovi trace open`.
 
 프런트가 repo 의 하위 폴더(`frontend/` · `web/` · `client/`)에 있으면 그 폴더를 찾아 쓴다. 테스트 경로는 그 폴더 기준이다.
+
+### Next.js
+
+화면(브라우저)과 서버(서버 컴포넌트 · API 라우트 · 서버 액션 · Node 미들웨어)를 한 기록으로 본다. 화면이 보낸 요청에서 시작한 서버 호출은 그 화면 호출 아래에 붙고, 오른쪽 위 「부른 곳」 으로 화면 쪽 호출에 간다.
+
+| 항목 | 내용 |
+|---|---|
+| 띄우는 방식 | 프로젝트의 next 로 개발 서버를 킷이 따로 띄운다. next.config 는 고치지 않고, 읽은 설정에 계측 로더만 덧붙인다 |
+| 번들러 | Turbopack(16 기본 · 15 `--turbopack`) · webpack(`--webpack` · 15 이하 기본). package.json 의 `next dev` 스크립트를 따른다 |
+| 함께 쓰기 | 이미 띄운 `next dev` 와 같이 돈다. 빌드 폴더는 `.next` 안의 `kedovi-trace` 로 따로 쓴다 |
+| 프로젝트 파일 | next dev 가 고치는 tsconfig · next-env.d.ts · AGENTS.md 는 기록이 끝나면 기록 전 모습으로 되돌린다 |
+| 진입점 | `app/**/route.ts` 의 `GET` · `POST` … 와 `pages/api/**` 는 「POST /api/orders」 처럼 주소로 보인다 |
+| 뺌 | 서버에서 미리 그리는 화면 컴포넌트(브라우저에서 다시 돌아 두 번 남는 것). webpack 은 모두 빠지고, Turbopack 은 `'use client'` 파일만 빠진다 (Turbopack 15 는 빼지 못한다). 개발 서버 내부 요청(`/_next/` · 버전 확인) |
+| 기록 안 함 | Edge 런타임 코드(미들웨어 기본값 등) |
+| 시험한 판 | 14 · 15 · 16 (App Router). Pages Router 는 같은 방식이지만 예제로 시험하지 않았다 |
 
 ### 조작 단계 문법
 
@@ -90,19 +108,19 @@ flowchart LR
 |---|---|---|
 | Java · Kotlin | 표준 디버거 API(JDI)로 디버그 포트에 붙어 프로젝트 패키지의 줄마다 멈췄다 간다 | 필드만 읽고 메서드는 부르지 않는다. `toString` · JPA 지연 로딩이 실행을 바꾸지 않는다 |
 | Python | 3.12 이상은 `sys.monitoring`(라이브러리 코드는 꺼서 비용 없음), 3.11 이하는 `sys.settrace`. pytest 플러그인 · 서버 감싸기로 붙는다 | `__dict__` · 슬롯 · 기본 자료형만 읽는다. 프로퍼티 · `__repr__` 를 부르지 않는다 (SQLAlchemy 지연 로딩 그대로) |
-| JS · TS | 원본 소스에 같은 줄 안에서 기록 호출을 끼워 넣는다 (Vite 플러그인 · Jest 변환기 · Node 로더). 줄 번호를 숫자로 박아 TS 변환 · 번들 뒤에도 원본 줄과 맞는다. 빌드한 JS · tsx 는 소스맵으로 원본 TS 줄로 되돌린다 | 자기 속성의 값만 읽는다. 게터 · `toString` 을 부르지 않는다 |
+| JS · TS | 원본 소스에 같은 줄 안에서 기록 호출을 끼워 넣는다 (Vite 플러그인 · Next.js 로더(Turbopack · webpack) · Jest 변환기 · Node 로더). 줄 번호를 숫자로 박아 TS 변환 · 번들 뒤에도 원본 줄과 맞는다. 빌드한 JS · tsx 는 소스맵으로 원본 TS 줄로 되돌린다 | 자기 속성의 값만 읽는다. 게터 · `toString` 을 부르지 않는다 |
 
 | 항목 | 내용 |
 |---|---|
-| 코드 수정 | 없음. 기록용 테스트 파일만 새로 생길 수 있다. 감싼 설정(Playwright · Jest)은 임시 폴더에 두었다 지운다 |
+| 코드 수정 | 없음. 기록용 테스트 파일만 새로 생길 수 있다. 감싼 설정(Playwright · Jest)은 임시 폴더에 두었다 지운다. Next.js 가 스스로 고치는 파일은 끝나면 되돌린다 |
 | 건너뜀 | 라이브러리 · 프레임워크 코드, 도구가 만든 코드(`generated/` · `@generated`), 한 줄짜리 접근자(Java), 게터 · 세터(JS) |
 | 반복 | 같은 줄은 30회까지 값을 남기고 나머지는 횟수만. 웹 화면은 사용자 동작마다 3000단계 · 같은 함수 20번까지 (넘으면 그 동작 안에서만 접고 다음 동작부터 다시) |
 | 가림 | 이름에 password · secret · token · apikey · credential · authorization(JS 는 cookie · session 도)이 든 변수 · 필드 · 키의 값은 `***` |
 | SQL | Java: datasource-proxy(Gradle 은 기록할 때만 붙인다, Maven 은 pom 에 있어야). Python: sqlite3 · psycopg(3) · SQLAlchemy. Node: node:sqlite · pg · mysql2 |
-| 요청 | 웹 화면 · Node: fetch · XHR 의 주소 · 상태 · 요청 본문 · 응답 본문 (2만 자까지) |
+| 요청 | 웹 화면 · Next.js 서버 · Node: fetch · XHR 의 주소 · 상태 · 요청 본문 · 응답 본문 (2만 자까지) |
 | 비동기 | Python · JS 는 await 너머도 같은 호출로 잇는다. 다른 스레드에서 시작한 호출은 가장 최근에 움직인 호출 아래에 붙인다. Java 는 시작한 스레드만 |
 | 속도 | Java 는 줄마다 멈춰 수십 배 느리다. Python · JS 는 값 복사가 대부분 (줄당 1µs 안팎). 테스트 한 건 · 요청 한 번 · 화면 시나리오 하나 크기에 맞다 |
-| 필요한 것 | Java: JDK 17+. Python: 3.10+ (3.12+ 권장). JS: 프로젝트에 설치된 Vite · Vitest · Jest · Playwright, 소스 파서(프로젝트의 typescript, 없으면 이 PC 에 한 번 받는다). Node 서버: 22.15+ |
+| 필요한 것 | Java: JDK 17+. Python: 3.10+ (3.12+ 권장). JS: 프로젝트에 설치된 Vite 또는 Next.js(14+) · Vitest · Jest · Playwright, 소스 파서(프로젝트의 typescript, 없으면 이 PC 에 한 번 받는다). Node 서버: 22.15+ |
 | 보관 | `.agents/traces/`(gitignore). 실제 데이터 · 지나간 소스가 들어 있으니 밖으로 보내지 않는다. 운영 · 공유 DB 에 붙은 서버는 기록하지 않는다 (주소는 localhost 만) |
 
 > 근거: 언어마다 공식 문서 · 도구 소스 · 측정 자료를 150곳 넘게 조사했다. 디버거로 한 줄씩 멈추는 방식은 JS 에서 줄당 약 170µs(직접 측정)라 화면 렌더가 많은 앱에 맞지 않아, JS 는 코드에 기록 호출을 끼우는 방식(기록당 수십 ns)을 골랐다. Python 은 PEP 669 `sys.monitoring` 이 라이브러리 구간 비용을 없앤다(debugpy · coverage 가 같은 이유로 옮겨 감). 화면 아이디어는 Replay.io · Pernosco(줄별 실행 횟수 · 회차), birdseye(반복 앞부분만 보관), Python Tutor(언어 공통 기록 형식)에서 가져왔다.

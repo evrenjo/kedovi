@@ -24,6 +24,7 @@
   const SECRET = /passw|pwd|secret|token|apikey|api_key|credential|authorization|private_?key|cookie|session/i;
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const t0 = now();
+  const EPOCH = Date.now(); // 시작 시각 (브라우저 · 서버 기록을 시간순으로 잇는다)
 
   const files = []; // [src, fns]
   const userClasses = new Set(); // 프로젝트 코드에서 선언한 클래스 이름: 이것과 일반 객체만 속까지 읽는다
@@ -167,6 +168,7 @@
     if (fn[3] === 1) s.ent = true;
     if (fn[3] === 2) s.mw = true;
     if (fr.ev) { s.ev = true; delete s.src; }
+    if (fr.from) s.from = fr.from;
     fr.pending = false;
     fr.last = steps.length;
     fr.vals = vars || {};
@@ -185,7 +187,10 @@
     d(src, fns, classes) { files.push([src, fns]); for (const c of classes || []) userClasses.add(c); return files.length - 1; },
     e(file, fn, args) {
       if (!on) return 0;
-      const parent = cur || mark;
+      let parent = cur || mark;
+      // 서버(Next.js 등): 요청마다 문맥이 다르면 앞 요청의 호출 아래에 붙이지 않는다. 화면에서 보낸 요청이면 그 호출을 남긴다
+      const rq = O.ctx ? O.ctx() : undefined;
+      if (O.ctx && parent && parent.rq !== rq) parent = null;
       const key = `${file}:${fn}`;
       let muted = false;
       if (parent) {
@@ -197,7 +202,8 @@
       if (nf > MAX_FN && !muted) { muted = true; if (parent && !parent.muted && parent.last >= 0) { steps[parent.last].skippedCalls = (steps[parent.last].skippedCalls || 0) + 1; touch(parent.last); } }
       if (mark && mark.over) muted = true;
       seq += 1;
-      const fr = { id: seq, file, fn, parent, d: parent ? parent.d + 1 : 1, hits: {}, curLine: 0, last: -1, vals: {}, raw: {}, pending: true, muted, ret: undefined, hasRet: false, err: null };
+      const fr = { id: seq, file, fn, parent, d: parent ? parent.d + 1 : 1, hits: {}, curLine: 0, last: -1, vals: {}, raw: {}, pending: true, muted, ret: undefined, hasRet: false, err: null, rq };
+      if (!parent && rq && rq.from) fr.from = rq.from;
       if (!muted) {
         const a = {};
         try { const o = snap(fr, args); for (const k of Object.keys(o)) a[k] = JSON.parse(o[k]); fr.raw = {}; } catch (e) { /* 값 */ }
@@ -276,6 +282,7 @@
     net(info) {
       if (!on || steps.length >= MAX_STEPS) return; // 요청은 동작 예산을 넘어도 남긴다
       const fr = info.from || cur || mark; // 요청을 보낸 호출 (응답 때는 이미 끝났을 수 있다)
+      if (!fr && O.netOwned) return; // 서버: 프레임워크가 스스로 보내는 요청(버전 확인 등)은 뺀다
       const s = { i: steps.length, k: 'net', c: fr ? fr.id : -1, d: fr ? fr.d : 1, t: ms(), site: fr ? fr.last : -1, x: info.x };
       if (fr && fr.last >= 0) s.ln = steps[fr.last].ln;
       push(s);
@@ -296,12 +303,12 @@
       if (!dirty.size || typeof location === 'undefined' || !O.collect) return;
       const ids = [...dirty].sort((a, b) => a - b);
       dirty.clear();
-      const body = JSON.stringify({ sid: SID, page: location.pathname + location.search, files: files.map((f) => f[0]), notes, truncated, steps: ids.map((i) => steps[i]) });
+      const body = JSON.stringify({ sid: SID, epoch: EPOCH, page: location.pathname + location.search, files: files.map((f) => f[0]), notes, truncated, steps: ids.map((i) => steps[i]) });
       try { origFetch(O.collect, { method: 'POST', body, keepalive: final && body.length < 60000, headers: { 'content-type': 'application/json' } }).catch(() => {}); } catch (e) { /* 페이지 닫힘 */ }
     },
     dump(extra) {
       for (const s of steps) delete s._e;
-      return Object.assign({ version: 1, lang: 'js', startedAt, endedAt: ms(), truncated, maxHits: MAX_HITS, notes, steps }, extra || {});
+      return Object.assign({ version: 1, lang: 'js', epoch: EPOCH, startedAt, endedAt: ms(), truncated, maxHits: MAX_HITS, notes, steps }, extra || {});
     },
   };
   G.__kedoviT = T;
@@ -328,6 +335,7 @@
   }
 
   // ── 네트워크 (브라우저 · Node 18+ fetch) ──
+  const SKIP_NET = O.netSkip ? new RegExp(O.netSkip) : null;
   if (O.net !== false && typeof G.fetch === 'function' && !G.fetch.__kedovi) {
     const orig = G.fetch;
     const body = (b) => { try { return typeof b === 'string' ? (b.length > 20000 ? `${b.slice(0, 20000)}…` : b) : b == null ? null : `(${b.constructor && b.constructor.name})`; } catch (e) { return null; } };
@@ -336,7 +344,19 @@
       const t = now();
       const method = (init && init.method) || (input && input.method) || 'GET';
       const url = typeof input === 'string' ? input : input && (input.url || String(input));
-      const p = orig.apply(this, arguments);
+      if (SKIP_NET && SKIP_NET.test(String(url))) return orig.apply(this, arguments); // 개발 서버 내부 요청 (화면 갱신 등)
+      let args = arguments;
+      // 같은 주소의 서버(Next.js 등)로 가는 요청: 보낸 호출을 헤더로 알려 서버 기록을 그 아래에 잇는다
+      if (O.link && from && typeof location !== 'undefined') {
+        try {
+          if (new URL(url, location.href).origin === location.origin) {
+            const h = new Headers((init && init.headers) || (input && typeof input === 'object' && input.headers) || undefined);
+            h.set('x-kedovi-from', `${SID}:${from.id}`);
+            args = [input, Object.assign({}, init || {}, { headers: h })];
+          }
+        } catch (e) { /* 그대로 보낸다 */ }
+      }
+      const p = orig.apply(this, args);
       p.then((res) => {
         const x = { method: String(method).toUpperCase(), url, status: res.status, ms: Math.round(now() - t), req: body(init && init.body), res: null };
         res.clone().text().then((txt) => { x.res = body(txt); T.net({ from, x }); }, () => T.net({ from, x }));
@@ -353,6 +373,7 @@
     P.open = function (m, u) { this.__ak = { method: String(m).toUpperCase(), url: String(u) }; return open.apply(this, arguments); };
     P.send = function (b) {
       const info = this.__ak || {};
+      if (SKIP_NET && SKIP_NET.test(String(info.url))) return send.apply(this, arguments);
       const from = T.current();
       const t = now();
       this.addEventListener('loadend', () => {

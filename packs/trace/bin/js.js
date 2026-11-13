@@ -1,4 +1,4 @@
-// kedovi trace: JS · TS 기록 (React 등 웹 화면 = 계측한 Vite 개발 서버 + 브라우저, 단위 테스트 = Vitest, 서버 = Node 로더)
+// kedovi trace: JS · TS 기록 (웹 화면 = 계측한 Vite · Next.js 개발 서버 + 브라우저, 단위 테스트 = Vitest · Jest, 서버 = Node 로더 · Next.js)
 // 계측 = assets/js/instrument.cjs (원본 소스에 같은 줄 안에서 기록 호출을 끼움). 파서 = 프로젝트의 typescript, 없으면 이 PC 캐시(~/.kedovi/cache/trace-ts)에 한 번 받는다
 'use strict';
 const fs = require('fs');
@@ -50,6 +50,16 @@ function isPlaywrightTest(dir, file) {
   return /from\s+['"](@playwright\/test|playwright\/test)['"]|require\(['"]@playwright\/test['"]\)/.test(text);
 }
 
+/** 화면 개발 서버: Next.js (next.config 또는 next dev 스크립트) → Vite */
+function webFramework(dir) {
+  if (has(dir, 'next')) {
+    let script = '';
+    try { script = Object.values(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).scripts || {}).join(' '); } catch { /* 없음 */ }
+    if (/\bnext\s+(dev|start|build)\b/.test(script) || ['next.config.js', 'next.config.mjs', 'next.config.ts', 'next.config.cjs', 'next.config.mts'].some((f) => fs.existsSync(path.join(dir, f)))) return 'next';
+  }
+  return has(dir, 'vite') ? 'vite' : null;
+}
+
 const has = (dir, name) => { try { require.resolve(`${name}/package.json`, { paths: [dir] }); return true; } catch { return false; } };
 
 /** 기록의 src(프로젝트 상대 경로) → 파일 */
@@ -74,6 +84,10 @@ async function run(opts, ROOT, dir, lang, h) {
   const job = { root: dir, ts, out: path.join(tmp, `${stamp}.js.json`), raw: path.join(tmp, `${stamp}.raw.json`), tmp, maxSteps: Number(opts.maxSteps) || (opts.web || opts.manual || /\.(spec|e2e)\./.test(String(opts.test || '')) ? 30000 : 5000), maxHits: Number(opts.maxHits) || 30, timeout: Number(opts.timeout) || 900 };
   let title;
   let entry;
+  const fw = webFramework(dir);
+  job.framework = fw;
+  const NO_WEB = '화면 기록은 Next.js 또는 Vite 개발 서버가 있는 프로젝트만 됩니다';
+  if (opts.request && fw === 'next' && !opts.serve) return runNextRequest(opts, ROOT, dir, job, h);
   if (opts.request) return runServer(opts, ROOT, dir, job, h);
   if (opts.test) {
     const t = parseTest(opts.test);
@@ -83,7 +97,7 @@ async function run(opts, ROOT, dir, lang, h) {
     entry = `${t.file}${job.grep ? ` › ${job.grep}` : ''}`;
     title = job.grep || path.basename(t.file);
     if (isPlaywrightTest(dir, t.file)) {
-      if (!has(dir, 'vite')) fail('Playwright 테스트 기록은 Vite 개발 서버가 있는 프로젝트만 됩니다 (지금은 Vite)');
+      if (!fw) fail(`Playwright 테스트 기록: ${NO_WEB}`);
       job.mode = 'web-pw';
       job.pwConfig = pwConfig(dir);
       job.project = opts.project || '';
@@ -93,7 +107,7 @@ async function run(opts, ROOT, dir, lang, h) {
       job.mode = runnerOf;
     }
   } else {
-    if (!has(dir, 'vite')) fail('화면 시나리오 기록은 Vite 개발 서버가 있는 프로젝트만 됩니다 (지금은 Vite)');
+    if (!fw) fail(`화면 시나리오 기록: ${NO_WEB}`);
     const steps = typeof opts.web === 'string' && opts.web !== 'true' ? opts.web : opts.steps || '';
     job.mode = opts.manual || (!steps && !opts.scenario) ? 'web-manual' : 'web-steps';
     job.steps = steps;
@@ -120,7 +134,7 @@ async function run(opts, ROOT, dir, lang, h) {
   const notes = [...(res.notes || [])];
   if (!trace.steps.length) notes.push('프로젝트 코드가 불리지 않았습니다 (테스트 이름 · 시나리오 확인)');
   finish(ROOT, {
-    title: opts.title || title, mode: job.mode === 'vitest' ? 'test' : 'web', entry, tool: job.mode, lang: 'js', repo: path.basename(dir), include: [path.basename(dir)], at: new Date().toISOString(),
+    title: opts.title || title, mode: job.mode === 'vitest' ? 'test' : 'web', entry, tool: job.framework === 'next' && job.mode !== 'vitest' ? `${job.mode} · next` : job.mode, lang: 'js', repo: path.basename(dir), include: [path.basename(dir)], at: new Date().toISOString(),
     request: null, response: null, notes, log: tail(logFile, 40),
   }, trace, mapSources(dir, trace), String(title).replace(/[^\w-]+/g, '-'));
   for (const f of [job.out, job.raw]) { try { fs.unlinkSync(f); } catch { /* 없음 */ } }
@@ -137,29 +151,9 @@ function testRunner(dir) {
   return has(dir, 'vitest') ? 'vitest' : has(dir, 'jest') ? 'jest' : null;
 }
 
-/** 여러 프로세스 · 페이지의 기록을 하나로 (번호 · 부모 · 호출 자리를 다시 매김) */
+/** 여러 프로세스 · 페이지의 기록을 하나로 (번호 · 부모 · 호출 자리를 다시 매김, 시작 시각이 있으면 시각 순) */
 function mergeDumps(dumps, maxHits) {
-  const steps = [];
-  const notes = [];
-  let cBase = 0;
-  let truncated = false;
-  for (const d of dumps) {
-    const map = new Map();
-    const list = [...(d.steps || [])].sort((a, b) => a.i - b.i);
-    list.forEach((st, k) => map.set(st.i, steps.length + k));
-    let maxC = 0;
-    for (const st of list) {
-      const n = { ...st, i: map.get(st.i), c: st.c + cBase };
-      if (st.c > maxC) maxC = st.c;
-      if (st.call) n.p = st.p >= 0 ? st.p + cBase : -1;
-      if (st.site !== undefined) n.site = map.has(st.site) ? map.get(st.site) : -1;
-      steps.push(n);
-    }
-    cBase += maxC + 1;
-    truncated = truncated || d.truncated;
-    for (const x of d.notes || []) if (!notes.includes(x)) notes.push(x);
-  }
-  return { version: 1, lang: 'js', startedAt: 0, endedAt: steps.length ? Math.max(...steps.map((x) => x.t || 0)) : 0, truncated, maxHits, notes, steps };
+  return require(path.join(ASSETS, 'merge.cjs')).merge(dumps, maxHits);
 }
 
 /** Jest: 프로젝트 설정을 그대로 읽고(jest-config) 변환기만 감싼다. 한 프로세스(--runInBand)로 테스트 하나 */
@@ -201,6 +195,36 @@ module.exports = async () => {
   if (!trace.steps.length) notes.push('프로젝트 코드가 불리지 않았습니다 (테스트 이름 확인)');
   finish(ROOT, { title: opts.title || title, mode: 'test', entry, tool: 'jest', lang: 'js', repo: path.basename(dir), include: [path.basename(dir)], at: new Date().toISOString(), request: null, response: null, notes, log: tail(logFile, 40) }, trace, mapSources(dir, trace), String(title).replace(/[^\w-]+/g, '-'));
   try { fs.unlinkSync(job.raw); } catch { /* 없음 */ }
+  return undefined;
+}
+
+/** Next.js 로컬 요청: 계측한 Next 개발 서버를 이 킷이 띄우고 요청 한 번 (API 라우트 · 서버 액션 · 페이지). 주소의 포트는 쓰지 않는다 */
+async function runNextRequest(opts, ROOT, dir, job, h) {
+  const { fail, finish, tail, freePort } = h;
+  const req = h.parseRequest(opts.request);
+  const headers = {};
+  for (const x of opts.headers || []) { const i = x.indexOf(':'); if (i > 0) headers[x.slice(0, i).trim()] = x.slice(i + 1).trim(); }
+  if (opts.data && !Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')) headers['Content-Type'] = /^\s*[[{]/.test(opts.data) ? 'application/json' : 'text/plain';
+  job.mode = 'next-request';
+  job.port = await freePort();
+  job.request = { method: req.method, path: `${req.u.pathname}${req.u.search}`, headers, body: opts.data || null };
+  const logFile = path.join(job.tmp, `${Date.now()}.run.log`);
+  const log = fs.createWriteStream(logFile);
+  const child = spawn(process.execPath, [path.join(ASSETS, 'runner.mjs')], { cwd: dir, env: { ...process.env, KEDOVI_TRACE_JOB: JSON.stringify(job) }, stdio: ['ignore', 'pipe', 'pipe'] });
+  child.stdout.on('data', (d) => { log.write(d); for (const l of d.toString().split('\n')) if (/^(…|  ·)/.test(l)) process.stdout.write(`${l}\n`); });
+  child.stderr.on('data', (d) => log.write(d));
+  const timer = setTimeout(() => child.kill('SIGTERM'), (job.timeout + 60) * 1000);
+  const code = await new Promise((r) => child.on('exit', r));
+  clearTimeout(timer);
+  log.end();
+  let res = null;
+  try { res = JSON.parse(fs.readFileSync(job.out, 'utf8')); } catch { /* 없음 */ }
+  if (!res || res.error) fail(`${res && res.error ? res.error : `기록하지 못했습니다 (종료 코드 ${code})`}\n${tail(logFile)}`);
+  const trace = res.trace;
+  const notes = [...(res.notes || [])];
+  if (!trace.steps.length) notes.push('요청이 프로젝트 코드를 타지 않았습니다 (경로 확인)');
+  finish(ROOT, { title: opts.title || `${req.method} ${req.u.pathname}`, mode: 'request', entry: null, tool: 'next dev (kedovi)', lang: 'js', repo: path.basename(dir), include: [path.basename(dir)], at: new Date().toISOString(), request: { method: req.method, url: req.url, body: opts.data || null }, response: res.response || null, notes, log: tail(logFile, 40) }, trace, mapSources(dir, trace), `${req.method}-${req.u.pathname}`);
+  for (const f of [job.out, job.raw]) { try { fs.unlinkSync(f); } catch { /* 없음 */ } }
   return undefined;
 }
 
@@ -257,4 +281,4 @@ async function runServer(opts, ROOT, dir, job, h) {
   return undefined;
 }
 
-module.exports = { run, tsPath, parseTest, isPlaywrightTest, pwConfig, mapSources, testRunner, mergeDumps, serveCommand };
+module.exports = { run, webFramework, tsPath, parseTest, isPlaywrightTest, pwConfig, mapSources, testRunner, mergeDumps, serveCommand };

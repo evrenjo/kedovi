@@ -57,6 +57,51 @@ const merged = js.mergeDumps([{ steps: [{ i: 0, k: 'line', c: 1, call: true, p: 
 assert.deepStrictEqual(merged.steps.map((s) => [s.i, s.c, s.p, s.site]), [[0, 1, -1, -1], [1, 2, 1, 0], [2, 4, -1, -1], [3, 4, undefined, 2]], '번호 · 부모 · 호출 자리 다시 매김');
 done.push('JS 찾기');
 
+// ── Next.js: 화면 서버 판별 · 설정에 로더 덧붙이기 · 화면 → 서버 기록 잇기 ──
+put('nx/package.json', JSON.stringify({ scripts: { dev: 'next dev --webpack' } }));
+put('nx/node_modules/next/package.json', '{"name":"next","version":"16.4.0"}');
+put('nx/node_modules/vite/package.json', '{"name":"vite","version":"8.0.0"}');
+assert.strictEqual(js.webFramework(path.join(tmp, 'nx')), 'next', 'next 스크립트가 있으면 Vite 보다 Next.js');
+put('vt/package.json', JSON.stringify({ scripts: { dev: 'vite' } }));
+put('vt/node_modules/vite/package.json', '{"name":"vite","version":"8.0.0"}');
+put('vt/node_modules/next/package.json', '{"name":"next","version":"16.4.0"}');
+assert.strictEqual(js.webFramework(path.join(tmp, 'vt')), 'vite', 'next 가 깔려만 있고 쓰지 않으면 Vite');
+assert.strictEqual(js.webFramework(wdir), null, '화면 개발 서버 없음');
+{
+  const nd = require('../assets/js/next-dev.cjs');
+  assert.deepStrictEqual([nd.nextInfo(path.join(tmp, 'nx')).turbo, nd.nextInfo(path.join(tmp, 'nx')).conditions], [false, true], '16 + --webpack');
+  const o = { root: '/p', ts: '/t.js' };
+  const t16 = nd.addLoader({ distDir: '.next/dev', turbopack: { rules: { '*.svg': { loaders: ['svgr'] } } } }, { turbo: true, rulesTop: true, conditions: true }, o);
+  assert.ok(t16.turbopack.rules['*.svg'] && t16.turbopack.rules['*.tsx'].length === 2 && t16.turbopack.rules['*.tsx'][0].condition.all[1] === 'browser', '16: 브라우저 · 서버 규칙, 기존 규칙 유지');
+  assert.strictEqual(t16.distDir, '.next/dev/kedovi-trace', '빌드 폴더 따로');
+  assert.strictEqual(nd.addLoader(t16, { turbo: true }, o).turbopack.rules['*.tsx'].length, 2, '두 번 덧붙이지 않음');
+  const t15 = nd.addLoader({ turbopack: { rules: { '*.tsx': { loaders: ['x'] } } } }, { turbo: true, rulesTop: true, conditions: false }, o);
+  assert.ok(!Array.isArray(t15.turbopack.rules['*.ts']) && t15.turbopack.rules['*.tsx'].loaders.length === 2 && t15.turbopack.rules['*.tsx'].loaders[1].options.side === 'any', '15: 조건 없이, 사용자 로더 뒤에');
+  let userCalled = false;
+  const wp = nd.addLoader({ webpack: (c) => { userCalled = true; return c; } }, { turbo: false }, o);
+  const out = wp.webpack({ module: { rules: [{ test: /x/ }] } }, { isServer: true });
+  assert.ok(userCalled && out.module.rules.length === 2 && out.module.rules[0].enforce === 'pre' && out.module.rules[0].use[0].options.side === 'server', 'webpack: 사용자 설정 함수 뒤에 pre 로더');
+}
+{
+  const { merge } = require('../assets/js/merge.cjs');
+  const browser = { sid: 'b1', epoch: 1000, steps: [
+    { i: 0, k: 'line', c: 1, d: 1, t: 0, call: true, p: -1, site: -1, ev: true, m: '클릭' },
+    { i: 1, k: 'line', c: 2, d: 2, t: 1, call: true, p: 1, site: 0, m: 'order' },
+    { i: 2, k: 'net', c: 2, d: 2, t: 50, site: 1 },
+  ] };
+  const server = { sid: 'server', epoch: 990, steps: [
+    { i: 0, k: 'line', c: 1, d: 1, t: 0, call: true, p: -1, site: -1, m: 'Page' },
+    { i: 1, k: 'line', c: 2, d: 1, t: 30, call: true, p: -1, site: -1, m: 'POST', from: 'b1:2' },
+    { i: 2, k: 'line', c: 3, d: 2, t: 31, call: true, p: 2, site: 1, m: 'placeOrder' },
+  ] };
+  const m = merge([browser, server], 30);
+  const by = (n) => m.steps.find((x) => x.m === n);
+  assert.deepStrictEqual(m.steps.map((x) => x.m || x.k), ['Page', '클릭', 'order', 'POST', 'placeOrder', 'net'], '시각 순으로 섞음');
+  assert.ok(by('POST').p === by('order').c && by('POST').d === 3 && by('placeOrder').d === 4 && by('POST').site === by('order').i, '화면이 보낸 요청의 서버 호출은 그 화면 호출 아래');
+  assert.ok(by('Page').p === -1 && by('Page').d === 1 && !('from' in by('POST')), '연결 없는 서버 호출은 뿌리');
+}
+done.push('Next.js 설정 · 기록 잇기');
+
 // ── 계측기 + 런타임 (typescript 가 있으면) ──
 const tsPath = js.tsPath(path.join(__dirname, '..', '..', '..'), { install: false });
 if (tsPath) {
@@ -90,6 +135,11 @@ export const half = (x: number) => x / 2;
   assert.deepStrictEqual(r.fns.map((f) => f[0]), ['constructor', 'place', 'find', 'check', 'half']);
   assert.ok(ts.createSourceFile('x.ts', r.code, ts.ScriptTarget.Latest, true).parseDiagnostics.length === 0, '계측한 코드도 문법 오류 없음');
   assert.strictEqual(instrument('return{a}', 'x.js', { ts }), null, '함수가 없으면 그대로');
+  assert.deepStrictEqual(instrument('export async function POST(req){return 1}\nfunction helper(){return 2}', 'route.ts', { ts, src: 'src/app/(shop)/api/items/[id]/route.ts' }).fns.map((f) => [f[0], f[3]]), [['POST /api/items/[id]', 1], ['helper', 0]], 'Next.js 라우트 처리기 = 진입점');
+  assert.strictEqual(instrument('export default function handler(req, res) { res.end() }', 'a.ts', { ts, src: 'pages/api/hello.ts' }).fns[0][0], 'API /api/hello');
+  const dir = instrument("'use client'\nexport async function a(x){'use server'\nreturn x}\n", 'd.tsx', { ts, src: 'd.tsx' }).code;
+  const dsf = ts.createSourceFile('d.tsx', dir, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  assert.ok(dsf.parseDiagnostics.length === 0 && /^'use client';/.test(dsf.statements[0].getText(dsf)) && /\{'use server';const __k/.test(dir), '세미콜론 없는 지시문 뒤에 붙지 않음 (Next.js)');
   const mini = instrument('function f(a){return{a}}', 'm.js', { ts, src: 'm.js' }).code;
   assert.ok(/return __ak\.r/.test(mini), '압축 코드에서 낱말이 붙지 않게');
   assert.ok(generated('/** @generated by orval */', 'a.ts') && generated('x', 'src/api/generated/a.ts') && !generated('x', 'src/a.ts'), '생성된 코드 건너뜀');

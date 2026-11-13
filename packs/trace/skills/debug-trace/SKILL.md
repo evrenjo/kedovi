@@ -1,6 +1,6 @@
 ---
 name: debug-trace
-description: API · 함수 · 배치 · 화면 동작 한 번의 실행 흐름을 줄마다 값과 함께 기록해 이 PC 웹 페이지로 보여 준다 (kedovi trace). Java · Kotlin, Python, React 같은 웹 화면, Node 서버에서 테스트 · 로컬 서버 요청 · 화면 조작을 기록하고, 왼쪽에 탄 함수 단계 · 오른쪽에 코드와 줄별 값 · 아래에 데이터 상세(SQL · 요청 포함)를 띄운다. "○○ API 디버깅 보여줘", "이 함수 어떻게 도는지 보여줘", "버튼 누르면 어떻게 도는지", "배치 흐름 보여줘", "값이 어디서 바뀌는지", "실행 흐름" 요청에 쓴다.
+description: API · 함수 · 배치 · 화면 동작 한 번의 실행 흐름을 줄마다 값과 함께 기록해 이 PC 웹 페이지로 보여 준다 (kedovi trace). Java · Kotlin, Python, React 같은 웹 화면, Next.js(화면 + 서버), Node 서버에서 테스트 · 로컬 서버 요청 · 화면 조작을 기록하고, 왼쪽에 탄 함수 단계 · 오른쪽에 코드와 줄별 값 · 아래에 데이터 상세(SQL · 요청 포함)를 띄운다. "○○ API 디버깅 보여줘", "이 함수 어떻게 도는지 보여줘", "버튼 누르면 어떻게 도는지", "배치 흐름 보여줘", "값이 어디서 바뀌는지", "실행 흐름" 요청에 쓴다.
 ---
 
 # debug-trace: 실행 흐름 디버깅 페이지
@@ -11,7 +11,7 @@ description: API · 함수 · 배치 · 화면 동작 한 번의 실행 흐름�
 
 | 사용자가 말한 것 | 찾는 것 |
 |---|---|
-| API (`POST /api/orders` · 「주문 API」) | 그 경로를 받는 컨트롤러 · 라우트 (`@*Mapping` · `@app.post` · `@router.get` · `@Post` · `app.post(…)`) |
+| API (`POST /api/orders` · 「주문 API」) | 그 경로를 받는 컨트롤러 · 라우트 (`@*Mapping` · `@app.post` · `@router.get` · `@Post` · `app.post(…)` · Next.js `app/**/route.ts` · `pages/api/**`) |
 | 함수 · 서비스 (`OrderService.place`) | 그 함수와 부르는 쪽 |
 | 배치 · 스케줄 작업 | 작업의 실행 함수 |
 | 화면 동작 (「주문 화면에서 취소 누르면」) | 그 화면 · 버튼의 핸들러와 그 화면을 여는 경로 |
@@ -23,7 +23,7 @@ description: API · 함수 · 배치 · 화면 동작 한 번의 실행 흐름�
 | 방식 | 언제 | 명령 |
 |---|---|---|
 | **테스트** (기본) | 언제나. 같은 입력으로 다시 볼 수 있다. 함수 · 배치는 이것만 | Java `kedovi trace run --test <클래스>#<메서드>` · Python `--test tests/<파일>.py::<이름>` · JS `--test <파일>::<테스트 이름>` (Vitest · Jest) |
-| **화면 e2e 테스트** | 화면 동작. 그 화면을 다루는 Playwright 테스트가 있을 때 (먼저 찾는다) | `kedovi trace run --test e2e/<파일>.spec.ts::<테스트 이름>` (계측한 개발 서버로 돈다. API 흉내 · 조작은 테스트 그대로) |
+| **화면 e2e 테스트** | 화면 동작. 그 화면을 다루는 Playwright 테스트가 있을 때 (먼저 찾는다) | `kedovi trace run --test e2e/<파일>.spec.ts::<테스트 이름>` (계측한 개발 서버(Vite · Next.js)로 돈다. API 흉내 · 조작은 테스트 그대로. Next.js 는 서버 쪽 API 라우트 · 서버 액션 · 서버 컴포넌트도 같은 기록에) |
 | **화면 조작 단계** | 화면 동작인데 맞는 e2e 테스트가 없을 때 | `kedovi trace run --web "goto /orders; click text=주문하기; wait [role=status]"` |
 | **로컬 서버 요청** | 사용자가 「로컬 데이터로」 · 「실제 서버로」 라고 할 때 (API 만) | `kedovi trace run --request "<METHOD> http://localhost:<포트>/<경로>" [--data '<본문>'] [-H 'K: V']` |
 
@@ -34,7 +34,7 @@ description: API · 함수 · 배치 · 화면 동작 한 번의 실행 흐름�
   - 백엔드가 필요한 화면인데 로컬 백엔드가 없으면, 요청이 실패한 채로 기록된다. 그 사실을 보고하고, 흉내가 필요하면 e2e 테스트를 쓰자고 한다.
   - 사용자가 직접 재현하겠다고 하면 `kedovi trace run --web --manual` 을 안내한다 (브라우저가 뜨고, 다 했으면 터미널에서 Enter). 사용자가 직접 돌린다.
 - 로컬 서버: 킷이 서버를 띄우고 요청 한 번을 기록한 뒤 끈다.
-  - Java = bootRun · spring-boot:run (이미 디버그 포트로 띄웠으면 `--attach <포트>`). Python = FastAPI · Flask · Django 를 찾아 띄운다. Node = package.json 의 start · serve · dev. 다르면 `--serve "<명령>"`.
+  - Java = bootRun · spring-boot:run (이미 디버그 포트로 띄웠으면 `--attach <포트>`). Python = FastAPI · Flask · Django 를 찾아 띄운다. Next.js = 킷이 계측한 개발 서버를 따로 띄운다 (주소의 포트는 쓰지 않는다. 사용자가 띄운 next dev 는 그대로 둔다). Node = package.json 의 start · serve · dev. 다르면 `--serve "<명령>"`.
   - 감시 모드(watch · reload)로 띄우는 명령은 피한다.
   - 주소는 localhost 만 된다. 운영 · 개발 서버에는 붙지 않는다.
   - 로그인이 필요한 API 는 헤더(`-H 'Authorization: …'`)를 사용자에게 받는다. 값은 채팅 · 보고에 적지 않는다.
@@ -49,6 +49,7 @@ description: API · 함수 · 배치 · 화면 동작 한 번의 실행 흐름�
    | 시작 메서드 · 테스트가 실행되지 않음 · 프로젝트 코드가 불리지 않음 | 테스트 이름 · 파일 · 건너뛰기 표시 확인 |
    | 테스트 실패 | 기록은 실패 지점까지 있다. 실패 자체가 보고 대상인지 사용자에게 알린다 |
    | 단계 상한 · 「○○」 이 단계 예산을 넘어 접음 | 더 좁은 테스트 · 시나리오로. 필요하면 `--max-steps` |
+   | 화면 기록은 Next.js 또는 Vite … 만 | 그 밖의 화면 도구(CRA · Angular 등)는 아직 안 된다. 단위 테스트(Vitest · Jest)로 기록하자고 한다 |
    | node_modules 가 없습니다 · Playwright 를 찾지 못함 | 설치 명령(`npm install` · `npx playwright install chromium`)을 사용자에게 알린다 |
    | Maven: SQL 은 pom 에… | SQL 없이도 흐름 · 값은 보인다. SQL 까지 보려면 pom 에 test 범위로 `datasource-proxy-spring-boot-starter` 를 넣을지 묻는다 |
 

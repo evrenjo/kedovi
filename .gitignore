@@ -15,3 +15,5 @@ __pycache__/
 banned.local.txt
 # 예제 앱을 그 자리에서 돌리면 생기는 것 (trace 픽스처 등)
 .venv/
+.next/
+next-env.d.ts
