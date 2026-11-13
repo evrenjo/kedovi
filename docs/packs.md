@@ -809,9 +809,9 @@ Swift 소스가 있는 repo 에: 문장처럼 읽히는 이름 · 인자 레이�
 </details>
 
 <details>
-<summary><b>trace</b> · 실행 흐름 디버깅: API · 함수 · 배치를 줄마다 값과 함께 기록해 웹으로</summary>
+<summary><b>trace</b> · 실행 흐름 디버깅: API · 함수 · 배치 · 화면 동작을 줄마다 값과 함께 기록해 웹으로 (Java · Python · 웹 화면 · Node)</summary>
 
-테스트 한 건이나 로컬 서버 요청 한 번을 디버거로 기록해 이 PC 웹 페이지로 본다 (kedovi trace · debug-trace 스킬). 왼쪽 = 탄 함수 단계(필터 · 컨트롤러 · 서비스 · 저장소 · 배치, 프로젝트 코드만), 오른쪽 = 코드(실행된 줄을 펼치면 회차마다 바뀐 값 · 부른 함수 · SQL), 아래 = 데이터 상세(객체 나무 · SQL 과 바인딩 값). 지금은 JVM(Java · Kotlin, Gradle · Maven, Spring 등). 프로젝트 코드는 고치지 않고 디버그 포트로 붙는다. 값은 필드만 읽어 실행을 바꾸지 않고(JPA 지연 로딩 그대로), 비밀번호 · 토큰 이름의 값은 가린다. SQL 은 기록할 때만 datasource-proxy 를 붙인다(Gradle, 빌드 파일 안 고침). 기록은 이 PC 에만(.agents/traces/)
+테스트 한 건 · 로컬 서버 요청 한 번 · 화면 조작을 기록해 이 PC 웹 페이지로 본다 (kedovi trace · debug-trace 스킬). 왼쪽 = 탄 함수 단계(진입점 · 서비스 · 저장소, 웹은 사용자 동작부터, 프로젝트 코드만), 오른쪽 = 코드(실행된 줄을 펼치면 회차마다 바뀐 값 · 부른 함수 · SQL · 요청), 아래 = 데이터 상세(객체 나무 · SQL 과 바인딩 값 · 요청 · 응답 본문). Java · Kotlin(JVM 디버거, Gradle · Maven · Spring), Python 3.10+(sys.monitoring, pytest · FastAPI · Flask · Django), JS · TS(원본 소스에 기록 호출을 같은 줄 안에 끼움: Vite 화면 + Playwright e2e · 조작 단계 · 직접 조작, Vitest · Jest, Node 서버). 프로젝트 코드는 고치지 않는다. 값은 필드 · 속성 값만 읽어 실행을 바꾸지 않고(지연 로딩 · 게터 그대로), 비밀번호 · 토큰 이름의 값은 가린다. 기록은 이 PC 에만(.agents/traces/)
 
 | 항목 | 내용 |
 |---|---|
@@ -822,9 +822,9 @@ Swift 소스가 있는 repo 에: 문장처럼 읽히는 이름 · 인자 레이�
 
 | 이름 | 설명 |
 |---|---|
-| `debug-trace` | API · 함수 · 배치 한 번의 실행 흐름을 줄마다 값과 함께 기록해 이 PC 웹 페이지로 보여 준다 (kedovi trace). 테스트나 로컬 서버 요청을 디버거로 기록하고, 왼쪽에 탄 함수 단계 · 오른쪽에 코드와 줄별 값 · 아래에 데이터 상세(SQL 포함)를 띄운다. "○○ API 디버깅 보여줘", "이 함수 어떻게 도는지 보여줘", "배치 흐름 보여줘", "값이 어디서 바뀌는지", "실행 흐름" 요청에 쓴다. |
+| `debug-trace` | API · 함수 · 배치 · 화면 동작 한 번의 실행 흐름을 줄마다 값과 함께 기록해 이 PC 웹 페이지로 보여 준다 (kedovi trace). |
 
-**도구**: `bin/trace.js`
+**도구**: `bin/js.js` · `bin/py.js` · `bin/trace.js`
 
 </details>
 <!-- /packs:catalog -->

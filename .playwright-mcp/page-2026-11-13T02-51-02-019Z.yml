@@ -1,0 +1,213 @@
+- generic [active] [ref=f6e1]:
+  - banner [ref=f6e2]:
+    - heading "test_place_order" [level=1] [ref=f6e3]
+    - generic [ref=f6e4]:
+      - generic [ref=f6e5]: 테스트 tests/test_order_api.py::test_place_order
+      - generic [ref=f6e6]: repo pyshop
+      - generic [ref=f6e7]: 함수 12
+      - generic [ref=f6e8]: SQL 7
+      - generic [ref=f6e9]: 12ms (기록 중 느려짐 포함)
+      - generic [ref=f6e10]: 2026. 11. 13. 오전 11:49:40
+    - button "◐" [ref=f6e11] [cursor=pointer]
+  - main [ref=f6e12]:
+    - complementary [ref=f6e13]:
+      - generic [ref=f6e14]:
+        - textbox "함수 · 클래스 · SQL 찾기" [ref=f6e15]
+        - generic [ref=f6e16]:
+          - generic [ref=f6e17]: 보기
+          - combobox "어디부터 보일지" [ref=f6e18]:
+            - option "진입점부터 (필터 · 가로채기 · 테스트 숨김)" [selected]
+            - option "필터 · 가로채기 포함"
+            - option "테스트 코드까지 전체"
+        - generic [ref=f6e19]:
+          - generic [ref=f6e20]: 파일
+          - combobox "이 파일의 함수만" [ref=f6e21]:
+            - option "모든 파일" [selected]
+            - option "app.py (1)"
+            - option "service.py (2)"
+            - option "repository.py (7)"
+        - generic [ref=f6e22]:
+          - generic [ref=f6e23]:
+            - checkbox "SQL · 예외만" [ref=f6e24]
+            - text: SQL · 예외만
+          - generic [ref=f6e25]: 함수 10 / 12개
+      - generic [ref=f6e26]:
+        - generic [ref=f6e27] [cursor=pointer]:
+          - generic [ref=f6e28]: "1"
+          - generic [ref=f6e29]: app.place_order()
+          - generic [ref=f6e30]: 진입점
+          - generic [ref=f6e31]: app.py:25
+        - generic [ref=f6e32] [cursor=pointer]:
+          - generic [ref=f6e33]: "2"
+          - generic [ref=f6e34]: OrderService.place()
+          - generic [ref=f6e35]: 서비스
+          - generic [ref=f6e36]: service.py:10
+        - generic [ref=f6e37] [cursor=pointer]:
+          - generic [ref=f6e38]: "3"
+          - generic [ref=f6e39]: OrderRepository.member()
+          - generic [ref=f6e40]: 저장소
+          - generic [ref=f6e41]: SQL 1
+          - generic [ref=f6e42]: repository.py:9
+        - generic [ref=f6e43] [cursor=pointer]:
+          - generic [ref=f6e44]: select * from member where id = ?
+          - generic [ref=f6e45]: 0.03ms
+        - generic [ref=f6e46] [cursor=pointer]:
+          - generic [ref=f6e47]: "4"
+          - generic [ref=f6e48]: OrderRepository.product()
+          - generic [ref=f6e49]: 저장소
+          - generic [ref=f6e50]: SQL 1
+          - generic [ref=f6e51]: repository.py:15
+        - generic [ref=f6e52] [cursor=pointer]:
+          - generic [ref=f6e53]: select * from product where id = ?
+          - generic [ref=f6e54]: 0.02ms
+        - generic [ref=f6e55] [cursor=pointer]:
+          - generic [ref=f6e56]: "5"
+          - generic [ref=f6e57]: OrderRepository.decrease()
+          - generic [ref=f6e58]: 저장소
+          - generic [ref=f6e59]: SQL 1
+          - generic [ref=f6e60]: repository.py:19
+        - generic [ref=f6e61] [cursor=pointer]:
+          - generic [ref=f6e62]: update product set stock = stock - ? where id = ?
+          - generic [ref=f6e63]: 0.02ms
+        - generic [ref=f6e64] [cursor=pointer]:
+          - generic [ref=f6e65]: "6"
+          - generic [ref=f6e66]: OrderRepository.product()
+          - generic [ref=f6e67]: 저장소
+          - generic [ref=f6e68]: SQL 1
+          - generic [ref=f6e69]: repository.py:15
+        - generic [ref=f6e70] [cursor=pointer]:
+          - generic [ref=f6e71]: select * from product where id = ?
+          - generic [ref=f6e72]: 0ms
+        - generic [ref=f6e73] [cursor=pointer]:
+          - generic [ref=f6e74]: "7"
+          - generic [ref=f6e75]: OrderRepository.product()
+          - generic [ref=f6e76]: 저장소
+          - generic [ref=f6e77]: SQL 1
+          - generic [ref=f6e78]: repository.py:15
+        - generic [ref=f6e79] [cursor=pointer]:
+          - generic [ref=f6e80]: select * from product where id = ?
+          - generic [ref=f6e81]: 0ms
+        - generic [ref=f6e82] [cursor=pointer]:
+          - generic [ref=f6e83]: "8"
+          - generic [ref=f6e84]: OrderRepository.decrease()
+          - generic [ref=f6e85]: 저장소
+          - generic [ref=f6e86]: SQL 1
+          - generic [ref=f6e87]: repository.py:19
+        - generic [ref=f6e88] [cursor=pointer]:
+          - generic [ref=f6e89]: update product set stock = stock - ? where id = ?
+          - generic [ref=f6e90]: 0ms
+        - generic [ref=f6e91] [cursor=pointer]:
+          - generic [ref=f6e92]: "9"
+          - generic [ref=f6e93]: OrderService.discount()
+          - generic [ref=f6e94]: 서비스
+          - generic [ref=f6e95]: service.py:26
+        - generic [ref=f6e96] [cursor=pointer]:
+          - generic [ref=f6e97]: "10"
+          - generic [ref=f6e98]: OrderRepository.save()
+          - generic [ref=f6e99]: 저장소
+          - generic [ref=f6e100]: SQL 1
+          - generic [ref=f6e101]: repository.py:22
+        - generic [ref=f6e102] [cursor=pointer]:
+          - generic [ref=f6e103]: insert into purchase_order (member_id, paid, status) values (?, ?, ?)
+          - generic [ref=f6e104]: 0.01ms
+    - generic [ref=f6e106]:
+      - generic [ref=f6e107]:
+        - generic [ref=f6e108]:
+          - button "◀ 이전 단계" [disabled] [ref=f6e109]
+          - button "다음 단계 ▶" [ref=f6e110] [cursor=pointer]
+          - generic [ref=f6e111]: 단계 1 / 40
+          - generic [ref=f6e112]: 노란 줄이 실행된 줄 (누르면 그 줄의 값) · 키보드 ← →
+        - generic [ref=f6e113]:
+          - generic [ref=f6e114]:
+            - generic [ref=f6e115]: src/shop/web/app.py
+            - generic [ref=f6e116]: shop.web.app.place_order()
+            - 'button "↑ 부른 곳: app.request_id()" [ref=f6e117] [cursor=pointer]'
+          - generic [ref=f6e118]:
+            - generic [ref=f6e119] [cursor=pointer]: "body = OrderRequest{member_id=1, lines=list[3]}"
+            - generic [ref=f6e120]: →
+            - generic [ref=f6e121] [cursor=pointer]: "반환 = OrderResult{order_id=1, paid=24660, status=PARTIAL, …}"
+        - generic [ref=f6e123]:
+          - generic [ref=f6e124]:
+            - generic [ref=f6e126]: "1"
+            - generic [ref=f6e127]: import asyncio
+          - generic [ref=f6e128]:
+            - generic [ref=f6e130]: "2"
+            - generic [ref=f6e131]: import uuid
+          - generic [ref=f6e132]: "3"
+          - generic [ref=f6e136]:
+            - generic [ref=f6e138]: "4"
+            - generic [ref=f6e139]: from fastapi import FastAPI, Request
+          - generic [ref=f6e140]: "5"
+          - generic [ref=f6e144]:
+            - generic [ref=f6e146]: "6"
+            - generic [ref=f6e147]: from shop.db import connect
+          - generic [ref=f6e148]:
+            - generic [ref=f6e150]: "7"
+            - generic [ref=f6e151]: from shop.order.models import OrderRequest, OrderResult
+          - generic [ref=f6e152]:
+            - generic [ref=f6e154]: "8"
+            - generic [ref=f6e155]: from shop.order.repository import OrderRepository
+          - generic [ref=f6e156]:
+            - generic [ref=f6e158]: "9"
+            - generic [ref=f6e159]: from shop.order.service import OrderService
+          - generic [ref=f6e160]: "10"
+          - generic [ref=f6e164]:
+            - generic [ref=f6e166]: "11"
+            - generic [ref=f6e167]: app = FastAPI()
+          - generic [ref=f6e168]:
+            - generic [ref=f6e170]: "12"
+            - generic [ref=f6e171]: service = OrderService(OrderRepository(connect()))
+          - generic [ref=f6e172]: "13"
+          - generic [ref=f6e176]: "14"
+          - generic [ref=f6e180]:
+            - generic [ref=f6e182]: "15"
+            - generic [ref=f6e183]: "@app.middleware(\"http\")"
+          - generic [ref=f6e184]:
+            - generic [ref=f6e186]: "16"
+            - generic [ref=f6e187]: "async def request_id(request: Request, call_next):"
+          - generic [ref=f6e188]:
+            - generic [ref=f6e190]: "17"
+            - generic [ref=f6e191]: rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:8]
+          - generic [ref=f6e192]:
+            - generic [ref=f6e194]: "18"
+            - generic [ref=f6e195]: response = await call_next(request)
+          - generic [ref=f6e196]:
+            - generic [ref=f6e198]: "19"
+            - generic [ref=f6e199]: response.headers["x-request-id"] = rid
+          - generic [ref=f6e200]:
+            - generic [ref=f6e202]: "20"
+            - generic [ref=f6e203]: return response
+          - generic [ref=f6e204]: "21"
+          - generic [ref=f6e208]: "22"
+          - generic [ref=f6e212]:
+            - generic [ref=f6e214]: "23"
+            - generic [ref=f6e215]: "@app.post(\"/api/orders\")"
+          - generic [ref=f6e216]:
+            - generic [ref=f6e218]: "24"
+            - generic [ref=f6e219]: "def place_order(body: OrderRequest) -> OrderResult:"
+          - generic [ref=f6e220] [cursor=pointer]:
+            - generic [ref=f6e221]: ●
+            - generic [ref=f6e222]: "25"
+            - generic [ref=f6e223]: return service.place(body)
+          - generic [ref=f6e224]: "→ OrderService.place() = OrderResult{order_id=1, paid=24660, sta…"
+          - generic [ref=f6e228]: "26"
+          - generic [ref=f6e232]: "27"
+          - generic [ref=f6e236]:
+            - generic [ref=f6e238]: "28"
+            - generic [ref=f6e239]: "@app.get(\"/api/members/{member_id}/grade\")"
+          - generic [ref=f6e240]:
+            - generic [ref=f6e242]: "29"
+            - generic [ref=f6e243]: "async def member_grade(member_id: int) -> dict:"
+          - generic [ref=f6e244]:
+            - generic [ref=f6e246]: "30"
+            - generic [ref=f6e247]: await asyncio.sleep(0)
+          - generic [ref=f6e248]:
+            - generic [ref=f6e250]: "31"
+            - generic [ref=f6e251]: member = service.repo.member(member_id)
+          - generic [ref=f6e252]:
+            - generic [ref=f6e254]: "32"
+            - generic [ref=f6e255]: "return {\"id\": member_id, \"grade\": member[\"grade\"]}"
+          - generic [ref=f6e256]: "33"
+      - generic [ref=f6e262]:
+        - generic [ref=f6e263]: 데이터 상세
+        - generic [ref=f6e264]: 코드의 값 · SQL 을 누르면 여기에 나옵니다

@@ -1,0 +1,1121 @@
+- generic [active] [ref=f9e1]:
+  - banner [ref=f9e2]:
+    - heading "test_exception_message_and_stack_are_masked" [level=1] [ref=f9e3]
+    - generic [ref=f9e4]:
+      - generic [ref=f9e5]: 테스트 tests/shared/test_logging.py::test_exception_message_and_stack_are_masked
+      - generic [ref=f9e6]: repo tj-ai
+      - generic [ref=f9e7]: 함수 224
+      - generic [ref=f9e8]: 예외 1
+      - generic [ref=f9e9]: 38ms (기록 중 느려짐 포함)
+      - generic [ref=f9e10]: 2026. 11. 13. 오후 12:14:55
+    - button "◐" [ref=f9e11] [cursor=pointer]
+  - main [ref=f9e12]:
+    - complementary [ref=f9e13]:
+      - generic [ref=f9e14]:
+        - textbox "함수 · 클래스 · SQL 찾기" [ref=f9e15]
+        - generic [ref=f9e16]:
+          - generic [ref=f9e17]: 보기
+          - combobox "어디부터 보일지" [ref=f9e18]:
+            - option "진입점부터 (필터 · 가로채기 · 테스트 숨김)" [selected]
+            - option "필터 · 가로채기 포함"
+            - option "테스트 코드까지 전체"
+        - generic [ref=f9e19]:
+          - generic [ref=f9e20]: 파일
+          - combobox "이 파일의 함수만" [ref=f9e21]:
+            - option "모든 파일" [selected]
+            - option "ecs_formatter.py (2)"
+            - option "sensitive_value_masker.py (220)"
+        - generic [ref=f9e22]:
+          - generic [ref=f9e23]:
+            - checkbox "SQL · 요청 · 예외만" [ref=f9e24]
+            - text: SQL · 요청 · 예외만
+          - generic [ref=f9e25]: 함수 222 / 224개
+      - generic [ref=f9e26]:
+        - generic [ref=f9e27] [cursor=pointer]:
+          - generic [ref=f9e28]: "1"
+          - generic [ref=f9e29]: EcsJsonFormatter.__init__()
+          - generic [ref=f9e30]: 진입점
+          - generic [ref=f9e31]: ecs_formatter.py:20
+        - generic [ref=f9e32] [cursor=pointer]:
+          - generic [ref=f9e33]: "2"
+          - generic [ref=f9e34]: EcsJsonFormatter.format()
+          - generic [ref=f9e35]: 진입점
+          - generic [ref=f9e36]: ecs_formatter.py:25
+        - generic [ref=f9e37] [cursor=pointer]:
+          - generic [ref=f9e38]: "3"
+          - generic [ref=f9e39]: sensitive_value_masker.mask()
+          - generic [ref=f9e40]: sensitive_value_masker.py:40
+        - generic [ref=f9e41] [cursor=pointer]:
+          - generic [ref=f9e42]: "4"
+          - generic [ref=f9e43]: sensitive_value_masker.mask_pairs()
+          - generic [ref=f9e44]: sensitive_value_masker.py:46
+        - generic [ref=f9e45] [cursor=pointer]:
+          - generic [ref=f9e46]: "5"
+          - generic [ref=f9e47]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e48]: sensitive_value_masker.py:72
+        - generic [ref=f9e49] [cursor=pointer]:
+          - generic [ref=f9e50]: "6"
+          - generic [ref=f9e51]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e52]: sensitive_value_masker.py:72
+        - generic [ref=f9e53] [cursor=pointer]:
+          - generic [ref=f9e54]: "7"
+          - generic [ref=f9e55]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e56]: sensitive_value_masker.py:72
+        - generic [ref=f9e57] [cursor=pointer]:
+          - generic [ref=f9e58]: "8"
+          - generic [ref=f9e59]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e60]: sensitive_value_masker.py:72
+        - generic [ref=f9e61] [cursor=pointer]:
+          - generic [ref=f9e62]: "9"
+          - generic [ref=f9e63]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e64]: sensitive_value_masker.py:72
+        - generic [ref=f9e65] [cursor=pointer]:
+          - generic [ref=f9e66]: "10"
+          - generic [ref=f9e67]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e68]: sensitive_value_masker.py:72
+        - generic [ref=f9e69] [cursor=pointer]:
+          - generic [ref=f9e70]: "11"
+          - generic [ref=f9e71]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e72]: sensitive_value_masker.py:72
+        - generic [ref=f9e73] [cursor=pointer]:
+          - generic [ref=f9e74]: "12"
+          - generic [ref=f9e75]: sensitive_value_masker.classify()
+          - generic [ref=f9e76]: sensitive_value_masker.py:76
+        - generic [ref=f9e77] [cursor=pointer]:
+          - generic [ref=f9e78]: "13"
+          - generic [ref=f9e79]: <locals>.<genexpr>()
+          - generic [ref=f9e80]: sensitive_value_masker.py:82
+        - generic [ref=f9e81] [cursor=pointer]:
+          - generic [ref=f9e82]: "14"
+          - generic [ref=f9e83]: sensitive_value_masker.mask()
+          - generic [ref=f9e84]: sensitive_value_masker.py:40
+        - generic [ref=f9e85] [cursor=pointer]:
+          - generic [ref=f9e86]: "15"
+          - generic [ref=f9e87]: <locals>.<lambda>()
+          - generic [ref=f9e88]: sensitive_value_masker.py:42
+        - generic [ref=f9e89] [cursor=pointer]:
+          - generic [ref=f9e90]: "16"
+          - generic [ref=f9e91]: sensitive_value_masker.mask_pairs()
+          - generic [ref=f9e92]: sensitive_value_masker.py:46
+        - generic [ref=f9e93] [cursor=pointer]:
+          - generic [ref=f9e94]: "17"
+          - generic [ref=f9e95]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e96]: sensitive_value_masker.py:72
+        - generic [ref=f9e97] [cursor=pointer]:
+          - generic [ref=f9e98]: "18"
+          - generic [ref=f9e99]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e100]: sensitive_value_masker.py:72
+        - generic [ref=f9e101] [cursor=pointer]:
+          - generic [ref=f9e102]: "19"
+          - generic [ref=f9e103]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e104]: sensitive_value_masker.py:72
+        - generic [ref=f9e105] [cursor=pointer]:
+          - generic [ref=f9e106]: "20"
+          - generic [ref=f9e107]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e108]: sensitive_value_masker.py:72
+        - generic [ref=f9e109] [cursor=pointer]:
+          - generic [ref=f9e110]: "21"
+          - generic [ref=f9e111]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e112]: sensitive_value_masker.py:72
+        - generic [ref=f9e113] [cursor=pointer]:
+          - generic [ref=f9e114]: "22"
+          - generic [ref=f9e115]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e116]: sensitive_value_masker.py:72
+        - generic [ref=f9e117] [cursor=pointer]:
+          - generic [ref=f9e118]: "23"
+          - generic [ref=f9e119]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e120]: sensitive_value_masker.py:72
+        - generic [ref=f9e121] [cursor=pointer]:
+          - generic [ref=f9e122]: "24"
+          - generic [ref=f9e123]: sensitive_value_masker.classify()
+          - generic [ref=f9e124]: sensitive_value_masker.py:76
+        - generic [ref=f9e125] [cursor=pointer]:
+          - generic [ref=f9e126]: "25"
+          - generic [ref=f9e127]: <locals>.<genexpr>()
+          - generic [ref=f9e128]: sensitive_value_masker.py:82
+        - generic [ref=f9e129] [cursor=pointer]:
+          - generic [ref=f9e130]: "26"
+          - generic [ref=f9e131]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e132]: sensitive_value_masker.py:72
+        - generic [ref=f9e133] [cursor=pointer]:
+          - generic [ref=f9e134]: "27"
+          - generic [ref=f9e135]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e136]: sensitive_value_masker.py:72
+        - generic [ref=f9e137] [cursor=pointer]:
+          - generic [ref=f9e138]: "28"
+          - generic [ref=f9e139]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e140]: sensitive_value_masker.py:72
+        - generic [ref=f9e141] [cursor=pointer]:
+          - generic [ref=f9e142]: "29"
+          - generic [ref=f9e143]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e144]: sensitive_value_masker.py:72
+        - generic [ref=f9e145] [cursor=pointer]:
+          - generic [ref=f9e146]: "30"
+          - generic [ref=f9e147]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e148]: sensitive_value_masker.py:72
+        - generic [ref=f9e149] [cursor=pointer]:
+          - generic [ref=f9e150]: "31"
+          - generic [ref=f9e151]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e152]: sensitive_value_masker.py:72
+        - generic [ref=f9e153] [cursor=pointer]:
+          - generic [ref=f9e154]: "32"
+          - generic [ref=f9e155]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e156]: sensitive_value_masker.py:72
+        - generic [ref=f9e157] [cursor=pointer]:
+          - generic [ref=f9e158]: "33"
+          - generic [ref=f9e159]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e160]: sensitive_value_masker.py:72
+        - generic [ref=f9e161] [cursor=pointer]:
+          - generic [ref=f9e162]: "34"
+          - generic [ref=f9e163]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e164]: sensitive_value_masker.py:72
+        - generic [ref=f9e165] [cursor=pointer]:
+          - generic [ref=f9e166]: "35"
+          - generic [ref=f9e167]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e168]: sensitive_value_masker.py:72
+        - generic [ref=f9e169] [cursor=pointer]:
+          - generic [ref=f9e170]: "36"
+          - generic [ref=f9e171]: sensitive_value_masker.classify()
+          - generic [ref=f9e172]: sensitive_value_masker.py:76
+        - generic [ref=f9e173] [cursor=pointer]:
+          - generic [ref=f9e174]: "37"
+          - generic [ref=f9e175]: <locals>.<genexpr>()
+          - generic [ref=f9e176]: sensitive_value_masker.py:82
+        - generic [ref=f9e177] [cursor=pointer]:
+          - generic [ref=f9e178]: "38"
+          - generic [ref=f9e179]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e180]: sensitive_value_masker.py:72
+        - generic [ref=f9e181] [cursor=pointer]:
+          - generic [ref=f9e182]: "39"
+          - generic [ref=f9e183]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e184]: sensitive_value_masker.py:72
+        - generic [ref=f9e185] [cursor=pointer]:
+          - generic [ref=f9e186]: "40"
+          - generic [ref=f9e187]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e188]: sensitive_value_masker.py:72
+        - generic [ref=f9e189] [cursor=pointer]:
+          - generic [ref=f9e190]: "41"
+          - generic [ref=f9e191]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e192]: sensitive_value_masker.py:72
+        - generic [ref=f9e193] [cursor=pointer]:
+          - generic [ref=f9e194]: "42"
+          - generic [ref=f9e195]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e196]: sensitive_value_masker.py:72
+        - generic [ref=f9e197] [cursor=pointer]:
+          - generic [ref=f9e198]: "43"
+          - generic [ref=f9e199]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e200]: sensitive_value_masker.py:72
+        - generic [ref=f9e201] [cursor=pointer]:
+          - generic [ref=f9e202]: "44"
+          - generic [ref=f9e203]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e204]: sensitive_value_masker.py:72
+        - generic [ref=f9e205] [cursor=pointer]:
+          - generic [ref=f9e206]: "45"
+          - generic [ref=f9e207]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e208]: sensitive_value_masker.py:72
+        - generic [ref=f9e209] [cursor=pointer]:
+          - generic [ref=f9e210]: "46"
+          - generic [ref=f9e211]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e212]: sensitive_value_masker.py:72
+        - generic [ref=f9e213] [cursor=pointer]:
+          - generic [ref=f9e214]: "47"
+          - generic [ref=f9e215]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e216]: sensitive_value_masker.py:72
+        - generic [ref=f9e217] [cursor=pointer]:
+          - generic [ref=f9e218]: "48"
+          - generic [ref=f9e219]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e220]: sensitive_value_masker.py:72
+        - generic [ref=f9e221] [cursor=pointer]:
+          - generic [ref=f9e222]: "49"
+          - generic [ref=f9e223]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e224]: sensitive_value_masker.py:72
+        - generic [ref=f9e225] [cursor=pointer]:
+          - generic [ref=f9e226]: "50"
+          - generic [ref=f9e227]: sensitive_value_masker.classify()
+          - generic [ref=f9e228]: sensitive_value_masker.py:76
+        - generic [ref=f9e229] [cursor=pointer]:
+          - generic [ref=f9e230]: "51"
+          - generic [ref=f9e231]: <locals>.<genexpr>()
+          - generic [ref=f9e232]: sensitive_value_masker.py:82
+        - generic [ref=f9e233] [cursor=pointer]:
+          - generic [ref=f9e234]: "52"
+          - generic [ref=f9e235]: sensitive_value_masker.value_position()
+          - generic [ref=f9e236]: sensitive_value_masker.py:92
+        - generic [ref=f9e237] [cursor=pointer]:
+          - generic [ref=f9e238]: "53"
+          - generic [ref=f9e239]: sensitive_value_masker.skip_spaces()
+          - generic [ref=f9e240]: sensitive_value_masker.py:104
+        - generic [ref=f9e241] [cursor=pointer]:
+          - generic [ref=f9e242]: "54"
+          - generic [ref=f9e243]: sensitive_value_masker.skip_spaces()
+          - generic [ref=f9e244]: sensitive_value_masker.py:104
+        - generic [ref=f9e245] [cursor=pointer]:
+          - generic [ref=f9e246]: "55"
+          - generic [ref=f9e247]: sensitive_value_masker.value_span()
+          - generic [ref=f9e248]: sensitive_value_masker.py:111
+        - generic [ref=f9e249] [cursor=pointer]:
+          - generic [ref=f9e250]: "56"
+          - generic [ref=f9e251]: sensitive_value_masker.mask_value()
+          - generic [ref=f9e252]: sensitive_value_masker.py:140
+        - generic [ref=f9e253] [cursor=pointer]:
+          - generic [ref=f9e254]: "57"
+          - generic [ref=f9e255]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e256]: sensitive_value_masker.py:72
+        - generic [ref=f9e257] [cursor=pointer]:
+          - generic [ref=f9e258]: "58"
+          - generic [ref=f9e259]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e260]: sensitive_value_masker.py:72
+        - generic [ref=f9e261] [cursor=pointer]:
+          - generic [ref=f9e262]: "59"
+          - generic [ref=f9e263]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e264]: sensitive_value_masker.py:72
+        - generic [ref=f9e265] [cursor=pointer]:
+          - generic [ref=f9e266]: "60"
+          - generic [ref=f9e267]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e268]: sensitive_value_masker.py:72
+        - generic [ref=f9e269] [cursor=pointer]:
+          - generic [ref=f9e270]: "61"
+          - generic [ref=f9e271]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e272]: sensitive_value_masker.py:72
+        - generic [ref=f9e273] [cursor=pointer]:
+          - generic [ref=f9e274]: "62"
+          - generic [ref=f9e275]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e276]: sensitive_value_masker.py:72
+        - generic [ref=f9e277] [cursor=pointer]:
+          - generic [ref=f9e278]: "63"
+          - generic [ref=f9e279]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e280]: sensitive_value_masker.py:72
+        - generic [ref=f9e281] [cursor=pointer]:
+          - generic [ref=f9e282]: "64"
+          - generic [ref=f9e283]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e284]: sensitive_value_masker.py:72
+        - generic [ref=f9e285] [cursor=pointer]:
+          - generic [ref=f9e286]: "65"
+          - generic [ref=f9e287]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e288]: sensitive_value_masker.py:72
+        - generic [ref=f9e289] [cursor=pointer]:
+          - generic [ref=f9e290]: "66"
+          - generic [ref=f9e291]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e292]: sensitive_value_masker.py:72
+        - generic [ref=f9e293] [cursor=pointer]:
+          - generic [ref=f9e294]: "67"
+          - generic [ref=f9e295]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e296]: sensitive_value_masker.py:72
+        - generic [ref=f9e297] [cursor=pointer]:
+          - generic [ref=f9e298]: "68"
+          - generic [ref=f9e299]: sensitive_value_masker.classify()
+          - generic [ref=f9e300]: sensitive_value_masker.py:76
+        - generic [ref=f9e301] [cursor=pointer]:
+          - generic [ref=f9e302]: "69"
+          - generic [ref=f9e303]: <locals>.<genexpr>()
+          - generic [ref=f9e304]: sensitive_value_masker.py:82
+        - generic [ref=f9e305] [cursor=pointer]:
+          - generic [ref=f9e306]: "70"
+          - generic [ref=f9e307]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e308]: sensitive_value_masker.py:72
+        - generic [ref=f9e309] [cursor=pointer]:
+          - generic [ref=f9e310]: "71"
+          - generic [ref=f9e311]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e312]: sensitive_value_masker.py:72
+        - generic [ref=f9e313] [cursor=pointer]:
+          - generic [ref=f9e314]: "72"
+          - generic [ref=f9e315]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e316]: sensitive_value_masker.py:72
+        - generic [ref=f9e317] [cursor=pointer]:
+          - generic [ref=f9e318]: "73"
+          - generic [ref=f9e319]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e320]: sensitive_value_masker.py:72
+        - generic [ref=f9e321] [cursor=pointer]:
+          - generic [ref=f9e322]: "74"
+          - generic [ref=f9e323]: sensitive_value_masker.classify()
+          - generic [ref=f9e324]: sensitive_value_masker.py:76
+        - generic [ref=f9e325] [cursor=pointer]:
+          - generic [ref=f9e326]: "75"
+          - generic [ref=f9e327]: <locals>.<genexpr>()
+          - generic [ref=f9e328]: sensitive_value_masker.py:82
+        - generic [ref=f9e329] [cursor=pointer]:
+          - generic [ref=f9e330]: "76"
+          - generic [ref=f9e331]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e332]: sensitive_value_masker.py:72
+        - generic [ref=f9e333] [cursor=pointer]:
+          - generic [ref=f9e334]: "77"
+          - generic [ref=f9e335]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e336]: sensitive_value_masker.py:72
+        - generic [ref=f9e337] [cursor=pointer]:
+          - generic [ref=f9e338]: "78"
+          - generic [ref=f9e339]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e340]: sensitive_value_masker.py:72
+        - generic [ref=f9e341] [cursor=pointer]:
+          - generic [ref=f9e342]: "79"
+          - generic [ref=f9e343]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e344]: sensitive_value_masker.py:72
+        - generic [ref=f9e345] [cursor=pointer]:
+          - generic [ref=f9e346]: "80"
+          - generic [ref=f9e347]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e348]: sensitive_value_masker.py:72
+        - generic [ref=f9e349] [cursor=pointer]:
+          - generic [ref=f9e350]: "81"
+          - generic [ref=f9e351]: sensitive_value_masker.mask()
+          - generic [ref=f9e352]: sensitive_value_masker.py:40
+        - generic [ref=f9e353] [cursor=pointer]:
+          - generic [ref=f9e354]: "82"
+          - generic [ref=f9e355]: <locals>.<lambda>()
+          - generic [ref=f9e356]: sensitive_value_masker.py:42
+        - generic [ref=f9e357] [cursor=pointer]:
+          - generic [ref=f9e358]: "83"
+          - generic [ref=f9e359]: <locals>.<lambda>()
+          - generic [ref=f9e360]: sensitive_value_masker.py:42
+        - generic [ref=f9e361] [cursor=pointer]:
+          - generic [ref=f9e362]: "84"
+          - generic [ref=f9e363]: sensitive_value_masker.mask_pairs()
+          - generic [ref=f9e364]: sensitive_value_masker.py:46
+        - generic [ref=f9e365] [cursor=pointer]:
+          - generic [ref=f9e366]: "85"
+          - generic [ref=f9e367]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e368]: sensitive_value_masker.py:72
+        - generic [ref=f9e369] [cursor=pointer]:
+          - generic [ref=f9e370]: "86"
+          - generic [ref=f9e371]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e372]: sensitive_value_masker.py:72
+        - generic [ref=f9e373] [cursor=pointer]:
+          - generic [ref=f9e374]: "87"
+          - generic [ref=f9e375]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e376]: sensitive_value_masker.py:72
+        - generic [ref=f9e377] [cursor=pointer]:
+          - generic [ref=f9e378]: "88"
+          - generic [ref=f9e379]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e380]: sensitive_value_masker.py:72
+        - generic [ref=f9e381] [cursor=pointer]:
+          - generic [ref=f9e382]: "89"
+          - generic [ref=f9e383]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e384]: sensitive_value_masker.py:72
+        - generic [ref=f9e385] [cursor=pointer]:
+          - generic [ref=f9e386]: "90"
+          - generic [ref=f9e387]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e388]: sensitive_value_masker.py:72
+        - generic [ref=f9e389] [cursor=pointer]:
+          - generic [ref=f9e390]: "91"
+          - generic [ref=f9e391]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e392]: sensitive_value_masker.py:72
+        - generic [ref=f9e393] [cursor=pointer]:
+          - generic [ref=f9e394]: "92"
+          - generic [ref=f9e395]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e396]: sensitive_value_masker.py:72
+        - generic [ref=f9e397] [cursor=pointer]:
+          - generic [ref=f9e398]: "93"
+          - generic [ref=f9e399]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e400]: sensitive_value_masker.py:72
+        - generic [ref=f9e401] [cursor=pointer]:
+          - generic [ref=f9e402]: "94"
+          - generic [ref=f9e403]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e404]: sensitive_value_masker.py:72
+        - generic [ref=f9e405] [cursor=pointer]:
+          - generic [ref=f9e406]: "95"
+          - generic [ref=f9e407]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e408]: sensitive_value_masker.py:72
+        - generic [ref=f9e409] [cursor=pointer]:
+          - generic [ref=f9e410]: "96"
+          - generic [ref=f9e411]: sensitive_value_masker.classify()
+          - generic [ref=f9e412]: sensitive_value_masker.py:76
+        - generic [ref=f9e413] [cursor=pointer]:
+          - generic [ref=f9e414]: "97"
+          - generic [ref=f9e415]: <locals>.<genexpr>()
+          - generic [ref=f9e416]: sensitive_value_masker.py:82
+        - generic [ref=f9e417] [cursor=pointer]:
+          - generic [ref=f9e418]: "98"
+          - generic [ref=f9e419]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e420]: sensitive_value_masker.py:72
+        - generic [ref=f9e421] [cursor=pointer]:
+          - generic [ref=f9e422]: "99"
+          - generic [ref=f9e423]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e424]: sensitive_value_masker.py:72
+        - generic [ref=f9e425] [cursor=pointer]:
+          - generic [ref=f9e426]: "100"
+          - generic [ref=f9e427]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e428]: sensitive_value_masker.py:72
+        - generic [ref=f9e429] [cursor=pointer]:
+          - generic [ref=f9e430]: "101"
+          - generic [ref=f9e431]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e432]: sensitive_value_masker.py:72
+        - generic [ref=f9e433] [cursor=pointer]:
+          - generic [ref=f9e434]: "102"
+          - generic [ref=f9e435]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e436]: sensitive_value_masker.py:72
+        - generic [ref=f9e437] [cursor=pointer]:
+          - generic [ref=f9e438]: "103"
+          - generic [ref=f9e439]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e440]: sensitive_value_masker.py:72
+        - generic [ref=f9e441] [cursor=pointer]:
+          - generic [ref=f9e442]: "104"
+          - generic [ref=f9e443]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e444]: sensitive_value_masker.py:72
+        - generic [ref=f9e445] [cursor=pointer]:
+          - generic [ref=f9e446]: "105"
+          - generic [ref=f9e447]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e448]: sensitive_value_masker.py:72
+        - generic [ref=f9e449] [cursor=pointer]:
+          - generic [ref=f9e450]: "106"
+          - generic [ref=f9e451]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e452]: sensitive_value_masker.py:72
+        - generic [ref=f9e453] [cursor=pointer]:
+          - generic [ref=f9e454]: "107"
+          - generic [ref=f9e455]: sensitive_value_masker.classify()
+          - generic [ref=f9e456]: sensitive_value_masker.py:76
+        - generic [ref=f9e457] [cursor=pointer]:
+          - generic [ref=f9e458]: "108"
+          - generic [ref=f9e459]: <locals>.<genexpr>()
+          - generic [ref=f9e460]: sensitive_value_masker.py:82
+        - generic [ref=f9e461] [cursor=pointer]:
+          - generic [ref=f9e462]: "109"
+          - generic [ref=f9e463]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e464]: sensitive_value_masker.py:72
+        - generic [ref=f9e465] [cursor=pointer]:
+          - generic [ref=f9e466]: "110"
+          - generic [ref=f9e467]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e468]: sensitive_value_masker.py:72
+        - generic [ref=f9e469] [cursor=pointer]:
+          - generic [ref=f9e470]: "111"
+          - generic [ref=f9e471]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e472]: sensitive_value_masker.py:72
+        - generic [ref=f9e473] [cursor=pointer]:
+          - generic [ref=f9e474]: "112"
+          - generic [ref=f9e475]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e476]: sensitive_value_masker.py:72
+        - generic [ref=f9e477] [cursor=pointer]:
+          - generic [ref=f9e478]: "113"
+          - generic [ref=f9e479]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e480]: sensitive_value_masker.py:72
+        - generic [ref=f9e481] [cursor=pointer]:
+          - generic [ref=f9e482]: "114"
+          - generic [ref=f9e483]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e484]: sensitive_value_masker.py:72
+        - generic [ref=f9e485] [cursor=pointer]:
+          - generic [ref=f9e486]: "115"
+          - generic [ref=f9e487]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e488]: sensitive_value_masker.py:72
+        - generic [ref=f9e489] [cursor=pointer]:
+          - generic [ref=f9e490]: "116"
+          - generic [ref=f9e491]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e492]: sensitive_value_masker.py:72
+        - generic [ref=f9e493] [cursor=pointer]:
+          - generic [ref=f9e494]: "117"
+          - generic [ref=f9e495]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e496]: sensitive_value_masker.py:72
+        - generic [ref=f9e497] [cursor=pointer]:
+          - generic [ref=f9e498]: "118"
+          - generic [ref=f9e499]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e500]: sensitive_value_masker.py:72
+        - generic [ref=f9e501] [cursor=pointer]:
+          - generic [ref=f9e502]: "119"
+          - generic [ref=f9e503]: sensitive_value_masker.classify()
+          - generic [ref=f9e504]: sensitive_value_masker.py:76
+        - generic [ref=f9e505] [cursor=pointer]:
+          - generic [ref=f9e506]: "120"
+          - generic [ref=f9e507]: <locals>.<genexpr>()
+          - generic [ref=f9e508]: sensitive_value_masker.py:82
+        - generic [ref=f9e509] [cursor=pointer]:
+          - generic [ref=f9e510]: "121"
+          - generic [ref=f9e511]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e512]: sensitive_value_masker.py:72
+        - generic [ref=f9e513] [cursor=pointer]:
+          - generic [ref=f9e514]: "122"
+          - generic [ref=f9e515]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e516]: sensitive_value_masker.py:72
+        - generic [ref=f9e517] [cursor=pointer]:
+          - generic [ref=f9e518]: "123"
+          - generic [ref=f9e519]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e520]: sensitive_value_masker.py:72
+        - generic [ref=f9e521] [cursor=pointer]:
+          - generic [ref=f9e522]: "124"
+          - generic [ref=f9e523]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e524]: sensitive_value_masker.py:72
+        - generic [ref=f9e525] [cursor=pointer]:
+          - generic [ref=f9e526]: "125"
+          - generic [ref=f9e527]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e528]: sensitive_value_masker.py:72
+        - generic [ref=f9e529] [cursor=pointer]:
+          - generic [ref=f9e530]: "126"
+          - generic [ref=f9e531]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e532]: sensitive_value_masker.py:72
+        - generic [ref=f9e533] [cursor=pointer]:
+          - generic [ref=f9e534]: "127"
+          - generic [ref=f9e535]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e536]: sensitive_value_masker.py:72
+        - generic [ref=f9e537] [cursor=pointer]:
+          - generic [ref=f9e538]: "128"
+          - generic [ref=f9e539]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e540]: sensitive_value_masker.py:72
+        - generic [ref=f9e541] [cursor=pointer]:
+          - generic [ref=f9e542]: "129"
+          - generic [ref=f9e543]: sensitive_value_masker.classify()
+          - generic [ref=f9e544]: sensitive_value_masker.py:76
+        - generic [ref=f9e545] [cursor=pointer]:
+          - generic [ref=f9e546]: "130"
+          - generic [ref=f9e547]: <locals>.<genexpr>()
+          - generic [ref=f9e548]: sensitive_value_masker.py:82
+        - generic [ref=f9e549] [cursor=pointer]:
+          - generic [ref=f9e550]: "131"
+          - generic [ref=f9e551]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e552]: sensitive_value_masker.py:72
+        - generic [ref=f9e553] [cursor=pointer]:
+          - generic [ref=f9e554]: "132"
+          - generic [ref=f9e555]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e556]: sensitive_value_masker.py:72
+        - generic [ref=f9e557] [cursor=pointer]:
+          - generic [ref=f9e558]: "133"
+          - generic [ref=f9e559]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e560]: sensitive_value_masker.py:72
+        - generic [ref=f9e561] [cursor=pointer]:
+          - generic [ref=f9e562]: "134"
+          - generic [ref=f9e563]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e564]: sensitive_value_masker.py:72
+        - generic [ref=f9e565] [cursor=pointer]:
+          - generic [ref=f9e566]: "135"
+          - generic [ref=f9e567]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e568]: sensitive_value_masker.py:72
+        - generic [ref=f9e569] [cursor=pointer]:
+          - generic [ref=f9e570]: "136"
+          - generic [ref=f9e571]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e572]: sensitive_value_masker.py:72
+        - generic [ref=f9e573] [cursor=pointer]:
+          - generic [ref=f9e574]: "137"
+          - generic [ref=f9e575]: sensitive_value_masker.classify()
+          - generic [ref=f9e576]: sensitive_value_masker.py:76
+        - generic [ref=f9e577] [cursor=pointer]:
+          - generic [ref=f9e578]: "138"
+          - generic [ref=f9e579]: <locals>.<genexpr>()
+          - generic [ref=f9e580]: sensitive_value_masker.py:82
+        - generic [ref=f9e581] [cursor=pointer]:
+          - generic [ref=f9e582]: "139"
+          - generic [ref=f9e583]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e584]: sensitive_value_masker.py:72
+        - generic [ref=f9e585] [cursor=pointer]:
+          - generic [ref=f9e586]: "140"
+          - generic [ref=f9e587]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e588]: sensitive_value_masker.py:72
+        - generic [ref=f9e589] [cursor=pointer]:
+          - generic [ref=f9e590]: "141"
+          - generic [ref=f9e591]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e592]: sensitive_value_masker.py:72
+        - generic [ref=f9e593] [cursor=pointer]:
+          - generic [ref=f9e594]: "142"
+          - generic [ref=f9e595]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e596]: sensitive_value_masker.py:72
+        - generic [ref=f9e597] [cursor=pointer]:
+          - generic [ref=f9e598]: "143"
+          - generic [ref=f9e599]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e600]: sensitive_value_masker.py:72
+        - generic [ref=f9e601] [cursor=pointer]:
+          - generic [ref=f9e602]: "144"
+          - generic [ref=f9e603]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e604]: sensitive_value_masker.py:72
+        - generic [ref=f9e605] [cursor=pointer]:
+          - generic [ref=f9e606]: "145"
+          - generic [ref=f9e607]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e608]: sensitive_value_masker.py:72
+        - generic [ref=f9e609] [cursor=pointer]:
+          - generic [ref=f9e610]: "146"
+          - generic [ref=f9e611]: sensitive_value_masker.classify()
+          - generic [ref=f9e612]: sensitive_value_masker.py:76
+        - generic [ref=f9e613] [cursor=pointer]:
+          - generic [ref=f9e614]: "147"
+          - generic [ref=f9e615]: <locals>.<genexpr>()
+          - generic [ref=f9e616]: sensitive_value_masker.py:82
+        - generic [ref=f9e617] [cursor=pointer]:
+          - generic [ref=f9e618]: "148"
+          - generic [ref=f9e619]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e620]: sensitive_value_masker.py:72
+        - generic [ref=f9e621] [cursor=pointer]:
+          - generic [ref=f9e622]: "149"
+          - generic [ref=f9e623]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e624]: sensitive_value_masker.py:72
+        - generic [ref=f9e625] [cursor=pointer]:
+          - generic [ref=f9e626]: "150"
+          - generic [ref=f9e627]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e628]: sensitive_value_masker.py:72
+        - generic [ref=f9e629] [cursor=pointer]:
+          - generic [ref=f9e630]: "151"
+          - generic [ref=f9e631]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e632]: sensitive_value_masker.py:72
+        - generic [ref=f9e633] [cursor=pointer]:
+          - generic [ref=f9e634]: "152"
+          - generic [ref=f9e635]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e636]: sensitive_value_masker.py:72
+        - generic [ref=f9e637] [cursor=pointer]:
+          - generic [ref=f9e638]: "153"
+          - generic [ref=f9e639]: sensitive_value_masker.classify()
+          - generic [ref=f9e640]: sensitive_value_masker.py:76
+        - generic [ref=f9e641] [cursor=pointer]:
+          - generic [ref=f9e642]: "154"
+          - generic [ref=f9e643]: <locals>.<genexpr>()
+          - generic [ref=f9e644]: sensitive_value_masker.py:82
+        - generic [ref=f9e645] [cursor=pointer]:
+          - generic [ref=f9e646]: "155"
+          - generic [ref=f9e647]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e648]: sensitive_value_masker.py:72
+        - generic [ref=f9e649] [cursor=pointer]:
+          - generic [ref=f9e650]: "156"
+          - generic [ref=f9e651]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e652]: sensitive_value_masker.py:72
+        - generic [ref=f9e653] [cursor=pointer]:
+          - generic [ref=f9e654]: "157"
+          - generic [ref=f9e655]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e656]: sensitive_value_masker.py:72
+        - generic [ref=f9e657] [cursor=pointer]:
+          - generic [ref=f9e658]: "158"
+          - generic [ref=f9e659]: sensitive_value_masker.classify()
+          - generic [ref=f9e660]: sensitive_value_masker.py:76
+        - generic [ref=f9e661] [cursor=pointer]:
+          - generic [ref=f9e662]: "159"
+          - generic [ref=f9e663]: <locals>.<genexpr>()
+          - generic [ref=f9e664]: sensitive_value_masker.py:82
+        - generic [ref=f9e665] [cursor=pointer]:
+          - generic [ref=f9e666]: "160"
+          - generic [ref=f9e667]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e668]: sensitive_value_masker.py:72
+        - generic [ref=f9e669] [cursor=pointer]:
+          - generic [ref=f9e670]: "161"
+          - generic [ref=f9e671]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e672]: sensitive_value_masker.py:72
+        - generic [ref=f9e673] [cursor=pointer]:
+          - generic [ref=f9e674]: "162"
+          - generic [ref=f9e675]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e676]: sensitive_value_masker.py:72
+        - generic [ref=f9e677] [cursor=pointer]:
+          - generic [ref=f9e678]: "163"
+          - generic [ref=f9e679]: sensitive_value_masker.classify()
+          - generic [ref=f9e680]: sensitive_value_masker.py:76
+        - generic [ref=f9e681] [cursor=pointer]:
+          - generic [ref=f9e682]: "164"
+          - generic [ref=f9e683]: <locals>.<genexpr>()
+          - generic [ref=f9e684]: sensitive_value_masker.py:82
+        - generic [ref=f9e685] [cursor=pointer]:
+          - generic [ref=f9e686]: "165"
+          - generic [ref=f9e687]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e688]: sensitive_value_masker.py:72
+        - generic [ref=f9e689] [cursor=pointer]:
+          - generic [ref=f9e690]: "166"
+          - generic [ref=f9e691]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e692]: sensitive_value_masker.py:72
+        - generic [ref=f9e693] [cursor=pointer]:
+          - generic [ref=f9e694]: "167"
+          - generic [ref=f9e695]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e696]: sensitive_value_masker.py:72
+        - generic [ref=f9e697] [cursor=pointer]:
+          - generic [ref=f9e698]: "168"
+          - generic [ref=f9e699]: sensitive_value_masker.classify()
+          - generic [ref=f9e700]: sensitive_value_masker.py:76
+        - generic [ref=f9e701] [cursor=pointer]:
+          - generic [ref=f9e702]: "169"
+          - generic [ref=f9e703]: <locals>.<genexpr>()
+          - generic [ref=f9e704]: sensitive_value_masker.py:82
+        - generic [ref=f9e705] [cursor=pointer]:
+          - generic [ref=f9e706]: "170"
+          - generic [ref=f9e707]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e708]: sensitive_value_masker.py:72
+        - generic [ref=f9e709] [cursor=pointer]:
+          - generic [ref=f9e710]: "171"
+          - generic [ref=f9e711]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e712]: sensitive_value_masker.py:72
+        - generic [ref=f9e713] [cursor=pointer]:
+          - generic [ref=f9e714]: "172"
+          - generic [ref=f9e715]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e716]: sensitive_value_masker.py:72
+        - generic [ref=f9e717] [cursor=pointer]:
+          - generic [ref=f9e718]: "173"
+          - generic [ref=f9e719]: sensitive_value_masker.classify()
+          - generic [ref=f9e720]: sensitive_value_masker.py:76
+        - generic [ref=f9e721] [cursor=pointer]:
+          - generic [ref=f9e722]: "174"
+          - generic [ref=f9e723]: <locals>.<genexpr>()
+          - generic [ref=f9e724]: sensitive_value_masker.py:82
+        - generic [ref=f9e725] [cursor=pointer]:
+          - generic [ref=f9e726]: "175"
+          - generic [ref=f9e727]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e728]: sensitive_value_masker.py:72
+        - generic [ref=f9e729] [cursor=pointer]:
+          - generic [ref=f9e730]: "176"
+          - generic [ref=f9e731]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e732]: sensitive_value_masker.py:72
+        - generic [ref=f9e733] [cursor=pointer]:
+          - generic [ref=f9e734]: "177"
+          - generic [ref=f9e735]: sensitive_value_masker.is_key_char()
+          - generic [ref=f9e736]: sensitive_value_masker.py:72
+        - generic [ref=f9e737] [cursor=pointer]:
+          - generic [ref=f9e738]: "178"
+          - generic [ref=f9e739]: sensitive_value_masker.classify()
+          - generic [ref=f9e740]: sensitive_value_masker.py:76
+        - generic [ref=f9e741] [cursor=pointer]:
+          - generic [ref=f9e742]: "179"
+          - generic [ref=f9e743]: <locals>.<genexpr>()
+          - generic [ref=f9e744]: sensitive_value_masker.py:82
+        - generic [ref=f9e745] [cursor=pointer]:
+          - generic [ref=f9e746]: "180"
+          - generic [ref=f9e747]: sensitive_value_masker.classify()
+          - generic [ref=f9e748]: sensitive_value_masker.py:76
+        - generic [ref=f9e749] [cursor=pointer]:
+          - generic [ref=f9e750]: "181"
+          - generic [ref=f9e751]: <locals>.<genexpr>()
+          - generic [ref=f9e752]: sensitive_value_masker.py:82
+        - generic [ref=f9e753] [cursor=pointer]:
+          - generic [ref=f9e754]: "182"
+          - generic [ref=f9e755]: sensitive_value_masker.classify()
+          - generic [ref=f9e756]: sensitive_value_masker.py:76
+        - generic [ref=f9e757] [cursor=pointer]:
+          - generic [ref=f9e758]: "183"
+          - generic [ref=f9e759]: <locals>.<genexpr>()
+          - generic [ref=f9e760]: sensitive_value_masker.py:82
+        - generic [ref=f9e761] [cursor=pointer]:
+          - generic [ref=f9e762]: "184"
+          - generic [ref=f9e763]: sensitive_value_masker.classify()
+          - generic [ref=f9e764]: sensitive_value_masker.py:76
+        - generic [ref=f9e765] [cursor=pointer]:
+          - generic [ref=f9e766]: "185"
+          - generic [ref=f9e767]: <locals>.<genexpr>()
+          - generic [ref=f9e768]: sensitive_value_masker.py:82
+        - generic [ref=f9e769] [cursor=pointer]:
+          - generic [ref=f9e770]: "186"
+          - generic [ref=f9e771]: sensitive_value_masker.classify()
+          - generic [ref=f9e772]: sensitive_value_masker.py:76
+        - generic [ref=f9e773] [cursor=pointer]:
+          - generic [ref=f9e774]: "187"
+          - generic [ref=f9e775]: <locals>.<genexpr>()
+          - generic [ref=f9e776]: sensitive_value_masker.py:82
+        - generic [ref=f9e777] [cursor=pointer]:
+          - generic [ref=f9e778]: "188"
+          - generic [ref=f9e779]: sensitive_value_masker.classify()
+          - generic [ref=f9e780]: sensitive_value_masker.py:76
+        - generic [ref=f9e781] [cursor=pointer]:
+          - generic [ref=f9e782]: "189"
+          - generic [ref=f9e783]: <locals>.<genexpr>()
+          - generic [ref=f9e784]: sensitive_value_masker.py:82
+        - generic [ref=f9e785] [cursor=pointer]:
+          - generic [ref=f9e786]: "190"
+          - generic [ref=f9e787]: sensitive_value_masker.classify()
+          - generic [ref=f9e788]: sensitive_value_masker.py:76
+        - generic [ref=f9e789] [cursor=pointer]:
+          - generic [ref=f9e790]: "191"
+          - generic [ref=f9e791]: <locals>.<genexpr>()
+          - generic [ref=f9e792]: sensitive_value_masker.py:82
+        - generic [ref=f9e793] [cursor=pointer]:
+          - generic [ref=f9e794]: "192"
+          - generic [ref=f9e795]: sensitive_value_masker.classify()
+          - generic [ref=f9e796]: sensitive_value_masker.py:76
+        - generic [ref=f9e797] [cursor=pointer]:
+          - generic [ref=f9e798]: "193"
+          - generic [ref=f9e799]: <locals>.<genexpr>()
+          - generic [ref=f9e800]: sensitive_value_masker.py:82
+        - generic [ref=f9e801] [cursor=pointer]:
+          - generic [ref=f9e802]: "194"
+          - generic [ref=f9e803]: sensitive_value_masker.classify()
+          - generic [ref=f9e804]: sensitive_value_masker.py:76
+        - generic [ref=f9e805] [cursor=pointer]:
+          - generic [ref=f9e806]: "195"
+          - generic [ref=f9e807]: <locals>.<genexpr>()
+          - generic [ref=f9e808]: sensitive_value_masker.py:82
+        - generic [ref=f9e809] [cursor=pointer]:
+          - generic [ref=f9e810]: "196"
+          - generic [ref=f9e811]: sensitive_value_masker.classify()
+          - generic [ref=f9e812]: sensitive_value_masker.py:76
+        - generic [ref=f9e813] [cursor=pointer]:
+          - generic [ref=f9e814]: "197"
+          - generic [ref=f9e815]: <locals>.<genexpr>()
+          - generic [ref=f9e816]: sensitive_value_masker.py:82
+        - generic [ref=f9e817] [cursor=pointer]:
+          - generic [ref=f9e818]: "198"
+          - generic [ref=f9e819]: sensitive_value_masker.classify()
+          - generic [ref=f9e820]: sensitive_value_masker.py:76
+        - generic [ref=f9e821] [cursor=pointer]:
+          - generic [ref=f9e822]: "199"
+          - generic [ref=f9e823]: <locals>.<genexpr>()
+          - generic [ref=f9e824]: sensitive_value_masker.py:82
+        - generic [ref=f9e825] [cursor=pointer]:
+          - generic [ref=f9e826]: "200"
+          - generic [ref=f9e827]: sensitive_value_masker.classify()
+          - generic [ref=f9e828]: sensitive_value_masker.py:76
+        - generic [ref=f9e829] [cursor=pointer]:
+          - generic [ref=f9e830]: "201"
+          - generic [ref=f9e831]: <locals>.<genexpr>()
+          - generic [ref=f9e832]: sensitive_value_masker.py:82
+        - generic [ref=f9e833] [cursor=pointer]:
+          - generic [ref=f9e834]: "202"
+          - generic [ref=f9e835]: sensitive_value_masker.classify()
+          - generic [ref=f9e836]: sensitive_value_masker.py:76
+        - generic [ref=f9e837] [cursor=pointer]:
+          - generic [ref=f9e838]: "203"
+          - generic [ref=f9e839]: <locals>.<genexpr>()
+          - generic [ref=f9e840]: sensitive_value_masker.py:82
+        - generic [ref=f9e841] [cursor=pointer]:
+          - generic [ref=f9e842]: "204"
+          - generic [ref=f9e843]: sensitive_value_masker.classify()
+          - generic [ref=f9e844]: sensitive_value_masker.py:76
+        - generic [ref=f9e845] [cursor=pointer]:
+          - generic [ref=f9e846]: "205"
+          - generic [ref=f9e847]: <locals>.<genexpr>()
+          - generic [ref=f9e848]: sensitive_value_masker.py:82
+        - generic [ref=f9e849] [cursor=pointer]:
+          - generic [ref=f9e850]: "206"
+          - generic [ref=f9e851]: sensitive_value_masker.classify()
+          - generic [ref=f9e852]: sensitive_value_masker.py:76
+        - generic [ref=f9e853] [cursor=pointer]:
+          - generic [ref=f9e854]: "207"
+          - generic [ref=f9e855]: <locals>.<genexpr>()
+          - generic [ref=f9e856]: sensitive_value_masker.py:82
+        - generic [ref=f9e857] [cursor=pointer]:
+          - generic [ref=f9e858]: "208"
+          - generic [ref=f9e859]: sensitive_value_masker.classify()
+          - generic [ref=f9e860]: sensitive_value_masker.py:76
+        - generic [ref=f9e861] [cursor=pointer]:
+          - generic [ref=f9e862]: "209"
+          - generic [ref=f9e863]: <locals>.<genexpr>()
+          - generic [ref=f9e864]: sensitive_value_masker.py:82
+        - generic [ref=f9e865] [cursor=pointer]:
+          - generic [ref=f9e866]: "210"
+          - generic [ref=f9e867]: sensitive_value_masker.value_position()
+          - generic [ref=f9e868]: sensitive_value_masker.py:92
+        - generic [ref=f9e869] [cursor=pointer]:
+          - generic [ref=f9e870]: "211"
+          - generic [ref=f9e871]: sensitive_value_masker.skip_spaces()
+          - generic [ref=f9e872]: sensitive_value_masker.py:104
+        - generic [ref=f9e873] [cursor=pointer]:
+          - generic [ref=f9e874]: "212"
+          - generic [ref=f9e875]: sensitive_value_masker.skip_spaces()
+          - generic [ref=f9e876]: sensitive_value_masker.py:104
+        - generic [ref=f9e877] [cursor=pointer]:
+          - generic [ref=f9e878]: "213"
+          - generic [ref=f9e879]: sensitive_value_masker.value_span()
+          - generic [ref=f9e880]: sensitive_value_masker.py:111
+        - generic [ref=f9e881] [cursor=pointer]:
+          - generic [ref=f9e882]: "214"
+          - generic [ref=f9e883]: sensitive_value_masker.mask_value()
+          - generic [ref=f9e884]: sensitive_value_masker.py:140
+        - generic [ref=f9e885] [cursor=pointer]:
+          - generic [ref=f9e886]: "215"
+          - generic [ref=f9e887]: sensitive_value_masker.classify()
+          - generic [ref=f9e888]: sensitive_value_masker.py:76
+        - generic [ref=f9e889] [cursor=pointer]:
+          - generic [ref=f9e890]: "216"
+          - generic [ref=f9e891]: <locals>.<genexpr>()
+          - generic [ref=f9e892]: sensitive_value_masker.py:82
+        - generic [ref=f9e893] [cursor=pointer]:
+          - generic [ref=f9e894]: "217"
+          - generic [ref=f9e895]: sensitive_value_masker.classify()
+          - generic [ref=f9e896]: sensitive_value_masker.py:76
+        - generic [ref=f9e897] [cursor=pointer]:
+          - generic [ref=f9e898]: "218"
+          - generic [ref=f9e899]: <locals>.<genexpr>()
+          - generic [ref=f9e900]: sensitive_value_masker.py:82
+        - generic [ref=f9e901] [cursor=pointer]:
+          - generic [ref=f9e902]: "219"
+          - generic [ref=f9e903]: sensitive_value_masker.classify()
+          - generic [ref=f9e904]: sensitive_value_masker.py:76
+        - generic [ref=f9e905] [cursor=pointer]:
+          - generic [ref=f9e906]: "220"
+          - generic [ref=f9e907]: <locals>.<genexpr>()
+          - generic [ref=f9e908]: sensitive_value_masker.py:82
+        - generic [ref=f9e909] [cursor=pointer]:
+          - generic [ref=f9e910]: "221"
+          - generic [ref=f9e911]: sensitive_value_masker.value_span()
+          - generic [ref=f9e912]: sensitive_value_masker.py:111
+        - generic [ref=f9e913] [cursor=pointer]:
+          - generic [ref=f9e914]: "222"
+          - generic [ref=f9e915]: sensitive_value_masker.mask_value()
+          - generic [ref=f9e916]: sensitive_value_masker.py:140
+    - generic [ref=f9e918]:
+      - generic [ref=f9e919]:
+        - generic [ref=f9e920]:
+          - button "◀ 이전 단계" [disabled] [ref=f9e921]
+          - button "다음 단계 ▶" [ref=f9e922] [cursor=pointer]
+          - generic [ref=f9e923]: 단계 1 / 1225
+          - generic [ref=f9e924]: 노란 줄이 실행된 줄 (누르면 그 줄의 값) · 키보드 ← →
+        - generic [ref=f9e925]:
+          - generic [ref=f9e926]:
+            - generic [ref=f9e927]: src/traderjo_ai/shared/observability/ecs_formatter.py
+            - generic [ref=f9e928]: traderjo_ai.shared.observability.ecs_formatter.EcsJsonFormatter.__init__()
+            - 'button "↑ 부른 곳: test_logging.format_line()" [ref=f9e929] [cursor=pointer]'
+          - generic [ref=f9e930]:
+            - generic [ref=f9e931] [cursor=pointer]: "self = EcsJsonFormatter{}"
+            - generic [ref=f9e932] [cursor=pointer]: service_name = "ai"
+            - generic [ref=f9e933] [cursor=pointer]: __class__ = EcsJsonFormatter
+            - generic [ref=f9e934]: →
+            - generic [ref=f9e935] [cursor=pointer]: 반환 = null
+        - generic [ref=f9e937]:
+          - generic [ref=f9e938]:
+            - generic [ref=f9e940]: "1"
+            - generic [ref=f9e941]: "\"\"\"stdout 로그를 ECS JSON 한 줄로 쓴다(CV-04: Java 서비스의 logging.structured.format.console=ecs 와 같은 모양)."
+          - generic [ref=f9e942]: "2"
+          - generic [ref=f9e946]:
+            - generic [ref=f9e948]: "3"
+            - generic [ref=f9e949]: 메시지 · 예외 문구 · 스택은 마스킹을 거친다(Java 는 common 의 MaskingJsonMembersCustomizer).
+          - generic [ref=f9e950]:
+            - generic [ref=f9e952]: "4"
+            - generic [ref=f9e953]: "\"\"\""
+          - generic [ref=f9e954]: "5"
+          - generic [ref=f9e958]:
+            - generic [ref=f9e960]: "6"
+            - generic [ref=f9e961]: import json
+          - generic [ref=f9e962]:
+            - generic [ref=f9e964]: "7"
+            - generic [ref=f9e965]: import logging
+          - generic [ref=f9e966]:
+            - generic [ref=f9e968]: "8"
+            - generic [ref=f9e969]: from datetime import UTC, datetime
+          - generic [ref=f9e970]:
+            - generic [ref=f9e972]: "9"
+            - generic [ref=f9e973]: from typing import Any
+          - generic [ref=f9e974]: "10"
+          - generic [ref=f9e978]:
+            - generic [ref=f9e980]: "11"
+            - generic [ref=f9e981]: from traderjo_ai.shared.observability.access_log import AccessLogPathFilter
+          - generic [ref=f9e982]:
+            - generic [ref=f9e984]: "12"
+            - generic [ref=f9e985]: from traderjo_ai.shared.observability.sensitive_value_masker import mask
+          - generic [ref=f9e986]:
+            - generic [ref=f9e988]: "13"
+            - generic [ref=f9e989]: from traderjo_ai.shared.observability.trace_context import span_id_var, trace_id_var
+          - generic [ref=f9e990]: "14"
+          - generic [ref=f9e994]:
+            - generic [ref=f9e996]: "15"
+            - generic [ref=f9e997]: ECS_VERSION = "8.11"
+          - generic [ref=f9e998]: "16"
+          - generic [ref=f9e1002]: "17"
+          - generic [ref=f9e1006]:
+            - generic [ref=f9e1008]: "18"
+            - generic [ref=f9e1009]: "class EcsJsonFormatter(logging.Formatter):"
+          - generic [ref=f9e1010]:
+            - generic [ref=f9e1012]: "19"
+            - generic [ref=f9e1013]: "def __init__(self, service_name: str) -> None:"
+          - generic [ref=f9e1014] [cursor=pointer]:
+            - generic [ref=f9e1015]: ●
+            - generic [ref=f9e1016]: "20"
+            - generic [ref=f9e1017]: super().__init__()
+          - generic [ref=f9e1018]: "self = EcsJsonFormatter{_style=PercentStyle{}, _fmt=\"%(message)s\", datefmt=null}"
+          - generic [ref=f9e1022] [cursor=pointer]:
+            - generic [ref=f9e1023]: ●
+            - generic [ref=f9e1024]: "21"
+            - generic [ref=f9e1025]: self.service_name = service_name
+          - generic [ref=f9e1026]: "22"
+          - generic [ref=f9e1030]:
+            - generic [ref=f9e1032]: "23"
+            - generic [ref=f9e1033]: "def format(self, record: logging.LogRecord) -> str:"
+          - generic [ref=f9e1034]:
+            - generic [ref=f9e1036]: "24"
+            - generic [ref=f9e1037]: "document: dict[str, Any] = {"
+          - generic [ref=f9e1038]:
+            - generic [ref=f9e1040]: "25"
+            - generic [ref=f9e1041]: "\"@timestamp\": datetime.fromtimestamp(record.created, UTC).isoformat(timespec=\"milliseconds\"),"
+          - generic [ref=f9e1042]:
+            - generic [ref=f9e1044]: "26"
+            - generic [ref=f9e1045]: "\"log\": {\"level\": record.levelname, \"logger\": record.name},"
+          - generic [ref=f9e1046]:
+            - generic [ref=f9e1048]: "27"
+            - generic [ref=f9e1049]: "\"process\": {\"pid\": record.process, \"thread\": {\"name\": record.threadName}},"
+          - generic [ref=f9e1050]:
+            - generic [ref=f9e1052]: "28"
+            - generic [ref=f9e1053]: "\"service\": {\"name\": self.service_name},"
+          - generic [ref=f9e1054]:
+            - generic [ref=f9e1056]: "29"
+            - generic [ref=f9e1057]: "\"message\": mask(record.getMessage()),"
+          - generic [ref=f9e1058]:
+            - generic [ref=f9e1060]: "30"
+            - generic [ref=f9e1061]: "\"ecs\": {\"version\": ECS_VERSION},"
+          - generic [ref=f9e1062]:
+            - generic [ref=f9e1064]: "31"
+            - generic [ref=f9e1065]: "}"
+          - generic [ref=f9e1066]:
+            - generic [ref=f9e1068]: "32"
+            - generic [ref=f9e1069]: trace_id = trace_id_var.get()
+          - generic [ref=f9e1070]:
+            - generic [ref=f9e1072]: "33"
+            - generic [ref=f9e1073]: "if trace_id is not None:"
+          - generic [ref=f9e1074]:
+            - generic [ref=f9e1076]: "34"
+            - generic [ref=f9e1077]: document["traceId"] = trace_id
+          - generic [ref=f9e1078]:
+            - generic [ref=f9e1080]: "35"
+            - generic [ref=f9e1081]: span_id = span_id_var.get()
+          - generic [ref=f9e1082]:
+            - generic [ref=f9e1084]: "36"
+            - generic [ref=f9e1085]: "if span_id is not None:"
+          - generic [ref=f9e1086]:
+            - generic [ref=f9e1088]: "37"
+            - generic [ref=f9e1089]: document["spanId"] = span_id
+          - generic [ref=f9e1090]:
+            - generic [ref=f9e1092]: "38"
+            - generic [ref=f9e1093]: "if record.exc_info:"
+          - generic [ref=f9e1094]:
+            - generic [ref=f9e1096]: "39"
+            - generic [ref=f9e1097]: exception = record.exc_info[1]
+          - generic [ref=f9e1098]:
+            - generic [ref=f9e1100]: "40"
+            - generic [ref=f9e1101]: "document[\"error\"] = {"
+          - generic [ref=f9e1102]:
+            - generic [ref=f9e1104]: "41"
+            - generic [ref=f9e1105]: "\"type\": type(exception).__name__,"
+          - generic [ref=f9e1106]:
+            - generic [ref=f9e1108]: "42"
+            - generic [ref=f9e1109]: "\"message\": mask(str(exception)),"
+          - generic [ref=f9e1110]:
+            - generic [ref=f9e1112]: "43"
+            - generic [ref=f9e1113]: "\"stack_trace\": mask(self.formatException(record.exc_info)),"
+          - generic [ref=f9e1114]:
+            - generic [ref=f9e1116]: "44"
+            - generic [ref=f9e1117]: "}"
+          - generic [ref=f9e1118]:
+            - generic [ref=f9e1120]: "45"
+            - generic [ref=f9e1121]: return json.dumps(document, ensure_ascii=False)
+          - generic [ref=f9e1122]: "46"
+          - generic [ref=f9e1126]: "47"
+          - generic [ref=f9e1130]:
+            - generic [ref=f9e1132]: "48"
+            - generic [ref=f9e1133]: "def configure_logging(service_name: str, level: str) -> None:"
+          - generic [ref=f9e1134]:
+            - generic [ref=f9e1136]: "49"
+            - generic [ref=f9e1137]: "\"\"\"루트 로거 하나에 ECS 처리기를 둔다."
+          - generic [ref=f9e1138]: "50"
+          - generic [ref=f9e1142]:
+            - generic [ref=f9e1144]: "51"
+            - generic [ref=f9e1145]: uvicorn 로거도 루트로 올라오게 한다(uvicorn 은 log_config=None 으로 띄운다). 접근 로그는 경로만 남긴다.
+          - generic [ref=f9e1146]:
+            - generic [ref=f9e1148]: "52"
+            - generic [ref=f9e1149]: "\"\"\""
+          - generic [ref=f9e1150]:
+            - generic [ref=f9e1152]: "53"
+            - generic [ref=f9e1153]: handler = logging.StreamHandler()
+          - generic [ref=f9e1154]:
+            - generic [ref=f9e1156]: "54"
+            - generic [ref=f9e1157]: handler.setFormatter(EcsJsonFormatter(service_name))
+          - generic [ref=f9e1158]:
+            - generic [ref=f9e1160]: "55"
+            - generic [ref=f9e1161]: root = logging.getLogger()
+          - generic [ref=f9e1162]:
+            - generic [ref=f9e1164]: "56"
+            - generic [ref=f9e1165]: root.handlers[:] = [handler]
+          - generic [ref=f9e1166]:
+            - generic [ref=f9e1168]: "57"
+            - generic [ref=f9e1169]: root.setLevel(level)
+          - generic [ref=f9e1170]:
+            - generic [ref=f9e1172]: "58"
+            - generic [ref=f9e1173]: "for name in (\"uvicorn\", \"uvicorn.error\", \"uvicorn.access\"):"
+          - generic [ref=f9e1174]:
+            - generic [ref=f9e1176]: "59"
+            - generic [ref=f9e1177]: logger = logging.getLogger(name)
+          - generic [ref=f9e1178]:
+            - generic [ref=f9e1180]: "60"
+            - generic [ref=f9e1181]: logger.handlers.clear()
+          - generic [ref=f9e1182]:
+            - generic [ref=f9e1184]: "61"
+            - generic [ref=f9e1185]: logger.propagate = True
+          - generic [ref=f9e1186]:
+            - generic [ref=f9e1188]: "62"
+            - generic [ref=f9e1189]: access_logger = logging.getLogger("uvicorn.access")
+          - generic [ref=f9e1190]:
+            - generic [ref=f9e1192]: "63"
+            - generic [ref=f9e1193]: "if not any(isinstance(existing, AccessLogPathFilter) for existing in access_logger.filters):"
+          - generic [ref=f9e1194]:
+            - generic [ref=f9e1196]: "64"
+            - generic [ref=f9e1197]: access_logger.addFilter(AccessLogPathFilter())
+          - generic [ref=f9e1198]: "65"
+      - generic [ref=f9e1204]:
+        - generic [ref=f9e1205]: 데이터 상세
+        - generic [ref=f9e1206]: 코드의 값 · SQL 을 누르면 여기에 나옵니다

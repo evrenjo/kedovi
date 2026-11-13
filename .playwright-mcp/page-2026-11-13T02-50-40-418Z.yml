@@ -1,0 +1,131 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - heading "test_place_order" [level=1] [ref=f5e3]
+    - generic [ref=f5e4]:
+      - generic [ref=f5e5]: 테스트 tests/test_order_api.py::test_place_order
+      - generic [ref=f5e6]: repo pyshop
+      - generic [ref=f5e7]: 함수 12
+      - generic [ref=f5e8]: SQL 7
+      - generic [ref=f5e9]: 12ms (기록 중 느려짐 포함)
+      - generic [ref=f5e10]: 2026. 11. 13. 오전 11:49:40
+    - button "◐" [ref=f5e11] [cursor=pointer]
+  - main [ref=f5e12]:
+    - complementary [ref=f5e13]:
+      - generic [ref=f5e14]:
+        - textbox "함수 · 클래스 · SQL 찾기" [ref=f5e15]
+        - generic [ref=f5e16]:
+          - generic [ref=f5e17]: 보기
+          - combobox "어디부터 보일지" [ref=f5e18]:
+            - option "진입점부터 (필터 · 가로채기 · 테스트 숨김)" [selected]
+            - option "필터 · 가로채기 포함"
+            - option "테스트 코드까지 전체"
+        - generic [ref=f5e19]:
+          - generic [ref=f5e20]: 파일
+          - combobox "이 파일의 함수만" [ref=f5e21]:
+            - option "모든 파일" [selected]
+        - generic [ref=f5e22]:
+          - generic [ref=f5e23]:
+            - checkbox "SQL · 예외만" [ref=f5e24]
+            - text: SQL · 예외만
+          - generic [ref=f5e25]: 함수 0 / 12개
+    - generic [ref=f5e28]:
+      - generic [ref=f5e29]:
+        - generic [ref=f5e30]:
+          - button "◀ 이전 단계" [disabled] [ref=f5e31]
+          - button "다음 단계 ▶" [disabled] [ref=f5e32]
+          - generic [ref=f5e33]: 단계 - / 0
+          - generic [ref=f5e34]: 노란 줄이 실행된 줄 (누르면 그 줄의 값) · 키보드 ← →
+        - generic [ref=f5e35]:
+          - generic [ref=f5e36]:
+            - generic [ref=f5e37]: src/shop/web/app.py
+            - generic [ref=f5e38]: shop.web.app.place_order()
+            - 'button "↑ 부른 곳: app.request_id()" [ref=f5e39] [cursor=pointer]'
+          - generic [ref=f5e40]:
+            - generic [ref=f5e41] [cursor=pointer]: "body = OrderRequest{member_id=1, lines=list[3]}"
+            - generic [ref=f5e42]: →
+            - generic [ref=f5e43] [cursor=pointer]: "반환 = OrderResult{order_id=1, paid=24660, status=PARTIAL, …}"
+        - generic [ref=f5e45]:
+          - generic [ref=f5e46]:
+            - generic [ref=f5e48]: "1"
+            - generic [ref=f5e49]: import asyncio
+          - generic [ref=f5e50]:
+            - generic [ref=f5e52]: "2"
+            - generic [ref=f5e53]: import uuid
+          - generic [ref=f5e54]: "3"
+          - generic [ref=f5e58]:
+            - generic [ref=f5e60]: "4"
+            - generic [ref=f5e61]: from fastapi import FastAPI, Request
+          - generic [ref=f5e62]: "5"
+          - generic [ref=f5e66]:
+            - generic [ref=f5e68]: "6"
+            - generic [ref=f5e69]: from shop.db import connect
+          - generic [ref=f5e70]:
+            - generic [ref=f5e72]: "7"
+            - generic [ref=f5e73]: from shop.order.models import OrderRequest, OrderResult
+          - generic [ref=f5e74]:
+            - generic [ref=f5e76]: "8"
+            - generic [ref=f5e77]: from shop.order.repository import OrderRepository
+          - generic [ref=f5e78]:
+            - generic [ref=f5e80]: "9"
+            - generic [ref=f5e81]: from shop.order.service import OrderService
+          - generic [ref=f5e82]: "10"
+          - generic [ref=f5e86]:
+            - generic [ref=f5e88]: "11"
+            - generic [ref=f5e89]: app = FastAPI()
+          - generic [ref=f5e90]:
+            - generic [ref=f5e92]: "12"
+            - generic [ref=f5e93]: service = OrderService(OrderRepository(connect()))
+          - generic [ref=f5e94]: "13"
+          - generic [ref=f5e98]: "14"
+          - generic [ref=f5e102]:
+            - generic [ref=f5e104]: "15"
+            - generic [ref=f5e105]: "@app.middleware(\"http\")"
+          - generic [ref=f5e106]:
+            - generic [ref=f5e108]: "16"
+            - generic [ref=f5e109]: "async def request_id(request: Request, call_next):"
+          - generic [ref=f5e110]:
+            - generic [ref=f5e112]: "17"
+            - generic [ref=f5e113]: rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:8]
+          - generic [ref=f5e114]:
+            - generic [ref=f5e116]: "18"
+            - generic [ref=f5e117]: response = await call_next(request)
+          - generic [ref=f5e118]:
+            - generic [ref=f5e120]: "19"
+            - generic [ref=f5e121]: response.headers["x-request-id"] = rid
+          - generic [ref=f5e122]:
+            - generic [ref=f5e124]: "20"
+            - generic [ref=f5e125]: return response
+          - generic [ref=f5e126]: "21"
+          - generic [ref=f5e130]: "22"
+          - generic [ref=f5e134]:
+            - generic [ref=f5e136]: "23"
+            - generic [ref=f5e137]: "@app.post(\"/api/orders\")"
+          - generic [ref=f5e138]:
+            - generic [ref=f5e140]: "24"
+            - generic [ref=f5e141]: "def place_order(body: OrderRequest) -> OrderResult:"
+          - generic [ref=f5e142] [cursor=pointer]:
+            - generic [ref=f5e143]: ●
+            - generic [ref=f5e144]: "25"
+            - generic [ref=f5e145]: return service.place(body)
+          - generic [ref=f5e146]: "→ OrderService.place() = OrderResult{order_id=1, paid=24660, sta…"
+          - generic [ref=f5e150]: "26"
+          - generic [ref=f5e154]: "27"
+          - generic [ref=f5e158]:
+            - generic [ref=f5e160]: "28"
+            - generic [ref=f5e161]: "@app.get(\"/api/members/{member_id}/grade\")"
+          - generic [ref=f5e162]:
+            - generic [ref=f5e164]: "29"
+            - generic [ref=f5e165]: "async def member_grade(member_id: int) -> dict:"
+          - generic [ref=f5e166]:
+            - generic [ref=f5e168]: "30"
+            - generic [ref=f5e169]: await asyncio.sleep(0)
+          - generic [ref=f5e170]:
+            - generic [ref=f5e172]: "31"
+            - generic [ref=f5e173]: member = service.repo.member(member_id)
+          - generic [ref=f5e174]:
+            - generic [ref=f5e176]: "32"
+            - generic [ref=f5e177]: "return {\"id\": member_id, \"grade\": member[\"grade\"]}"
+          - generic [ref=f5e178]: "33"
+      - generic [ref=f5e184]:
+        - generic [ref=f5e185]: 데이터 상세
+        - generic [ref=f5e186]: 코드의 값 · SQL 을 누르면 여기에 나옵니다

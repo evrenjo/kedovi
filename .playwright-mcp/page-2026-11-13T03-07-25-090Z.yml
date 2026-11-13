@@ -1,0 +1,195 @@
+- generic [active] [ref=f8e1]:
+  - banner [ref=f8e2]:
+    - heading "담고 주문하기" [level=1] [ref=f8e3]
+    - generic [ref=f8e4]:
+      - generic [ref=f8e5]: 시나리오 e2e/order.spec.ts › 담고 주문하기
+      - generic [ref=f8e6]: repo web
+      - generic [ref=f8e7]: 함수 32
+      - generic [ref=f8e8]: 요청 2
+      - generic [ref=f8e9]: 235ms (기록 중 느려짐 포함)
+      - generic [ref=f8e10]: 2026. 11. 13. 오후 12:06:53
+    - button "◐" [ref=f8e11] [cursor=pointer]
+  - main [ref=f8e12]:
+    - complementary [ref=f8e13]:
+      - generic [ref=f8e14]:
+        - textbox "함수 · 클래스 · SQL 찾기" [ref=f8e15]
+        - generic [ref=f8e16]:
+          - generic [ref=f8e17]: 보기
+          - combobox "어디부터 보일지" [ref=f8e18]:
+            - option "진입점부터 (필터 · 가로채기 · 테스트 숨김)" [selected]
+            - option "필터 · 가로채기 포함"
+            - option "테스트 코드까지 전체"
+        - generic [ref=f8e19]:
+          - generic [ref=f8e20]: 파일
+          - combobox "이 파일의 함수만" [ref=f8e21]:
+            - option "모든 파일" [selected]
+            - option "(4)"
+            - option "App.tsx (16)"
+            - option "cart.ts (10)"
+            - option "api.ts (2)"
+        - generic [ref=f8e22]:
+          - generic [ref=f8e23]:
+            - checkbox "SQL · 요청 · 예외만" [ref=f8e24]
+            - text: SQL · 요청 · 예외만
+          - generic [ref=f8e25]: 함수 32개
+      - generic [ref=f8e26]:
+        - generic [ref=f8e27] [cursor=pointer]:
+          - generic [ref=f8e28]: "1"
+          - generic [ref=f8e29]: 열기 /
+          - generic [ref=f8e30]: 사용자 동작
+        - generic [ref=f8e31] [cursor=pointer]:
+          - generic [ref=f8e32]: "2"
+          - generic [ref=f8e33]: App.App()
+          - generic [ref=f8e34]: App.tsx:6
+        - generic [ref=f8e35] [cursor=pointer]:
+          - generic [ref=f8e36]: "3"
+          - generic [ref=f8e37]: cart.total()
+          - generic [ref=f8e38]: cart.ts:12
+        - generic [ref=f8e39] [cursor=pointer]:
+          - generic [ref=f8e40]: "4"
+          - generic [ref=f8e41]: App.useEffect()
+          - generic [ref=f8e42]: App.tsx:11
+        - generic [ref=f8e43] [cursor=pointer]:
+          - generic [ref=f8e44]: "5"
+          - generic [ref=f8e45]: api.fetchProducts()
+          - generic [ref=f8e46]: 요청 1
+          - generic [ref=f8e47]: api.ts:5
+        - generic [ref=f8e48] [cursor=pointer]:
+          - generic [ref=f8e49]: GET /api/products
+          - generic [ref=f8e50]: 200 · 6ms
+        - generic [ref=f8e51] [cursor=pointer]:
+          - generic [ref=f8e52]: "6"
+          - generic [ref=f8e53]: App.App()
+          - generic [ref=f8e54]: App.tsx:6
+        - generic [ref=f8e55] [cursor=pointer]:
+          - generic [ref=f8e56]: "7"
+          - generic [ref=f8e57]: cart.total()
+          - generic [ref=f8e58]: cart.ts:12
+        - generic [ref=f8e59] [cursor=pointer]:
+          - generic [ref=f8e60]: "8"
+          - generic [ref=f8e61]: App.map()
+          - generic [ref=f8e62]: App.tsx:26
+        - generic [ref=f8e63] [cursor=pointer]:
+          - generic [ref=f8e64]: "9"
+          - generic [ref=f8e65]: 클릭 button "담기 pen"
+          - generic [ref=f8e66]: 사용자 동작
+        - generic [ref=f8e67] [cursor=pointer]:
+          - generic [ref=f8e68]: "10"
+          - generic [ref=f8e69]: App.button onClick()
+          - generic [ref=f8e70]: App.tsx:28
+        - generic [ref=f8e71] [cursor=pointer]:
+          - generic [ref=f8e72]: "11"
+          - generic [ref=f8e73]: App.App()
+          - generic [ref=f8e74]: App.tsx:6
+        - generic [ref=f8e75] [cursor=pointer]:
+          - generic [ref=f8e76]: "12"
+          - generic [ref=f8e77]: App.setCart()
+          - generic [ref=f8e78]: App.tsx:28
+        - generic [ref=f8e79] [cursor=pointer]:
+          - generic [ref=f8e80]: "13"
+          - generic [ref=f8e81]: cart.add()
+          - generic [ref=f8e82]: cart.ts:6
+        - generic [ref=f8e83] [cursor=pointer]:
+          - generic [ref=f8e84]: "14"
+          - generic [ref=f8e85]: cart.total()
+          - generic [ref=f8e86]: cart.ts:12
+        - generic [ref=f8e87] [cursor=pointer]:
+          - generic [ref=f8e88]: "15"
+          - generic [ref=f8e89]: total.find()
+          - generic [ref=f8e90]: cart.ts:14
+        - generic [ref=f8e91] [cursor=pointer]:
+          - generic [ref=f8e92]: "16"
+          - generic [ref=f8e93]: App.map()
+          - generic [ref=f8e94]: App.tsx:26
+        - generic [ref=f8e95] [cursor=pointer]:
+          - generic [ref=f8e96]: "17"
+          - generic [ref=f8e97]: 클릭 button "담기 pen"
+          - generic [ref=f8e98]: 사용자 동작
+        - generic [ref=f8e99] [cursor=pointer]:
+          - generic [ref=f8e100]: "18"
+          - generic [ref=f8e101]: App.button onClick()
+          - generic [ref=f8e102]: App.tsx:28
+        - generic [ref=f8e103] [cursor=pointer]:
+          - generic [ref=f8e104]: "19"
+          - generic [ref=f8e105]: App.App()
+          - generic [ref=f8e106]: App.tsx:6
+        - generic [ref=f8e107] [cursor=pointer]:
+          - generic [ref=f8e108]: "20"
+          - generic [ref=f8e109]: App.setCart()
+          - generic [ref=f8e110]: App.tsx:28
+        - generic [ref=f8e111] [cursor=pointer]:
+          - generic [ref=f8e112]: "21"
+          - generic [ref=f8e113]: cart.add()
+          - generic [ref=f8e114]: cart.ts:6
+        - generic [ref=f8e115] [cursor=pointer]:
+          - generic [ref=f8e116]: "22"
+          - generic [ref=f8e117]: cart.total()
+          - generic [ref=f8e118]: cart.ts:12
+        - generic [ref=f8e119] [cursor=pointer]:
+          - generic [ref=f8e120]: "23"
+          - generic [ref=f8e121]: total.find()
+          - generic [ref=f8e122]: cart.ts:14
+        - generic [ref=f8e123] [cursor=pointer]:
+          - generic [ref=f8e124]: "24"
+          - generic [ref=f8e125]: App.map()
+          - generic [ref=f8e126]: App.tsx:26
+        - generic [ref=f8e127] [cursor=pointer]:
+          - generic [ref=f8e128]: "25"
+          - generic [ref=f8e129]: 클릭 button "주문하기"
+          - generic [ref=f8e130]: 사용자 동작
+        - generic [ref=f8e131] [cursor=pointer]:
+          - generic [ref=f8e132]: "26"
+          - generic [ref=f8e133]: App.placeOrder()
+          - generic [ref=f8e134]: App.tsx:17
+        - generic [ref=f8e135] [cursor=pointer]:
+          - generic [ref=f8e136]: "27"
+          - generic [ref=f8e137]: placeOrder.map()
+          - generic [ref=f8e138]: App.tsx:17
+        - generic [ref=f8e139] [cursor=pointer]:
+          - generic [ref=f8e140]: "28"
+          - generic [ref=f8e141]: api.postOrder()
+          - generic [ref=f8e142]: 요청 1
+          - generic [ref=f8e143]: api.ts:11
+        - generic [ref=f8e144] [cursor=pointer]:
+          - generic [ref=f8e145]: POST /api/orders
+          - generic [ref=f8e146]: 200 · 10ms
+        - generic [ref=f8e147] [cursor=pointer]:
+          - generic [ref=f8e148]: "29"
+          - generic [ref=f8e149]: App.App()
+          - generic [ref=f8e150]: App.tsx:6
+        - generic [ref=f8e151] [cursor=pointer]:
+          - generic [ref=f8e152]: "30"
+          - generic [ref=f8e153]: cart.total()
+          - generic [ref=f8e154]: cart.ts:12
+        - generic [ref=f8e155] [cursor=pointer]:
+          - generic [ref=f8e156]: "31"
+          - generic [ref=f8e157]: total.find()
+          - generic [ref=f8e158]: cart.ts:14
+        - generic [ref=f8e159] [cursor=pointer]:
+          - generic [ref=f8e160]: "32"
+          - generic [ref=f8e161]: App.map()
+          - generic [ref=f8e162]: App.tsx:26
+    - generic [ref=f8e164]:
+      - generic [ref=f8e165]:
+        - generic [ref=f8e166]:
+          - button "◀ 이전 단계" [disabled] [ref=f8e167]
+          - button "다음 단계 ▶" [ref=f8e168] [cursor=pointer]
+          - generic [ref=f8e169]: 노란 줄이 실행된 줄 (누르면 그 줄의 값) · 키보드 ← →
+        - generic [ref=f8e170]:
+          - generic [ref=f8e171]:
+            - generic [ref=f8e172]: 열기 /
+            - generic [ref=f8e173]: 사용자 동작
+          - generic [ref=f8e174]: 이 동작 뒤에 불린 함수 · 요청입니다. 함수를 누르면 코드가 보입니다
+        - generic [ref=f8e177]:
+          - generic [ref=f8e178] [cursor=pointer]:
+            - generic [ref=f8e179]: → App.App() = <main>
+            - generic [ref=f8e180]: src/App.tsx:6
+          - generic [ref=f8e181] [cursor=pointer]:
+            - generic [ref=f8e182]: → App.useEffect() = undefined
+            - generic [ref=f8e183]: src/App.tsx:11
+          - generic [ref=f8e184] [cursor=pointer]:
+            - generic [ref=f8e185]: → App.App() = <main>
+            - generic [ref=f8e186]: src/App.tsx:6
+      - generic [ref=f8e189]:
+        - generic [ref=f8e190]: 데이터 상세
+        - generic [ref=f8e191]: 코드의 값 · SQL 을 누르면 여기에 나옵니다

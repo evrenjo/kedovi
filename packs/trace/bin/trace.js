@@ -1,16 +1,17 @@
 #!/usr/bin/env node
-// 실행 흐름 디버깅: 테스트 · 로컬 서버 요청 한 번을 줄마다 값과 함께 기록해 이 PC 웹 페이지로 본다. 실행: kedovi trace <명령>
+// 실행 흐름 디버깅: 테스트 · 로컬 서버 요청 · 화면 조작 한 번을 줄마다 값과 함께 기록해 이 PC 웹 페이지로 본다. 실행: kedovi trace <명령>
 /*
  * 명령
- *   run --test <클래스>#<메서드> [--repo <이름> | --dir <경로>]              테스트 한 건을 기록 (API · 함수 · 배치 모두 테스트로)
- *   run --request "<METHOD> <http://localhost:포트/경로>" [--data '<본문>'] [-H 'K: V'] [--repo …] [--attach <디버그 포트>]
- *                                                                        로컬 서버(bootRun)를 띄워 실제 요청 한 번을 기록. --attach 면 이미 디버그 포트로 띄운 서버에 붙는다
- *   공통: [--include 패키지,…] [--sql on|off] [--max-steps 5000] [--max-hits 30] [--title "<제목>"] [--timeout 초]
- *   list [--n 10]                                                        최근 기록
- *   open [파일]                                                          브라우저로 (없으면 가장 최근)
- * 지금은 Java/Kotlin(JVM: Gradle · Maven)만. 기록은 이 PC 에만 (.agents/traces/, gitignore)
- * 값은 필드만 읽는다 (메서드를 부르지 않아 실행이 바뀌지 않는다). 비밀번호 · 토큰 이름의 값은 가린다
- * SQL: Gradle 은 기록할 때만 datasource-proxy 를 붙인다 (빌드 파일은 고치지 않는다). Maven 은 pom 에 있어야 한다
+ *   run --test <테스트> [--repo <이름> | --dir <경로>]      테스트 한 건 (Java 클래스#메서드 · Python tests/x.py::이름 · JS 파일::이름)
+ *                                                          Playwright e2e 면 계측한 개발 서버로 화면까지 (사용자 동작 · 요청 포함)
+ *   run --request "<METHOD> <http://localhost:포트/경로>" [--data '<본문>'] [-H 'K: V'] [--serve "<명령>"] [--attach <디버그 포트>]
+ *                                                          로컬 서버를 띄워 실제 요청 한 번 (Java bootRun · Python uvicorn 등 · Node npm start). --attach = 이미 띄운 JVM
+ *   run --web "<조작 단계>" | --web --manual [--headed]     화면 (Vite): goto · click · fill … 단계 또는 직접 조작
+ *   공통: [--sql on|off] [--max-steps] [--max-hits 30] [--title "<제목>"] [--timeout 초]. Java 만 [--include 패키지,…], 웹만 [--project <Playwright 프로젝트>]
+ *   list [--n 10]                                          최근 기록
+ *   open [파일]                                            브라우저로 (없으면 가장 최근)
+ * 언어별 기록: Java = 이 파일 + assets/java/Recorder.java (JDI) · Python = py.js + assets/python (sys.monitoring) · JS = js.js + assets/js (소스 계측)
+ * 기록은 이 PC 에만 (.agents/traces/, gitignore). 값은 필드 · 속성 값만 읽는다 (실행이 바뀌지 않게). 비밀번호 · 토큰 이름의 값은 가린다
  */
 'use strict';
 const fs = require('fs');
@@ -132,7 +133,10 @@ function mapSources(dir, trace, files = sourceFiles(dir)) {
 /** 기록 요약: 호출 · 줄 · SQL · 예외 수 */
 function summary(trace) {
   const st = trace.steps || [];
-  return { calls: st.filter((s) => s.call).length, lines: st.filter((s) => s.k === 'line').length, sql: st.filter((s) => s.k === 'sql').reduce((n, s) => n + ((s.x && s.x.qs) || []).length, 0), ex: st.filter((s) => s.k === 'ex').length };
+  const out = { calls: st.filter((s) => s.call).length, lines: st.filter((s) => s.k === 'line').length, sql: st.filter((s) => s.k === 'sql').reduce((n, s) => n + ((s.x && s.x.qs) || []).length, 0), ex: st.filter((s) => s.k === 'ex').length };
+  const net = st.filter((s) => s.k === 'net').length;
+  if (net) out.net = net;
+  return out;
 }
 
 /** 묶음 파일 쓰기 → 파일 경로 */
@@ -229,21 +233,59 @@ function request(method, url, headers, body) {
   });
 }
 
+/** 테스트 이름 모양으로 언어 짐작: 파일.py::함수 → python, 클래스#메서드 → java, *.test.ts · *.spec.js → node */
+function specLang(opts) {
+  const t = String(opts.test || '');
+  if (opts.lang) return opts.lang;
+  if (opts.web || opts.manual) return 'web';
+  if (/\.[cm]?[jt]sx?(::|$)/.test(t)) return 'node';
+  if (/\.py(::|$)|::/.test(t)) return 'python';
+  if (t.includes('#')) return 'java';
+  return null;
+}
+
+/** JS 프로젝트 폴더: 그 폴더나 한 단계 아래(frontend · web · client …)의 package.json */
+function jsDir(dir) {
+  if (fs.existsSync(path.join(dir, 'package.json'))) return dir;
+  let es = [];
+  try { es = fs.readdirSync(dir, { withFileTypes: true }); } catch { return null; }
+  const subs = es.filter((e) => e.isDirectory() && !e.name.startsWith('.') && !SKIP_DIRS.has(e.name) && fs.existsSync(path.join(dir, e.name, 'package.json')));
+  const pick = subs.find((e) => /^(frontend|front|web|client|app|ui)$/i.test(e.name)) || subs[0];
+  return pick ? path.join(dir, pick.name) : null;
+}
+
+/** 폴더의 언어 (짐작한 언어가 있으면 그것이 되는지만 본다) */
+function dirLang(dir, want) {
+  const py = require('./py');
+  const has = { java: !!buildTool(dir), python: py.isPython(dir), node: !!jsDir(dir) };
+  if (want === 'web') return has.node ? 'web' : null;
+  if (want) return has[want] ? want : null;
+  return has.java ? 'java' : has.python ? 'python' : has.node ? 'node' : null;
+}
+
 async function run(opts) {
   const { load } = require(path.join(__dirname, '..', '..', 'core', 'lib', 'workspace.js'));
   let ws = null;
   try { ws = load(); } catch { /* 워크스페이스 밖 (--dir 만) */ }
   const ROOT = ws ? ws.root : process.cwd();
+  const want = specLang(opts);
   let dir = opts.dir ? path.resolve(opts.dir) : null;
   if (!dir && ws) {
     const repos = ws.repos || [];
-    const r = opts.repo ? repos.find((x) => x.name === opts.repo) : repos.find((x) => buildTool(x.dir || '')) || null;
+    const r = opts.repo ? repos.find((x) => x.name === opts.repo) : repos.find((x) => x.dir && dirLang(x.dir, want)) || null;
     if (opts.repo && !r) fail(`workspace.json repos 에 '${opts.repo}' 가 없습니다`);
     if (r) dir = r.dir;
   }
   if (!dir || !fs.existsSync(dir)) fail('기록할 repo 를 찾지 못했습니다. --repo <이름> 이나 --dir <경로> 를 주세요');
+  const lang = dirLang(dir, want);
+  if (!lang) fail(`${dir}: ${want ? `${want} 프로젝트가 아닙니다` : 'JVM(Gradle · Maven) · Python · Node 프로젝트를 찾지 못했습니다'}`);
+  if (lang === 'python') return runPython(opts, ROOT, dir);
+  if (lang === 'node' || lang === 'web') {
+    const jd = jsDir(dir);
+    if (opts.test && !fs.existsSync(path.resolve(jd, parseTestFile(opts.test))) && fs.existsSync(path.resolve(dir, parseTestFile(opts.test)))) fail(`테스트 경로는 ${path.relative(dir, jd) || '.'} 기준으로 주세요`);
+    return require('./js').run(opts, ROOT, jd, lang, { fail, freePort, waitPort, request, finish: finishBundle, tail, killGroup, wait, parseRequest });
+  }
   const tool = buildTool(dir);
-  if (!tool) fail(`${dir}: Gradle · Maven 프로젝트가 아닙니다 (지금은 JVM 만)`);
   const files = sourceFiles(dir);
   const include = opts.include ? opts.include.split(',').map((x) => x.trim()).filter(Boolean) : basePackages(dir, files);
   if (!include.length) fail('기록할 패키지를 찾지 못했습니다. --include com.example.app 처럼 주세요');
@@ -359,26 +401,133 @@ async function run(opts) {
   if (!fs.existsSync(outFile)) fail(`기록이 없습니다. ${mode === 'test' ? '테스트 이름 · 메서드를 확인하세요' : ''}\n${recErr}${tail(logFile)}`);
   const trace = JSON.parse(fs.readFileSync(outFile, 'utf8'));
   if (!trace.steps.length) notes.push(mode === 'test' ? `시작 메서드 ${entry} 가 실행되지 않았습니다 (테스트가 건너뛰어졌거나 이름이 다름)` : '요청이 프로젝트 코드를 타지 않았습니다 (경로 · 포트 확인)');
-  const bundle = {
-    meta: {
-      title: opts.title || (mode === 'test' ? entry.split('.').pop() : `${reqMethod} ${new URL(reqUrl).pathname}`),
-      mode, entry, tool, repo: path.basename(dir), include, at: new Date().toISOString(),
-      request: mode === 'request' ? { method: reqMethod, url: reqUrl, body: opts.data || null } : null,
-      response, notes: [...notes, ...(trace.notes || [])], log: tail(logFile, 40),
-    },
-    trace,
-    files: mapSources(dir, trace, files),
-  };
-  const file = writeBundle(ROOT, bundle, mode === 'test' ? entry.split('.').pop().replace('#', '-') : `${reqMethod}-${new URL(reqUrl).pathname}`);
+  finishBundle(ROOT, {
+    title: opts.title || (mode === 'test' ? entry.split('.').pop() : `${reqMethod} ${new URL(reqUrl).pathname}`),
+    mode, entry, tool, lang: 'java', repo: path.basename(dir), include, at: new Date().toISOString(),
+    request: mode === 'request' ? { method: reqMethod, url: reqUrl, body: opts.data || null } : null,
+    response, notes: [...notes, ...(trace.notes || [])], log: tail(logFile, 40),
+  }, trace, mapSources(dir, trace, files), mode === 'test' ? entry.split('.').pop().replace('#', '-') : `${reqMethod}-${new URL(reqUrl).pathname}`);
   try { fs.unlinkSync(outFile); } catch { /* 없음 */ }
+}
+
+/** 묶음(meta · trace · files)을 쓰고 요약 · 링크를 찍는다 (모든 언어 공통) */
+function finishBundle(ROOT, meta, trace, files, slug) {
+  const file = writeBundle(ROOT, { meta, trace, files }, slug);
   const R = require(path.join(__dirname, '..', '..', 'core', 'lib', 'reports.js'));
   const url = urlOf(ROOT, R.ensureServer(ROOT), file);
   const s = summary(trace);
-  console.log(`✔ 기록: 호출 ${s.calls} · 줄 ${s.lines} · SQL ${s.sql} · 예외 ${s.ex}${trace.truncated ? ' (상한에서 멈춤)' : ''}`);
-  for (const n of bundle.meta.notes) console.log(`  ⚠ ${n}`);
-  if (response) console.log(`  응답: ${response.status || response.error}`);
+  console.log(`✔ 기록: 호출 ${s.calls} · 줄 ${s.lines} · SQL ${s.sql}${s.net ? ` · 요청 ${s.net}` : ''} · 예외 ${s.ex}${trace.truncated ? ' (상한에서 멈춤)' : ''}`);
+  for (const n of meta.notes || []) console.log(`  ⚠ ${n}`);
+  if (meta.response) console.log(`  응답: ${meta.response.status || meta.response.error}`);
   console.log(`파일: ${path.relative(ROOT, file)}`);
   console.log(`링크: ${url}`);
+  return file;
+}
+
+/** 요청 문자열 확인: "POST http://localhost:8000/x" → { method, url } (localhost 만) */
+function parseRequest(s) {
+  const m = String(s).trim().match(/^([A-Za-z]+)\s+(\S+)$/);
+  if (!m) fail('사용법: kedovi trace run --request "POST http://localhost:8080/api/orders" [--data \'{…}\']');
+  let u;
+  try { u = new URL(m[2]); } catch { fail(`주소가 아닙니다: ${m[2]}`); }
+  if (!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(u.hostname)) fail('로컬 서버(localhost)만 기록합니다. 운영 · 개발 서버에는 붙지 않습니다');
+  return { method: m[1].toUpperCase(), url: m[2], u };
+}
+
+function headersOf(opts) {
+  const headers = {};
+  for (const h of opts.headers || []) { const i = h.indexOf(':'); if (i > 0) headers[h.slice(0, i).trim()] = h.slice(i + 1).trim(); }
+  if (opts.data && !Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')) headers['Content-Type'] = /^\s*[[{]/.test(opts.data) ? 'application/json' : 'text/plain';
+  return headers;
+}
+
+const parseTestFile = (t) => String(t).split('::')[0];
+
+/** 공백으로 나눈 명령 (따옴표 묶음 지원) */
+function splitCmd(s) {
+  const out = [];
+  String(s).replace(/"([^"]*)"|'([^']*)'|(\S+)/g, (_, a, b, c) => { out.push(a ?? b ?? c); return ''; });
+  return out;
+}
+
+// ───────── Python ─────────
+
+async function runPython(opts, ROOT, dir) {
+  const py = require('./py');
+  const files = py.pyFiles(dir);
+  const mode = opts.request ? 'request' : 'test';
+  const tmp = path.join(ROOT, DIR, 'tmp');
+  fs.mkdirSync(tmp, { recursive: true });
+  const stamp = Date.now();
+  const outFile = path.join(tmp, `${stamp}.raw.json`);
+  const logFile = path.join(tmp, `${stamp}.run.log`);
+  const [cmd, pre] = opts.python ? [opts.python, []] : py.runner(dir);
+  const notes = [];
+  const timeout = (Number(opts.timeout) || 900) * 1000;
+  let response = null;
+  let entry = null;
+  let req = null;
+  if (mode === 'test') {
+    if (!opts.test) fail('사용법: kedovi trace run --test tests/test_x.py::test_y (또는 함수 이름만)');
+    const found = py.findTest(dir, opts.test, files);
+    if (!found) fail(`테스트 ${opts.test} 를 ${dir} 에서 찾지 못했습니다`);
+    if (found.many) fail(`테스트가 여럿입니다. 하나를 고르세요:\n${found.many.map((h) => `  ${h.nodeid}`).join('\n')}`);
+    entry = found.nodeid;
+    const log = fs.openSync(logFile, 'w');
+    process.stdout.write(`… pytest ${entry} 기록 중 (로그 ${path.relative(ROOT, logFile)})\n`);
+    const { spawn: sp } = require('child_process');
+    const child = sp(cmd, [...pre, ...py.pytestArgs(dir, entry)], { cwd: dir, env: py.env(dir, outFile, opts, { KEDOVI_TRACE_TEST: entry, KEDOVI_TRACE_MODE: 'test' }), detached: true, stdio: ['ignore', log, log] });
+    child.on('error', (e) => fs.appendFileSync(logFile, `\n${e.message}\n`));
+    const timer = setTimeout(() => { notes.push(`시간 상한(${timeout / 1000}초)에 닿아 멈춤`); killGroup(child); }, timeout);
+    const code = await wait(child);
+    clearTimeout(timer);
+    if (code !== 0) notes.push(`테스트가 실패했습니다 (종료 코드 ${code}). 기록은 실패 지점까지`);
+  } else {
+    req = parseRequest(opts.request);
+    const port = Number(req.u.port || 80);
+    const serve = opts.serve ? splitCmd(opts.serve) : py.serveCommand(dir, port, files);
+    if (!serve) fail('서버 실행 명령을 찾지 못했습니다. --serve "uvicorn app.main:app --port 8000" 처럼 주세요');
+    if (serve.includes('--reload')) fail('--reload 를 빼 주세요 (기록기는 서버 프로세스 하나에만 붙습니다)');
+    const args = [...pre, '-m', 'kedovi_trace', ...(serve[0] === 'python' || serve[0] === 'python3' ? serve.slice(1) : serve)];
+    process.stdout.write(`… 서버 실행: ${serve.join(' ')} (로그 ${path.relative(ROOT, logFile)})\n`);
+    const { spawn: sp } = require('child_process');
+    const child = sp(cmd, args, { cwd: dir, env: py.env(dir, outFile, opts, { KEDOVI_TRACE_MODE: 'request' }), detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    const log = fs.createWriteStream(logFile);
+    let out = '';
+    child.stdout.on('data', (b) => { out += b.toString(); log.write(b); });
+    child.stderr.on('data', (b) => log.write(b));
+    child.on('error', (e) => log.write(`\n${e.message}\n`));
+    const seen = (word, ms) => new Promise((resolve) => {
+      const until = Date.now() + ms;
+      const t = setInterval(() => { if (out.includes(word) || child.exitCode !== null || Date.now() > until) { clearInterval(t); resolve(out.includes(word)); } }, 100);
+    });
+    if (!await seen('ATTACHED', 60000)) { killGroup(child); fail(`서버를 띄우지 못했습니다.\n${tail(logFile)}`); }
+    process.stdout.write(`… 서버가 ${req.u.host} 를 열 때까지 기다림\n`);
+    const died = new Promise((r) => child.once('exit', () => r('exit')));
+    const up = await Promise.race([waitPort(req.u.hostname.replace(/^\[|\]$/g, ''), port, timeout), died]);
+    if (up !== true) { killGroup(child); log.end(); fail(`서버가 ${up === 'exit' ? '시작하다 끝났습니다' : '열리지 않았습니다'}.\n${tail(logFile)}`); }
+    child.stdin.write('start\n');
+    await seen('ARMED', 10000);
+    process.stdout.write(`… ${req.method} ${req.url}\n`);
+    response = await request(req.method, req.url, headersOf(opts), opts.data);
+    await new Promise((r) => setTimeout(r, 300)); // 응답 뒤 남은 처리
+    child.stdin.write('stop\n');
+    await seen('WRITTEN', 30000);
+    killGroup(child);
+    log.end();
+  }
+  if (!fs.existsSync(outFile)) fail(`기록이 없습니다. ${mode === 'test' ? '테스트 이름을 확인하세요' : ''}\n${tail(logFile)}`);
+  const trace = JSON.parse(fs.readFileSync(outFile, 'utf8'));
+  if (!trace.steps.length) notes.push(mode === 'test' ? `테스트 ${entry} 가 프로젝트 코드를 타지 않았습니다` : '요청이 프로젝트 코드를 타지 않았습니다 (경로 · 포트 확인)');
+  const slug = mode === 'test' ? entry.split('::').pop() : `${req.method}-${req.u.pathname}`;
+  finishBundle(ROOT, {
+    title: opts.title || (mode === 'test' ? entry.split('::').slice(1).join('.') : `${req.method} ${req.u.pathname}`),
+    mode, entry, tool: [path.basename(cmd), ...pre].join(' '), lang: 'python', repo: path.basename(dir), include: [path.basename(dir)], at: new Date().toISOString(),
+    request: req ? { method: req.method, url: req.url, body: opts.data || null } : null,
+    response, notes: [...notes, ...(trace.notes || [])], log: tail(logFile, 40),
+  }, trace, py.mapSources(dir, trace), slug);
+  try { fs.unlinkSync(outFile); } catch { /* 없음 */ }
+  return undefined;
 }
 
 function tail(file, n = 15) {
@@ -408,7 +557,9 @@ function main() {
   const pos = [];
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
-    if (a === '-H' || a === '--header') { opts.headers.push(argv[i + 1]); i += 1; } else if (a.startsWith('--')) {
+    if (a === '-H' || a === '--header') { opts.headers.push(argv[i + 1]); i += 1; } else if (/^--(manual|headed)$/.test(a) || (a === '--web' && (argv[i + 1] === undefined || argv[i + 1].startsWith('--')))) {
+      opts[a.slice(2)] = true;
+    } else if (a.startsWith('--')) {
       const k = a.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
       opts[k] = argv[i + 1];
       i += 1;
@@ -421,7 +572,7 @@ function main() {
   if (cmd === 'run') return run(opts).catch((e) => fail(e.stack || e.message));
   if (cmd === 'list' || !cmd) {
     const items = list(root).slice(0, Number(opts.n) || 10);
-    if (!items.length) { console.log('기록이 없습니다 (kedovi trace run --test <클래스>#<메서드>)'); return undefined; }
+    if (!items.length) { console.log('기록이 없습니다 (kedovi trace run --test <테스트> · --request "<METHOD> <주소>" · --web "<조작 단계>")'); return undefined; }
     const R = require(path.join(__dirname, '..', '..', 'core', 'lib', 'reports.js'));
     const st = R.readState(root);
     const port = st && st.pid && R.alive(st.pid) ? st.port : null;
@@ -442,8 +593,8 @@ function main() {
     spawnSync(opener[0], opener[1], { stdio: 'ignore' });
     return undefined;
   }
-  return fail('사용법: kedovi trace run --test <클래스>#<메서드> · run --request "<METHOD> <주소>" · list · open [파일]');
+  return fail('사용법: kedovi trace run --test <테스트> · run --request "<METHOD> <주소>" · run --web "<조작 단계>" | --web --manual · list · open [파일]');
 }
 
-module.exports = { buildTool, sourceFiles, packageOf, basePackages, findClass, gradleProject, mavenModule, bootMajor, sqlStarter, mapSources, summary, urlOf };
+module.exports = { buildTool, sourceFiles, packageOf, basePackages, findClass, gradleProject, mavenModule, bootMajor, sqlStarter, mapSources, summary, urlOf, specLang, dirLang, splitCmd, parseRequest };
 if (require.main === module) main();

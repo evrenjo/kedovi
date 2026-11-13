@@ -1,0 +1,183 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - heading "test_place_order" [level=1] [ref=f4e3]
+    - generic [ref=f4e4]:
+      - generic [ref=f4e5]: 테스트 tests/test_order_api.py::test_place_order
+      - generic [ref=f4e6]: repo pyshop
+      - generic [ref=f4e7]: 함수 12
+      - generic [ref=f4e8]: SQL 7
+      - generic [ref=f4e9]: 12ms (기록 중 느려짐 포함)
+      - generic [ref=f4e10]: 2026. 11. 13. 오전 11:49:40
+    - button "◐" [ref=f4e11] [cursor=pointer]
+  - main [ref=f4e12]:
+    - complementary [ref=f4e13]:
+      - generic [ref=f4e14]:
+        - textbox "함수 · 클래스 · SQL 찾기" [ref=f4e15]
+        - generic [ref=f4e16]:
+          - generic [ref=f4e17]: 보기
+          - combobox "어디부터 보일지" [ref=f4e18]:
+            - option "진입점부터 (필터 · 가로채기 · 테스트 숨김)" [selected]
+            - option "필터 · 가로채기 포함"
+            - option "테스트 코드까지 전체"
+        - generic [ref=f4e19]:
+          - generic [ref=f4e20]: 파일
+          - combobox "이 파일의 함수만" [ref=f4e21]:
+            - option "모든 파일" [selected]
+            - option "test_order_api.py (1)"
+            - option "app.py (2)"
+            - option "service.py (2)"
+            - option "repository.py (7)"
+        - generic [ref=f4e22]:
+          - generic [ref=f4e23]:
+            - checkbox "SQL · 예외만" [ref=f4e24]
+            - text: SQL · 예외만
+          - generic [ref=f4e25]: 함수 12개
+      - generic [ref=f4e26]:
+        - generic [ref=f4e27] [cursor=pointer]:
+          - generic [ref=f4e28]: "1"
+          - generic [ref=f4e29]: test_order_api.test_place_order()
+          - generic [ref=f4e30]: 진입점
+          - generic [ref=f4e31]: test_order_api.py:9
+        - generic [ref=f4e32] [cursor=pointer]:
+          - generic [ref=f4e33]: "2"
+          - generic [ref=f4e34]: app.request_id()
+          - generic [ref=f4e35]: app.py:17
+        - generic [ref=f4e36] [cursor=pointer]:
+          - generic [ref=f4e37]: "3"
+          - generic [ref=f4e38]: app.place_order()
+          - generic [ref=f4e39]: app.py:25
+        - generic [ref=f4e40] [cursor=pointer]:
+          - generic [ref=f4e41]: "4"
+          - generic [ref=f4e42]: OrderService.place()
+          - generic [ref=f4e43]: 서비스
+          - generic [ref=f4e44]: service.py:10
+        - generic [ref=f4e45] [cursor=pointer]:
+          - generic [ref=f4e46]: "5"
+          - generic [ref=f4e47]: OrderRepository.member()
+          - generic [ref=f4e48]: 저장소
+          - generic [ref=f4e49]: SQL 1
+          - generic [ref=f4e50]: repository.py:9
+        - generic [ref=f4e51] [cursor=pointer]:
+          - generic [ref=f4e52]: select * from member where id = ?
+          - generic [ref=f4e53]: 0.03ms
+        - generic [ref=f4e54] [cursor=pointer]:
+          - generic [ref=f4e55]: "6"
+          - generic [ref=f4e56]: OrderRepository.product()
+          - generic [ref=f4e57]: 저장소
+          - generic [ref=f4e58]: SQL 1
+          - generic [ref=f4e59]: repository.py:15
+        - generic [ref=f4e60] [cursor=pointer]:
+          - generic [ref=f4e61]: select * from product where id = ?
+          - generic [ref=f4e62]: 0.02ms
+        - generic [ref=f4e63] [cursor=pointer]:
+          - generic [ref=f4e64]: "7"
+          - generic [ref=f4e65]: OrderRepository.decrease()
+          - generic [ref=f4e66]: 저장소
+          - generic [ref=f4e67]: SQL 1
+          - generic [ref=f4e68]: repository.py:19
+        - generic [ref=f4e69] [cursor=pointer]:
+          - generic [ref=f4e70]: update product set stock = stock - ? where id = ?
+          - generic [ref=f4e71]: 0.02ms
+        - generic [ref=f4e72] [cursor=pointer]:
+          - generic [ref=f4e73]: "8"
+          - generic [ref=f4e74]: OrderRepository.product()
+          - generic [ref=f4e75]: 저장소
+          - generic [ref=f4e76]: SQL 1
+          - generic [ref=f4e77]: repository.py:15
+        - generic [ref=f4e78] [cursor=pointer]:
+          - generic [ref=f4e79]: select * from product where id = ?
+          - generic [ref=f4e80]: 0ms
+        - generic [ref=f4e81] [cursor=pointer]:
+          - generic [ref=f4e82]: "9"
+          - generic [ref=f4e83]: OrderRepository.product()
+          - generic [ref=f4e84]: 저장소
+          - generic [ref=f4e85]: SQL 1
+          - generic [ref=f4e86]: repository.py:15
+        - generic [ref=f4e87] [cursor=pointer]:
+          - generic [ref=f4e88]: select * from product where id = ?
+          - generic [ref=f4e89]: 0ms
+        - generic [ref=f4e90] [cursor=pointer]:
+          - generic [ref=f4e91]: "10"
+          - generic [ref=f4e92]: OrderRepository.decrease()
+          - generic [ref=f4e93]: 저장소
+          - generic [ref=f4e94]: SQL 1
+          - generic [ref=f4e95]: repository.py:19
+        - generic [ref=f4e96] [cursor=pointer]:
+          - generic [ref=f4e97]: update product set stock = stock - ? where id = ?
+          - generic [ref=f4e98]: 0ms
+        - generic [ref=f4e99] [cursor=pointer]:
+          - generic [ref=f4e100]: "11"
+          - generic [ref=f4e101]: OrderService.discount()
+          - generic [ref=f4e102]: 서비스
+          - generic [ref=f4e103]: service.py:26
+        - generic [ref=f4e104] [cursor=pointer]:
+          - generic [ref=f4e105]: "12"
+          - generic [ref=f4e106]: OrderRepository.save()
+          - generic [ref=f4e107]: 저장소
+          - generic [ref=f4e108]: SQL 1
+          - generic [ref=f4e109]: repository.py:22
+        - generic [ref=f4e110] [cursor=pointer]:
+          - generic [ref=f4e111]: insert into purchase_order (member_id, paid, status) values (?, ?, ?)
+          - generic [ref=f4e112]: 0.01ms
+    - generic [ref=f4e114]:
+      - generic [ref=f4e115]:
+        - generic [ref=f4e116]:
+          - button "◀ 이전 단계" [disabled] [ref=f4e117]
+          - button "다음 단계 ▶" [ref=f4e118] [cursor=pointer]
+          - generic [ref=f4e119]: 단계 1 / 47
+          - generic [ref=f4e120]: 노란 줄이 실행된 줄 (누르면 그 줄의 값) · 키보드 ← →
+        - generic [ref=f4e121]:
+          - generic [ref=f4e122]:
+            - generic [ref=f4e123]: tests/test_order_api.py
+            - generic [ref=f4e124]: test_order_api.test_place_order()
+          - generic [ref=f4e125]:
+            - generic [ref=f4e126]: 인자 없음
+            - generic [ref=f4e127]: →
+            - generic [ref=f4e128] [cursor=pointer]: 반환 = null
+        - generic [ref=f4e130]:
+          - generic [ref=f4e131]:
+            - generic [ref=f4e133]: "1"
+            - generic [ref=f4e134]: from fastapi.testclient import TestClient
+          - generic [ref=f4e135]: "2"
+          - generic [ref=f4e139]:
+            - generic [ref=f4e141]: "3"
+            - generic [ref=f4e142]: from shop.web.app import app
+          - generic [ref=f4e143]: "4"
+          - generic [ref=f4e147]:
+            - generic [ref=f4e149]: "5"
+            - generic [ref=f4e150]: client = TestClient(app)
+          - generic [ref=f4e151]: "6"
+          - generic [ref=f4e155]: "7"
+          - generic [ref=f4e159]:
+            - generic [ref=f4e161]: "8"
+            - generic [ref=f4e162]: "def test_place_order():"
+          - generic [ref=f4e163] [cursor=pointer]:
+            - generic [ref=f4e164]: ●
+            - generic [ref=f4e165]: "9"
+            - generic [ref=f4e166]: "res = client.post(\"/api/orders\", json={\"member_id\": 1, \"lines\": [{\"product_id\": 10, \"qty\": 2}, {\"product_id\": 11, \"qty\": 1}, {\"product_id\": 12, \"qty\": 1}]})"
+          - generic [ref=f4e169]:
+            - generic [ref=f4e170] [cursor=pointer]: "res = Response{status_code=200, headers=Headers, next_request=null, …}"
+            - generic [ref=f4e171] [cursor=pointer]: "→ app.request_id() = _StreamingResponse{info=null, body_iter…"
+          - generic [ref=f4e172] [cursor=pointer]:
+            - generic [ref=f4e173]: ●
+            - generic [ref=f4e174]: "10"
+            - generic [ref=f4e175]: assert res.status_code == 200
+          - generic [ref=f4e176] [cursor=pointer]:
+            - generic [ref=f4e177]: ●
+            - generic [ref=f4e178]: "11"
+            - generic [ref=f4e179]: assert res.json()["status"] == "PARTIAL"
+          - generic [ref=f4e180]: "12"
+          - generic [ref=f4e184]: "13"
+          - generic [ref=f4e188]:
+            - generic [ref=f4e190]: "14"
+            - generic [ref=f4e191]: "def test_member_grade():"
+          - generic [ref=f4e192]:
+            - generic [ref=f4e194]: "15"
+            - generic [ref=f4e195]: res = client.get("/api/members/2/grade")
+          - generic [ref=f4e196]:
+            - generic [ref=f4e198]: "16"
+            - generic [ref=f4e199]: "assert res.json() == {\"id\": 2, \"grade\": \"SILVER\"}"
+          - generic [ref=f4e200]: "17"
+      - generic [ref=f4e206]:
+        - generic [ref=f4e207]: 데이터 상세
+        - generic [ref=f4e208]: 코드의 값 · SQL 을 누르면 여기에 나옵니다

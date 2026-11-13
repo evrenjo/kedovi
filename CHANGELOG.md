@@ -2,6 +2,17 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.96.0
+
+| 구분 | 내용 |
+|---|---|
+| 기능 | 실행 흐름 디버깅 Python: pytest 테스트 · 로컬 서버 요청(FastAPI · Flask · Django) 기록. 3.12+ `sys.monitoring`, 3.11 이하 settrace. SQL = sqlite3 · psycopg · SQLAlchemy |
+| 기능 | 실행 흐름 디버깅 웹 화면(Vite: React 등): 기존 Playwright e2e · 조작 단계(`--web "goto /x; click …"`) · 직접 조작(`--web --manual`). 사용자 동작 → 핸들러 → 요청 · 응답 → 다시 그리기 |
+| 기능 | 실행 흐름 디버깅 JS · TS: Vitest · Jest 테스트, Node 서버 요청(빌드한 JS · tsx, 원본 TS 줄로). SQL = node:sqlite · pg · mysql2 |
+| 화면 | 「사용자 동작」 · 「요청」(주소 · 상태 · 요청 · 응답 본문) 단계, 언어별 코드 색, 라우트 · 미들웨어 진입점 판단 (`@app.post` · `@Post` · `app.post(…)`) |
+| 동작 | 도구가 만든 코드는 기록 안 함, 화면은 사용자 동작마다 3000단계 · 같은 함수 20번까지 |
+| 명령 | `kedovi trace run --test` 가 테스트 모양으로 언어를 고른다 (`클래스#메서드` · `tests/x.py::이름` · `파일::이름`), `--serve` · `--web` · `--manual` |
+
 ## 0.95.1
 
 | 구분 | 내용 |

@@ -79,7 +79,7 @@ flowchart LR
 | "된다" 고 했는데 안 된다 | AI 가 근거(확인됨 · 추정 · 미확인)와 **실행한 검증 결과(표)** 로 보고한다 |
 | "보통은 이렇게 한다" 가 AI 기억이라 낡거나 틀린다 | 흔한 방식 · 업계 관례는 **웹 검색으로 출처를 확인해 비교표로** 답한다 (`common-practice` 스킬). 검색할 수 없으면 "내 지식 기준" 이라고 밝힌다 |
 | 규칙을 문서에 써 두면 지켜지지 않는다 | 중요한 규칙은 **검사 도구**(훅 · pre-commit · 스택별 검사)로 강제한다 |
-| 코드가 실제로 어떤 값으로 도는지 보려면 IDE 디버거를 붙여 한 줄씩 따라가야 한다 | **실행 흐름 디버깅**: "주문 API 디버깅 보여줘" 한마디에 테스트 · 로컬 요청 한 번을 기록해, 지나간 함수 · 줄마다 값 · SQL 을 웹 페이지로 보여 준다 (`trace` 팩) |
+| 코드가 실제로 어떤 값으로 도는지 보려면 IDE 디버거를 붙여 한 줄씩 따라가야 한다 | **실행 흐름 디버깅**: "주문 API 디버깅 보여줘" 한마디에 테스트 · 로컬 요청 · 화면 조작 한 번을 기록해, 지나간 함수 · 줄마다 값 · SQL · 요청을 웹 페이지로 보여 준다. Java · Python · React 같은 웹 화면 · Node (`trace` 팩) |
 
 ### 추구하는 방향
 
@@ -191,13 +191,14 @@ GitLab · GitHub 그룹
 
 #### 실행 흐름 디버깅 (`trace` 팩)
 
-API · 함수 · 배치 한 번이 **어떤 값으로 들어와 어느 함수를 거치고, 줄마다 값이 어떻게 바뀌고, 어떤 SQL 로 무엇을 조회했는지**를 IDE 디버거처럼 웹 페이지로 본다. 프로젝트 코드는 고치지 않는다 (디버그 포트로 붙어 기록).
+API · 함수 · 배치 · 화면 동작 한 번이 **어떤 값으로 들어와 어느 함수를 거치고, 줄마다 값이 어떻게 바뀌고, 어떤 SQL · 요청이 나갔는지**를 IDE 디버거처럼 웹 페이지로 본다. Java · Kotlin, Python, JS · TS(React 같은 웹 화면, Node 서버)를 같은 화면으로 본다. 프로젝트 코드는 고치지 않는다.
 
 | 채팅에서 이렇게 말하면 | 에이전트가 하는 것 |
 |---|---|
 | "주문 API 디버깅 보여줘" · "`POST /api/orders` 실행 흐름 보여줘" | 그 경로의 컨트롤러를 찾아 테스트 한 건으로 기록 |
 | "`OrderService.place` 어떻게 도는지 보여줘" · "정산 배치 흐름 보여줘" | 그 함수 · 배치를 부르는 테스트로 기록 (없으면 기록용 테스트를 만들고 알린다) |
 | "주문 API 로컬 데이터로 디버깅 보여줘" | 로컬 서버를 띄워 실제 요청 한 번을 기록하고 서버를 끈다 |
+| "주문 화면에서 취소 누르면 어떻게 도는지 보여줘" | 그 화면의 e2e 테스트(없으면 조작 단계)를 계측한 개발 서버로 돌려, 클릭 → 핸들러 → 상태 → 요청 · 응답 → 다시 그리기를 기록 |
 | "지난 디버깅 기록 보여줘" | 최근 기록 목록 (`kedovi trace list`) |
 
 답은 흐름 요약 몇 줄과 `자세히: <링크>` 이고, 링크를 누르면 이 PC 의 브라우저에서 아래 화면이 열린다.
@@ -206,20 +207,21 @@ API · 함수 · 배치 한 번이 **어떤 값으로 들어와 어느 함수를
 
 | 자리 | 보이는 것 |
 |---|---|
-| 왼쪽 | 탄 함수를 실행 순서대로 들여 써서: 진입점(컨트롤러 · 대상 함수) → 서비스 → 저장소 · 배치 꼬리표, 그 자리에서 나간 SQL · 예외. 기본은 서블릿 필터 · 가로채기 · 테스트 코드를 숨기고, 「보기」 · 「파일」로 넓히거나 한 파일만 |
+| 왼쪽 | 탄 함수를 실행 순서대로 들여 써서: 진입점(컨트롤러 · 라우트 · 대상 함수, 웹은 사용자 동작) → 서비스 → 저장소 꼬리표, 그 자리에서 나간 SQL · 요청 · 예외. 기본은 필터 · 미들웨어 · 가로채기 · 테스트 코드를 숨기고, 「보기」 · 「파일」로 넓히거나 한 파일만 |
 | 오른쪽 위 | 고른 함수의 소스와 인자 · 반환값. 실행된 줄은 노란색(×3 = 세 번). 변수 이름에 마우스를 올리면 그 단계의 값이 뜬다. 줄을 누르면 회차마다 그 줄 실행 뒤 바뀐 값 · 부른 함수 · SQL. 「이전 · 다음 단계」(← →)로 한 줄씩 |
-| 오른쪽 아래 | 데이터 상세: 고른 값의 객체 나무, SQL 문 · 바인딩 값 · 걸린 시간 |
+| 오른쪽 아래 | 데이터 상세: 고른 값의 객체 나무, SQL 문 · 바인딩 값 · 걸린 시간, 요청 주소 · 상태 · 요청 · 응답 본문 |
 
-![SQL 상세: 트랜잭션 커밋 때 나간 update 와 바인딩 값](https://raw.githubusercontent.com/evrenjo/kedovi/main/docs/images/trace-sql.png)
+![웹 화면 기록: 「주문하기」 클릭 뒤 핸들러 · 요청 · 다시 그리기, 아래에 요청 본문](https://raw.githubusercontent.com/evrenjo/kedovi/main/docs/images/trace-web.png)
 
 | 항목 | 내용 |
 |---|---|
 | 켜기 | `kedovi upgrade --add trace` (선택 팩) |
-| 직접 실행 | `kedovi trace run --test <테스트 클래스>#<메서드>` · `kedovi trace run --request "POST http://localhost:8080/api/orders" --data '{…}'` · `kedovi trace list` · `kedovi trace open` |
-| 지원 | JVM(Java · Kotlin, Gradle · Maven, Spring Boot 2 · 3 · 4). 다른 언어는 다음 단계 |
-| 안전 | 값은 필드만 읽어 실행을 바꾸지 않는다 (JPA 지연 로딩 그대로). 비밀번호 · 토큰 이름의 값은 `***`. 서버는 localhost 만. 기록은 이 PC 의 `.agents/traces/`(커밋 안 함) |
-| SQL | Gradle 은 기록할 때만 datasource-proxy 를 붙인다 (빌드 파일 안 고침). Maven 은 pom 에 있어야 보인다 |
-| 한계 | 줄마다 멈추므로 평소보다 느리다 (테스트 한 건 · 요청 한 번 크기). 다른 스레드로 넘어가는 비동기 흐름은 아직 |
+| 직접 실행 | 테스트 `kedovi trace run --test <테스트>` (Java `<클래스>#<메서드>` · Python `tests/<파일>.py::<이름>` · JS `<파일>::<이름>`) · 로컬 서버 `--request "POST http://localhost:8080/api/orders" --data '{…}'` · 화면 `--web "goto /orders; click text=주문하기"` · `--web --manual` · `kedovi trace list` · `kedovi trace open` |
+| 지원 | Java · Kotlin(Gradle · Maven, Spring Boot 2 · 3 · 4) · Python 3.10+(pytest, FastAPI · Flask · Django) · 웹 화면(Vite: React 등, Playwright e2e) · JS · TS 단위 테스트(Vitest · Jest) · Node 서버(Express · NestJS 등, 빌드한 JS · tsx) |
+| 기록 방식 | Java 는 디버거(JDI), Python 은 `sys.monitoring`(3.11 이하는 settrace), JS 는 원본 소스에 기록 호출을 같은 줄 안에 끼워 넣는다 (원본 줄 번호가 그대로 맞는다) |
+| 안전 | 값은 필드 · 속성 값만 읽어 실행을 바꾸지 않는다 (지연 로딩 · 게터 · `toString` 을 부르지 않는다). 비밀번호 · 토큰 이름의 값은 `***`. 서버는 localhost 만. 기록은 이 PC 의 `.agents/traces/`(커밋 안 함) |
+| SQL · 요청 | Java: datasource-proxy(Gradle 은 기록할 때만 붙인다). Python: sqlite3 · psycopg · SQLAlchemy. Node: node:sqlite · pg · mysql2. 웹 화면 · Node: fetch · XHR 요청과 응답 본문 |
+| 한계 | 테스트 한 건 · 요청 한 번 · 화면 시나리오 하나 크기에 맞다. 반복은 줄마다 30회, 화면은 사용자 동작마다 3000단계까지 값을 남긴다. Java 는 다른 스레드로 넘어가는 비동기 흐름이 아직 |
 
 자세히: [실행 흐름 디버깅](docs/trace.md)
 

@@ -42,7 +42,7 @@
  *   kedovi defects check [--id <id>] · report [--month YYYY-MM] [--json]   운영 결함 기록(작업별 기록 머리 「종류: 운영 결함」): 발견 · 분류 · 해소 칸 검사 · 월간 집계(분류별 잠복 · 해소 시간)
  *   kedovi plan [--short | --json | --stage <번호>] · init · check · external <위치>|off   로드맵(handoffs/PLAN.md): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것 · 다음
  *   kedovi team watch [--rw] [--print]   팀원 tmux 창 보기 (Claude Code agent teams): 지금 팀의 소켓(claude-swarm-<번호>, 세션마다 바뀜)을 찾아 읽기 전용으로 붙는다
- *   kedovi trace run --test <클래스>#<메서드> · run --request "<METHOD> <localhost 주소>" [--data …] · list · open [파일]   실행 흐름 디버깅 (trace 팩, JVM): 테스트 한 건 · 로컬 서버 요청 한 번을 줄마다 값 · SQL 과 함께 기록해 이 PC 웹 페이지(왼쪽 함수 단계 · 오른쪽 코드와 줄별 값 · 아래 데이터 상세)로
+ *   kedovi trace run --test <테스트> · run --request "<METHOD> <localhost 주소>" [--data …] · run --web "<조작 단계>" | --web --manual · list · open [파일]   실행 흐름 디버깅 (trace 팩, Java · Python · 웹 화면 · Node): 테스트 한 건 · 로컬 서버 요청 한 번 · 화면 조작을 줄마다 값 · SQL · 요청과 함께 기록해 이 PC 웹 페이지(왼쪽 함수 단계 · 오른쪽 코드와 줄별 값 · 아래 데이터 상세)로
  *   kedovi report new "<제목>" · link <파일> · list · open [파일] · serve · stop   보고 페이지: 채팅은 결론 · 핵심만, 자세한 보고는 이 PC 의 웹 페이지(현황판 틀, http://127.0.0.1)로. new 가 파일과 링크를 준다
  *   kedovi suggest [list] · set <id> yes|no [--all] · reset [<id>] · off|on [--all]   기능 추천: 대화 주제 · 상태에 맞는 킷 기능을 에이전트가 가끔 답 끝에 한 줄로 묻는다. 정한 것(씀 · 안 씀)은 다시 묻지 않는다 (--all = 이 PC 의 모든 프로젝트)
  *   kedovi tips   출력이 많아 읽기 힘들 때 쓰는 Claude Code 화면 기능 (/tui fullscreen · /focus · Ctrl+O). kedovi start 가 이 PC 에서 처음 한 번 보여 준다

@@ -1,0 +1,26 @@
+{
+  "name": "node-shop",
+  "private": true,
+  "version": "0.0.1",
+  "description": "kedovi trace 시험용 예제 앱 (Express 미들웨어 → 라우트 → 서비스 → 저장소(node:sqlite), Jest + supertest)",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.15.0",
+    "@types/supertest": "^6.0.3",
+    "jest": "^30.2.0",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.5",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

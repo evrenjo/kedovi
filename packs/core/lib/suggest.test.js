@@ -30,7 +30,7 @@ for (const e of map.entries) {
 // 주제 · 상태 조건
 assert.strictEqual(S.pick(map, ctx('주문 API 디버깅 보여줘')).id, 'trace');
 assert.strictEqual(S.pick(map, { ...ctx('주문 API 디버깅 보여줘'), ws: { ...ws, packs: [...ws.packs, 'trace'] } }), null, '이미 켠 팩은 추천하지 않음');
-assert.strictEqual(S.pick(map, { ...ctx('주문 API 디버깅 보여줘'), ws: { ...ws, repos: [{ name: 'web', stacks: ['react'] }] } }), null, '스택이 안 맞으면 추천하지 않음');
+assert.strictEqual(S.pick(map, { ...ctx('주문 API 디버깅 보여줘'), ws: { ...ws, repos: [{ name: 'svc', stacks: ['go'], languages: ['go'] }] } }), null, '스택이 안 맞으면 추천하지 않음 (Go 는 아직)');
 assert.strictEqual(S.pick(map, ctx('프로토타입이랑 화면이 달라')).id, 'screens-locate');
 assert.strictEqual(S.pick(map, ctx('오늘 날씨 어때')), null);
 assert.strictEqual(S.pick(map, ctx('이거 동시에 병렬로 해줘')).id, 'team-auto');

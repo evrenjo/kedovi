@@ -4,9 +4,9 @@
     {
       "id": "trace",
       "topic": "디버깅|디버거|어디서\\s*(?:값이\\s*)?바뀌|(?:실행|호출)\\s*흐름|로직.{0,8}(?:어떻게\\s*(?:돌|흘러|타)|따라가)|어느\\s*(?:함수|메서드|서비스)를?\\s*(?:타|거치)|NPE|NullPointer|SQL.{0,8}(?:뭐가|어떤|몇\\s*번)\\s*(?:나가|실행)",
-      "when": { "packOff": "trace", "stack": "spring|java|kotlin|android" },
+      "when": { "packOff": "trace", "stack": "spring|java|kotlin|android|python|fastapi|django|flask|react|vue|svelte|vite|next|typescript|javascript|node|express|nest" },
       "say": "실행 흐름 디버깅 (trace 팩)",
-      "why": "API · 함수 · 배치 한 번을 줄마다 값 · SQL 과 함께 웹 화면으로 본다",
+      "why": "API · 함수 · 배치 · 화면 동작 한 번을 줄마다 값 · SQL · 요청과 함께 웹 화면으로 본다 (Java · Python · 웹 화면 · Node)",
       "cmd": "kedovi upgrade --add trace",
       "scope": "팀 (workspace.json)"
     },

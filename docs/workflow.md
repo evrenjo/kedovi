@@ -405,7 +405,7 @@ flowchart TD
 | `kedovi delegate watch [id]` · `status [id]` · `list` | 다른 도구에 맡긴 작업(위임)의 진행: 상대 에이전트가 읽고 실행하는 것을 줄마다 · 지금 현황 한 번 · 목록 |
 | `kedovi team watch` | 팀원 tmux 창에 붙기: 지금 팀의 소켓(`claude-swarm-<번호>`)을 찾아 읽기 전용으로 (`--rw` 입력도 · `--print` 명령만) |
 | `kedovi report new "<제목>"` · `link` · `list` · `open` · `serve` · `stop` | 보고 페이지: 채팅은 결론 · 핵심 · `자세히: <링크>`, 자세한 보고는 `.agents/reports/` → 이 PC 웹 페이지(현황판 틀) |
-| `kedovi trace run --test <클래스>#<메서드>` · `run --request "<METHOD> <주소>"` · `list` · `open` | 실행 흐름 디버깅 (trace 팩): 테스트 · 로컬 서버 요청 한 번을 줄마다 값 · SQL 과 함께 기록 → 이 PC 웹 페이지 |
+| `kedovi trace run --test <테스트>` · `run --request "<METHOD> <주소>"` · `run --web "<조작 단계>"` · `list` · `open` | 실행 흐름 디버깅 (trace 팩, Java · Python · 웹 화면 · Node): 테스트 · 로컬 서버 요청 · 화면 조작 한 번을 줄마다 값 · SQL · 요청과 함께 기록 → 이 PC 웹 페이지 |
 | `kedovi tips` | 화면 보기 안내: `/tui fullscreen` · `/focus` · `Ctrl+O` (start 가 처음 한 번) |
 | `kedovi suggest` | 기능 추천 기록: 대화 중 추천받은 기능 · 결정(씀 · 안 씀) 보기 · 다시 묻기 · 끄기 |
 | `kedovi agents watch` | 에이전트 진행 보기: 메인 → 작업 리더 → 팀원 나무로 상태 · 마지막 행동 (Claude Code, 이름 없는 서브에이전트도). `--once` · `--all` · `--json` · `--tmux` |

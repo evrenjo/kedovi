@@ -1,0 +1,145 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - heading "test_place_order" [level=1] [ref=f5e3]
+    - generic [ref=f5e4]:
+      - generic [ref=f5e5]: 테스트 tests/test_order_api.py::test_place_order
+      - generic [ref=f5e6]: repo pyshop
+      - generic [ref=f5e7]: 함수 12
+      - generic [ref=f5e8]: SQL 7
+      - generic [ref=f5e9]: 12ms (기록 중 느려짐 포함)
+      - generic [ref=f5e10]: 2026. 11. 13. 오전 11:49:40
+    - button "◐" [ref=f5e11] [cursor=pointer]
+  - main [ref=f5e12]:
+    - complementary [ref=f5e13]:
+      - generic [ref=f5e14]:
+        - textbox "함수 · 클래스 · SQL 찾기" [ref=f5e15]
+        - generic [ref=f5e16]:
+          - generic [ref=f5e17]: 보기
+          - combobox "어디부터 보일지" [ref=f5e18]:
+            - option "진입점부터 (필터 · 가로채기 · 테스트 숨김)" [selected]
+            - option "필터 · 가로채기 포함"
+            - option "테스트 코드까지 전체"
+        - generic [ref=f5e19]:
+          - generic [ref=f5e20]: 파일
+          - combobox "이 파일의 함수만" [ref=f5e21]:
+            - option "모든 파일" [selected]
+        - generic [ref=f5e22]:
+          - generic [ref=f5e23]:
+            - checkbox "SQL · 예외만" [ref=f5e24]
+            - text: SQL · 예외만
+          - generic [ref=f5e25]: 함수 0 / 12개
+    - generic [ref=f5e28]:
+      - generic [ref=f5e29]:
+        - generic [ref=f5e30]:
+          - button "◀ 이전 단계" [disabled] [ref=f5e31]
+          - button "다음 단계 ▶" [disabled] [ref=f5e32]
+          - generic [ref=f5e33]: 단계 - / 0
+          - generic [ref=f5e34]: 노란 줄이 실행된 줄 (누르면 그 줄의 값) · 키보드 ← →
+        - generic [ref=f5e35]:
+          - generic [ref=f5e188]:
+            - generic [ref=f5e189]: src/shop/order/service.py
+            - generic [ref=f5e190]: shop.order.service.OrderService.place()
+            - 'button "↑ 부른 곳: app.place_order()" [ref=f5e191] [cursor=pointer]'
+          - generic [ref=f5e192]:
+            - generic [ref=f5e193] [cursor=pointer]: "self = OrderService{repo=OrderRepository{con…}"
+            - generic [ref=f5e194] [cursor=pointer]: "request = OrderRequest{member_id=1, lines=list[3]}"
+            - generic [ref=f5e195]: →
+            - generic [ref=f5e196] [cursor=pointer]: "반환 = OrderResult{order_id=1, paid=24660, status=PARTIAL, …}"
+        - generic [ref=f5e197]:
+          - generic [ref=f5e198]:
+            - generic [ref=f5e200]: "1"
+            - generic [ref=f5e201]: from shop.order.models import OrderRequest, OrderResult, OrderStatus
+          - generic [ref=f5e202]:
+            - generic [ref=f5e204]: "2"
+            - generic [ref=f5e205]: from shop.order.repository import OrderRepository
+          - generic [ref=f5e206]: "3"
+          - generic [ref=f5e210]: "4"
+          - generic [ref=f5e214]:
+            - generic [ref=f5e216]: "5"
+            - generic [ref=f5e217]: "class OrderService:"
+          - generic [ref=f5e218]:
+            - generic [ref=f5e220]: "6"
+            - generic [ref=f5e221]: "def __init__(self, repo: OrderRepository) -> None:"
+          - generic [ref=f5e222]:
+            - generic [ref=f5e224]: "7"
+            - generic [ref=f5e225]: self.repo = repo
+          - generic [ref=f5e226]: "8"
+          - generic [ref=f5e230]:
+            - generic [ref=f5e232]: "9"
+            - generic [ref=f5e233]: "def place(self, request: OrderRequest) -> OrderResult:"
+          - generic [ref=f5e234] [cursor=pointer]:
+            - generic [ref=f5e235]: ●
+            - generic [ref=f5e236]: "10"
+            - generic [ref=f5e237]: member = self.repo.member(request.member_id)
+          - generic [ref=f5e238] [cursor=pointer]:
+            - generic [ref=f5e239]: ●
+            - generic [ref=f5e240]: "11"
+            - generic [ref=f5e241]: total = 0.0
+          - generic [ref=f5e242] [cursor=pointer]:
+            - generic [ref=f5e243]: ●
+            - generic [ref=f5e244]: "12"
+            - generic [ref=f5e245]: "skipped: list[str] = []"
+          - generic [ref=f5e246] [cursor=pointer]:
+            - generic [ref=f5e247]: ×4
+            - generic [ref=f5e248]: "13"
+            - generic [ref=f5e249]: "for line in request.lines:"
+          - generic [ref=f5e250] [cursor=pointer]:
+            - generic [ref=f5e251]: ×3
+            - generic [ref=f5e252]: "14"
+            - generic [ref=f5e253]: product = self.repo.product(line.product_id)
+          - generic [ref=f5e254] [cursor=pointer]:
+            - generic [ref=f5e255]: ×3
+            - generic [ref=f5e256]: "15"
+            - generic [ref=f5e257]: "if product[\"stock\"] < line.qty:"
+          - generic [ref=f5e258] [cursor=pointer]:
+            - generic [ref=f5e259]: ●
+            - generic [ref=f5e260]: "16"
+            - generic [ref=f5e261]: skipped.append(product["name"])
+          - generic [ref=f5e262] [cursor=pointer]:
+            - generic [ref=f5e263]: ●
+            - generic [ref=f5e264]: "17"
+            - generic [ref=f5e265]: continue
+          - generic [ref=f5e266] [cursor=pointer]:
+            - generic [ref=f5e267]: ×2
+            - generic [ref=f5e268]: "18"
+            - generic [ref=f5e269]: self.repo.decrease(line.product_id, line.qty)
+          - generic [ref=f5e270] [cursor=pointer]:
+            - generic [ref=f5e271]: ×2
+            - generic [ref=f5e272]: "19"
+            - generic [ref=f5e273]: total += product["price"] * line.qty
+          - generic [ref=f5e274] [cursor=pointer]:
+            - generic [ref=f5e275]: ●
+            - generic [ref=f5e276]: "20"
+            - generic [ref=f5e277]: paid = self.discount(member["grade"], total)
+          - generic [ref=f5e278] [cursor=pointer]:
+            - generic [ref=f5e279]: ●
+            - generic [ref=f5e280]: "21"
+            - generic [ref=f5e281]: status = OrderStatus.PLACED if not skipped else OrderStatus.PARTIAL
+          - generic [ref=f5e282] [cursor=pointer]:
+            - generic [ref=f5e283]: ●
+            - generic [ref=f5e284]: "22"
+            - generic [ref=f5e285]: order_id = self.repo.save(member["id"], paid, status.value)
+          - generic [ref=f5e286] [cursor=pointer]:
+            - generic [ref=f5e287]: ●
+            - generic [ref=f5e288]: "23"
+            - generic [ref=f5e289]: return OrderResult(order_id=order_id, paid=paid, status=status, skipped=skipped)
+          - generic [ref=f5e290]: "24"
+          - generic [ref=f5e294]:
+            - generic [ref=f5e296]: "25"
+            - generic [ref=f5e297]: "def discount(self, grade: str, total: float) -> float:"
+          - generic [ref=f5e298]:
+            - generic [ref=f5e300]: "26"
+            - generic [ref=f5e301]: "if grade == \"GOLD\":"
+          - generic [ref=f5e302]:
+            - generic [ref=f5e304]: "27"
+            - generic [ref=f5e305]: rate = 0.10
+          - generic [ref=f5e306]:
+            - generic [ref=f5e308]: "28"
+            - generic [ref=f5e309]: return total - total * rate
+          - generic [ref=f5e310]:
+            - generic [ref=f5e312]: "29"
+            - generic [ref=f5e313]: return total
+          - generic [ref=f5e314]: "30"
+      - generic [ref=f5e184]:
+        - generic [ref=f5e185]: 데이터 상세
+        - generic [ref=f5e186]: 코드의 값 · SQL 을 누르면 여기에 나옵니다

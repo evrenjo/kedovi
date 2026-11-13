@@ -1,0 +1,16 @@
+# kedovi trace 시험용 예제 앱 (미들웨어 → 라우터 → 서비스 → 저장소(sqlite3), 비동기 엔드포인트 하나)
+[project]
+name = "shop"
+version = "0.0.1"
+requires-python = ">=3.10"
+dependencies = ["fastapi>=0.115", "httpx>=0.27", "uvicorn>=0.30"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["uv_build>=0.8,<0.14"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
