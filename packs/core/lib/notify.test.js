@@ -60,6 +60,7 @@ assert.strictEqual(n.personalMessage(cfg, { hook_event_name: 'Stop', last_assist
 assert.strictEqual(n.topicOf('0.97.0을 **사내**와 [GitHub](https://x) 양쪽에 배포했습니다. 표는 아래.\n\n| a |'), '0.97.0을 사내와 GitHub 양쪽에 배포했습니다', '첫 문장 · 마크다운 글자만 · 버전 숫자의 점은 문장 끝 아님');
 assert.strictEqual(n.topicOf('## 결과\n- 로그인 화면 오류 원인은 세션 만료 시간 설정이 너무 짧게 잡혀 있던 것입니다. 고쳤습니다'), '로그인 화면 오류 원인은 세션 만료 시간 설정이 너무 짧게 잡혀 있던…', '제목 줄 건너뜀 · 40자에서 낱말 단위로 자름');
 assert.strictEqual(n.topicOf('', '주문 API 디버깅 보여줘\n자세히'), '주문 API 디버깅 보여줘', '답이 없으면 요청 첫 줄');
+assert.strictEqual(n.topicOf('2026-11-15 21:15:22\n\n네, 준비는 다 됐습니다. 표는 아래.'), '네, 준비는 다 됐습니다', '첫 줄 요청 시각은 건너뜀');
 assert.match(n.personalMessage({ ...cfg, away: true }, { hook_event_name: 'Stop', last_assistant_message: '끝냈다' }, { ...ctx, elapsed: 125 }), /^✅ \[shop\] Claude 작업 끝 \(2분 5초\)\n\n끝냈다$/); // 자리 비움이면 답까지
 assert.strictEqual(n.personalMessage(cfg, { hook_event_name: 'Stop', last_assistant_message: '끝냈다' }, { ...ctx, elapsed: 125, pending: true }), null); // 일하는 팀원 · 백그라운드 작업이 남았으면 쉰다
 assert.strictEqual(n.personalMessage(cfg, { hook_event_name: 'Stop', last_assistant_message: '어느 쪽?\n\n1. A (권장)\n2. B' }, { ...ctx, elapsed: 125 }), '❓ [shop] Claude: 선택할 것이 있습니다. 터미널에서 골라 주세요');

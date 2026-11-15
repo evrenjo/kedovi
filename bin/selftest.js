@@ -486,7 +486,7 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   const { looksLikeQuestion: q, answersFirst: af } = require(path.join(KIT, 'packs', 'core', 'hooks', 'answer-first.js'));
   const e = {};
   e['질문 판정'] = ['문제없지 않나?', '이거 맞아', '되나요', '다 끝난거임?'].every(q) && !['배포해줘', 'xD 도 같은 서버야', '여기 글자 겹침 고쳐줘', '/loop 5m'].some(q);
-  e['첫 문장 판단'] = ['네, 문제없습니다. 이유는 …', '**아니요**. 아직 대기 중입니다.', '이번 작업은 다 끝났습니다.'].every(af) && !af('문서를 고쳤고 커밋했습니다.\n\n문제없습니다.');
+  e['첫 문장 판단'] = ['네, 문제없습니다. 이유는 …', '**아니요**. 아직 대기 중입니다.', '이번 작업은 다 끝났습니다.', '2026-11-15 21:15:22\n\n네, Firebase 쪽 준비는 다 됐습니다. 다만 두 가지는 뒤에 합니다.'].every(af) && !af('2026-11-15 21:15:22\n\n문서를 고쳤습니다.') && !af('문서를 고쳤고 커밋했습니다.\n\n문제없습니다.');
   const bad = '문서를 고쳤고 커밋했습니다.\n\n참고로 문제는 없어 보입니다.';
   e['막기 (기본): 마지막 답변 글'] = /마지막 보고 첫 줄에 그 답을 다시/.test(hook('UserPromptSubmit', { prompt: '이거 문제없지 않나?' })) && /마지막 답변 글의 첫 문장/.test(hook('Stop', { last_assistant_message: bad })) && !hook('UserPromptSubmit', { prompt: '배포해줘' });
   cli('team-mode', 'enforce', 'answer', 'warn', '--team');

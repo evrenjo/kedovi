@@ -87,4 +87,9 @@ function sessionStartedAt(input) {
   try { return Number(fs.readFileSync(path.join(stateDir(root()), `${id}.start`), 'utf8')) || null; } catch { return null; }
 }
 
-module.exports = { agent, readInput, isTeammate, context, block, deny, note, run, safeId, root, markSessionStart, sessionStartedAt };
+/** 답 맨 앞의 요청 시각 줄(prompt-time 훅이 쓰게 하는 yyyy-MM-dd HH:mm:ss)을 뺀다: 첫 줄 · 첫 문장을 보는 검사가 시각을 답으로 읽지 않게 */
+function dropStamp(text) {
+  return String(text || '').replace(/^\s*[*_`]*\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2})?[*_`]*[ \t]*(?:\r?\n|$)/, '');
+}
+
+module.exports = { dropStamp, agent, readInput, isTeammate, context, block, deny, note, run, safeId, root, markSessionStart, sessionStartedAt };

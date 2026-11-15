@@ -10,7 +10,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { readInput, context, block, run, root, safeId, isTeammate } = require('../lib/hook');
+const { readInput, context, block, run, root, safeId, isTeammate, dropStamp } = require('../lib/hook');
 const { stateDir } = require('../lib/workspace');
 
 // 끝 말투로 본 질문: 물음표, 또는 「~지 않나 · 맞아 · 돼 · 될까 · 없지 · 인가」 처럼 묻는 어미
@@ -25,7 +25,7 @@ function looksLikeQuestion(prompt) {
 // 답변 첫 문장의 판단: 예 · 아니오 · 맞다 · 된다 · 있다/없다 · 모른다 · 가능/불가
 const JUDGE = /(^|[\s(「"'*])(네|예|아니(요|오|ㅂ니다|에요|다)|아닙니다|맞(습니다|아요|다|아)|틀(립니다|렸습니다|려요)|됩니다|돼요|됐습니다|됐어요|끝났습니다|끝났어요|안\s*됩니다|안\s*돼요|없습니다|없어요|있습니다|있어요|모릅니다|모르겠습니다|확인하지\s*못했습니다|가능합니다|불가능|문제(가\s*)?없|문제(가\s*)?있|yes|no)(?=$|[\s.,:!)」"'*])/i;
 function answersFirst(message) {
-  const first = String(message || '').trim().split(/\n\s*\n/)[0] || '';
+  const first = dropStamp(message).trim().split(/\n\s*\n/)[0] || '';
   const sentence = first.split(/(?<=[.!?。])\s|\n/)[0] || first;
   return JUDGE.test(sentence.replace(/\*\*/g, ''));
 }

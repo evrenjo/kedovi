@@ -194,7 +194,7 @@ function remoteControl(sessionId) {
 function topicOf(answer, prompt, max = 40) {
   const plain = (t) => String(t || '').replace(/```[\s\S]*?```/g, ' ').split('\n').map((l) => l.trim())
     .find((l) => l && !/^(#|\||```|>|[-*_]{3,}$|!\[)/.test(l)) || '';
-  let line = plain(answer);
+  let line = plain(require('./hook').dropStamp(answer));
   if (!line) line = plain(prompt);
   line = line.replace(/^[-*+]\s+|^\d+\.\s+/, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*`_~]/g, '').replace(/\s+/g, ' ').trim();
   const end = line.search(/[.!?。](\s|$)/); // 첫 문장까지 (0.97.0 같은 숫자 안의 점은 아님)
