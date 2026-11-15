@@ -187,6 +187,21 @@ function remoteControl(sessionId) {
   } catch { /* 폴더 없음 */ }
   return false;
 }
+/**
+ * 끝 알림 한 줄에 붙일 작업 요약 (몇 단어): 답의 첫 문장(답은 결과부터 쓴다), 없으면 요청 첫 줄. 마크다운 · 링크는 글자만
+ * 같은 「모든 작업 끝」 이 여러 개 와도 무슨 작업이었는지 알게
+ */
+function topicOf(answer, prompt, max = 40) {
+  const plain = (t) => String(t || '').replace(/```[\s\S]*?```/g, ' ').split('\n').map((l) => l.trim())
+    .find((l) => l && !/^(#|\||```|>|[-*_]{3,}$|!\[)/.test(l)) || '';
+  let line = plain(answer);
+  if (!line) line = plain(prompt);
+  line = line.replace(/^[-*+]\s+|^\d+\.\s+/, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*`_~]/g, '').replace(/\s+/g, ' ').trim();
+  const end = line.search(/[.!?。](\s|$)/); // 첫 문장까지 (0.97.0 같은 숫자 안의 점은 아님)
+  if (end > 0) line = line.slice(0, end);
+  return line.length > max ? `${line.slice(0, max - 1).replace(/\s+\S*$/, '') || line.slice(0, max - 1)}…` : line;
+}
+
 /** 자리에 있을 때(자리 비움 아님, 전체 수준 아님)는 짧게: 선택 대기 한 줄 · 모든 작업 끝 한 줄만 */
 const brief = (cfg) => !cfg.away && levelOf(cfg) !== 'all';
 /** 에이전트 시작 · 끝 · 진행 현황을 보낼 때: 전체 수준이거나, 진행 현황 수준인데 자리 비움 */
@@ -223,7 +238,8 @@ function personalMessage(cfg, input, { project, agent, elapsed, question, prompt
   if (brief(cfg)) { // 자리에 있으면: 남은 작업이 있으면 쉬고, 결정 질문이면 선택 대기 한 줄, 아니면 끝 한 줄
     if (pending) return null;
     if (looksLikeDecision(answer)) return `❓ [${project}] ${who}: 선택할 것이 있습니다. 터미널에서 골라 주세요`;
-    return `✅ [${project}] ${who} 모든 작업 끝${took}`;
+    const topic = topicOf(answer, prompt);
+    return topic ? `✅ [${project}] ${topic} (${who}${elapsed != null ? ` · ${duration(elapsed)}` : ''})` : `✅ [${project}] ${who} 모든 작업 끝${took}`;
   }
   const cut = (t) => { const head = t.slice(0, RESULT_CLIP); const soft = head.replace(/\s+\S*$/, ''); return head.length - soft.length < 40 ? soft : head; }; // 단어 중간이면 공백에서 (멀면 그대로)
   const body = answer.length > RESULT_CLIP ? `${cut(answer)}\n… (전문은 터미널)` : answer;
@@ -835,5 +851,5 @@ async function recentChats(token) {
 module.exports = {
   LEVELS, LEVEL_LABEL, wantsProgress, brief, remoteControl, levelOf, idleSeconds, atDesk, DEFAULT_DESK_SECONDS,
   EVENTS, TEAM_EVENTS, DEFAULT_MIN_SECONDS, secretFile, parseEvents, readSecrets, writeSecrets, readLocal, projectName, waitKind, CHANNEL_PLUGIN, channelDir, channelInstalls, channelPluginScope, channelToken, channelTokenUsedElsewhere, channelAccess, channelOn, channelAskMode, looksLikeDecision, channelCheck, channelHealth, channelShim, channelLogLast, holderOf,
-  personal, team, personalMessage, teamMessages, announceMessage, handoffLine, todoCount, collectPush, send, sendVoice, decisionMessages, promptMessage, answeredMessage, shouldClearKeyboard, VOICE_SCOPES, VOICE_SCOPE_LABEL, voiceOf, voiceWants, speakable, decisionsSpeech, doneSpeech, tts, voiceList, sendSpeech, foldHtml, chunks, toTelegramHtml, mirrorMessage, recentChats, botName, duration,
+  personal, team, personalMessage, topicOf, teamMessages, announceMessage, handoffLine, todoCount, collectPush, send, sendVoice, decisionMessages, promptMessage, answeredMessage, shouldClearKeyboard, VOICE_SCOPES, VOICE_SCOPE_LABEL, voiceOf, voiceWants, speakable, decisionsSpeech, doneSpeech, tts, voiceList, sendSpeech, foldHtml, chunks, toTelegramHtml, mirrorMessage, recentChats, botName, duration,
 };

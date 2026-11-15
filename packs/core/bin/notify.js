@@ -4,7 +4,7 @@
  * 개인 채널 (이 PC · 이 워크스페이스). 설정 화면은 kedovi notify setup
  *   level all|decisions|progress|off   알림 수준: 전체 · 결과와 결정(기본) · 진행 현황 · 끄기
  *   min <초>                       결과 알림 기준 (이보다 짧게 끝난 요청은 보내지 않는다. 0 = 모두)
- *   away on|off                    자리 비움: 결정은 텔레그램 버튼 질문으로 (ask) · 결과는 시간과 상관없이. 자리에 있으면 선택 대기 · 모든 작업 끝 한 줄만
+ *   away on|off                    자리 비움: 결정은 텔레그램 버튼 질문으로 (ask) · 결과는 시간과 상관없이. 자리에 있으면 선택 대기 · 작업 끝(무슨 작업인지 몇 단어) 한 줄만
  *   remote done|quiet|send         리모트 컨트롤(Claude 앱)로 이어진 세션: done = 작업 끝만 텔레그램(기본, 결정은 앱이 알린다) · quiet = 텔레그램 쉼 · send = 그대로 보냄
  *   voice on|off · scope both|decisions|done|all · name <목소리> · test   음성: 결정 질문 · 끝남 보고를 짧게 읽어 보낸다 (기본 꺼짐 · 결정+끝남 · Yuna, macOS 기본 도구)
  * 세션이 부르는 것 (자리 비움 · 채널)
@@ -130,7 +130,7 @@ function status() {
   const prog = Number(local.channelProgress != null ? local.channelProgress : 5);
   console.log(`알림 수준  ${notify.LEVEL_LABEL[p.level]}${p.source === 'team' ? ' (팀 기본)' : ''}${p.away ? ' · 자리 비움' : ''}`);
   console.log(`           결과는 ${p.away ? '모든 요청' : `${p.minSeconds}초 넘게 걸린 요청`} · 진행 현황 ${prog ? `${prog}분마다` : '끔'} (전체 · 진행 현황 수준일 때)`);
-  console.log(`           자리에 있으면 선택 대기 · 모든 작업 끝 한 줄만, 설명 · 보기 · 답 앞부분은 자리 비움일 때 (전체 수준은 늘 전문)`);
+  console.log(`           자리에 있으면 선택 대기 · 작업 끝(무슨 작업인지 몇 단어) 한 줄만, 설명 · 보기 · 답 앞부분은 자리 비움일 때 (전체 수준은 늘 전문)`);
   console.log(`           리모트 컨트롤(Claude 앱) 연결 중: ${{ send: '텔레그램도 모두 보냄', quiet: '텔레그램 쉼', done: '텔레그램은 작업 끝만 (결정은 앱이 알린다)' }[p.remote]} (kedovi notify my remote done|quiet|send)`);
   console.log(`           PC 앞이면 끝남 알림 생략: ${p.deskSeconds ? `${p.deskSeconds}초 안에 키보드 · 마우스를 만졌을 때${notify.idleSeconds() == null ? ' (이 PC 는 잴 수 없어 늘 보냄)' : ''}` : '끔'} (kedovi notify my desk <초>|off)`);
   const v = notify.voiceOf(ROOT);
