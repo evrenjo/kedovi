@@ -7,10 +7,11 @@
 // 3층 (작업 리더): 메인이 부르는 lead 역할은 leaders 상한, 리더(또는 역할 에이전트)가 부르는 팀원은 부른 쪽마다 members 상한, 모든 층 합계는 total.
 //   누가 불렀는지 = PreToolUse 입력의 agent_id (서브에이전트 안이면 그 id, 메인이면 없음). SubagentStart 의 agent_id 를 앞서 허용한 호출과 짝지어 부모를 적고, SubagentStop 에 그 칸을 뺀다.
 //   팀원(agent teams)은 SubagentStart · Stop 이 없어 요청마다 비운다.
+//   SubagentStop: 작업 리더가 자기 팀원이 도는 채 끝내려 하면 한 번 되돌린다 (agents.enforce.leadHold, 기본 block).
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { readInput, deny, run, root, safeId } = require('../lib/hook');
+const { readInput, deny, block, run, root, safeId } = require('../lib/hook');
 const { judge } = require('../lib/teammode');
 const { stateDir } = require('../lib/workspace');
 
@@ -29,6 +30,14 @@ function withLock(file, fn) {
     }
   }
   try { return fn(); } finally { if (got) try { fs.rmdirSync(lock); } catch { /* 없음 */ } }
+}
+
+/** 리더 붙잡기 수준 (agents.enforce.leadHold: block 기본 · off) */
+function holdLevel(ws) {
+  try { const kit = require(path.join(ws, 'bin', 'kit.js')); return (kit.resolveModels(ws, kit.loadWorkspace(ws)).enforce || {}).leadHold || 'block'; } catch { return 'block'; }
+}
+function leadMinutes(ws) {
+  try { const n = Number(((JSON.parse(fs.readFileSync(path.join(ws, 'workspace.json'), 'utf8')).vars || {}).team || {}).leadReportMinutes); return Number.isFinite(n) && n >= 0 ? n : 15; } catch { return 15; }
 }
 
 /** 지금 도는 수: parent = 'main' | 부른 에이전트 id. kind = 'lead' | 'role' | undefined(모두) */
@@ -76,6 +85,13 @@ function handle(input, ws, file) {
   }
   if (ev === 'SubagentStop') {
     const kid = String(input.agent_id || '');
+    // 작업 리더가 팀원이 도는 채 끝내려 하면 한 번 되돌린다 (끝내면 보고가 끊기고, 리더의 끝남 알림은 팀원이 모두 끝나야 메인에 간다). agents.enforce.leadHold
+    const members = Object.entries(st.kids).filter(([, v]) => v.parent === kid);
+    if (!input.stop_hook_active && members.length && ((st.kids[kid] || {}).type === LEAD_ROLE || String(input.agent_type || '') === LEAD_ROLE) && holdLevel(ws) === 'block') {
+      const mins = leadMinutes(ws);
+      block(`팀원 ${members.length}명(${members.map(([, v]) => v.type || '에이전트').join(' · ')})이 아직 돌고 있습니다. 차례를 끝내지 말고 끝남 알림을 기다립니다 (백그라운드 대기 · Monitor). 기다리는 동안 ${mins ? `${mins}분마다 ` : ''}진행판(kedovi team step)과 메인 메시지로 단계를 알리고, 팀원 결과를 받아 다음 순서로 넘어간다. 팀원이 멈췄으면 메인에게 「끊어 달라」 를 보낸다`);
+      return save();
+    }
     if (st.kids[kid]) delete st.kids[kid];
     else { const j = st.pending.findIndex((x) => x.parent === 'main'); if (j >= 0) st.pending.splice(j, 1); } // 짝을 못 찾으면(업그레이드 전에 띄운 것) 메인 대기 하나를 뺀다
     for (const [k, v] of Object.entries(st.kids)) if (v.parent === kid) delete st.kids[k]; // 부른 쪽이 끝나면 그 팀원도 끝난 것

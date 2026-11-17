@@ -35,6 +35,7 @@
     { "script": "hooks/plan-first.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/main-delegate.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/session-health.js", "timeout": 8, "agents": "claude" },
+    { "script": "hooks/lead-progress.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/long-answer.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/answer-first.js", "timeout": 5 },
     { "script": "hooks/notify.js", "timeout": 5 }
@@ -53,7 +54,8 @@
     { "matcher": "Bash|Read", "script": "hooks/secret-guard.js", "timeout": 5, "agents": "all" },
     { "matcher": "Bash", "script": "hooks/review-gate.js", "timeout": 30, "agents": "claude" },
     { "matcher": "Bash", "script": "hooks/spec-commit.js", "timeout": 30, "agents": "claude" },
-    { "matcher": "Edit|Write|MultiEdit|NotebookEdit|apply_patch", "script": "hooks/screen-gate.js", "timeout": 15, "agents": "all" }
+    { "matcher": "Edit|Write|MultiEdit|NotebookEdit|apply_patch", "script": "hooks/screen-gate.js", "timeout": 15, "agents": "all" },
+    { "script": "hooks/lead-progress.js", "timeout": 5, "agents": "claude" }
   ],
   "PostToolUse": [
     { "matcher": "Agent|Task", "script": "hooks/session-health.js", "timeout": 5, "agents": "claude" },

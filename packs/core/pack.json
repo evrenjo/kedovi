@@ -133,6 +133,10 @@
       "default": "50000",
       "desc": "tmux 서버가 돌면 history-limit 을 이 줄 수 이상으로 올린다 (팀원 tmux 창 기록, 새 창부터. 0 이면 하지 않음)"
     },
+    "session.renewContextPct": {
+      "default": "70",
+      "desc": "대화 맥락 사용량(마지막 응답 기준 추정)이 이 % 를 넘으면 핸드오프 뒤 새로 시작하자고 알린다 (0 이면 끔)"
+    },
     "report.maxLines": {
       "default": "25",
       "desc": "마지막 답이 이 줄 수(빈 줄 제외)를 넘거나 표가 12줄을 넘는데 「자세히: <링크>」 가 없으면 보고 페이지(kedovi report)로 옮기라고 한 번 되돌린다 (kedovi team-mode enforce long)"
@@ -156,6 +160,53 @@
     "report.agentLines": {
       "default": "20",
       "desc": "서브에이전트 · 리더의 마지막 보고가 이 줄 수(빈 줄 제외)를 넘으면 원문을 보고 페이지 파일로 보관하고, 킷 역할 에이전트면 결론 · 핵심 · 링크로 다시 끝내게 한다 (kedovi team-mode enforce report)"
+    },
+    "verify.fullSuite": {
+      "default": "release",
+      "choices": [
+        "release",
+        "per-item"
+      ],
+      "desc": "전체 실제 스택 시험(설치 · 업그레이드 · 이중화 등) 시점: release = 작업마다는 바뀐 영역만, 전체는 릴리스 직전 한 번 (릴리스 MR 때 통과 기록이 없으면 경고) · per-item = 작업마다 전체. kedovi verify"
+    },
+    "verify.fullCmd": {
+      "default": "",
+      "desc": "전체 실제 스택 시험 명령 (repo 폴더에서 돈다. repo 마다 다르면 repos[].verify.fullCmd). kedovi verify full 이 무거운 시험 줄에서 돌리고 통과 커밋을 기록한다"
+    },
+    "verify.areaMap": {
+      "default": {},
+      "desc": "바뀐 경로 → 그 영역 시험 명령 대응표 { \"경로 글롭\": \"명령\" | [명령…] } (repo 기준 경로, ** · * 글롭, 폴더 이름이면 그 아래 전부). kedovi verify areas 가 바뀐 파일로 돌릴 시험을 고른다"
+    },
+    "verify.heavySlots": {
+      "default": "1",
+      "desc": "무거운 시험(kedovi heavy run · verify full)을 이 PC 에서 동시에 몇 개 돌릴지. 나머지는 줄을 선다 (kedovi heavy status 에 예상 시작 · 끝)"
+    },
+    "review.maxRounds": {
+      "default": "2",
+      "desc": "같은 범위 리뷰 차수 상한. 넘으면 위임이 시작하지 않고 사용자에게 묻게 한다 (--force)"
+    },
+    "review.stopOnClean": {
+      "default": true,
+      "desc": "앞 차수 블로커가 0 이면 리뷰를 더 돌지 않는다 (1차 블로커 0 이면 끝)"
+    },
+    "review.small.maxLines": {
+      "default": "50",
+      "desc": "리뷰 위임 --auto-model: 바뀐 줄이 이 이하면 빠른 모델로"
+    },
+    "review.small.paths": {
+      "default": [
+        "docs/**",
+        "**/*.md"
+      ],
+      "desc": "리뷰 위임 --auto-model: 바뀐 파일이 모두 이 글롭(문서 · 설정 등)이면 줄 수와 관계없이 빠른 모델로"
+    },
+    "review.small.model": {
+      "default": "",
+      "desc": "작은 변경 리뷰 모델. 비우면 지금 프로필의 low 등급 모델 (도구마다 다르면 { \"claude\": …, \"codex\": … })"
+    },
+    "team.leadReportMinutes": {
+      "default": "15",
+      "desc": "작업 리더가 이 분마다(그리고 단계마다) 메인에게 단계 · 끝난 것 · 다음 · 예상 종료 한 줄을 보내고 진행판(kedovi team step)을 고친다. 지나면 훅이 리더에게 알린다 (0 이면 끔)"
     }
   },
   "secrets": [

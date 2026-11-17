@@ -6,6 +6,7 @@
  * UserPromptSubmit (30분에 한 번):
  *   메모리: 이 PC 의 Claude Code 세션 나무(MCP · 셸 · 브라우저 포함) 합계가 vars.session.memoryWarnGB(기본 8)를 넘으면 세션 수 · 큰 세션 · 주인 없이 남은 브라우저 · MCP 를 한 줄로
  *   오래된 세션: 이 세션(claude 프로세스)이 vars.session.longHours(기본 8) 시간을 넘으면 핸드오프 뒤 새로 시작하라고 (같은 세션에 2시간마다)
+ *   맥락: 대화 기록의 마지막 응답 사용량(입력 + 캐시)이 맥락 창의 vars.session.renewContextPct(기본 70)% 를 넘으면 같은 제안 (같은 세션에 한 번, 10%p 더 늘면 다시)
  * 자세히: kedovi doctor 의 「메모리」 항목. 판정은 lib/procmem.js (Windows 는 하지 않는다)
  */
 'use strict';
@@ -21,7 +22,38 @@ const num = (v, d) => { const n = Number(v); return Number.isFinite(n) && n >= 0
 function settings(ROOT) {
   let v = {};
   try { v = ((load(ROOT).vars || {}).session) || {}; } catch { /* workspace.json 없음 */ }
-  return { memGB: num(v.memoryWarnGB, 8), longHours: num(v.longHours, 8), tmuxHistory: num(v.tmuxHistory, 50000) };
+  return { memGB: num(v.memoryWarnGB, 8), longHours: num(v.longHours, 8), tmuxHistory: num(v.tmuxHistory, 50000), ctxPct: num(v.renewContextPct, 70) };
+}
+
+/** 대화 기록 끝의 마지막 응답 사용량 → { tokens, window, pct } (모르면 null). 창 = 1M 모델이거나 20만을 넘었으면 100만, 아니면 20만 (추정) */
+function contextUse(file, ROOT) {
+  if (!file) return null;
+  let tail = '';
+  try {
+    const fd = fs.openSync(file, 'r');
+    const size = fs.fstatSync(fd).size;
+    const len = Math.min(size, 512 * 1024);
+    const buf = Buffer.alloc(len);
+    fs.readSync(fd, buf, 0, len, size - len);
+    fs.closeSync(fd);
+    tail = buf.toString('utf8');
+  } catch { return null; }
+  const lines = tail.split('\n').reverse();
+  for (const l of lines) {
+    if (!l.includes('"usage"') || l.includes('"isSidechain":true')) continue;
+    let j;
+    try { j = JSON.parse(l); } catch { continue; }
+    const m = j.message || {};
+    const u = m.usage;
+    if (!u || m.role !== 'assistant') continue;
+    const tokens = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+    if (!tokens) continue;
+    let big = false;
+    try { big = require(path.join(ROOT, 'bin', 'kit.js')).window1m(String(m.model || '')); } catch { /* 옛 워크스페이스 */ }
+    const window = big || tokens > 200000 ? 1000000 : 200000;
+    return { tokens, window, pct: Math.round((tokens / window) * 100) };
+  }
+  return null;
 }
 
 /**
@@ -80,6 +112,11 @@ run(() => {
   if (mine && cfg.longHours && mine.age > cfg.longHours * 3600 && (!st.longWarned || now - st.longWarned > 2 * 3600000)) {
     st.longWarned = now;
     out.push(`⚠ 이 세션이 ${P.hours(mine.age)} 째입니다 (기준 ${cfg.longHours}시간, 메모리 ${P.gb(mine.rss)}). 이번 요청을 마치면 핸드오프를 남기고 새로 시작하자고 사용자에게 한 줄 제안한다 (새 세션은 핸드오프로 이어진다)`);
+  }
+  const ctx = cfg.ctxPct ? contextUse(input.transcript_path, ROOT) : null;
+  if (ctx && ctx.pct >= cfg.ctxPct && (!st.ctxWarned || ctx.pct >= st.ctxWarned + 10)) {
+    st.ctxWarned = ctx.pct;
+    out.push(`⚠ 대화 맥락이 약 ${ctx.pct}% 찼습니다 (${Math.round(ctx.tokens / 1000)}K / ${ctx.window / 1000}K 추정, 기준 ${cfg.ctxPct}%). 응답이 느려지고 앞 내용이 요약될 수 있습니다. 이번 요청을 마치면 핸드오프를 남기고 새 세션으로 시작하자고 사용자에게 한 줄 제안한다`);
   }
   try { fs.writeFileSync(file, JSON.stringify(st)); } catch { /* 기록 실패 */ }
   if (out.length) context(out.join('\n'));

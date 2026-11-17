@@ -2,6 +2,19 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.100.0
+
+| 구분 | 내용 |
+|---|---|
+| 기능 | 검증 2단 `kedovi verify`: 작업마다 바뀐 영역 시험(`vars.verify.areaMap`), 전체 실제 스택 시험은 릴리스 직전 한 번(`vars.verify.fullSuite`) |
+| 기능 | `kedovi verify full` 이 통과 커밋을 기록, 릴리스 MR · `kedovi release` 때 기록이 낡았으면 경고 |
+| 기능 | 무거운 시험 순번 `kedovi heavy run · status`: 줄 · 예상 시작 · 예상 끝 (`vars.verify.heavySlots`) |
+| 기능 | 리뷰: 시험과 나란히, 1차 블로커 0 이면 끝 · 상한 2차 (`vars.review.*`). 위임 `--auto-model` 은 작은 변경을 빠른 모델로 |
+| 기능 | 구현 역할 2벌: `implementer`(high) · `implementer-deep`(xhigh, 계약 · 스키마 · 보안 · 원인 분석). 「최고」 성향 구현도 high |
+| 기능 | 작업 리더 진행판 `kedovi team step · board`, 15분마다 보고 알림(`vars.team.leadReportMinutes`) |
+| 검사 | 팀원이 도는 채 끝내는 리더를 한 번 되돌림 (`kedovi team-mode enforce hold`, 기본 막기) |
+| 기능 | 대화 맥락 사용량이 70% 를 넘으면 새 세션 제안 (`vars.session.renewContextPct`) |
+
 ## 0.99.0
 
 | 구분 | 내용 |

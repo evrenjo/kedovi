@@ -178,11 +178,11 @@ for (const c of cases) {
     const codexEffort = (role) => (fs.readFileSync(path.join(dir, '.codex', 'agents', `${role}.toml`), 'utf8').match(/^model_reasoning_effort = "(.+)"$/m) || [])[1];
     const cross = run(process.execPath, ['packs/core/bin/cross-review.js', '--to', 'codex', '--dry-run'], dir).out || '';
     const rich = agentModel('architect') === 'opus' && effortOf('architect') === 'max' && agentModel('implementer') === 'opus' && agentModel('tester') === 'opus'
-      && effortOf('implementer') === 'xhigh' && codexEffort('analyst') === 'xhigh' && codexEffort('documenter') === 'high'
+      && effortOf('implementer') === 'high' && agentModel('implementer-deep') === 'opus' && effortOf('implementer-deep') === 'xhigh' && codexEffort('analyst') === 'xhigh' && codexEffort('documenter') === 'high'
       // Codex 세션 리뷰는 Claude 위임 (claude CLI 가 없는 PC 는 대체 모델 파일)
       && (!fs.existsSync(path.join(dir, '.codex', 'agents', 'reviewer.toml')) || /gpt-6\.1-sol/.test(fs.readFileSync(path.join(dir, '.codex', 'agents', 'reviewer.toml'), 'utf8')))
       && /-m gpt-6\.1-sol -c model_reasoning_effort="high"/.test(cross);
-    got.push(`팀 최고(설계 Opus max·구현 Opus·교차 검토 6.1 Sol high) + 직접 지정 ${rich}`);
+    got.push(`팀 최고(설계 Opus max·구현 Opus high · 깊은 구현 xhigh·교차 검토 6.1 Sol high) + 직접 지정 ${rich}`);
     fs.writeFileSync(wsFile, wsRaw);
     run(process.execPath, ['bin/kit.js', 'sync'], dir);
     // 이 PC 최고(팀 표준보다 높음)는 무시하고 팀 값을 쓴다. 상한도 팀 값(2 · 5)을 넘지 않는다. 팀이 allowHigherProfile 로 허용하면 적용
@@ -1010,8 +1010,23 @@ fs.writeFileSync(out, mode === 'repeat' ? '결론: 블로커 1\\n1. [블로커][
   const bar = /블로커 기준/.test(r1.prompt) && !/앞 차수 리뷰/.test(r1.prompt) && /주문탭」 1차/.test(r1.result);
   const r2 = del('repeat', '--scope', '주문탭');
   const prior = /앞 차수 리뷰 \(같은 범위 「주문탭」 2차\)/.test(r2.prompt) && /주문 상태가 어긋남/.test(r2.prompt) && !/⚠ 같은 범위/.test(r2.start) && /\[반복\]\)/.test(r2.result);
-  const r3 = del('ok', '--scope', '주문탭');
-  const third = /⚠ 같은 범위 「주문탭」 3차 리뷰/.test(r3.start);
+  const r3stop = del('ok', '--scope', '주문탭');
+  const r3 = del('ok', '--scope', '주문탭', '--force');
+  const third = /✖ 같은 범위 「주문탭」 3차 리뷰: 상한 2차/.test(r3stop.start) && !r3stop.result && /⚠ 같은 범위 「주문탭」 3차 리뷰입니다 \(상한 2차, --force\)/.test(r3.start);
+  // 앞 차수 블로커 0 이면 끝 (vars.review.stopOnClean) · 작은 변경은 빠른 모델 (--auto-model)
+  del('quote', '--scope', '깨끗');
+  const clean = /블로커 0: 리뷰는 여기서 끝/.test(del('ok', '--scope', '깨끗').start);
+  const small = path.join(tmp, 'auto-model-repo');
+  fs.mkdirSync(small, { recursive: true });
+  const sg = (...a) => spawnSync('git', ['-C', small, ...a], { encoding: 'utf8' });
+  sg('init', '-q'); sg('config', 'user.email', 't@t'); sg('config', 'user.name', 't'); sg('config', 'maintenance.auto', 'false');
+  fs.writeFileSync(path.join(small, 'a.js'), 'x\n'); sg('add', '-A'); sg('commit', '-qm', '1');
+  fs.writeFileSync(path.join(small, 'a.js'), 'x\ny\n'); sg('commit', '-qam', '2');
+  const am = (extra) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'delegate.js'), 'start', '--to', 'codex', '--role', 'reviewer', '--mode', 'read', '--model', 'gpt-6.1-sol', '--auto-model', '--dir', small, '--dry-run', ...extra], { cwd: dir, input: '리뷰\n검사: npm test 통과', encoding: 'utf8', env }).stdout;
+  const amSmall = am([]);
+  fs.writeFileSync(path.join(small, 'a.js'), `${'z\n'.repeat(80)}`);
+  const amBig = am([]);
+  const autoModel = /--auto-model: 바뀐 파일 1개 · 1줄 → 작은 변경, 빠른 모델 (\S+)/.test(amSmall) && !/"model": "gpt-6\.1-sol"/.test(amSmall) && /→ 등급 모델 gpt-6\.1-sol 그대로/.test(amBig) && /"model": "gpt-6\.1-sol"/.test(amBig);
   const other = !/# 앞 차수 리뷰/.test(del('ok', '--scope', '다른범위').prompt);
   const r429 = del('429');
   const retryCmd = (r429.result.match(/상대 도구로 다시: (node packs\/core\/bin\/delegate\.js start --to claude --role reviewer --mode read --task-file (\S+))/) || []);
@@ -1024,10 +1039,10 @@ fs.writeFileSync(out, mode === 'repeat' ? '결론: 블로커 1\\n1. [블로커][
   const touched = del('touch');
   const stale = /⚠ 실행 중 대상이 바뀌어 결과가 낡았을 수 있음: \(워크스페이스\) stale-target\.txt/.test(touched.result) && !/낡았을/.test(r3.result);
   fs.rmSync(path.join(dir, 'stale-target.txt'), { force: true });
-  const quoted = [del('quote', '--scope', '인용'), del('quote', '--scope', '인용')].every((q) => /발견 없음/.test(q.result) && !/⚠ 앞 차수와 같은 영역/.test(q.result));
+  const quoted = [del('quote', '--scope', '인용'), del('quote', '--scope', '인용', '--force')].every((q) => /발견 없음/.test(q.result) && !/⚠ 앞 차수와 같은 영역/.test(q.result));
   const nc = del('nocheck');
   const checkGate = nc.status === 6 && /검사: <명령> 통과/.test(nc.start) && /회귀는 머리로 판정하지 않는다/.test(r1.prompt);
-  record('리뷰 위임 (블로커 기준 · 차수 · 반복 · 실패 원인 · 실행 중 변경 · 검사 줄)', bar && prior && third && other && failed && readShell && stale && checkGate && quoted, `블로커 기준 · 1차 ${bar} · 2차에 앞 블로커 · [반복] ${prior} · 인용한 [반복] 은 안 셈 ${quoted} · 3차 경고 ${third} · 다른 범위는 따로 ${other} · 429 원인과 상대 도구로 다시 ${failed} · claude 읽기 리뷰어 셸 ${readShell} · 실행 중 변경 ${stale} · 검사 줄 없으면 막음 ${checkGate}`);
+  record('리뷰 위임 (블로커 기준 · 차수 · 반복 · 실패 원인 · 실행 중 변경 · 검사 줄 · 블로커 0 이면 끝 · 작은 변경 모델)', bar && prior && third && clean && autoModel && other && failed && readShell && stale && checkGate && quoted, `블로커 기준 · 1차 ${bar} · 2차에 앞 블로커 · [반복] ${prior} · 인용한 [반복] 은 안 셈 ${quoted} · 상한 2차 넘으면 멈춤(--force) ${third} · 블로커 0 이면 끝 ${clean} · 작은 변경 빠른 모델 ${autoModel} · 다른 범위는 따로 ${other} · 429 원인과 상대 도구로 다시 ${failed} · claude 읽기 리뷰어 셸 ${readShell} · 실행 중 변경 ${stale} · 검사 줄 없으면 막음 ${checkGate}`);
 }
 
 // 토론 모드: 가짜 codex · claude 로 1차 따로 → 2차 판정(근거 없는 동의는 보류 · 놓친 것) → 3차 갈린 것만 · 동시 상한보다 큰 패널 · 실패한 모델은 빠짐으로 · 없는 도구면 시작 안 함
@@ -1469,6 +1484,22 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const state = JSON.parse(fs.readFileSync(path.join(require(path.join(dir, 'packs', 'core', 'lib', 'workspace.js')).stateDir(dir), 'selftest-tier.agents.json'), 'utf8'));
   const tree = require(path.join(dir, 'packs', 'core', 'hooks', 'agent-budget.js')).tree(state);
   const treeOk = tree.filter((x) => x.type === 'lead').length === 3 && tree.find((x) => x.id === 'L1').members.length === 1;
+  // 리더 붙잡기: 팀원이 도는 리더가 끝내려 하면 한 번 되돌림 · 두 번째는 통과 · 팀원 없는 리더는 통과
+  const held = /"decision":"block".*팀원 1명/.test(hook('SubagentStop', { agent_id: 'L1', agent_type: 'lead' }));
+  const heldOnce = !hook('SubagentStop', { agent_id: 'L1', agent_type: 'lead', stop_hook_active: true }) && !hook('SubagentStop', { agent_id: 'L3', agent_type: 'lead' });
+  // 리더 보고 주기: 처음은 조용 · 주기가 지나면 알림 · 진행판을 고치면 다시 셈 · 메인 요청 시작 때 진행판
+  const lp = (extra) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'hooks', 'lead-progress.js'), '--agent=claude'], { cwd: dir, encoding: 'utf8', input: JSON.stringify({ session_id: 'selftest-tier', ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: dir } }).stdout;
+  const inLead = (tool, input) => lp({ hook_event_name: 'PreToolUse', agent_id: 'L2', agent_type: 'lead', tool_name: tool, tool_input: input });
+  const lpFile = path.join(require(path.join(dir, 'packs', 'core', 'lib', 'workspace.js')).stateDir(dir), 'selftest-tier.lead-L2.json');
+  const quiet = !inLead('Read', { file_path: 'a' });
+  fs.writeFileSync(lpFile, JSON.stringify({ last: Date.now() - 20 * 60000 }));
+  const nudged = /단계 보고 시각.*kedovi team step/.test(inLead('Read', { file_path: 'a' })) && !inLead('Read', { file_path: 'a' });
+  fs.writeFileSync(lpFile, JSON.stringify({ last: Date.now() - 20 * 60000 }));
+  const reset = !inLead('Bash', { command: 'kedovi team step --unit a --stage 구현' }) && !inLead('Read', { file_path: 'a' }) && !lp({ hook_event_name: 'PreToolUse', agent_id: 'X', agent_type: 'implementer', tool_name: 'Read' });
+  spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'lead-board.js'), 'step', '--unit', '주문', '--stage', '구현', '--eta', '15:30'], { cwd: dir });
+  const mainSees = /작업 리더 진행판 .*주문 · 구현 .*예상 종료 15:30/.test(lp({ hook_event_name: 'UserPromptSubmit' }));
+  fs.rmSync(path.join(dir, '.agents', 'status'), { recursive: true, force: true });
+  const leadProgress = held && heldOnce && quiet && nudged && reset && mainSees;
   // 설정 · 역할 · 지침
   if (localRaw) fs.writeFileSync(localFile, localRaw);
   spawnSync(process.execPath, [path.join(dir, 'bin', 'kit.js'), 'sync', '--quiet'], { cwd: dir });
@@ -1502,8 +1533,8 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   g(repo, 'checkout', '-q', '--', '.'); wt('remove', 'wt-demo', 'FN-3', '--force');
   fs.writeFileSync(wsFile, wsRaw);
   fs.rmSync(repo, { recursive: true, force: true }); fs.rmSync(path.join(dir, '.worktrees'), { recursive: true, force: true });
-  record('작업 리더 3층 (요금제별 상한 · 층별 훅 · 중첩 깊이 · lead 역할 · kedovi worktree)', rooms && leadCap && memberCap && freed && noNested && namedInLead && treeOk && wired && add1 && listed && moved && stopped,
-    `요금제별 빠듯 1×2·6 · Max 2×2·10 · Ultra 3×2·15(팀 표준) · 최고 4×3·30 ${rooms} · 리더 상한 ${leadCap} · 리더당 팀원 상한 ${memberCap} · 끝나면 다시 ${freed} · 리더 안 리더 금지 ${noNested} · 리더 안 이름 금지 ${namedInLead} · 현황 나무 ${treeOk} · 설정 · 역할 · 지침 · gitignore ${wired} · 작업 폴더 ${add1 && listed} · 커밋 없이 옮김(남의 변경 유지) ${moved} · 겹치면 멈춤 ${stopped}`);
+  record('작업 리더 3층 (요금제별 상한 · 층별 훅 · 중첩 깊이 · lead 역할 · kedovi worktree)', rooms && leadCap && memberCap && freed && noNested && namedInLead && treeOk && leadProgress && wired && add1 && listed && moved && stopped,
+    `요금제별 빠듯 1×2·6 · Max 2×2·10 · Ultra 3×2·15(팀 표준) · 최고 4×3·30 ${rooms} · 리더 상한 ${leadCap} · 리더당 팀원 상한 ${memberCap} · 끝나면 다시 ${freed} · 리더 안 리더 금지 ${noNested} · 리더 안 이름 금지 ${namedInLead} · 현황 나무 ${treeOk} · 리더 붙잡기 ${held && heldOnce} · 보고 주기 ${quiet && nudged && reset} · 메인 진행판 ${mainSees} · 설정 · 역할 · 지침 · gitignore ${wired} · 작업 폴더 ${add1 && listed} · 커밋 없이 옮김(남의 변경 유지) ${moved} · 겹치면 멈춤 ${stopped}`);
 }
 
 // 역할 에이전트 실행 방식 — SessionStart 훅이 환경(팀 기능 · teammateMode · tmux)으로 팀 모드/서브에이전트를 판정한다 (Claude 만)

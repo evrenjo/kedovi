@@ -205,6 +205,18 @@ async function cmdPreview(ws, a) {
   } catch (e) { console.log(`열린 MR 확인 불가: ${e.message}`); }
 }
 
+/** 릴리스 MR: 전체 실제 스택 시험 기록(kedovi verify full)이 올릴 커밋과 다르면 경고 (전체 시험 명령을 정했거나 기록이 있는 repo 만) */
+function fullSuiteNote(ws, r, source) {
+  try {
+    const V = require('../../core/lib/verify');
+    if (!V.settings(ws, r).fullCmd && !V.readAll(ws.root)[r.name]) return;
+    let head = source;
+    try { head = require('child_process').execFileSync('git', ['-C', r.dir, 'rev-parse', `origin/${source}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { /* 원격 브랜치 없음 */ }
+    const st = V.fullState(ws.root, r.name, r.dir, head);
+    if (!st.ok) console.error(`⚠ ${V.fullLine(st, r.name)}`);
+  } catch { /* 옛 워크스페이스 */ }
+}
+
 async function cmdCreate(ws, a) {
   const r = repoOf(ws, a.repo);
   const source = a.source; const target = a.target || (ws.vars && ws.vars.branch && ws.vars.branch.develop) || 'develop';
@@ -214,6 +226,7 @@ async function cmdCreate(ws, a) {
   if (!a['description-file']) die('--description-file 이 필요합니다');
   const description = fs.readFileSync(a['description-file'], 'utf8');
   draftGuard(ws, r, description, 'mr');
+  if (target === ((ws.vars && ws.vars.branch && ws.vars.branch.release) || 'release')) fullSuiteNote(ws, r, source);
   const remove = a['remove-source'] === undefined ? defaultRemoveSource(ws, source, a['dry-run'] ? null : await defaultBranchOf(ws, r)) : String(a['remove-source']) === 'true';
   const body = { source_branch: source, target_branch: target, title: a.title, description, remove_source_branch: remove };
 

@@ -85,6 +85,10 @@
  *   kedovi gitlab runner-watch add [--repo R] [--interval 초] [--standalone] [--dry-run] · check [--dry-run] · status   러너 감시: 디스크 · 대기열 · 작업 시간 급증 → 알림, docker 캐시 상한. launchd plist · systemd timer 를 만들고 등록 명령을 보인다
  *   kedovi release [repo] [--deploy] [--job 작업] [--yes] [--dry-run] [--timeout 분]   운영 배포 연쇄 (gitlab 팩): 배포 전 확인(같은 트리 develop 파이프라인 성공 · 그 뒤 CI 설정 안 바뀜 · repo 확인 명령, 실패면 develop 부터 다시) → develop → release MR → MR 파이프라인 → 머지 → release 파이프라인 → (--deploy) 배포 작업. 파이프라인은 하나씩, 일시 오류는 다시 실행. --yes 없으면 계획만 (끝 코드 3)
  *   kedovi prefs [language ko|en|team · style learn|normal|expert|team · writing bullet|prose|team · writing-except <대상,…>|none|team] [--team] · mermaid [install] · setup   응답 언어 · 대화 스타일(학습 · 일반 · 전문가) · 글 형식(개조식 · 서술식)과 개조식에서 뺄 대상(chat · issue · mr · comment · report · weekly · plan) · 그림 미리보기(claude-mermaid). 이 PC 값이 팀 값보다 먼저. 인자 없이 = 지금 값
+ *   kedovi verify areas [--repo R] [--dir D] [--base B] [--run] · full [--repo R] [--cmd "명령"] · mark --repo R [--sha S] [--by "어디서"] · status [--repo R]   검증 2단: 작업마다는 바뀐 파일의 영역 시험만(vars.verify.areaMap), 전체 실제 스택 시험(vars.verify.fullCmd)은 릴리스 직전 한 번(vars.verify.fullSuite = release). full 은 무거운 시험 줄에서 돌고 통과 커밋을 기록, 릴리스 MR 때 기록이 낡았으면 경고
+ *   kedovi heavy run [--name 이름] [--dir D] -- <명령 …> · status [--json]   무거운 시험 순번: 이 PC 에서 겹치면 안 되는 시험을 줄 세워 하나씩(vars.verify.heavySlots), 줄 · 예상 시작 · 예상 끝(같은 이름의 최근 시간)
+ *   kedovi team step --unit <단위> --stage <단계> [--done …] [--next …] [--eta HH:MM] · --end 완료|막힘|결정 필요 · board [--all] [--json]   작업 리더 진행판: 리더가 단계마다 · vars.team.leadReportMinutes 분마다 적고, 메인 · 사용자가 표로 본다 (tmux 창 없이도)
+ *   kedovi team-mode enforce hold off|block [--team]   작업 리더 붙잡기 (Claude Code): 리더가 자기 팀원이 도는 채 끝내려 하면 한 번 되돌린다 (기본 막기)
  *   kedovi draft list · template <형식> · check --file F [--type 형식] [--repo R]   사람이 읽는 글의 틀과 올리기 전 검사: 형식 task(작업 항목) · bug(결함) · mr · done(완료 댓글) · weekly(주간보고) · report(보고 · 위키) · plan(기획 문서). 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것
  *   kedovi timestamp [on|off|team] [--team]   답변 첫 줄에 요청 받은 시각(yyyy-MM-dd HH:mm:ss) 표시 (Claude Code, 기본 켜짐). 이 PC 값이 팀 값보다 먼저, team = 이 PC 값 지우기. 인자 없이 = 지금 값
  *   kedovi type [유형] [--approach a] [--code 이름,…]   유형 바꾸기: 분석·설계 → 구축 · 고도화 등. 유형 팩 · 현행 repo 중 고칠 것(개발 repo 로) · 진행 방식 · 로드맵 새 뼈대 (팀장)
@@ -2898,6 +2902,7 @@ function cmdTeamMode(argv) {
     console.log(`  작업 중 받은 메시지  ${enLine('midTurnMessages')} · 작업 사이에 끼어 든 메시지를 처리했는지 멈출 때 한 번 되묻기 (Claude Code) · 바꾸기: kedovi team-mode enforce msg off|block [--team]`);
     console.log(`  서브에이전트 권한 질문  ${enLine('permissionAsk')} · 리더 · 그 아래 팀원의 권한 질문(위험한 rm · 복합 명령 · ask 규칙)은 메인 화면에만 떠서 기다리게 되므로 거절하고 다른 방법을 알리기 (Claude Code) · 바꾸기: kedovi team-mode enforce perm off|block [--team]`);
     console.log(`  사람이 읽는 글 형식  ${enLine('draftCheck')} · 이슈 · MR · 댓글을 올리기 전(gitlab 도구 · gh · glab)과 기획 repo 커밋 때 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것(보고 링크 · .agents · 임시 폴더 · push 안 한 커밋)을 보고 막기 · 바꾸기: kedovi team-mode enforce draft off|warn|block [--team]`);
+    console.log(`  작업 리더 붙잡기  ${enLine('leadHold')} · 작업 리더가 자기 팀원이 도는 채 차례를 끝내려 하면 한 번 되돌려 끝남 알림을 기다리며 단계 보고를 하게 (Claude Code) · 바꾸기: kedovi team-mode enforce hold off|block [--team]`);
     console.log(`  리뷰 전 검사  ${enLine('checkBeforeReview')} · 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 · 바꾸기: kedovi team-mode enforce check off|warn|block [--team]`);
     console.log('  요금제 바꾸기: kedovi ai (화면) · kedovi ai plan claude|gpt <요금제>');
     console.log('  자세히: CLAUDE.local.md · AGENTS.override.md 의 「팀 구성」 (역할 목록 · 쓸 수 있는 모델)');
@@ -2915,10 +2920,10 @@ function cmdTeamMode(argv) {
     if (!a1 || !a2 || (a2 !== '-' && !/^(claude|codex):\S+$/.test(a2))) fail('사용법: kedovi team-mode prefer <역할> <claude|codex>:<모델> [--team]  (지우기: prefer <역할> -)');
     edit((x) => { const pr = { ...(x.prefer || {}) }; if (a2 === '-') delete pr[a1]; else pr[a1] = a2; const y = { ...x, prefer: pr }; if (!Object.keys(pr).length) delete y.prefer; return y; });
   } else if (cmd === 'enforce') {
-    const key = { name: 'teammateName', roster: 'rosterAnnounce', review: 'reviewBeforePush', idle: 'idleTeammates', status: 'waitStatus', ask: 'decisionAsk', run: 'longRunning', check: 'checkBeforeReview', plan: 'planFirst', answer: 'answerFirst', main: 'mainDelegate', msg: 'midTurnMessages', browser: 'browserClose', long: 'longAnswer', report: 'agentReport', screens: 'screenChecklist', perm: 'permissionAsk', draft: 'draftCheck' }[a1];
-    if ((a1 === 'status' || a1 === 'ask' || a1 === 'msg' || a1 === 'browser' || a1 === 'long' || a1 === 'perm') && a2 === 'warn') fail(`사용법: kedovi team-mode enforce ${a1} off|block [--team]  (멈출 때 한 번 막거나 끈다)`);
+    const key = { name: 'teammateName', roster: 'rosterAnnounce', review: 'reviewBeforePush', idle: 'idleTeammates', status: 'waitStatus', ask: 'decisionAsk', run: 'longRunning', check: 'checkBeforeReview', plan: 'planFirst', answer: 'answerFirst', main: 'mainDelegate', msg: 'midTurnMessages', browser: 'browserClose', long: 'longAnswer', report: 'agentReport', screens: 'screenChecklist', perm: 'permissionAsk', draft: 'draftCheck', hold: 'leadHold' }[a1];
+    if ((a1 === 'status' || a1 === 'ask' || a1 === 'msg' || a1 === 'browser' || a1 === 'long' || a1 === 'perm' || a1 === 'hold') && a2 === 'warn') fail(`사용법: kedovi team-mode enforce ${a1} off|block [--team]  (멈출 때 한 번 막거나 끈다)`);
     const lv = (v) => kit.ENFORCE_LEVELS.indexOf(v);
-    if (!key || lv(a2) < 0 || lv(a2) > lv(kit.ENFORCE_DEFAULTS[key].max)) fail('사용법: kedovi team-mode enforce name off|warn|block · roster off|warn · review off|warn|block [--repos a,b|*] [--min-lines N] [--paths p1,p2] · idle off|warn|block [--after 분] [--remind 분] · status off|block · ask off|block · run off|warn|block [--after 분] · check off|warn|block · plan off|warn|block · answer off|warn|block · main off|warn|block · msg off|block · browser off|block · long off|block · report off|warn|block · screens off|warn|block · perm off|block [--team]  (name: 팀 모드에서 이름 없는 역할 에이전트 · roster: 첫 역할 에이전트 때 구성표 알림 · review: commit · push 전 리뷰 확인 · idle: 대기로 오래 남은 팀원 알림 · status: 남은 것이 있는 채 멈출 때 상태 줄 · ask: 결정 질문을 글로 끝낼 때 · run: 오래 일하는 팀원 · 위임 · check: 리뷰 전 검사 · plan: 코드 수정 전 착수 전 확인 · answer: 질문에 먼저 답하기 · main: 메인 대화 전담 · msg: 작업 중 받은 메시지 · browser: 브라우저 닫기 · long: 긴 답은 보고 페이지로 · report: 에이전트 보고 보관 · screens: 화면 착수 전 체크리스트 · perm: 서브에이전트 권한 질문 거절)');
+    if (!key || lv(a2) < 0 || lv(a2) > lv(kit.ENFORCE_DEFAULTS[key].max)) fail('사용법: kedovi team-mode enforce name off|warn|block · roster off|warn · review off|warn|block [--repos a,b|*] [--min-lines N] [--paths p1,p2] · idle off|warn|block [--after 분] [--remind 분] · status off|block · ask off|block · run off|warn|block [--after 분] · check off|warn|block · plan off|warn|block · answer off|warn|block · main off|warn|block · msg off|block · browser off|block · long off|block · report off|warn|block · screens off|warn|block · perm off|block · draft off|warn|block · hold off|block [--team]  (name: 팀 모드에서 이름 없는 역할 에이전트 · roster: 첫 역할 에이전트 때 구성표 알림 · review: commit · push 전 리뷰 확인 · idle: 대기로 오래 남은 팀원 알림 · status: 남은 것이 있는 채 멈출 때 상태 줄 · ask: 결정 질문을 글로 끝낼 때 · run: 오래 일하는 팀원 · 위임 · check: 리뷰 전 검사 · plan: 코드 수정 전 착수 전 확인 · answer: 질문에 먼저 답하기 · main: 메인 대화 전담 · msg: 작업 중 받은 메시지 · browser: 브라우저 닫기 · long: 긴 답은 보고 페이지로 · report: 에이전트 보고 보관 · screens: 화면 착수 전 체크리스트 · perm: 서브에이전트 권한 질문 거절 · draft: 사람이 읽는 글 형식 · hold: 팀원이 도는 채 끝내는 작업 리더)');
     const teamNow = kit.resolveModels(root, JSON.parse(read(wsFile))).teamEnforce[key];
     if (!team && lv(a2) < lv(teamNow)) fail(`이 PC 값은 팀 값(${teamNow})보다 세게만 둘 수 있습니다. 팀 값을 바꾸려면 팀장이 kedovi team-mode enforce ${a1} ${a2} --team`);
     // 리뷰 확인의 대상 · 기준은 팀 값만
@@ -3083,7 +3088,7 @@ async function cmdModels(argv = []) {
 }
 
 // 역할 순서 — 일이 흐르는 순서. 목록에 없는 역할(project 팩이 더한 것)은 뒤에 이름순
-const ROLE_ORDER = ['analyst', 'architect', 'spec-writer', 'implementer', 'reviewer', 'tester', 'documenter'];
+const ROLE_ORDER = ['analyst', 'architect', 'spec-writer', 'implementer', 'implementer-deep', 'reviewer', 'tester', 'documenter'];
 
 /** 역할 목록 — 쓰는 팩들의 agents 폴더 기준 */
 function listRoles(root) {
@@ -3738,7 +3743,7 @@ const HELP_GROUPS = [
   ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'views', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
   ['팀 규칙 점검', '리뷰 확인 · 훅이 알리거나 막는 수준', ['review', 'team-mode enforce']],
-  ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 보고 페이지 · 글 틀 · 형식 검사 · 실행 흐름 디버깅 · 위임 · 에이전트 진행 · 화면 안내 · 작업 리더 worktree · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'report', 'draft', 'trace', 'delegate', 'agents', 'tips', 'worktree', 'debate', 'import', 'tidy']],
+  ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 보고 페이지 · 글 틀 · 형식 검사 · 검증 2단 · 무거운 시험 순번 · 실행 흐름 디버깅 · 위임 · 에이전트 진행 · 화면 안내 · 작업 리더 worktree · 토론 · 옛 작업 가져오기', ['plan', 'handoff', 'budget', 'defects', 'board', 'report', 'draft', 'verify', 'heavy', 'trace', 'delegate', 'agents', 'tips', 'worktree', 'debate', 'import', 'tidy']],
   ['문서', '문서 사이트 · ID 찾기 · 화면설계서 · 데이터 설계 검사', ['docs', 'screens', 'datamodel']],
   ['알림 · 연동', '텔레그램 · 비밀값 · GitLab · 운영 배포 · 운영 검증', ['notify', 'secret', 'gitlab', 'release', 'ops']],
 ];
@@ -3892,6 +3897,7 @@ async function main() {
       if (!fs.existsSync(tool)) fail('이 워크스페이스에는 팀 현황 도구가 없습니다. kedovi upgrade 후 다시 하세요');
       if (['add', 'remove', 'restrict', 'members', 'edit', 'admins', 'lead', 'leads', 'repos', 'nick', 'whoami'].includes(rest[0])) return cmdTeamAdmin(root, rest);
       const [id, ...more] = rest;
+      if (id === 'step' || id === 'board') { const r = spawnSync(process.execPath, [path.join(root, 'packs', 'core', 'bin', 'lead-board.js'), ...rest], { cwd: root, stdio: 'inherit' }); return process.exit(r.status == null ? 1 : r.status); }
       if (id === 'watch') { const r = spawnSync(process.execPath, [tool, '--watch', ...more], { cwd: root, stdio: 'inherit' }); return process.exit(r.status == null ? 1 : r.status); }
       const toolArgs = !id || id.startsWith('--') ? rest : more.includes('--take') ? ['--take', id, '--items', more[more.indexOf('--take') + 1] || ''] : ['--id', id, ...more];
       const r = spawnSync(process.execPath, [tool, ...toolArgs], { cwd: root, stdio: 'inherit' });
@@ -3973,6 +3979,8 @@ async function main() {
     case 'debate': return runWsTool('debate.js', rest.length ? rest : ['list']);
     case 'board': return runWsTool('board.js', rest);
     case 'report': return runWsTool('report.js', rest);
+    case 'verify': return runWsTool('verify.js', rest.map((a, i) => (rest[i - 1] === '--dir' ? path.resolve(a) : a)));
+    case 'heavy': { const d = rest.indexOf('--'); const head = d >= 0 ? rest.slice(0, d) : rest; return runWsTool('heavy.js', head.includes('--dir') || head[0] !== 'run' ? rest.map((a, i) => (rest[i - 1] === '--dir' && (d < 0 || i < d) ? path.resolve(a) : a)) : [...head, '--dir', process.cwd(), ...(d >= 0 ? rest.slice(d) : [])]); }
     case 'draft': return runWsTool('draft.js', rest.map((a, i) => (rest[i - 1] === '--file' ? path.resolve(a) : a)));
     case 'trace': return runWsTool('trace.js', rest, 'trace');
     case 'tidy': return runWsTool('tidy.js', rest);

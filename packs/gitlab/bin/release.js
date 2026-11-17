@@ -291,6 +291,20 @@ function showVerify(v) {
 
 // ── 실행 ────────────────────────────────────────────────────────────
 
+/** 전체 실제 스택 시험 기록 (kedovi verify full): 전체 시험 명령을 정했거나 기록이 있는 repo 만. 막지 않고 경고 */
+function fullSuiteWarn(ws, r, br) {
+  try {
+    const V = require('../../core/lib/verify');
+    const s = V.settings(ws, r);
+    const rec = V.readAll(ws.root)[r.name];
+    if (!s.fullCmd && !rec) return;
+    let head = 'HEAD';
+    try { head = execFileSync('git', ['-C', r.dir, 'rev-parse', `origin/${br.develop}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { /* 원격 브랜치 없음 */ }
+    const st = V.fullState(ws.root, r.name, r.dir, head);
+    console.log(`  ${st.ok ? '✔' : '⚠'} ${V.fullLine(st, r.name)}`);
+  } catch { /* 옛 워크스페이스 */ }
+}
+
 async function main(argv) {
   const a = M.parseArgs(argv);
   const ws = M.loadWs();
@@ -338,6 +352,7 @@ async function main(argv) {
   console.log('\n[판정 미리 보기]');
   let v = await verify(ws, r, br);
   showVerify(v);
+  fullSuiteWarn(ws, r, br);
   if (!v.ok) console.log(`  실행하면 ${v.running ? `도는 develop 파이프라인 #${v.running.id} 을(를) 기다린 뒤` : 'develop 파이프라인을 새로 돌린 뒤'} 다시 판정합니다`);
 
   if (a['dry-run']) { console.log('\n[dry-run] GitLab 에 아무것도 쓰지 않았습니다'); process.exit(0); }

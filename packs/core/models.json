@@ -583,6 +583,10 @@
         },
         "implementer": {
           "model": "opus",
+          "effort": "high"
+        },
+        "implementer-deep": {
+          "model": "opus",
           "effort": "xhigh"
         },
         "reviewer": {
@@ -623,6 +627,12 @@
           "fallback": "gpt-6-astra"
         },
         "implementer": {
+          "tool": "claude",
+          "model": "opus",
+          "effort": "high",
+          "fallback": "gpt-6.1-sol"
+        },
+        "implementer-deep": {
           "tool": "claude",
           "model": "opus",
           "effort": "xhigh",
@@ -705,6 +715,10 @@
           "model": "opus",
           "effort": "high"
         },
+        "implementer-deep": {
+          "model": "opus",
+          "effort": "xhigh"
+        },
         "reviewer": {
           "tool": "codex",
           "model": "gpt-6.1-sol",
@@ -748,6 +762,12 @@
           "tool": "claude",
           "model": "opus",
           "effort": "high",
+          "fallback": "gpt-6.1-sol"
+        },
+        "implementer-deep": {
+          "tool": "claude",
+          "model": "opus",
+          "effort": "xhigh",
           "fallback": "gpt-6.1-sol"
         },
         "reviewer": {
@@ -823,6 +843,10 @@
           "effort": "high"
         },
         "implementer": "sonnet",
+        "implementer-deep": {
+          "model": "sonnet",
+          "effort": "high"
+        },
         "reviewer": {
           "tool": "codex",
           "model": "gpt-6.1-sol",
@@ -865,6 +889,10 @@
         "implementer": {
           "model": "gpt-6.1-sol",
           "effort": "medium"
+        },
+        "implementer-deep": {
+          "model": "gpt-6.1-sol",
+          "effort": "high"
         },
         "reviewer": {
           "tool": "claude",

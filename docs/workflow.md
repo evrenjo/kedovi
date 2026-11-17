@@ -208,7 +208,8 @@ Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 
 | 분석 | Opus 5.5 (xhigh) | Opus 5.5 (high) | GPT-6.1 Sol (Codex 위임 · high) |
 | 설계 | Opus 5.5 (max) | Opus 5.5 (xhigh) | Sonnet 5.5 (high) |
 | 설계 문서 | Opus 5.5 (xhigh) | Sonnet 5.5 (high) | Sonnet 5.5 (medium) |
-| 구현 | Opus 5.5 (xhigh) | Opus 5.5 (high) | Sonnet 5.5 |
+| 구현 | Opus 5.5 (high) | Opus 5.5 (high) | Sonnet 5.5 |
+| 구현 (깊게) | Opus 5.5 (xhigh) | Opus 5.5 (xhigh) | Sonnet 5.5 (high) |
 | 리뷰 | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · medium) |
 | 테스트 | GPT-6.1 Sol (Codex 위임 · high) | Haiku 5.5 (xhigh) | Haiku 5.5 (xhigh) |
 | 문서화 | Haiku 5.5 | Haiku 5.5 | Haiku 5.5 |
@@ -225,7 +226,8 @@ Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 
 | 분석 | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) |
 | 설계 | Opus 5.5 (Claude 위임 · max) | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) |
 | 설계 문서 | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) |
-| 구현 | Opus 5.5 (Claude 위임 · xhigh) | Opus 5.5 (Claude 위임 · high) | GPT-6.1 Sol (medium) |
+| 구현 | Opus 5.5 (Claude 위임 · high) | Opus 5.5 (Claude 위임 · high) | GPT-6.1 Sol (medium) |
+| 구현 (깊게) | Opus 5.5 (Claude 위임 · xhigh) | Opus 5.5 (Claude 위임 · xhigh) | GPT-6.1 Sol (high) |
 | 리뷰 | Opus 5.5 (Claude 위임 · xhigh) | Opus 5.5 (Claude 위임 · high) | Sonnet 5.5 (Claude 위임 · high) |
 | 테스트 | GPT-6.1 Sol (high) | GPT-6 Luna (max) | GPT-6 Luna (max) |
 | 문서화 | GPT-6 Luna (high) | GPT-6 Luna (medium) | GPT-6 Luna (medium) |
@@ -337,6 +339,8 @@ flowchart TD
     Q -->|"화면 비교"| SCC["kedovi screens compare &lt;화면 ID&gt; [--mock 픽스처]<br/>프로토타입 ↔ 구현을 같은 폭(PC · 폰)으로 찍어 compare.html<br/>구현 주소 = @spec 줄의 @route 또는 --impl · 배치 대조(옆 · 아래 · 폭)<br/>→ 체크리스트 비교 · 배치 줄 · 배치 행"]
     Q -->|"응답 언어 · 대화 스타일 · 글 형식"| PRF["kedovi prefs language ko · en · style learn · normal · expert [--team]<br/>writing bullet · prose · writing-except 대상,… · none (개조식에서 뺄 글)<br/>값 team = 이 PC 값 지우기 · mermaid [install] · setup (화면: 응답 언어 · 대화 스타일 · 글 형식)<br/>→ .agents/local.json (팀은 workspace.json) → sync"]
     Q -->|"사람이 읽는 글 틀 · 검사"| DRF["kedovi draft template 형식 · check --file 파일 --type 형식<br/>작업 항목 · 결함 · MR · 완료 댓글 · 주간보고 · 보고 · 기획 문서<br/>빈칸 · 빠진 절 · 긴 글머리 · 이 PC 링크 → gitlab 도구 · gh · glab · 기획 repo 커밋이 막음"]
+    Q -->|"검증 2단 · 무거운 시험"| VRF["kedovi verify areas --repo R --run (바뀐 파일 → 영역 시험, vars.verify.areaMap)<br/>kedovi verify full --repo R (전체 실제 스택 시험, 릴리스 직전 한 번 · 통과 커밋 기록)<br/>kedovi heavy run -- 명령 · heavy status (줄 · 예상 시작 · 끝)<br/>→ .agents/verify · .agents/heavy · 릴리스 MR 때 기록이 낡았으면 경고"]
+    Q -->|"작업 리더 진행판"| LDB["kedovi team step --unit 단위 --stage 단계 (리더, 단계마다 · 15분마다)<br/>kedovi team board (단계 · 끝난 것 · 다음 · 예상 종료)<br/>→ .agents/status · 요청 시작 때 훅이 메인에 넣음"]
     Q -->|"답변 시각 표시"| TS["kedovi timestamp on · off · team [--team]<br/>답변 첫 줄에 요청 받은 시각 (기본 켜짐, Claude Code)<br/>→ .agents/local.json (팀은 workspace.json)"]
     Q -->|"진행 방식"| APR["kedovi approach sprint · full · issue (팀장)<br/>스프린트: 최소 기능부터, 스프린트마다 데모 · 회고 · 전체: 전체 설계 뒤 구축 · 이슈형: 단계 대신 이슈 보드<br/>→ sync · 기본 단계 그대로인 로드맵은 새 뼈대 (이슈형은 고친 로드맵 앞에도 이슈 보드)"]
     Q -->|"유형 바꾸기"| TYP["kedovi type &lt;유형&gt; [--approach a] [--code 이름,…] (팀장)<br/>고칠 repo (현행 → 개발 repo) → 진행 방식<br/>→ 유형 팩 교체 · 로드맵 새 뼈대 (지난 로드맵은 아래에 남김) → sync"]
@@ -393,10 +397,13 @@ flowchart TD
 | `kedovi handoff find <작업>` | 핸드오프 기록 찾기 (`check` · `index` · `archive` · `organize` 도). push 뒤 핸드오프 묻기 · 자동 · 끄기는 `kedovi handoff after-push ask\|auto\|off [--bundle 시간]` |
 | `kedovi budget report` | 시간 예산 월간 집계: 끝낸 작업 수 · 예산 초과율 · 걸린 시간 중앙값 (`--month YYYY-MM`, 이력은 이 PC 만) |
 | `kedovi defects report` | 운영 결함 월간 집계: 분류별 건수 · 잠복 · 해소 시간 (`check` 는 발견 · 분류 · 해소 칸 검사) |
-| `kedovi team-mode` | 팀 구성: 자동(리더가 작업마다 역할 · 모델) · 고정(프로필대로), `prefer` 역할별 선호 모델. `enforce <대상>` 은 훅으로 지키게 하는 수준(off · warn · block)이고, 대상(name · roster · idle · status · ask · run · check · plan · answer · main · msg · browser · long · review · perm · draft)과 기본값은 [명령](commands.md). `--team` 은 팀 기본값 |
+| `kedovi team-mode` | 팀 구성: 자동(리더가 작업마다 역할 · 모델) · 고정(프로필대로), `prefer` 역할별 선호 모델. `enforce <대상>` 은 훅으로 지키게 하는 수준(off · warn · block)이고, 대상(name · roster · idle · status · ask · run · check · plan · answer · main · msg · browser · long · review · perm · draft · hold)과 기본값은 [명령](commands.md). `--team` 은 팀 기본값 |
 | `kedovi ai plan claude\|gpt <요금제>` | 회사별 요금제 (빠듯 · 넉넉 · 종량). 보통은 `kedovi ai` 화면에서 |
 | `kedovi secret` | 비밀값(토큰): `set <이름> [--global]`(숨김 입력) · `list` · `test <이름>`(권한 · 만료) · `rm` · `import`(옛 telegram.env · gitlab-token · 환경변수에서) · `exec -- <명령>`(그 명령에만 주입). OS 저장소에 프로젝트별 · 전역으로, 값은 출력하지 않는다 |
 | `kedovi prefs` | 응답 언어(한국어 · English) · 대화 스타일(학습 · 일반 · 전문가) · 글 형식(개조식 · 서술식)과 개조식에서 뺄 대상 · 그림 미리보기(claude-mermaid). `language` · `style` · `writing` · `writing-except` 이 PC · 값 `team` 이 PC 값 지우기 · `--team` 팀 기본값(팀장) · `mermaid install` · `setup` 화면. 인자 없이 = 지금 값 |
+| `kedovi verify` | 검증 2단: `areas --repo <이름> [--run]`(바뀐 파일 → 영역 시험, `vars.verify.areaMap`) · `full`(전체 실제 스택 시험을 무거운 시험 줄에서, 통과 커밋 기록. `vars.verify.fullSuite` = release 면 릴리스 직전 한 번) · `mark` · `status` |
+| `kedovi heavy` | 무거운 시험 순번: `run [--name 이름] -- <명령>`(줄을 서고 차례에 돌림) · `status`(도는 것 · 기다리는 것 · 예상 시작 · 끝, 같은 이름 최근 시간 기준) |
+| `kedovi team step` · `kedovi team board` | 작업 리더 진행판: 리더가 단계마다 · `vars.team.leadReportMinutes` 분마다 단계 · 끝난 것 · 다음 · 예상 종료를 적고, 메인 · 사용자가 표로 본다 (tmux 창 없이도). 팀원이 도는 채 끝내는 리더는 훅이 되돌린다 (`kedovi team-mode enforce hold`) |
 | `kedovi draft` | 사람이 읽는 글의 틀과 올리기 전 검사: `template <형식>`(작업 항목 · 결함 · MR · 완료 댓글 · 주간보고 · 보고 · 기획 문서) · `check --file <파일> --type <형식>`(빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것). 수준은 `kedovi team-mode enforce draft` |
 | `kedovi timestamp` | 답변 첫 줄 시각 표시 (Claude Code, 기본 켜짐): 요청 받은 시각 yyyy-MM-dd HH:mm:ss. `on\|off` 이 PC · `team` 이 PC 값 지우기 · `--team` 팀 기본값(팀장). 인자 없이 = 지금 값 |
 | `kedovi approach` | 진행 방식: MVP · 스프린트(최소 기능부터 기능 단위로 하나씩) · 워터폴 · 전체(전체 설계 뒤 구축) · 이슈형(운영 · 유지보수: 이슈마다 운영 반영, 이슈 보드). 인자 없이 = 지금 값 (팀장) |

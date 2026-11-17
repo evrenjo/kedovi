@@ -231,6 +231,34 @@
       "say": "사람이 읽는 글 형식 검사 수준 (막기 · 알림 · 끄기)",
       "cmd": "kedovi team-mode enforce draft off|warn|block [--team]",
       "scope": "이 PC · 팀"
+    },
+    {
+      "id": "verify-tiers",
+      "topic": "(?:전체|실제\\s*스택|통합)\\s*(?:시험|테스트).{0,16}(?:매번|작업마다|릴리스|오래|느려|빼|줄)|검증.{0,8}(?:오래|느려|시간)",
+      "say": "검증 2단 (작업마다 바뀐 영역 · 전체는 릴리스 직전 한 번)",
+      "cmd": "vars.verify.fullSuite release|per-item · vars.verify.areaMap · vars.verify.fullCmd (workspace.json) · kedovi verify status",
+      "scope": "팀"
+    },
+    {
+      "id": "review-rounds",
+      "topic": "리뷰.{0,10}(?:차수|2차|두\\s*번|여러\\s*번|오래|느려|그만)|리뷰\\s*모델",
+      "say": "리뷰 차수 상한 · 블로커 0 이면 끝 · 작은 변경은 빠른 모델",
+      "cmd": "vars.review.maxRounds · vars.review.stopOnClean · vars.review.small.maxLines|paths|model (workspace.json)",
+      "scope": "팀"
+    },
+    {
+      "id": "lead-report",
+      "topic": "리더.{0,12}(?:보고|진행|소식|안\\s*보|멈춘|끊)|진행판",
+      "say": "작업 리더 보고 주기 · 진행판 · 팀원이 도는 채 끝내는 리더 되돌리기",
+      "cmd": "vars.team.leadReportMinutes (workspace.json) · kedovi team board · kedovi team-mode enforce hold off|block [--team]",
+      "scope": "이 PC · 팀"
+    },
+    {
+      "id": "session-renew",
+      "topic": "세션.{0,10}(?:느려|무거|길어|오래)|맥락.{0,6}(?:찼|가득|부족)",
+      "say": "긴 세션 · 맥락 사용량 알림 (핸드오프 뒤 새 세션)",
+      "cmd": "vars.session.longHours · vars.session.renewContextPct (workspace.json)",
+      "scope": "팀"
     }
   ],
   "weak": "왜|너무|할\\s*수\\s*(?:있|없)|안\\s*되나|안되나|못\\s*해|못\\s*하나|안\\s*해|없나|있나\\?|가능(?:해|한가|할까)|이상해",

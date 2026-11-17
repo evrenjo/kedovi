@@ -7,7 +7,10 @@
  * 오래 걸리므로 백그라운드 작업으로 돈다:
  *   start --to codex|claude --role <역할> [--model m] [--effort e] [--mode write|read] [--scope <라벨>] [--group <묶음>]   작업 지시서는 stdin (또는 --task-file)
  *        --group: 토론(debate.js)처럼 한 번에 여러 모델을 돌리는 묶음. 묶음 안끼리는 동시 상한에 세지 않고 끝 알림도 묶음 단위
- *        리뷰 역할에 --scope 를 주면 같은 범위의 차수를 센다: 앞 차수 블로커를 지시서에 붙이고, 3차부터 시작할 때 경고한다
+ *        리뷰 역할에 --scope 를 주면 같은 범위의 차수를 센다: 앞 차수 블로커를 지시서에 붙인다.
+ *          앞 차수 블로커가 0 이면 더 돌지 않고(vars.review.stopOnClean, 기본 true) · vars.review.maxRounds(기본 2)를 넘으면 시작하지 않는다 (사용자에게 묻고 --force)
+ *        --auto-model [--repo R | --dir D] [--base B]: 바뀐 줄이 vars.review.small.maxLines(기본 50) 이하이거나 모두 vars.review.small.paths(문서 · 설정 등)면
+ *          빠른 모델(vars.review.small.model, 비우면 프로필의 low 등급)로, 아니면 --model 그대로 (등급 모델)
  *        → 작업 id 를 출력하고 바로 끝난다
  *   wait <id> [--timeout 초(기본 480)]   끝날 때까지(또는 timeout 까지) 기다린다. 끝났으면 결과(보고 · 바뀐 파일 · 종료 코드), 아니면 경과 시간 · 마지막 로그 한 줄
  *        결과 머리에: 실패 원인(사용량 한도 · 로그인 · 시간 초과 · 네트워크)과 대안 (사용량 한도면 상대 도구로 다시 시작하는 명령 한 줄) · 실행 중 대상이 바뀌었으면 「결과가 낡았을 수 있음」
@@ -145,12 +148,17 @@ function priorReviews(role, scope) {
     } catch { /* 깨진 기록 */ }
   }
   const blockers = [];
+  let last = null; // 바로 앞 차수: 끝났고 성공했으면 그 블로커 수
   for (const id of prev.slice(-3)) {
     let out = '';
-    try { out = fs.readFileSync(path.join(JOBS, id, 'out.md'), 'utf8'); } catch { continue; }
-    for (const l of out.split('\n')) if (/\[블로커\]/.test(l)) blockers.push(l.replace(/^\s*\d+\.\s*/, '').trim().slice(0, 200));
+    try { out = fs.readFileSync(path.join(JOBS, id, 'out.md'), 'utf8'); } catch { last = null; continue; }
+    const mine = out.split('\n').filter((l) => /\[블로커\]/.test(l));
+    for (const l of mine) blockers.push(l.replace(/^\s*\d+\.\s*/, '').trim().slice(0, 200));
+    let ok = false;
+    try { ok = JSON.parse(fs.readFileSync(path.join(JOBS, id, 'result.json'), 'utf8')).code === 0; } catch { /* 아직 도는 중 */ }
+    last = ok && out.trim() ? { id, blockers: mine.length } : null;
   }
-  return { scope, round: prev.length + 1, blockers: blockers.slice(-12) };
+  return { scope, round: prev.length + 1, blockers: blockers.slice(-12), lastClean: !!last && last.blockers === 0, lastId: last && last.id };
 }
 
 /** 실패 원인 — 로그 끝에서 찾는다 */
@@ -194,6 +202,59 @@ function readTask() {
   try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
 
+/** 리뷰 설정 (vars.review): 차수 상한 · 블로커 0 이면 끝 · 작은 변경 */
+function reviewVars() {
+  const v = ((ws.vars || {}).review) || {};
+  const n = Number(v.maxRounds);
+  const small = v.small && typeof v.small === 'object' ? v.small : {};
+  const ml = Number(small.maxLines);
+  return {
+    maxRounds: Number.isInteger(n) && n > 0 ? n : 2,
+    stopOnClean: v.stopOnClean !== false && v.stopOnClean !== 'false',
+    small: { maxLines: Number.isInteger(ml) && ml >= 0 ? ml : 50, paths: Array.isArray(small.paths) ? small.paths.filter((x) => typeof x === 'string' && x) : [], model: small.model || '' },
+  };
+}
+
+/** 바뀐 줄 · 파일 → 작은 변경이면 빠른 모델 { model, effort, line } (아니면 model 없음 = --model 그대로) */
+function autoModel(job, rv) {
+  const V = require('../lib/verify');
+  const code = (ws.repos || []).filter((r) => (r.kind || 'code') === 'code');
+  const r = opt('repo') ? (ws.repos || []).find((x) => x.name === opt('repo')) : code.length === 1 ? code[0] : null;
+  const dir = opt('dir') ? path.resolve(opt('dir')) : r && r.dir;
+  if (!dir || !fs.existsSync(dir)) return { line: 'ℹ --auto-model: 대상 repo 를 몰라 그대로 (--repo <이름> 또는 --dir <작업 폴더>)' };
+  const ch = V.changed(dir, opt('base'));
+  let lines = 0;
+  try {
+    const from = ch.base ? spawnSync('git', ['-C', dir, 'merge-base', ch.base, 'HEAD'], { encoding: 'utf8' }).stdout.trim() || ch.base : 'HEAD';
+    for (const l of spawnSync('git', ['-C', dir, 'diff', '--numstat', from], { encoding: 'utf8' }).stdout.split('\n')) {
+      const m = /^(\d+|-)\t(\d+|-)\t/.exec(l);
+      if (m) lines += (Number(m[1]) || 0) + (Number(m[2]) || 0);
+    }
+    for (const f of spawnSync('git', ['-C', dir, 'ls-files', '--others', '--exclude-standard'], { encoding: 'utf8' }).stdout.split('\n').filter(Boolean)) {
+      try { lines += fs.readFileSync(path.join(dir, f), 'utf8').split('\n').length; } catch { /* 읽지 못함 */ }
+    }
+  } catch { /* git 없음 */ }
+  const onlyPaths = rv.small.paths.length && ch.files.length && ch.files.every((f) => rv.small.paths.some((g) => V.globRe(g).test(f)));
+  const small = ch.files.length > 0 && (lines <= rv.small.maxLines || onlyPaths);
+  const what = `바뀐 파일 ${ch.files.length}개 · ${lines}줄${onlyPaths ? ' · 모두 작은 변경 경로' : ''}`;
+  if (!small) return { line: `ℹ --auto-model: ${what} → 등급 모델${job.model ? ` ${job.model}` : ''} 그대로` };
+  let pick = rv.small.model;
+  if (pick && typeof pick === 'object') pick = pick[job.to];
+  let effort = null;
+  if (!pick) {
+    try {
+      const kit = require(path.join(ROOT, 'bin', 'kit.js'));
+      const res = kit.resolveModels(ROOT, kit.loadWorkspace(ROOT));
+      const cat = JSON.parse(fs.readFileSync(path.join(ROOT, 'packs', 'core', 'models.json'), 'utf8'));
+      const low = ((((cat.profiles || {})[res.profile.local || res.profile.team] || {}).grades || {})[job.to] || {}).low;
+      pick = typeof low === 'string' ? low : low && low.model;
+      effort = low && typeof low === 'object' ? low.effort || null : null;
+    } catch { /* 옛 워크스페이스 */ }
+  }
+  if (!pick) return { line: `ℹ --auto-model: ${what} → 작은 변경이지만 빠른 모델을 몰라 그대로 (vars.review.small.model)` };
+  return { model: pick, effort, line: `ℹ --auto-model: ${what} → 작은 변경, 빠른 모델 ${pick}${effort ? ` · ${effort}` : ''}` };
+}
+
 function start() {
   const job = parseJobArgs();
   let task = readTask();
@@ -215,6 +276,16 @@ function start() {
     if (block) { task = `${task.replace(/\s+$/, '')}\n\n${block}\n`; console.log(`ℹ 화면 정본 대조 블록을 지시서에 넣었습니다: ${ids.join(' · ')}`); }
   }
   const prior = priorReviews(job.role, job.scope);
+  const rv = reviewVars();
+  if (prior && prior.round > 1 && !has('force')) {
+    if (rv.stopOnClean && prior.lastClean) { fs.rmSync(dir, { recursive: true, force: true }); console.log(`✖ 같은 범위 「${prior.scope}」 앞 차수(${prior.round - 1}차) 블로커 0: 리뷰는 여기서 끝냅니다 (vars.review.stopOnClean). 남은 권장 지적은 보고에 적는다. 그래도 다시 보려면 --force`); process.exit(7); }
+    if (prior.round > rv.maxRounds) { fs.rmSync(dir, { recursive: true, force: true }); console.log(`✖ 같은 범위 「${prior.scope}」 ${prior.round}차 리뷰: 상한 ${rv.maxRounds}차(vars.review.maxRounds)를 넘습니다. 지적을 차수마다 땜질하지 말고 원인 구조를 정리했는지 · 남은 지적을 한계로 문서화할지 사용자에게 묻고, 승인받으면 --force`); process.exit(7); }
+  }
+  if (has('auto-model')) {
+    const pick = autoModel(job, rv);
+    console.log(pick.line);
+    if (pick.model) { job.model = pick.model; job.effort = pick.effort || job.effort; }
+  }
   const meta = { id, ...job, cli: exe, args, startedAt: Date.now(), dir, round: prior ? prior.round : undefined };
   if (has('dry-run')) { console.log(JSON.stringify({ ...meta, prompt: `${buildPrompt({ ...job, task, prior }).slice(0, 300)}…` }, null, 2)); fs.rmSync(dir, { recursive: true, force: true }); return; }
   // Codex 샌드박스 안이면 네트워크가 막혀 상대 CLI 가 API 에 닿지 못한다 — 샌드박스 밖 실행 승인을 받아 다시 하게 한다
@@ -245,7 +316,7 @@ function start() {
   child.unref();
   console.log(`위임 시작: ${job.role} → ${bin}${job.model ? ` (${job.model}${job.effort ? ` · ${job.effort}` : ''})` : ''} · ${job.mode === 'write' ? '쓰기' : '읽기 전용'}`);
   console.log(`작업 id: ${id}`);
-  if (prior && prior.round >= 3) console.log(`⚠ 같은 범위 「${prior.scope}」 ${prior.round}차 리뷰입니다. 지적을 차수마다 땜질하지 말고, 원인 구조를 정리했는지 · 남은 지적을 한계로 문서화할지 사용자에게 묻습니다 (앞 차수 블로커 ${prior.blockers.length}개를 지시서에 붙였습니다)`);
+  if (prior && prior.round > rv.maxRounds) console.log(`⚠ 같은 범위 「${prior.scope}」 ${prior.round}차 리뷰입니다 (상한 ${rv.maxRounds}차, --force). 앞 차수 블로커 ${prior.blockers.length}개를 지시서에 붙였습니다`);
   console.log(`다음: node packs/core/bin/delegate.js wait ${id}`);
   console.log(`진행 보기 (사용자에게 알린다): kedovi delegate watch ${id} (다른 터미널에서 상대 에이전트가 읽고 실행하는 것이 줄마다 보인다) · 한 번만 보기: kedovi delegate status ${id}`);
 }
