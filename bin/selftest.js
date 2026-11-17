@@ -732,6 +732,17 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   record('상한 출처 · 에이전트 진행 보기 · 죽은 참조 (프로필 알림 · 표 · ai show · 지우기 · 넣기 · 나무 · 링크 글자 · 제외 구역 · 파일 이름)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
 
+// 공개판 내보내기의 gitleaks 판 · 체크섬 = 공개 repo CI 와 같은지 (판을 올릴 때 한쪽만 고치지 않게). 공개 사본에는 두 파일이 없어 건너뛴다
+const EXPORT_JS = path.join(KIT, 'bin', `${['export', 'public'].join('-')}.js`); // 사내 전용 파일 이름은 공개 사본의 금지 낱말이라 이어 붙인다
+if (fs.existsSync(EXPORT_JS) && fs.existsSync(path.join(KIT, 'public', '.github', 'workflows', 'ci.yml'))) {
+  const ex = fs.readFileSync(EXPORT_JS, 'utf8');
+  const ci = fs.readFileSync(path.join(KIT, 'public', '.github', 'workflows', 'ci.yml'), 'utf8');
+  const ver = (ex.match(/version: '([\d.]+)'/) || [])[1];
+  const sum = (ex.match(/linux_x64: '([0-9a-f]{64})'/) || [])[1];
+  const ok = !!ver && !!sum && ci.includes(`gitleaks/releases/download/v${ver}/gitleaks_${ver}_linux_x64.tar.gz`) && ci.includes(`${sum}  gl.tgz`);
+  record('공개판 내보내기 gitleaks = 공개 repo CI 판 · 체크섬', ok, ok ? `${ver}` : `내보내기 ${ver} · CI 와 다름 (bin 의 내보내기 스크립트 GITLEAKS · public/.github/workflows/ci.yml)`);
+}
+
 // 핸드오프 점검 훅: push 뒤 묻기 · 묻지 않고 기록(auto) · 끄기 · 묶기
 {
   const p = {};
