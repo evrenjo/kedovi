@@ -690,6 +690,38 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   put('L2', { agentType: 'lead', description: '단위 B', spawnDepth: 1, finished: true }, 'x');
   const w = spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'bin', 'agents-watch.js'), '--once'], { cwd: dw, encoding: 'utf8', env: { ...env, CLAUDE_CONFIG_DIR: cfg } }).stdout;
   p['진행 보기 나무'] = /세션 sess-123/.test(w) && /\n  ● lead · 단위 A · 도는 중/.test(w) && /\n      ● analyst · A 조사/.test(w) && /└ Read repos\/app\/b\.js/.test(w) && /✔ lead · 단위 B · 끝남/.test(w);
+  // 상태: 결과 없는 도구 호출 · 권한 질문 · sleep · 끊김
+  const raw = (id, meta, rows, ageMs) => {
+    fs.writeFileSync(path.join(sub, `agent-${id}.meta.json`), JSON.stringify(meta));
+    const f = path.join(sub, `agent-${id}.jsonl`);
+    fs.writeFileSync(f, rows.map((r) => JSON.stringify(r)).join('\n') + '\n');
+    const t = (Date.now() - ageMs) / 1000;
+    fs.utimesSync(f, t, t);
+  };
+  const use = (id, name, input) => ({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name, input }] } });
+  const res = (id) => ({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, content: 'ok' }] } });
+  raw('P1', { agentType: 'implementer', description: '권한 대기', spawnDepth: 1 }, [use('t1', 'Edit', { file_path: 'repos/app/c.js' })], 3 * 60000);
+  raw('T1', { agentType: 'tester', description: '긴 시험', spawnDepth: 1 }, [use('t2', 'Bash', { command: 'npm test', description: '전체 시험' })], 20 * 60000);
+  raw('W1', { agentType: 'tester', description: '대기 반복', spawnDepth: 1 }, [use('t3', 'Bash', { command: 'sleep 600; ls' })], 3 * 60000);
+  raw('S1', { agentType: 'lead', description: '끊은 리더', spawnDepth: 1 }, [use('t4', 'Bash', { command: 'npm test' }), res('t4'), { type: 'user', message: { content: [{ type: 'text', text: '[Request interrupted by user]' }] } }], 30 * 60000);
+  raw('D1', { agentType: 'analyst', description: '결과 받음', spawnDepth: 1 }, [use('t5', 'Read', { file_path: 'x' }), res('t5')], 8 * 60000);
+  raw('Q1', { agentType: 'implementer', description: '훅 기록', spawnDepth: 1 }, [use('t6', 'Bash', { command: 'rm -rf build && make' })], 30000);
+  const { stateDir: sdir } = require(path.join(dw, 'packs', 'core', 'lib', 'workspace.js'));
+  const hk = spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'hooks', 'agent-permission.js'), '--agent=claude'], { cwd: dw, encoding: 'utf8', input: JSON.stringify({ hook_event_name: 'PermissionRequest', session_id: 's', agent_id: 'Q1', agent_type: 'implementer', tool_name: 'Bash', tool_input: { command: 'rm -rf build && make' } }), env: { ...env, CLAUDE_PROJECT_DIR: dw } }).stdout;
+  p['권한 질문 거절 (서브에이전트)'] = /"behavior":"deny"/.test(hk) && /삭제 명령은 다른 방법으로 돌아가 실행하지 않는다/.test(hk) && fs.existsSync(path.join(sdir(dw), 'perm', 'Q1.json'))
+    && !spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'hooks', 'agent-permission.js'), '--agent=claude'], { cwd: dw, encoding: 'utf8', input: JSON.stringify({ hook_event_name: 'PermissionRequest', session_id: 's', tool_name: 'Bash', tool_input: { command: 'rm -rf build' } }), env: { ...env, CLAUDE_PROJECT_DIR: dw } }).stdout;
+  const w2 = spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'bin', 'agents-watch.js'), '--once', '--all'], { cwd: dw, encoding: 'utf8', env: { ...env, CLAUDE_CONFIG_DIR: cfg, CLAUDE_PROJECT_DIR: dw } }).stdout;
+  p['상태: 권한 · 도구 · sleep · 끊김'] = /⏸ implementer · 권한 대기 · 도구 대기/.test(w2) && /└ Edit repos\/app\/c\.js/.test(w2) && /⏳ tester · 긴 시험 · 도구 실행 중/.test(w2) && /⏲ tester · 대기 반복/.test(w2)
+    && /⏹ lead · 끊은 리더 · 끊김/.test(w2) && /◌ analyst · 결과 받음 · 멈춘 듯/.test(w2) && /⏸ implementer · 훅 기록 · 도구 대기/.test(w2) && /└ Bash rm -rf build && make/.test(w2) && /⏸ 도구 대기 2/.test(w2);
+  {
+    const main = path.join(fs.realpathSync(tmp), 'state-main'); // git 은 worktree 에 실제 경로를 적는다
+    const wt = path.join(fs.realpathSync(tmp), 'state-wt');
+    fs.mkdirSync(main);
+    fs.writeFileSync(path.join(main, 'workspace.json'), '{}\n');
+    const g = (...a) => spawnSync('git', ['-C', main, '-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'maintenance.auto=false', ...a], { encoding: 'utf8' });
+    g('init', '-q'); g('add', '.'); g('commit', '-qm', 'x', '--no-verify'); g('worktree', 'add', '-q', '--detach', wt);
+    p['worktree 도 같은 상태 폴더 (위임 목록)'] = fs.existsSync(path.join(wt, 'workspace.json')) && sdir(wt) === sdir(main) && sdir(main) !== sdir(dw);
+  }
   p['명령 연결'] = /메인/.test(spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'agents', 'watch', '--once'], { cwd: dw, encoding: 'utf8', env: { ...env, CLAUDE_CONFIG_DIR: cfg } }).stdout);
   // 죽은 참조
   fs.mkdirSync(path.join(dw, 'docs'), { recursive: true });
@@ -698,6 +730,45 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   const dead = require(path.join(dw, 'packs', 'core', 'bin', 'check-refs.js')).findDeadRefs(dw).filter((d) => /none-/.test(d.ref));
   p['죽은 참조: 외부 링크 글자 · 제외 구역 · 문서 제외 · 파일 이름'] = dead.map((d) => `${d.file}:${d.line}:${d.ref}`).join() === 'docs/refs.md:2:config/none-b.properties,docs/refs.md:6:config/none-d.properties';
   record('상한 출처 · 에이전트 진행 보기 · 죽은 참조 (프로필 알림 · 표 · ai show · 지우기 · 넣기 · 나무 · 링크 글자 · 제외 구역 · 파일 이름)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
+
+// 핸드오프 점검 훅: push 뒤 묻기 · 묻지 않고 기록(auto) · 끄기 · 묶기
+{
+  const p = {};
+  const ws = path.join(tmp, 'handoff-push-ws');
+  const app = path.join(ws, 'repos', 'app');
+  const bare = path.join(tmp, 'handoff-push-remote.git');
+  fs.mkdirSync(app, { recursive: true });
+  const g = (dir, ...a) => spawnSync('git', ['-C', dir, '-c', 'user.name=hp', '-c', 'user.email=t@t', '-c', 'maintenance.auto=false', ...a], { encoding: 'utf8' });
+  spawnSync('git', ['init', '-q', '--bare', bare]);
+  g(app, 'init', '-q'); g(app, 'remote', 'add', 'origin', bare); fs.writeFileSync(path.join(app, 'a.txt'), 'a'); g(app, 'add', '.'); g(app, 'commit', '-qm', 'x', '--no-verify'); g(app, 'push', '-q', '-u', 'origin', 'HEAD');
+  g(ws, 'init', '-q'); g(ws, 'config', 'user.name', 'hp');
+  const setWs = (handoff) => fs.writeFileSync(path.join(ws, 'workspace.json'), JSON.stringify({ repos: [{ name: 'app' }], vars: handoff ? { handoff } : {} }));
+  const hook = () => spawnSync(process.execPath, [path.join(KIT, 'packs', 'core', 'hooks', 'handoff-reminder.js'), '--agent=claude'], { cwd: ws, encoding: 'utf8', input: JSON.stringify({ hook_event_name: 'Stop', session_id: 'hp-1' }), env: { ...process.env, CLAUDE_PROJECT_DIR: ws } }).stdout.trim();
+  setWs(null);
+  p['기본: 묻게'] = /핸드오프 할까요/.test(hook());
+  setWs({ afterPush: 'auto' });
+  const auto = hook();
+  p['auto: 묻지 않고 기록'] = /묻지 않고/.test(auto) && !/핸드오프 할까요/.test(auto) && /그 섹션에 덧붙이고/.test(auto);
+  setWs({ afterPush: 'off' });
+  p['off: 보지 않음'] = !hook();
+  // 오늘 핸드오프가 있고 그 뒤 push: 묶는 시간 안이면 통과, 0 이면 push 마다
+  const h = path.join(ws, 'handoffs', 'hp');
+  fs.mkdirSync(h, { recursive: true });
+  const { localDate: ld, isoWeek: iw } = require(path.join(KIT, 'packs', 'core', 'lib', 'workspace.js'));
+  fs.writeFileSync(path.join(h, `${iw()}.md`), `## ${ld()}\n- 기록\n`);
+  fs.writeFileSync(path.join(h, 'LATEST.md'), '# 마지막\n');
+  const past = (Date.now() - 60000) / 1000;
+  fs.utimesSync(path.join(h, 'LATEST.md'), past, past);
+  fs.writeFileSync(path.join(app, 'b.txt'), 'b'); g(app, 'add', '.'); g(app, 'commit', '-qm', 'y', '--no-verify'); g(app, 'push', '-q');
+  setWs({ afterPush: 'auto' });
+  p['묶기: 오늘 핸드오프 뒤 3시간 안 push 는 통과'] = !hook();
+  setWs({ afterPush: 'auto', bundleHours: '0' });
+  p['묶기 0: push 마다'] = /묻지 않고/.test(hook());
+  const cli = spawnSync(process.execPath, [path.join(KIT, 'packs', 'core', 'bin', 'handoff.js'), 'after-push', 'auto', '--bundle', '2'], { cwd: ws, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: ws } });
+  const v = JSON.parse(fs.readFileSync(path.join(ws, 'workspace.json'), 'utf8')).vars.handoff;
+  p['after-push 명령'] = cli.status === 0 && v.afterPush === 'auto' && v.bundleHours === '2' && spawnSync(process.execPath, [path.join(KIT, 'packs', 'core', 'bin', 'handoff.js'), 'after-push', 'never'], { cwd: ws, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: ws } }).status === 1;
+  record('핸드오프 점검 (기본 묻기 · auto · off · 묶기 · after-push 명령)', Object.values(p).every(Boolean), Object.entries(p).map(([k, x]) => `${k} ${x}`).join(' · '));
 }
 
 // MCP 역할 지정 · 브라우저 닫기 · 메모리 집계 · 세션 상태 훅
@@ -794,6 +865,9 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   p['길게 요청하면 안 봄'] = !lh('Stop', { last_assistant_message: long });
   lh('UserPromptSubmit', { prompt: '표로 줘' });
   p['큰 표도 셈'] = /표 14줄/.test(lh('Stop', { last_assistant_message: ['| a | b |', '|---|---|', ...Array.from({ length: 13 }, (_, i) => `| ${i} | x |`)].join('\n') }));
+  lh('UserPromptSubmit', { prompt: '진행 알려줘' });
+  const prog = ['2026-11-17 03:00:00', '', '**진행 현황** (03:00)', ...Array.from({ length: 34 }, (_, i) => `| 작업 ${i} | 진행 중 |`)].join('\n');
+  p['진행 현황은 따로 (50줄 · 표 안 셈)'] = !lh('Stop', { last_assistant_message: prog }) && /"block"/.test(lh('Stop', { last_assistant_message: ['진행 현황', ...Array.from({ length: 55 }, (_, i) => `줄 ${i}`)].join('\n') }));
   // 에이전트 보고 보관 (SubagentStop)
   const ar = (extra) => spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'hooks', 'agent-report.js'), '--agent=claude'], { cwd: dw, encoding: 'utf8', input: JSON.stringify({ hook_event_name: 'SubagentStop', session_id: 'ar-1', agent_id: 'a1', ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: dw } }).stdout.trim();
   fs.mkdirSync(path.join(dw, '.claude', 'agents'), { recursive: true });

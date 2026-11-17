@@ -3,6 +3,9 @@
 // PreToolUse(Bash · Read): 비밀값 파일(.pgpass · .env(예시 제외) · ~/.ssh/*(공개 키 · known_hosts 제외) · *.pem · *.key · 러너 config.toml · .netrc · .git-credentials)의
 //   내용을 출력하는 명령(cat · head · tail · less · awk · sed · grep · diff …)과 Read 도구를 막는다.
 //   통과: 존재 · 권한(ls · test · stat), 세기(wc · awk 의 NF · NR 만 · grep -c/-q/-l), 키 이름만(cut -d= -f1), 파일 → 파일(cp · sed -i · > 파일), 불러오기(source).
+//   Bash 만: 에이전트 설정 파일(~/.claude/settings*.json · ~/.claude.json · .claude/settings*.json · ~/.codex/config.toml)에 비밀값 모양 값(env 의 토큰 등)이 있으면
+//     통째 출력도 막는다 (키 이름만 jq '.env | keys' · 값 빼고 jq 'del(.env)' 는 통과). Read 도구는 막지 않는다 (설정을 고치려면 Edit 전에 읽어야 한다)
+//   인자 없는 env · printenv · export -p · declare -x · set (환경 변수를 값째 쏟는다)도 막는다 (env | cut -d= -f1 처럼 키 이름만은 통과).
 // PostToolUse(Bash): 출력에 비밀값 모양(토큰 · PEM 개인 키 · DB 주소 비밀번호 · KEY=무작위 16자 이상)이 있으면 노출 가능성을 알린다 (값은 다시 찍지 않는다).
 // 막을 때만 deny JSON, 알림은 additionalContext JSON. 예외는 삼키고 항상 exit 0
 'use strict';
@@ -24,8 +27,26 @@ function isSecretFile(p) {
   if (b === 'config.toml' && /(^|\/)\.?gitlab-runner$/.test(d)) return true;
   if (d === path.join(HOME, '.ssh') && !/\.pub$/.test(b) && !/^known_hosts/.test(b) && b !== 'authorized_keys') return true;
   if (/\.(pem|key)$/i.test(b)) return true;
+  if (b === '.credentials.json' && d === path.join(HOME, '.claude')) return true;
+  if (b === 'auth.json' && d === path.join(HOME, '.codex')) return true;
   return false;
 }
+
+/** 에이전트 설정 파일인가: 평소엔 읽어도 되지만 env 에 토큰을 넣는 곳 */
+function isAgentSettings(p) {
+  const b = path.basename(p);
+  const d = path.dirname(p);
+  if (/^settings(\.local)?\.json$/.test(b) && path.basename(d) === '.claude') return true;
+  if (b === '.claude.json' && d === HOME) return true;
+  if (b === 'config.toml' && d === path.join(HOME, '.codex')) return true;
+  return false;
+}
+
+/** 설정 파일에 비밀값 모양 값이 있는가 (크면 보지 않는다) */
+function hasSecretValues(p) {
+  try { if (fs.statSync(p).size > 4 * 1024 * 1024) return false; return scanOutput(fs.readFileSync(p, 'utf8')).length > 0; } catch { return false; }
+}
+const bashSecret = (p) => isSecretFile(p) || (isAgentSettings(p) && hasSecretValues(p));
 
 // 내용을 출력하는 명령
 const SHOW = new Set(['cat', 'less', 'more', 'head', 'tail', 'bat', 'batcat', 'nl', 'tac', 'awk', 'gawk', 'mawk', 'sed', 'gsed', 'grep', 'egrep', 'fgrep', 'rg', 'ag', 'strings', 'xxd', 'od', 'hexdump', 'cut', 'sort', 'uniq', 'jq', 'yq', 'diff', 'base64', 'openssl', 'column', 'fold', 'paste', 'tr', 'perl', 'python', 'python3', 'ruby', 'node', 'view', 'vim', 'vi', 'nano', 'emacs', 'code']);
@@ -39,9 +60,9 @@ function secretsIn(word, cwd) {
   const w = expand(word);
   if (!w || w.startsWith('-') || /[$`]/.test(w)) return [];
   const p = path.resolve(cwd, w);
-  if (!/[*?[]/.test(path.basename(p))) return isSecretFile(p) ? [p] : [];
+  if (!/[*?[]/.test(path.basename(p))) return bashSecret(p) ? [p] : [];
   const re = new RegExp(`^${path.basename(p).replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`);
-  try { return fs.readdirSync(path.dirname(p)).filter((n) => re.test(n)).map((n) => path.join(path.dirname(p), n)).filter(isSecretFile); } catch { return isSecretFile(p.replace(/[*?]/g, 'x')) ? [p] : []; }
+  try { return fs.readdirSync(path.dirname(p)).filter((n) => re.test(n)).map((n) => path.join(path.dirname(p), n)).filter(bashSecret); } catch { return isSecretFile(p.replace(/[*?]/g, 'x')) ? [p] : []; }
 }
 
 /** 단위 명령 하나 → { name, args, files(읽는 비밀값 파일), toFile(> 파일로 보냄), quiet(값을 내지 않는 형태) } */
@@ -68,6 +89,7 @@ function stage(text, cwd) {
   else if (/^g?sed$/.test(name)) quiet = args.some((a) => /^-[a-zA-Z]*i/.test(a) || a === '--in-place');
   else if (name === 'cut') quiet = / -f ?1 /.test(joined) && / -d ?[=:] /.test(joined);
   else if (name === 'openssl') quiet = args.includes('-noout') && !args.includes('-text');
+  else if (name === 'jq' || name === 'yq') { const prog = args.find((a) => !a.startsWith('-')) || ''; quiet = /\bkeys(_unsorted)?\b|\bdel\(\s*\.env\b|\blength\b|\bhas\(/.test(prog) && !/\.env\s*(\[|\.|\|\s*\.)/.test(prog.replace(/\.env\s*\|\s*keys/, '')); }
   return { name, args, files, toFile, quiet };
 }
 
@@ -80,6 +102,16 @@ function bashLeak(cmd, cwd) {
   for (const s of segs) { cur.push(s.text); if (s.next !== '|') { pipes.push(cur); cur = []; } }
   if (cur.length) pipes.push(cur);
   for (const pipe of pipes) {
+    // 환경 변수를 값째 쏟는 명령 (인자 없는 env · printenv · export -p · declare -x · set)
+    const first = tokens(String(pipe[0] || '').trim());
+    const dump = (first[0] === 'env' || first[0] === 'printenv') && first.length === 1 ? first[0]
+      : (first[0] === 'export' && first[1] === '-p' && first.length === 2) || (first[0] === 'declare' && /^-[a-z]*x/.test(first[1] || '') && first.length === 2) || (first[0] === 'set' && first.length === 1) ? first.join(' ') : '';
+    if (dump) {
+      const rest = pipe.slice(1).map((x) => stage(x, cwd)).filter((x) => x.name);
+      const last = rest[rest.length - 1];
+      const namesOnly = rest.some((x) => (x.name === 'cut' && x.quiet) || (/^[gm]?awk$/.test(x.name) && /-F\s*=?\s*['"]?=/.test(x.args.join(' ')) && /print \$1\b/.test(x.args.join(' ')) && !/\$[2-9]|\$0/.test(x.args.join(' '))));
+      if (!(namesOnly || (last && (SINK.has(last.name) || last.quiet || last.toFile)))) return { file: '환경 변수', name: dump, env: true };
+    }
     const st = pipe.map((x) => stage(x, cwd)).filter((x) => x.name);
     const src = st.findIndex((x) => x.files.length && SHOW.has(x.name) && !x.quiet && !x.toFile);
     if (src < 0) continue;
@@ -125,7 +157,7 @@ function scanOutput(text) {
   const found = new Set();
   for (const [re, label] of RULES) if (re.test(s)) found.add(label);
   // KEY=무작위 16자 이상 (.pgpass · .env 한 줄). 16진수만이면(커밋 · 해시) 키 이름이 비밀값다울 때만
-  for (const m of s.matchAll(/\b([A-Z][A-Z0-9_]{2,})\s*[=:]\s*["']?([A-Za-z0-9+/_.~!@#%^&*-]{16,})["']?/g)) {
+  for (const m of s.matchAll(/\b([A-Z][A-Z0-9_]{2,})["']?\s*[=:]\s*["']?([A-Za-z0-9+/_.~!@#%^&*-]{16,})["']?/g)) {
     const [, key, v] = m;
     const secretName = /PASS|PWD|SECRET|TOKEN|KEY|AUTH|CRED|PRIVATE|SALT/.test(key);
     const mixed = /[A-Za-z]/.test(v) && /\d/.test(v) && entropy(v) >= 3.5;
@@ -165,11 +197,13 @@ function main() {
   }
   if (tool !== 'Bash') return;
   const hit = bashLeak(String(ti.command || ''), cwd);
-  if (hit) deny(`비밀값 파일(${hit.file.replace(HOME, '~')}) 의 내용을 출력하는 명령이다 (${hit.name}). 값이 대화 기록에 남는다. ${how}. (secret-guard)`);
+  if (hit && hit.env) deny(`환경 변수를 값째 출력하는 명령이다 (${hit.name}). 게이트웨이 · API 토큰이 대화 기록에 남는다. 키 이름만 보려면 env | cut -d= -f1, 하나가 있는지만 보려면 test -n "$이름" && echo 있음. (secret-guard)`);
+  else if (hit && isAgentSettings(hit.file)) deny(`에이전트 설정 파일(${hit.file.replace(HOME, '~')}) 에 토큰 같은 값이 있어 통째로 출력하지 않는다 (${hit.name}). 값이 대화 기록에 남는다. 키 이름만 jq '.env | keys' <파일>, 값 빼고 보기 jq 'del(.env)' <파일>. (secret-guard)`);
+  else if (hit) deny(`비밀값 파일(${hit.file.replace(HOME, '~')}) 의 내용을 출력하는 명령이다 (${hit.name}). 값이 대화 기록에 남는다. ${how}. (secret-guard)`);
 }
 
 if (require.main === module) {
   try { main(); } catch { /* 훅은 세션을 깨지 않는다 */ }
   process.exit(0);
 }
-module.exports = { identLike, isSecretFile, bashLeak, scanOutput };
+module.exports = { identLike, isSecretFile, isAgentSettings, bashLeak, scanOutput };

@@ -98,6 +98,7 @@
  *   kedovi team-mode enforce plan off|warn|block [--team]   착수 전 확인 (Claude Code): 요청마다 코드 repo 첫 수정(Edit · Write) 전에 답변에 「착수 전 확인:」 머리말이 없으면 알린다. warn(기본) 요청마다 한 번 · block 머리말을 보일 때까지 수정을 막는다. 문서 · 스타일 두 줄 이하는 제외
  *   kedovi team-mode enforce main off|warn|block [--team]   메인 대화 전담 (Claude Code): 메인이 repo 파일을 직접 고치면 막고(block 기본) 백그라운드 에이전트에 맡기게 한다. 워크스페이스 기록 · 밖은 제외
  *   kedovi team-mode enforce long off|block [--team]        긴 답은 보고 페이지로 (Claude Code): 마지막 답이 vars.report.maxLines(기본 25)줄 · 표 12줄을 넘는데 「자세히: <링크>」 가 없으면 한 번 되돌린다(block 기본)
+ *   kedovi team-mode enforce perm off|block [--team]        서브에이전트 권한 질문 (Claude Code): 리더 · 그 아래 팀원의 권한 질문은 기다리지 않게 거절하고 다른 방법을 알린다(block 기본)
  *   kedovi team-mode enforce screens off|warn|block [--team]   화면 착수 전 확인 (screens 팩): 정본(프로토타입 · 화면설계서)이 있는 화면의 진입 파일(@spec 화면 ID)을 정본 요소 체크리스트 없이 고치면 막는다(block 기본 · warn 화면마다 한 번 알림). 팀원 · 서브에이전트 · 위임 안에서도
  *   kedovi team-mode enforce report off|warn|block [--team]   에이전트 보고 보관 (Claude Code): 서브에이전트 · 리더의 마지막 보고가 vars.report.agentLines(기본 20)줄을 넘으면 원문을 보고 페이지 파일로 보관하고, 킷 역할 에이전트면 결론 · 핵심 · 링크로 다시 끝내게 한다(block 기본 · warn 보관만)
  *   kedovi team-mode enforce browser off|block [--team]     브라우저 닫기 (Claude Code): 브라우저 MCP 로 연 브라우저를 닫지 않고 끝내면(메인 · 서브에이전트 · 팀원) 한 번 막는다(block 기본)
@@ -2871,6 +2872,7 @@ function cmdTeamMode(argv) {
     console.log(`  에이전트 보고 보관  ${enLine('agentReport')} · 서브에이전트 · 리더의 보고가 기준 줄 수(vars.report.agentLines, 기본 20)를 넘으면 원문을 보고 페이지에 보관하고 짧게 다시 쓰게 (Claude Code. 알림 = 보관만) · 바꾸기: kedovi team-mode enforce report off|warn|block [--team]`);
     console.log(`  브라우저 닫기  ${enLine('browserClose')} · 브라우저 MCP 로 연 브라우저를 닫지 않고 끝내면 한 번 막기 (Claude Code) · 바꾸기: kedovi team-mode enforce browser off|block [--team]`);
     console.log(`  작업 중 받은 메시지  ${enLine('midTurnMessages')} · 작업 사이에 끼어 든 메시지를 처리했는지 멈출 때 한 번 되묻기 (Claude Code) · 바꾸기: kedovi team-mode enforce msg off|block [--team]`);
+    console.log(`  서브에이전트 권한 질문  ${enLine('permissionAsk')} · 리더 · 그 아래 팀원의 권한 질문(위험한 rm · 복합 명령 · ask 규칙)은 메인 화면에만 떠서 기다리게 되므로 거절하고 다른 방법을 알리기 (Claude Code) · 바꾸기: kedovi team-mode enforce perm off|block [--team]`);
     console.log(`  리뷰 전 검사  ${enLine('checkBeforeReview')} · 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 · 바꾸기: kedovi team-mode enforce check off|warn|block [--team]`);
     console.log('  요금제 바꾸기: kedovi ai (화면) · kedovi ai plan claude|gpt <요금제>');
     console.log('  자세히: CLAUDE.local.md · AGENTS.override.md 의 「팀 구성」 (역할 목록 · 쓸 수 있는 모델)');
@@ -2888,10 +2890,10 @@ function cmdTeamMode(argv) {
     if (!a1 || !a2 || (a2 !== '-' && !/^(claude|codex):\S+$/.test(a2))) fail('사용법: kedovi team-mode prefer <역할> <claude|codex>:<모델> [--team]  (지우기: prefer <역할> -)');
     edit((x) => { const pr = { ...(x.prefer || {}) }; if (a2 === '-') delete pr[a1]; else pr[a1] = a2; const y = { ...x, prefer: pr }; if (!Object.keys(pr).length) delete y.prefer; return y; });
   } else if (cmd === 'enforce') {
-    const key = { name: 'teammateName', roster: 'rosterAnnounce', review: 'reviewBeforePush', idle: 'idleTeammates', status: 'waitStatus', ask: 'decisionAsk', run: 'longRunning', check: 'checkBeforeReview', plan: 'planFirst', answer: 'answerFirst', main: 'mainDelegate', msg: 'midTurnMessages', browser: 'browserClose', long: 'longAnswer', report: 'agentReport', screens: 'screenChecklist' }[a1];
-    if ((a1 === 'status' || a1 === 'ask' || a1 === 'msg' || a1 === 'browser' || a1 === 'long') && a2 === 'warn') fail(`사용법: kedovi team-mode enforce ${a1} off|block [--team]  (멈출 때 한 번 막거나 끈다)`);
+    const key = { name: 'teammateName', roster: 'rosterAnnounce', review: 'reviewBeforePush', idle: 'idleTeammates', status: 'waitStatus', ask: 'decisionAsk', run: 'longRunning', check: 'checkBeforeReview', plan: 'planFirst', answer: 'answerFirst', main: 'mainDelegate', msg: 'midTurnMessages', browser: 'browserClose', long: 'longAnswer', report: 'agentReport', screens: 'screenChecklist', perm: 'permissionAsk' }[a1];
+    if ((a1 === 'status' || a1 === 'ask' || a1 === 'msg' || a1 === 'browser' || a1 === 'long' || a1 === 'perm') && a2 === 'warn') fail(`사용법: kedovi team-mode enforce ${a1} off|block [--team]  (멈출 때 한 번 막거나 끈다)`);
     const lv = (v) => kit.ENFORCE_LEVELS.indexOf(v);
-    if (!key || lv(a2) < 0 || lv(a2) > lv(kit.ENFORCE_DEFAULTS[key].max)) fail('사용법: kedovi team-mode enforce name off|warn|block · roster off|warn · review off|warn|block [--repos a,b|*] [--min-lines N] [--paths p1,p2] · idle off|warn|block [--after 분] [--remind 분] · status off|block · ask off|block · run off|warn|block [--after 분] · check off|warn|block · plan off|warn|block · answer off|warn|block · main off|warn|block · msg off|block · browser off|block · long off|block · report off|warn|block · screens off|warn|block [--team]  (name: 팀 모드에서 이름 없는 역할 에이전트 · roster: 첫 역할 에이전트 때 구성표 알림 · review: commit · push 전 리뷰 확인 · idle: 대기로 오래 남은 팀원 알림 · status: 남은 것이 있는 채 멈출 때 상태 줄 · ask: 결정 질문을 글로 끝낼 때 · run: 오래 일하는 팀원 · 위임 · check: 리뷰 전 검사 · plan: 코드 수정 전 착수 전 확인 · answer: 질문에 먼저 답하기 · main: 메인 대화 전담 · msg: 작업 중 받은 메시지 · browser: 브라우저 닫기 · long: 긴 답은 보고 페이지로 · report: 에이전트 보고 보관 · screens: 화면 착수 전 체크리스트)');
+    if (!key || lv(a2) < 0 || lv(a2) > lv(kit.ENFORCE_DEFAULTS[key].max)) fail('사용법: kedovi team-mode enforce name off|warn|block · roster off|warn · review off|warn|block [--repos a,b|*] [--min-lines N] [--paths p1,p2] · idle off|warn|block [--after 분] [--remind 분] · status off|block · ask off|block · run off|warn|block [--after 분] · check off|warn|block · plan off|warn|block · answer off|warn|block · main off|warn|block · msg off|block · browser off|block · long off|block · report off|warn|block · screens off|warn|block · perm off|block [--team]  (name: 팀 모드에서 이름 없는 역할 에이전트 · roster: 첫 역할 에이전트 때 구성표 알림 · review: commit · push 전 리뷰 확인 · idle: 대기로 오래 남은 팀원 알림 · status: 남은 것이 있는 채 멈출 때 상태 줄 · ask: 결정 질문을 글로 끝낼 때 · run: 오래 일하는 팀원 · 위임 · check: 리뷰 전 검사 · plan: 코드 수정 전 착수 전 확인 · answer: 질문에 먼저 답하기 · main: 메인 대화 전담 · msg: 작업 중 받은 메시지 · browser: 브라우저 닫기 · long: 긴 답은 보고 페이지로 · report: 에이전트 보고 보관 · screens: 화면 착수 전 체크리스트 · perm: 서브에이전트 권한 질문 거절)');
     const teamNow = kit.resolveModels(root, JSON.parse(read(wsFile))).teamEnforce[key];
     if (!team && lv(a2) < lv(teamNow)) fail(`이 PC 값은 팀 값(${teamNow})보다 세게만 둘 수 있습니다. 팀 값을 바꾸려면 팀장이 kedovi team-mode enforce ${a1} ${a2} --team`);
     // 리뷰 확인의 대상 · 기준은 팀 값만
@@ -2922,7 +2924,7 @@ function cmdTeamMode(argv) {
       extra.runMinutes = n;
     }
     edit((x) => ({ ...x, enforce: { ...(x.enforce || {}), [key]: a2, ...extra } }));
-  } else fail('사용법: kedovi team-mode [auto|fixed] · prefer <역할> <claude|codex>:<모델>|- · enforce name off|warn|block · enforce roster off|warn · enforce review off|warn|block · enforce idle off|warn|block · enforce status off|block · enforce ask off|block · enforce run off|warn|block · enforce check off|warn|block · enforce plan off|warn|block · enforce main off|warn|block · enforce msg off|block · enforce browser off|block · enforce long off|block · [--team]');
+  } else fail('사용법: kedovi team-mode [auto|fixed] · prefer <역할> <claude|codex>:<모델>|- · enforce name off|warn|block · enforce roster off|warn · enforce review off|warn|block · enforce idle off|warn|block · enforce status off|block · enforce ask off|block · enforce run off|warn|block · enforce check off|warn|block · enforce plan off|warn|block · enforce main off|warn|block · enforce msg off|block · enforce browser off|block · enforce long off|block · enforce perm off|block · [--team]');
   runWorkspaceKit(root, ['sync', '--quiet']);
   console.log(`✔ ${team ? '팀 기본값(workspace.json. commit·push 하면 팀 적용)' : '이 PC(.agents/local.json)'} 에 저장했습니다`);
   show();

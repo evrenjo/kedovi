@@ -160,8 +160,13 @@ kedovi secret rm GITLAB_TOKEN
 | 넣는 법 | 값은 인자로 받지 않는다(셸 기록에 남는다). 터미널 숨김 입력이나 표준 입력. AI 에게 값을 주지 않는다: 채팅에서 "토큰 넣어줘" 라고 하면 이 명령을 알려 준다 |
 | 팩의 선언 | 팩이 쓰는 토큰은 `pack.json` 의 `secrets` 에 이름 · 용도 · 필요 권한을 적는다 (gitlab 팩: `GITLAB_TOKEN`, 권한 api). `kedovi doctor` 가 없음 · 옛 파일 · 권한 부족 · 만료 30일 이내를 알린다 |
 | 위임 | 다른 AI 에게 일을 맡길 때(교차 검토 등) 비밀값 이름을 모두 뺀 환경으로 띄운다 |
-| 비밀값 파일 출력 막기 | 훅(`secret-guard`)이 모든 세션에서 비밀값 파일(`.pgpass` · `.env`(예시 파일 제외) · `~/.ssh/*`(공개 키 · `known_hosts` 제외) · `*.pem` · `*.key` · 러너 `config.toml` · `.netrc`)의 내용을 출력하는 명령(`cat` · `head` · `awk` · `sed -n` · `grep` 등)과 파일 읽기 도구를 막는다. 존재 · 권한(`ls -l` · `test -f` · `stat`), 줄 · 칸 수(`wc` · `awk '{print NF}'`), 키 이름(`cut -d= -f1`), 파일 → 파일 복사는 된다 |
+| 비밀값 파일 출력 막기 | 훅(`secret-guard`)이 비밀값 파일(`.pgpass` · `.env` · `~/.ssh/*` · `*.pem` · `*.key` · 러너 `config.toml` · `.netrc`)을 출력하는 명령과 읽기 도구를 막는다. 존재 · 권한 · 줄 수 · 키 이름(`cut -d= -f1`) · 파일 복사는 된다. 토큰이 든 에이전트 설정 파일의 통째 출력과 인자 없는 `env` · `printenv` 도 막는다 (아래 표) |
 | 출력 속 비밀값 알림 | 명령 출력에 토큰(`glpat-` · `glrt-` · `ghp_` 등) · PEM 개인 키 · DB 주소의 비밀번호 · `KEY=무작위 16자 이상` 이 보이면 AI 가 값을 다시 찍지 않고 사용자에게 알리며 교체할지 묻는다 |
+
+| 함께 막는 것 | 막는 경우 | 되는 것 |
+|---|---|---|
+| 에이전트 설정 파일 (`~/.claude/settings.json` · `.claude/settings.local.json` · `~/.claude.json` · `~/.codex/config.toml`) | env 에 토큰 같은 값이 있을 때 셸로 통째 출력 | 키 이름 `jq '.env \| keys'` · 값 빼고 `jq 'del(.env)'` · 읽기 도구 (고치려면 읽어야 한다) |
+| 환경 변수 | 인자 없는 `env` · `printenv` · `export -p` · `set` | 키 이름 `env \| cut -d= -f1` · 하나만 `printenv HOME` |
 
 
 ## 팀장 · 팀원 · 담당 repo

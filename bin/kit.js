@@ -25,7 +25,7 @@ const { execFileSync, spawnSync } = require('child_process');
 const GEN_NOTE = '생성 파일: `node bin/kit.js sync` 로 다시 만든다. 직접 고치지 말 것 (정본 = packs/ · workspace.json)';
 const DEFAULT_AGENTS_MD_BYTES = 32 * 1024; // Codex project_doc_max_bytes 기본값
 const ENFORCE_LEVELS = ['off', 'warn', 'block']; // agents.enforce.* 훅 강제 수준 (약한 것부터)
-const ENFORCE_DEFAULTS = { teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'block', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' }, browserClose: { level: 'block', max: 'block' }, longAnswer: { level: 'block', max: 'block' }, agentReport: { level: 'block', max: 'block' }, screenChecklist: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
+const ENFORCE_DEFAULTS = { teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'block', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' }, browserClose: { level: 'block', max: 'block' }, longAnswer: { level: 'block', max: 'block' }, agentReport: { level: 'block', max: 'block' }, screenChecklist: { level: 'block', max: 'block' }, permissionAsk: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
 const UI_LAYER_PACKS = ['frontend', 'mobile', 'desktop', 'tv', 'watch']; // 화면을 만드는 레이어 팩 (repo 별 작업 규칙에 화면 정본 규칙을 앞에 둔다)
 const MAX_AGENTS_MD_BYTES = 96 * 1024; // 이 위로는 sync 가 막는다 (context 낭비)
 const PERSONAL_HEADROOM = 12 * 1024; // 개인 지침(응답 언어 · 대화 스타일 약 1.7KB · 역할 상한 · 팀 구성(역할 · 모델 메뉴) · 위임 표 · 잠금)이 AGENTS.override.md 에 더해지는 몫. 자동 모드에서 약 8KB
@@ -1377,6 +1377,7 @@ function resolveModels(root, ws) {
   //   screenChecklist = 정본(프로토타입 · 화면설계서)이 있는 화면의 진입 파일(@spec 화면 ID)을 정본 요소 체크리스트 없이 고치면 막는다 (screens 팩. 팀원 · 서브에이전트 · 위임 안에서도. block 기본 · warn 화면마다 한 번 알림 · off)
   //   browserClose = 브라우저 MCP 로 브라우저를 열고 닫지 않은 채 끝내면 한 번 막는다 (Claude Code. block 기본 · off)
   //   midTurnMessages = 작업 중 끼어 든 사용자 메시지를 답변에서 처리했는지 멈출 때 한 번 되묻는다 (Claude Code. block 기본 · off)
+  //   permissionAsk = 서브에이전트(리더 · 그 아래 팀원)의 권한 질문을 묻지 않고 거절하고 다른 방법을 알린다 (Claude Code PermissionRequest. block 기본 · off: 메인 화면에 그대로 묻기)
   //   checkBeforeReview = 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 막는다 (리뷰 위임 · 리뷰 역할 에이전트)
   const longRun = { after: mins(te.runMinutes, 60) };
   return { team, effective, base, run, access, runWarnings, limits, teamLimits, limitParts, enforce, teamEnforce, review, idle, longRun, profile: { team: teamProfile, local: localProfile, blocked, allowHigher } };

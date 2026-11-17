@@ -4,18 +4,22 @@
  * 까닭: 작업 보고가 길면 화면에서 다 읽지 못한다. 채팅은 결론 · 핵심 · 「자세히: <링크>」, 자세한 것은 kedovi report 페이지.
  * Stop: last_assistant_message 의 빈 줄 아닌 줄이 vars.report.maxLines(기본 25)를 넘거나, 표 줄이 12줄을 넘는데 「자세히:」 링크가 없으면 한 번 막는다 (요청마다 한 번)
  * 코드 블록 안 줄 · 오류 출력은 센다 (그대로 두라고 알린다). 사용자가 「자세히」 · 「전부」 · 「길게」 를 요청했으면 보지 않는다
+ * 정기 진행 현황(첫 줄이 「진행 현황 · 진행 상황」, 요청 시각 줄 다음)은 따로: vars.report.progressLines(기본 50)줄까지 · 표 줄 수는 보지 않는다 (표가 본문이라 되돌리면 같은 표가 다시 온다)
  * 수준 agents.enforce.longAnswer (off | block, 기본 block)
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { readInput, block, run, root, safeId } = require('../lib/hook');
+const { readInput, block, run, root, safeId, dropStamp } = require('../lib/hook');
 const { stateDir, load } = require('../lib/workspace');
 
 const LINK = /자세히\s*[::]\s*\S+/;
 const WANTS_LONG = /자세히|전부|전체|길게|상세|모두 보여|다 보여|full|detail/i;
+// 정기 진행 현황 머리 (# · ** · 이모지 뒤도)
+const PROGRESS = /^[#>*\s]*(?:[^\s\w가-힣]+\s*)?(?:정기\s*)?진행\s*(?:현황|상황)/;
+const isProgress = (text) => PROGRESS.test((dropStamp(text).split('\n').find((l) => l.trim()) || '').trim());
 
-run(() => {
+if (require.main === module) run(() => {
   const input = readInput();
   const id = safeId(input.session_id);
   if (!id) return;
@@ -34,11 +38,15 @@ run(() => {
   let level = 'block';
   let max = 25;
   try { const kit = require(path.join(ROOT, 'bin', 'kit.js')); level = (kit.resolveModels(ROOT, kit.loadWorkspace(ROOT)).enforce || {}).longAnswer || level; } catch { /* 옛 워크스페이스 */ }
-  try { const v = Number((((load(ROOT).vars || {}).report) || {}).maxLines); if (Number.isFinite(v) && v > 0) max = v; } catch { /* 기본 */ }
+  const progress = isProgress(text);
+  if (progress) max = 50;
+  try { const r = (load(ROOT).vars || {}).report || {}; const v = Number(progress ? r.progressLines : r.maxLines); if (Number.isFinite(v) && v > 0) max = v; } catch { /* 기본 */ }
   if (level !== 'block') return;
   const lines = text.split('\n').filter((l) => l.trim());
-  const tableRows = lines.filter((l) => /^\s*\|/.test(l) && !/^\s*\|[\s:|-]+\|\s*$/.test(l)).length;
+  const tableRows = progress ? 0 : lines.filter((l) => /^\s*\|/.test(l) && !/^\s*\|[\s:|-]+\|\s*$/.test(l)).length;
   if (lines.length <= max && tableRows <= 12) return;
   fs.writeFileSync(mark, 'warned');
   block(`답이 깁니다 (${lines.length}줄${tableRows > 12 ? ` · 표 ${tableRows}줄` : ''}, 기준 ${max}줄). 사용자는 화면에서 다 읽지 못합니다. kedovi report new "<제목>"(안 되면 node packs/core/bin/report.js new "<제목>")이 준 파일에 자세한 내용(바뀐 파일 · 검증 표 · 근거 · 남은 것)을 옮기고, 답을 결론 1줄 + 핵심 3~5줄 + 「자세히: <링크>」 로 다시 씁니다. 오류 · 실패 · 사용자가 정할 것은 채팅에 남깁니다. 끄기: kedovi team-mode enforce long off`);
 });
+
+module.exports = { isProgress };

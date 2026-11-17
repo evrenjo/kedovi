@@ -16,6 +16,7 @@
  *   find <검색어> [--all] 작업별 기록(모든 사람) → 주간 기록(보관 포함) 순으로 찾아 파일:줄 로 보여 준다
  *   archive [--weeks 8]   N 주 지난 주간 기록을 archive/ 로 옮긴다 (지우지 않는다)
  *   organize              이미 커진 기록 정리 후보 — 큰 파일 · 흩어진 파일 · 자주 나온 티켓·기능
+ *   after-push [ask|auto|off] [--bundle 시간]  작업 repo push 뒤 핸드오프: ask = 묻기(기본) · auto = 묻지 않고 기록 · off = 보지 않기. --bundle = 오늘 핸드오프 뒤 이 시간 안의 push 는 묶어서 한 번에(기본 3). workspace.json vars.handoff (팀 값)
  */
 'use strict';
 
@@ -260,6 +261,26 @@ function cmdOrganize() {
   console.log('\n다음: handoff-organize 스킬 절차대로 후보마다 topics/<이름>.md 를 만들고(find 로 근거 줄을 모아 요약), 끝나면 archive · index · check');
 }
 
-const COMMANDS = { topic: cmdTopic, check: cmdCheck, index: cmdIndex, find: cmdFind, archive: cmdArchive, organize: cmdOrganize };
-if (!COMMANDS[cmd]) { console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(2, 22).map((l) => l.replace(/^ \* ?/, '')).join('\n')); process.exit(cmd ? 1 : 0); }
+/** after-push: push 뒤 핸드오프 방식 (workspace.json vars.handoff 의 afterPush · bundleHours, 다른 값 · 순서는 그대로) */
+function cmdAfterPush() {
+  const f = path.join(ROOT, 'workspace.json');
+  const w = JSON.parse(fs.readFileSync(f, 'utf8'));
+  const h = ((w.vars || {}).handoff) || {};
+  const mode = argv[1] && !argv[1].startsWith('--') ? argv[1] : null;
+  const bundle = opt('bundle');
+  const LABEL = { ask: '묻기', auto: '묻지 않고 기록', off: '보지 않기' };
+  if (!mode && bundle === null) {
+    console.log(`push 뒤 핸드오프: ${LABEL[h.afterPush] || LABEL.ask} (${h.afterPush || 'ask'}) · 묶기 ${h.bundleHours ?? 3}시간\n바꾸기: kedovi handoff after-push ask|auto|off [--bundle 시간]`);
+    return;
+  }
+  if (mode && !LABEL[mode]) { console.error('사용법: kedovi handoff after-push ask|auto|off [--bundle 시간]'); process.exit(1); }
+  if (bundle !== null && !(Number(bundle) >= 0)) { console.error('--bundle 은 0 이상의 시간 (0 = push 마다)'); process.exit(1); }
+  w.vars = w.vars || {};
+  w.vars.handoff = { ...h, ...(mode ? { afterPush: mode } : {}), ...(bundle !== null ? { bundleHours: String(Number(bundle)) } : {}) };
+  fs.writeFileSync(f, `${JSON.stringify(w, null, 2)}\n`);
+  console.log(`✔ push 뒤 핸드오프: ${LABEL[w.vars.handoff.afterPush || 'ask']} · 묶기 ${w.vars.handoff.bundleHours ?? 3}시간 (workspace.json vars.handoff). 팀에 적용하려면 workspace.json 을 커밋한다`);
+}
+
+const COMMANDS = { topic: cmdTopic, check: cmdCheck, index: cmdIndex, find: cmdFind, archive: cmdArchive, organize: cmdOrganize, 'after-push': cmdAfterPush };
+if (!COMMANDS[cmd]) { console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(2, 23).map((l) => l.replace(/^ \* ?/, '')).join('\n')); process.exit(cmd ? 1 : 0); }
 COMMANDS[cmd]();

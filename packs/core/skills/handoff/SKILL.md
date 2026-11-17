@@ -167,3 +167,4 @@ node packs/core/bin/tidy.js --count --new  # 정리 후보 (이번 작업에서 
 - 보고 끝에 **「로드맵을 볼까요?」** 를 선택지 질문으로 묻는다 (보기 · 안 보기, 글 질문으로 묻지 않는다). 보기를 고르면 `node packs/core/bin/plan.js` 를 돌려 출력(흐름도 · 지금 단계 표 · 이번에 생긴 것 · 다음)을 그대로 붙인다. 안 보기를 고르거나 답이 없으면 붙이지 않는다.
 
 > Stop 훅(`packs/core/hooks/handoff-reminder.js`)은 push 뒤 오늘 핸드오프가 없으면 "핸드오프 할까요?" 를 묻게 한다. 사용자가 "나중에" 라고 하면 워크스페이스 루트 `.handoff-snooze` 첫 줄에 세션 id(또는 오늘 날짜)를 적는다.
+> 프로젝트가 `kedovi handoff after-push auto` 로 정했으면 묻지 않고 기록한다 (그 설정이 기록 커밋 · push 승인). 오늘 섹션이 있으면 덧붙이고, 진행 중 작업의 push 여부는 묻지 않고 「이 PC 에만 있음」 으로 적는다. 오늘 핸드오프 뒤 `vars.handoff.bundleHours`(기본 3시간) 안의 push 는 묶어서 그 시간이 지난 뒤 한 번에 기록한다. `off` 면 훅이 보지 않는다.

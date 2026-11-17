@@ -10,6 +10,8 @@
  * - 핸드오프 완료 = handoffs/{id}/{ISO주차}.md 에 오늘 섹션(## YYYY-MM-DD)이 있고 LATEST.md 가 마지막 push 이후에 갱신됨
  * - stop_hook_active 면 통과 (직전 stop 을 이 훅이 막았다 — 루프 방지)
  * - 워크스페이스 루트 .handoff-snooze 첫 줄이 이 세션 id 또는 오늘 날짜면 통과 (사용자가 "나중에" 라고 한 경우)
+ * - 프로젝트 설정 vars.handoff.afterPush: ask(기본) = 사용자에게 묻게 · auto = 묻지 않고 핸드오프하게 · off = 보지 않는다
+ * - 묶기 vars.handoff.bundleHours(기본 3): 오늘 핸드오프를 한 지 이 시간이 지나지 않았으면 그 뒤 push 는 시간이 지난 뒤 멈출 때 한 번에 기록한다 (push 마다 기록 커밋이 쌓이지 않게)
  */
 'use strict';
 
@@ -52,10 +54,20 @@ function snoozed(rootDir, input) {
   return !!want && (want === String(input.session_id || '') || want === localDate());
 }
 
+/** 프로젝트 설정: { mode: ask | auto | off, bundleMs } */
+function settings(ws) {
+  const h = ((ws.vars || {}).handoff) || {};
+  const mode = ['ask', 'auto', 'off'].includes(String(h.afterPush)) ? String(h.afterPush) : 'ask';
+  const n = Number(h.bundleHours);
+  return { mode, bundleMs: (Number.isFinite(n) && n >= 0 ? n : 3) * 3600000 };
+}
+
 run(() => {
   const input = readInput();
   if (input.stop_hook_active) return;
   const ws = load();
+  const cfg = settings(ws);
+  if (cfg.mode === 'off') return;
   if (snoozed(ws.root, input)) return;
 
   const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
@@ -78,8 +90,19 @@ run(() => {
   let latestAt = 0;
   try { latestAt = fs.statSync(path.join(hdir, 'LATEST.md')).mtimeMs; } catch { /* 없음 */ }
   if (weekHasToday && latestAt >= lastPush) return;
+  // 묶기: 오늘 핸드오프를 한 지 얼마 안 됐으면 이번 push 는 다음 핸드오프에 함께 적는다
+  if (weekHasToday && latestAt && Date.now() - latestAt < cfg.bundleMs) return;
 
   const sid = input.session_id ? String(input.session_id) : today;
+  if (cfg.mode === 'auto') {
+    block(
+      `이번 세션에 작업 repo(${pushedRepos.join(', ')})로 push 했는데 그 뒤 핸드오프(handoffs/${id}/)가 아직 없습니다. ` +
+      '프로젝트 설정(vars.handoff.afterPush = auto)에 따라 **묻지 않고** handoff 스킬로 지금 기록합니다 (이 설정이 기록 커밋 · push 승인이다). ' +
+      `오늘 섹션(## ${today})이 이미 있으면 새로 만들지 말고 그 섹션에 덧붙이고, LATEST.md 를 고쳐 기록 커밋 하나로 올립니다. ` +
+      '진행 중 작업을 작업 브랜치로 push 할지는 묻지 않고 「이 PC 에만 있음」 으로 적습니다. 기록 외의 다른 작업을 새로 시작하지 않습니다.'
+    );
+    return;
+  }
   block(
     `이번 세션에 작업 repo(${pushedRepos.join(', ')})로 push 했는데 그 뒤 오늘 핸드오프(handoffs/${id}/)가 아직 없습니다. ` +
     '**먼저 사용자에게 "핸드오프 할까요?" 라고 묻고, 하겠다는 답을 받은 뒤에만** handoff 스킬을 따라 진행하세요. ' +

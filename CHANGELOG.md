@@ -2,6 +2,19 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.98.0
+
+| 구분 | 내용 |
+|---|---|
+| 기능 | 서브에이전트(리더 · 팀원) 권한 질문은 기다리지 않고 거절하고 다른 방법을 알림 (`kedovi team-mode enforce perm`, 기본 켬) |
+| 기능 | 리더는 이정표 · 최종 보고 · 결정 요청을 메인에게 메시지로 먼저, 리더 하나에 작업 하나. 멈춘 팀원은 메인이 끈다 |
+| 기능 | `kedovi agents watch`: ⏳ 도구 실행 중 · ⏲ sleep · ⏸ 도구 대기(권한 질문) · ⏹ 끊김을 따로 |
+| 기능 | `kedovi handoff after-push ask\|auto\|off [--bundle 시간]`: push 뒤 핸드오프를 묻지 않고 기록 · 3시간 안 push 는 묶기 |
+| 기능 | autopilot: 프로젝트 규칙이 정했으면 push · MR · 머지까지. `vars.autopilot.merge = reversible` 이면 되돌릴 수 있는 임시 결정만 남았을 때 머지 |
+| 보안 | 토큰이 든 에이전트 설정 파일(`~/.claude/settings.json` 등)의 통째 출력 · 인자 없는 `env` · `printenv` 막기 (키 이름만은 됨) |
+| 동작 | 정기 진행 현황은 긴 답 기준을 따로 (50줄, 표 줄 수 안 셈) · 기다릴 때 sleep 반복 대신 끝남 알림 · Monitor |
+| 수정 | worktree 에서 돌린 위임이 `kedovi delegate list` 에 안 보이던 것 (상태 폴더를 본 작업 트리 · 실제 경로 기준으로) |
+
 ## 0.97.2
 
 | 구분 | 내용 |

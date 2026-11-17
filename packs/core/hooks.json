@@ -64,6 +64,9 @@
     { "matcher": "AskUserQuestion", "script": "hooks/notify.js", "timeout": 5, "agents": "claude" },
     { "matcher": "mcp__plugin_telegram.*reply", "script": "hooks/notify.js", "timeout": 5, "agents": "claude" }
   ],
+  "PermissionRequest": [
+    { "script": "hooks/agent-permission.js", "timeout": 5, "agents": "claude" }
+  ],
   "Notification": [
     { "script": "hooks/team-idle.js", "timeout": 5, "agents": "claude" },
     { "script": "hooks/notify.js", "timeout": 10, "agents": "claude" }

@@ -129,6 +129,22 @@
       "default": "25",
       "desc": "마지막 답이 이 줄 수(빈 줄 제외)를 넘거나 표가 12줄을 넘는데 「자세히: <링크>」 가 없으면 보고 페이지(kedovi report)로 옮기라고 한 번 되돌린다 (kedovi team-mode enforce long)"
     },
+    "report.progressLines": {
+      "default": "50",
+      "desc": "정기 진행 현황(답 첫 줄이 「진행 현황 · 진행 상황」)은 이 줄 수까지 긴 답으로 되돌리지 않는다. 표 줄 수는 보지 않는다 (kedovi team-mode enforce long)"
+    },
+    "handoff.afterPush": {
+      "default": "ask",
+      "desc": "작업 repo 로 push 한 뒤 핸드오프가 없을 때: ask = 「핸드오프 할까요?」 묻기 · auto = 묻지 않고 기록 · off = 보지 않기. kedovi handoff after-push ask|auto|off"
+    },
+    "handoff.bundleHours": {
+      "default": "3",
+      "desc": "오늘 핸드오프를 한 지 이 시간이 지나지 않았으면 그 뒤 push 는 묶어서 시간이 지난 뒤 한 번에 기록한다 (push 마다 기록 커밋이 쌓이지 않게. 0 = push 마다)"
+    },
+    "autopilot.merge": {
+      "default": "hold",
+      "desc": "자율완주(autopilot)에서 임시 결정이 남았을 때 머지: hold = 임시 결정이 하나라도 있으면 머지 보류 · reversible = 되돌릴 수 있는 값만 걸린 임시 결정이면 머지까지 (push · MR · 머지는 프로젝트 규칙이 허용할 때만)"
+    },
     "report.agentLines": {
       "default": "20",
       "desc": "서브에이전트 · 리더의 마지막 보고가 이 줄 수(빈 줄 제외)를 넘으면 원문을 보고 페이지 파일로 보관하고, 킷 역할 에이전트면 결론 · 핵심 · 링크로 다시 끝내게 한다 (kedovi team-mode enforce report)"

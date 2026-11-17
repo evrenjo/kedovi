@@ -84,8 +84,20 @@ function isoWeek(d = new Date()) {
 }
 
 /** 워크스페이스 밖(OS 임시 폴더)의 이 워크스페이스 전용 상태 폴더 — gitignore 가 필요 없다 */
+/** 워크스페이스 repo 의 worktree(에이전트 작업 폴더 등)면 본 작업 트리 경로로: 같은 워크스페이스의 상태(위임 작업 · 표시)를 한 곳에서 본다 */
+function mainCheckout(r) {
+  try {
+    const m = fs.readFileSync(path.join(r, '.git'), 'utf8').match(/^gitdir:\s*(.+?)\s*$/m); // worktree 의 .git 은 파일
+    const at = m ? path.resolve(r, m[1]).split(path.sep).join('/').lastIndexOf('/.git/worktrees/') : -1;
+    if (at > 0) { const main = path.resolve(r, m[1]).split(path.sep).join('/').slice(0, at); if (fs.existsSync(path.join(main, 'workspace.json'))) return main; }
+  } catch { /* 보통 폴더 */ }
+  return r;
+}
+
 function stateDir(r) {
-  const key = require('crypto').createHash('sha1').update(path.resolve(r || root())).digest('hex').slice(0, 12);
+  let at = path.resolve(r || root());
+  try { at = fs.realpathSync(at); } catch { /* 없는 경로 */ } // 링크 경로(macOS /var → /private/var)로 들어와도 같은 폴더
+  const key = require('crypto').createHash('sha1').update(mainCheckout(at)).digest('hex').slice(0, 12);
   // 여러 사람이 쓰는 Linux 의 /tmp 에서 남이 먼저 만든 폴더에 끼어들지 않게: 내 것만 (0700, 소유자 확인)
   const base = path.join(require('os').tmpdir(), process.getuid ? `agent-workspace-kit-${process.getuid()}` : 'agent-workspace-kit');
   fs.mkdirSync(base, { recursive: true, mode: 0o700 });

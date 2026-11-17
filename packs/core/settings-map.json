@@ -203,6 +203,20 @@
       "cmd": "kedovi agent --claude|--codex",
       "scope": "이 PC",
       "weakOk": true
+    },
+    {
+      "id": "handoff-push",
+      "topic": "핸드오프\\s*(?:할까요|묻|물어|자동|안\\s*물|그만\\s*물|매번|너무\\s*자주)|push\\s*(?:할\\s*때)?마다\\s*핸드오프",
+      "say": "push 뒤 핸드오프 묻기 · 묻지 않고 기록 · 끄기 (묶는 시간)",
+      "cmd": "kedovi handoff after-push ask|auto|off [--bundle 시간]",
+      "scope": "팀"
+    },
+    {
+      "id": "perm-ask",
+      "topic": "(?:서브에이전트|리더|팀원|에이전트).{0,12}(?:권한|승인)\\s*(?:질문|대기|창|묻)|권한\\s*(?:질문|대기).{0,10}(?:멈|안\\s*끝|몇\\s*시간)",
+      "say": "서브에이전트 권한 질문 거절 (기다리지 않게)",
+      "cmd": "kedovi team-mode enforce perm off|block [--team]",
+      "scope": "이 PC · 팀"
     }
   ],
   "weak": "왜|너무|할\\s*수\\s*(?:있|없)|안\\s*되나|안되나|못\\s*해|못\\s*하나|안\\s*해|없나|있나\\?|가능(?:해|한가|할까)|이상해",
