@@ -7,10 +7,10 @@
  *     비슷한 이슈 목록 (기본 열린 것 + 닫힌 것, 10개). 등록 전 중복 확인용.
  * view     [--repo R] --iid N
  *     이슈 제목 · 상태 · 본문과 사람이 쓴 댓글 (시스템 기록 제외, 오래된 순).
- * create   [--repo R] --title "..." --description-file F [--dry-run]
- *     이슈를 등록한다. 본문에 비밀값 모양이 있으면 보내지 않는다. --dry-run 이면 보낼 요청만 출력한다.
- * comment  [--repo R] --iid N --body-file F [--dry-run]
- *     이슈에 댓글(조치 보고 등)을 단다. 검사 · --dry-run 은 create 와 같다.
+ * create   [--repo R] --title "..." --description-file F [--type task|bug] [--dry-run]
+ *     이슈를 등록한다. 본문에 비밀값 모양이 있거나 글 형식(kedovi draft check)에 걸리면 보내지 않는다. --dry-run 이면 보낼 요청만 출력한다.
+ * comment  [--repo R] --iid N --body-file F [--type done] [--dry-run]
+ *     이슈에 댓글(조치 보고 등)을 단다. 완료 댓글이면 --type done (필수 절까지). 검사 · --dry-run 은 create 와 같다.
  *
  * 설정 · 토큰은 gitlab-mr.js 와 같다: workspace.json repos[].gitlab = { host, projectId, apiBase? }, GITLAB_TOKEN.
  * --repo 는 gitlab 설정이 있는 repo 가 하나면 생략. 토큰은 어떤 출력에도 찍지 않는다.
@@ -18,7 +18,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadWs, parseArgs, die, api, apiBase, repoOrOnly } = require('./gitlab-mr.js');
+const { loadWs, parseArgs, die, draftGuard, api, apiBase, repoOrOnly } = require('./gitlab-mr.js');
 
 function kitSecretHits(root, text) {
   for (const f of [path.join(root, 'bin', 'kit.js'), path.join(__dirname, '..', '..', '..', 'bin', 'kit.js')]) {
@@ -72,6 +72,7 @@ async function cmdCreate(ws, a) {
   if (!a.title || a.title === true) die('--title 이 필요합니다');
   const description = readFile(a['description-file'], 'description-file');
   guard(ws, description, a.title);
+  draftGuard(ws, r, description, a.type && a.type !== true ? a.type : 'issue');
   const body = { title: a.title, description };
   if (a['dry-run']) {
     console.log(`[dry-run] POST ${apiBase(r)}/projects/${r.gitlab.projectId}/issues`);
@@ -88,6 +89,7 @@ async function cmdComment(ws, a) {
   const iid = iidOf(a);
   const text = readFile(a['body-file'], 'body-file');
   guard(ws, text);
+  draftGuard(ws, r, text, a.type && a.type !== true ? a.type : 'comment');
   if (a['dry-run']) {
     console.log(`[dry-run] POST ${apiBase(r)}/projects/${r.gitlab.projectId}/issues/${iid}/notes`);
     console.log('[dry-run] header: PRIVATE-TOKEN: ***');

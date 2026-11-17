@@ -217,6 +217,20 @@
       "say": "서브에이전트 권한 질문 거절 (기다리지 않게)",
       "cmd": "kedovi team-mode enforce perm off|block [--team]",
       "scope": "이 PC · 팀"
+    },
+    {
+      "id": "writing",
+      "topic": "개조식|서술식|문장으로\\s*(?:써|풀어)|글머리|(?:보고|이슈|댓글|문서|답변).{0,10}(?:너무\\s*길|장황|형식)",
+      "say": "사람이 읽는 글 형식 (개조식 · 서술식, 개조식에서 뺄 대상)",
+      "cmd": "kedovi prefs writing bullet|prose · kedovi prefs writing-except <대상,…>|none [--team]",
+      "scope": "이 PC · 팀"
+    },
+    {
+      "id": "draft-check",
+      "topic": "(?:이슈|댓글|MR|PR|커밋).{0,12}(?:빈칸|자리표시자|형식\\s*검사).{0,10}(?:막|걸려|끄|꺼)|글\\s*형식\\s*검사",
+      "say": "사람이 읽는 글 형식 검사 수준 (막기 · 알림 · 끄기)",
+      "cmd": "kedovi team-mode enforce draft off|warn|block [--team]",
+      "scope": "이 PC · 팀"
     }
   ],
   "weak": "왜|너무|할\\s*수\\s*(?:있|없)|안\\s*되나|안되나|못\\s*해|못\\s*하나|안\\s*해|없나|있나\\?|가능(?:해|한가|할까)|이상해",

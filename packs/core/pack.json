@@ -101,6 +101,14 @@
       "default": "20",
       "desc": "그림 없는 큰 문서 경고의 크기(KB). 넘는데 mermaid 가 없고 표 밖 「→」 「①」 가 20개 이상인 문서를 알린다"
     },
+    "writing.bulletMax": {
+      "default": "150",
+      "desc": "사람이 읽는 글의 글머리 한 줄 최대 글자 수 (링크 주소 · 인라인 코드 제외). 넘으면 글 형식 검사(kedovi draft check · 올리기 전 · 기획 repo 커밋)가 「긴 글머리」 로 잡는다. 개조식일 때만 본다 (kedovi prefs writing)"
+    },
+    "writing.localIds": {
+      "default": [],
+      "desc": "이 PC · 이 팀 안에서만 뜻이 있어 이슈 · MR · 댓글에 나가면 안 되는 ID 모양 (정규식 배열). 보고 링크 · .agents · 임시 폴더 · worktree · 로컬 브랜치 · push 안 한 커밋은 이미 본다"
+    },
     "issue.forbid": {
       "default": [],
       "desc": "이슈 · 댓글 본문에 나가면 안 되는 낱말 배열(고객사 · 사내 이름 등). 등록 전 검사(issue-check.js)가 잡는다. 영문은 낱말 단위, 한글은 포함 여부로 본다"

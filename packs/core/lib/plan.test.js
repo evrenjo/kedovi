@@ -45,7 +45,9 @@ assert.strictEqual(ib.mode, 'issue');
 const is = P.issueSummary(ib, '2026-10-19');
 assert.deepStrictEqual([is.active.length, is.hold.length, is.month.length, is.stale.map((r) => [r.id, r.idle])], [2, 1, 1, [['#1', 47]]]);
 assert.deepStrictEqual(is.counts, { 접수: 1, 분석: 0, 수정: 1, 검증: 0 });
-assert.match(P.issueReport(ib, '2026-10-13', '2026-10-19'), /## 주간 보고 \(2026-10-13 ~ 2026-10-19\)\n\n진행 2 · 운영 반영 1 · 새 접수 1 · 보류 1\n\n### 운영 반영\n\n- #2 화면 깨짐 \(2026-10-15\)/);
+assert.match(P.issueReport(ib, '2026-10-13', '2026-10-19'), /## 주간 보고 \(2026-10-13 ~ 2026-10-19\)\n\n\*\*요약\*\*: 진행 2 · 운영 반영 1 · 새 접수 1 · 보류 1\n\n### 완료 \(운영 반영\)\n\n- #2 화면 깨짐 \(2026-10-15\)/);
+// 주간보고 틀(lib/draft.js weekly)의 필수 절을 갖춘다
+assert.deepStrictEqual(require('./draft').check(P.issueReport(ib, '2026-10-13', '2026-10-19'), { type: 'weekly' }).filter((h) => /필수 절/.test(h.kind)), []);
 assert.strictEqual(P.current(ib), null, '이슈형은 지금 단계가 없다');
 assert.match(P.flow(ib), /^접수 1 → 분석 0 → 수정 1 → 검증 0 → 운영 반영 \d+ \(이번 달\)\n보류 1$/);
 assert.deepStrictEqual(ib.backlog, ['검색 개선']);

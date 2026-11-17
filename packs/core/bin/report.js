@@ -52,29 +52,34 @@ function reports() {
   return out.sort((a, b) => b.mtime - a.mtime);
 }
 
+// 보고 4단 (lib/draft.js 의 report 형식: 핵심 요약 · 배경 · 현황 · 내용 · 다음 할 일 · 요청). 「내용」 아래에 바뀐 것 · 검증 · 근거
 const TEMPLATE = (title, when) => `# ${title}
 
 > ${when} · 이 PC 의 보고 (kedovi report). 채팅에는 결론과 핵심만 있다
 
-## 결론
+## 핵심 요약
 
-(한두 줄: 무엇을 했고 결과가 어떤가)
+- <결론 · 요청 한두 줄: 무엇을 했고 결과가 어떤가>
 
-## 바뀐 것
+## 배경 · 현황
+
+- <왜 했나 · 시작할 때 상태>
+
+## 내용
 
 | 파일 | 무엇 |
 |---|---|
 
-## 검증
+### 검증
 
 | 대상 | 방법 | 기대 | 실제 | 판정 |
 |---|---|---|---|---|
 
-## 근거
+### 근거
 
-- (파일:라인 · 명령 출력 · 출처)
+- <파일:라인 · 명령 출력 · 출처>
 
-## 남은 것 · 사용자가 할 일
+## 다음 할 일 · 요청
 
 - 없음
 `;
@@ -87,6 +92,15 @@ function cmdNew(title) {
   console.log(`파일: ${path.relative(ROOT, file)}`);
   console.log(`링크: ${urlOf(port, file)}`);
   console.log('이 파일의 틀을 채운 뒤, 채팅에는 결론 1줄 + 핵심 3~5줄 + 「자세히: <링크>」 를 쓴다. 오류 · 실패 · 사용자가 정할 것은 채팅에도 남긴다');
+}
+
+/** 틀의 빈칸이 남았으면 알린다 (막지 않는다: 이 PC 에만 있는 보고) */
+function blanks(file) {
+  try {
+    const D = require('../lib/draft');
+    const hits = D.check(fs.readFileSync(path.resolve(ROOT, file), 'utf8'), { type: 'report' }).filter((h) => !/이 PC 에만/.test(h.kind));
+    if (hits.length) console.error(`⚠ 보고에 채우지 않은 곳 ${hits.length}곳: ${D.format(hits).slice(0, 5).join(' · ')}${hits.length > 5 ? ' …' : ''}`);
+  } catch { /* 없음 */ }
 }
 
 /** 현황판 다시 만들기 (보고 포함, fetch 없이, 브라우저 열지 않음) */
@@ -142,7 +156,7 @@ function open(url) {
 
 const [cmd, ...rest] = argv.filter((a, i) => !a.startsWith('--') && !(argv[i - 1] || '').match(/^--(port|n)$/));
 if (cmd === 'new') cmdNew(rest.join(' '));
-else if (cmd === 'link') { if (!rest[0]) { console.error('사용법: kedovi report link <파일>'); process.exit(1); } console.log(urlOf(ensureServer(), rest[0])); }
+else if (cmd === 'link') { if (!rest[0]) { console.error('사용법: kedovi report link <파일>'); process.exit(1); } blanks(rest[0]); console.log(urlOf(ensureServer(), rest[0])); }
 else if (cmd === 'open') { const f = rest[0] || (reports()[0] || {}).file; if (!f) { console.log('보고가 없습니다 (kedovi report new "<제목>")'); } else { const u = urlOf(ensureServer(), f); console.log(u); open(u); } }
 else if (cmd === 'serve') serve();
 else if (cmd === 'stop') { const st = readState(); if (st && st.pid && alive(st.pid)) { process.kill(st.pid); console.log(`✔ 서버를 껐습니다 (포트 ${st.port})`); } else console.log('뒤에서 도는 서버가 없습니다'); try { fs.unlinkSync(STATE); } catch { /* 없음 */ } }

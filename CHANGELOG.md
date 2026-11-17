@@ -2,6 +2,18 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.99.0
+
+| 구분 | 내용 |
+|---|---|
+| 기능 | 사람이 읽는 글 형식 룰(core--12): 두괄식 · 개조식 · 한 글머리 한 가지 · 비교는 표 · 인사말 없음 · 보고 4단 |
+| 기능 | `kedovi draft template`: 작업 항목 · 결함 · MR · 완료 댓글 · 주간보고 · 보고 틀 (기획 문서는 `_template.md`) |
+| 기능 | `kedovi draft check`: 빈칸 자리표시자 · 빠진 필수 절 · 긴 글머리 · 이 PC 에만 있는 것(보고 링크 · 임시 경로 · push 안 한 커밋 등) |
+| 검사 | 올리기 전에 막음: GitLab 이슈 · MR 도구, `gh` · `glab` 이슈 · PR · MR 명령(새 훅), 기획 repo 커밋(더한 줄 · 새 문서의 빠진 절) |
+| 설정 | `kedovi team-mode enforce draft off\|warn\|block` (기본 막기) · 팀 ID 모양 `vars.writing.localIds` |
+| 설정 | `kedovi prefs writing bullet\|prose` · `writing-except <대상>`: 개조식 · 서술식과 예외 대상 (팀 · 개인) |
+| 변경 | `kedovi report new` · `plan --report` 가 보고 4단 · 주간보고 틀로 출력 |
+
 ## 0.98.1
 
 | 구분 | 내용 |

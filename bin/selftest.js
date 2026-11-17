@@ -856,7 +856,7 @@ if (fs.existsSync(EXPORT_JS) && fs.existsSync(path.join(KIT, 'public', '.github'
   const file = ((made.stdout.match(/^파일: (.+)$/m) || [])[1] || '').trim();
   const link = ((made.stdout.match(/^링크: (.+)$/m) || [])[1] || '').trim();
   p['파일 · 링크'] = /^\.agents\/reports\/\d{4}-\d\d-\d\d\/\d{4}\.md$/.test(file) && /^http:\/\/127\.0\.0\.1:\d+\/reports\/\d{4}-\d\d-\d\d\/\d{4}\.html$/.test(link) && /^# 주문 탭 결과/.test(fs.readFileSync(path.join(dw, file), 'utf8'));
-  const body = fs.readFileSync(path.join(dw, file), 'utf8').replace('(한두 줄: 무엇을 했고 결과가 어떤가)', '시험 12개 통과 REPORT-OK');
+  const body = fs.readFileSync(path.join(dw, file), 'utf8').replace('<결론 · 요청 한두 줄: 무엇을 했고 결과가 어떤가>', '시험 12개 통과 REPORT-OK');
   fs.writeFileSync(path.join(dw, file), body);
   const get = (u) => spawnSync(process.execPath, ['-e', `require('http').get(${JSON.stringify(u)},(r)=>{let s='';r.on('data',(d)=>s+=d);r.on('end',()=>{process.stdout.write(r.statusCode+'\\n'+s)})}).on('error',(e)=>process.stdout.write('ERR '+e.message))`], { encoding: 'utf8', timeout: 20000 }).stdout;
   const page = get(link);
@@ -1789,6 +1789,26 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const longRun = quiet && /"hookEventName":"PostToolUse"/.test(again) && /한국어만/.test(again) && !tool().trim() && /chat-prefs[^\n]*/.test(claudeHooks) && (JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8')).hooks.PostToolUse || []).some((g) => JSON.stringify(g).includes('chat-prefs'));
     record('응답 언어 · 대화 스타일 (kedovi prefs · 개인 지침 머리 · 출력 스타일 · 요청마다 한 줄 · 긴 작업 중 다시)', def && styles && expert && en && mineFirst && teamFollow && cleared && userStyleKept && bad && wiredP && longRun,
       `기본 ${def} · 출력 스타일 파일 ${styles} · 전문가 ${expert} · 영어 ${en} · 이 PC 값 먼저 ${mineFirst} · team 이면 팀 값 ${teamFollow} · 일반 = Concise ${cleared} · 직접 고른 스타일 유지 ${userStyleKept} · 잘못된 값 ${bad} · 훅 연결(Claude · Codex) ${wiredP} · 긴 작업 중 다시 알림 ${longRun}`);
+  }
+  // 글 형식 (kedovi prefs writing · writing-except · 개인 지침 머리 · 요청마다 한 줄) · 형식 검사 수준(enforce draft) · kedovi draft · 훅 연결
+  {
+    const cli = (...a) => spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), ...a], { cwd: dir, encoding: 'utf8' });
+    const head = () => fs.readFileSync(path.join(dir, 'CLAUDE.local.md'), 'utf8');
+    const line = () => hook('chat-prefs.js', 'selftest-writing-1');
+    const def = /글 형식: 개조식\.\*\*/.test(head()) && /core--12-writing-format/.test(head()) && /글 개조식/.test(line()) && fs.existsSync(path.join(dir, '.agents', 'rules', 'core--12-writing-format.md'));
+    const except = cli('prefs', 'writing-except', 'chat,plan').status === 0 && /개조식 예외: 채팅 답변 · 기획 문서/.test(head()) && cli('prefs', 'writing-except', 'nope').status !== 0;
+    const prose = cli('prefs', 'writing', 'prose').status === 0 && /글 형식: 서술식/.test(head()) && /글 서술식/.test(line());
+    const back = cli('prefs', 'writing', 'team').status === 0 && cli('prefs', 'writing-except', 'none').status === 0 && /글 형식: 개조식\.\*\*/.test(head()) && !/개조식 예외/.test(head());
+    const f = path.join(tmp, 'draft-body.md');
+    fs.writeFileSync(f, '**결과**: 고침\n\n- **조치**:\n');
+    const blocked = cli('draft', 'check', '--file', f, '--type', 'done');
+    const warn = cli('team-mode', 'enforce', 'draft', 'warn', '--team').status === 0 && cli('draft', 'check', '--file', f, '--type', 'done').status === 0;
+    const off = cli('team-mode', 'enforce', 'draft', 'off', '--team').status === 0 && /꺼짐/.test(cli('draft', 'check', '--file', f).stdout);
+    cli('team-mode', 'enforce', 'draft', 'block', '--team');
+    const check = blocked.status === 1 && /필수 절 없음: 확인/.test(blocked.stdout) && /값이 빈 항목/.test(blocked.stdout) && warn && off && /## 핵심 요약/.test(cli('draft', 'template', 'report').stdout);
+    const wired = /draft-guard/.test(claudeHooks) && /draft-guard/.test(codexHooks);
+    record('글 형식 (kedovi prefs writing · kedovi draft · enforce draft · 훅 연결)', def && except && prose && back && check && wired,
+      `기본 개조식 · 룰 ${def} · 예외 대상 ${except} · 서술식 ${prose} · 팀 값으로 ${back} · 검사 막기 · 알림 · 끄기 · 틀 ${check} · 훅 연결(Claude · Codex) ${wired}`);
   }
   // 언어 감지 · 클린 코드 팩 (repos[].languages · clean-code · lang-*) · repo 별 바꾸기(repos:) · repo 별 끄기(rules.offIn · --repo) · 옛 워크스페이스 채우기
   {

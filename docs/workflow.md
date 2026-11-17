@@ -335,7 +335,8 @@ flowchart TD
     Q -->|"화면 위치"| SCL["kedovi screens locate [--dir 폴더] [--prototype 파일#{id}] [--scope main]<br/>후보 폴더 · 프로토타입 찾기 → workspace.json vars.screens"]
     Q -->|"화면 이름 대조"| VWC["kedovi views check<br/>component-web: 프론트 화면 폴더 ↔ 백엔드 web/views/화면<br/>대소문자 · - · _ 무시 · 화면 폴더 커밋 때 훅이 알림"]
     Q -->|"화면 비교"| SCC["kedovi screens compare &lt;화면 ID&gt; [--mock 픽스처]<br/>프로토타입 ↔ 구현을 같은 폭(PC · 폰)으로 찍어 compare.html<br/>구현 주소 = @spec 줄의 @route 또는 --impl · 배치 대조(옆 · 아래 · 폭)<br/>→ 체크리스트 비교 · 배치 줄 · 배치 행"]
-    Q -->|"응답 언어 · 대화 스타일"| PRF["kedovi prefs language ko · en · style learn · normal · expert [--team]<br/>값 team = 이 PC 값 지우기 · mermaid [install] · setup (화면)<br/>→ .agents/local.json (팀은 workspace.json) → sync"]
+    Q -->|"응답 언어 · 대화 스타일 · 글 형식"| PRF["kedovi prefs language ko · en · style learn · normal · expert [--team]<br/>writing bullet · prose · writing-except 대상,… · none (개조식에서 뺄 글)<br/>값 team = 이 PC 값 지우기 · mermaid [install] · setup (화면: 응답 언어 · 대화 스타일 · 글 형식)<br/>→ .agents/local.json (팀은 workspace.json) → sync"]
+    Q -->|"사람이 읽는 글 틀 · 검사"| DRF["kedovi draft template 형식 · check --file 파일 --type 형식<br/>작업 항목 · 결함 · MR · 완료 댓글 · 주간보고 · 보고 · 기획 문서<br/>빈칸 · 빠진 절 · 긴 글머리 · 이 PC 링크 → gitlab 도구 · gh · glab · 기획 repo 커밋이 막음"]
     Q -->|"답변 시각 표시"| TS["kedovi timestamp on · off · team [--team]<br/>답변 첫 줄에 요청 받은 시각 (기본 켜짐, Claude Code)<br/>→ .agents/local.json (팀은 workspace.json)"]
     Q -->|"진행 방식"| APR["kedovi approach sprint · full · issue (팀장)<br/>스프린트: 최소 기능부터, 스프린트마다 데모 · 회고 · 전체: 전체 설계 뒤 구축 · 이슈형: 단계 대신 이슈 보드<br/>→ sync · 기본 단계 그대로인 로드맵은 새 뼈대 (이슈형은 고친 로드맵 앞에도 이슈 보드)"]
     Q -->|"유형 바꾸기"| TYP["kedovi type &lt;유형&gt; [--approach a] [--code 이름,…] (팀장)<br/>고칠 repo (현행 → 개발 repo) → 진행 방식<br/>→ 유형 팩 교체 · 로드맵 새 뼈대 (지난 로드맵은 아래에 남김) → sync"]
@@ -392,10 +393,11 @@ flowchart TD
 | `kedovi handoff find <작업>` | 핸드오프 기록 찾기 (`check` · `index` · `archive` · `organize` 도). push 뒤 핸드오프 묻기 · 자동 · 끄기는 `kedovi handoff after-push ask\|auto\|off [--bundle 시간]` |
 | `kedovi budget report` | 시간 예산 월간 집계: 끝낸 작업 수 · 예산 초과율 · 걸린 시간 중앙값 (`--month YYYY-MM`, 이력은 이 PC 만) |
 | `kedovi defects report` | 운영 결함 월간 집계: 분류별 건수 · 잠복 · 해소 시간 (`check` 는 발견 · 분류 · 해소 칸 검사) |
-| `kedovi team-mode` | 팀 구성: 자동(리더가 작업마다 역할 · 모델) · 고정(프로필대로), `prefer` 역할별 선호 모델. `enforce <대상>` 은 훅으로 지키게 하는 수준(off · warn · block)이고, 대상(name · roster · idle · status · ask · run · check · plan · answer · main · msg · browser · long · review)과 기본값은 [명령](commands.md). `--team` 은 팀 기본값 |
+| `kedovi team-mode` | 팀 구성: 자동(리더가 작업마다 역할 · 모델) · 고정(프로필대로), `prefer` 역할별 선호 모델. `enforce <대상>` 은 훅으로 지키게 하는 수준(off · warn · block)이고, 대상(name · roster · idle · status · ask · run · check · plan · answer · main · msg · browser · long · review · perm · draft)과 기본값은 [명령](commands.md). `--team` 은 팀 기본값 |
 | `kedovi ai plan claude\|gpt <요금제>` | 회사별 요금제 (빠듯 · 넉넉 · 종량). 보통은 `kedovi ai` 화면에서 |
 | `kedovi secret` | 비밀값(토큰): `set <이름> [--global]`(숨김 입력) · `list` · `test <이름>`(권한 · 만료) · `rm` · `import`(옛 telegram.env · gitlab-token · 환경변수에서) · `exec -- <명령>`(그 명령에만 주입). OS 저장소에 프로젝트별 · 전역으로, 값은 출력하지 않는다 |
-| `kedovi prefs` | 응답 언어(한국어 · English) · 대화 스타일(학습 · 일반 · 전문가) · 그림 미리보기(claude-mermaid). `language` · `style` 이 PC · 값 `team` 이 PC 값 지우기 · `--team` 팀 기본값(팀장) · `mermaid install` · `setup` 화면. 인자 없이 = 지금 값 |
+| `kedovi prefs` | 응답 언어(한국어 · English) · 대화 스타일(학습 · 일반 · 전문가) · 글 형식(개조식 · 서술식)과 개조식에서 뺄 대상 · 그림 미리보기(claude-mermaid). `language` · `style` · `writing` · `writing-except` 이 PC · 값 `team` 이 PC 값 지우기 · `--team` 팀 기본값(팀장) · `mermaid install` · `setup` 화면. 인자 없이 = 지금 값 |
+| `kedovi draft` | 사람이 읽는 글의 틀과 올리기 전 검사: `template <형식>`(작업 항목 · 결함 · MR · 완료 댓글 · 주간보고 · 보고 · 기획 문서) · `check --file <파일> --type <형식>`(빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것). 수준은 `kedovi team-mode enforce draft` |
 | `kedovi timestamp` | 답변 첫 줄 시각 표시 (Claude Code, 기본 켜짐): 요청 받은 시각 yyyy-MM-dd HH:mm:ss. `on\|off` 이 PC · `team` 이 PC 값 지우기 · `--team` 팀 기본값(팀장). 인자 없이 = 지금 값 |
 | `kedovi approach` | 진행 방식: MVP · 스프린트(최소 기능부터 기능 단위로 하나씩) · 워터폴 · 전체(전체 설계 뒤 구축) · 이슈형(운영 · 유지보수: 이슈마다 운영 반영, 이슈 보드). 인자 없이 = 지금 값 (팀장) |
 | `kedovi type` | 유형 바꾸기 (분석·설계 → 구축 · 고도화 등): 현행 repo 중 고칠 것을 개발 repo 로 · 진행 방식 · 유형 팩 교체 · 로드맵 새 뼈대. 인자 없이 = 지금 값 (팀장) |

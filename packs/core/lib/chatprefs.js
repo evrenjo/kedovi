@@ -1,4 +1,4 @@
-// 응답 언어 · 대화 스타일 (chat.language · chat.style): 이 PC(.agents/local.json) → 팀(workspace.json) → 킷 기본값.
+// 응답 언어 · 대화 스타일 · 글 형식 (chat.language · chat.style · chat.writing · chat.writingExcept): 이 PC(.agents/local.json) → 팀(workspace.json) → 킷 기본값.
 /*
  * 쓰는 곳: kit.js sync (CLAUDE.local.md · AGENTS.override.md 머리 · .claude/settings.local.json language · outputStyle · .claude/output-styles/)
  *        · 훅 chat-prefs.js (요청마다 한 줄) · kedovi prefs (보기 · 바꾸기).
@@ -45,7 +45,17 @@ function resolve(root, ws, local) {
   const mine = pick(l.chat);
   const lang = mine.language ? ['local', mine.language] : team.language ? ['team', team.language] : ['default', languageFromVars(w)];
   const style = mine.style ? ['local', mine.style] : team.style ? ['team', team.style] : ['default', DEFAULT_STYLE];
-  return { language: lang[1], style: style[1], from: { language: lang[0], style: style[0] }, team, local: mine };
+  const wr = writingOf(w, l);
+  return { language: lang[1], style: style[1], writing: wr.writing, writingExcept: wr.except, from: { language: lang[0], style: style[0], writing: wr.from.writing, writingExcept: wr.from.except }, team: { ...team, writing: wr.team.writing, writingExcept: wr.team.except }, local: { ...mine, writing: wr.local.writing, writingExcept: wr.local.except } };
+}
+
+// 글 형식 (lib/draft.js 가 정본): 개조식(bullet, 기본) · 서술식(prose), 개조식에서 뺄 대상
+const WRITING = { bullet: { label: '개조식', hint: '두괄식 · 글머리 한 줄에 한 가지 · 비교는 표' }, prose: { label: '서술식', hint: '두괄식 · 짧은 문장 단락, 글머리는 목록일 때만' } };
+function writingOf(ws, local) {
+  try { return require('./draft').prefsOf(ws, local); } catch { return { writing: 'bullet', except: [], from: { writing: 'default', except: 'default' }, team: {}, local: {} }; }
+}
+function writingTargets() {
+  try { return require('./draft').TARGETS; } catch { return {}; }
 }
 
 // 스타일별 지침 (한 곳이 정본: 개인 지침 머리 · Claude 출력 스타일 파일)
@@ -80,15 +90,27 @@ function headSection(p, { codeLanguage } = {}) {
     `- ${lang}${codeLanguage ? ` 코드 · 커밋 · 식별자 언어는 팀 규칙(${codeLanguage}) 그대로.` : ''}`,
     `- **대화 스타일: ${S.label}.** ${STYLE_RULES[p.style].join(' ')}`,
     `- ${DIAGRAM_RULE}`,
-    '- 바꾸기: `kedovi prefs language ko|en` · `kedovi prefs style learn|normal|expert` (팀 기본값은 `--team`).', '',
+    `- ${writingLine(p)}`,
+    '- 바꾸기: `kedovi prefs language ko|en` · `kedovi prefs style learn|normal|expert` · `kedovi prefs writing bullet|prose` · `kedovi prefs writing-except <대상,…>|none` (팀 기본값은 `--team`).', '',
   ].join('\n');
+}
+
+/** 글 형식 한 줄 (개인 지침 머리) */
+function writingLine(p) {
+  const T = writingTargets();
+  const ex = (p.writingExcept || []).map((k) => T[k] || k);
+  const head = p.writing === 'prose'
+    ? '**글 형식: 서술식.** 사람이 읽는 글(문서 · 기획 · 위키 · 이슈 · MR · 댓글 · 보고 · 채팅)은 두괄식으로, 짧은 문장 단락에 글머리는 목록일 때만 쓴다. 비교는 표 · 인사말 없음 · 빈칸 없음은 그대로.'
+    : `**글 형식: 개조식.** 사람이 읽는 글(문서 · 기획 · 위키 · 이슈 · MR · 댓글 · 보고 · 채팅)은 두괄식 · 개조식 · 한 글머리 한 가지 · 핵심만 굵게 · 비교는 표 · 인사말 없음${ex.length ? ` (개조식 예외: ${ex.join(' · ')}. 그 글은 짧은 문장 단락)` : ''}.`;
+  return `${head} AI 규칙 문서(AGENTS · CLAUDE · 룰 · 스킬)는 대상이 아니다. 문서 · 이슈 · MR · 댓글 · 보고를 쓰기 전에 \`.agents/rules/core--12-writing-format.md\` 를 읽는다.`;
 }
 
 /** 요청마다 넣는 한 줄 (훅 chat-prefs.js). 긴 작업 중 다른 언어로 새는 것을 막는다 */
 function reminder(p) {
   const S = STYLES[p.style];
-  if (p.language === 'en') return `Reply in English only, progress notes included · style: ${p.style} · diagram: mermaid_preview if available, else text`;
-  return `응답: 한국어만 (진행 알림 포함, 코드 · 명령 · 로그 · 현업 용어만 원문) · 스타일 ${S.label} · 그림: mermaid_preview 있으면 그것, 없으면 텍스트`;
+  const W = (WRITING[p.writing] || WRITING.bullet).label;
+  if (p.language === 'en') return `Reply in English only, progress notes included · style: ${p.style} · writing: ${p.writing === 'prose' ? 'prose' : 'bullets'} · diagram: mermaid_preview if available, else text`;
+  return `응답: 한국어만 (진행 알림 포함, 코드 · 명령 · 로그 · 현업 용어만 원문) · 스타일 ${S.label} · 글 ${W} · 그림: mermaid_preview 있으면 그것, 없으면 텍스트`;
 }
 
 /** Claude Code 출력 스타일 파일 (.claude/output-styles/kedovi-<스타일>.md). 일반은 기본 스타일이라 만들지 않는다 */
@@ -114,4 +136,4 @@ function claudeSettings(p) {
   return { language: LANGUAGES[p.language].claude, outputStyle: p.style === 'normal' ? BUILTIN_CONCISE : `${OUTPUT_STYLE_PREFIX}${p.style}`, soft: p.style === 'normal' };
 }
 
-module.exports = { BUILTIN_CONCISE, kitOwned, LANGUAGES, STYLES, DEFAULT_STYLE, OUTPUT_STYLE_PREFIX, resolve, headSection, reminder, outputStyleFiles, claudeSettings, languageFromVars };
+module.exports = { WRITING, writingLine, BUILTIN_CONCISE, kitOwned, LANGUAGES, STYLES, DEFAULT_STYLE, OUTPUT_STYLE_PREFIX, resolve, headSection, reminder, outputStyleFiles, claudeSettings, languageFromVars };

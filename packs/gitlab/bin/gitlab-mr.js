@@ -78,6 +78,21 @@ const git = (dir, args) => execFileSync('git', ['-C', dir, ...args], { encoding:
 
 function vars(ws) { return (ws.vars && ws.vars.gitlab) || {}; }
 
+/**
+ * 글 형식 검사 (core lib/draft.js): 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것.
+ * 수준 agents.enforce.draftCheck: block 이면 보내지 않고 멈춘다 · warn 이면 알리고 보낸다 · off 면 보지 않는다. 옛 core 면 넘긴다
+ */
+function draftGuard(ws, r, text, type) {
+  let D;
+  try { D = require(path.join(ws.root, 'packs', 'core', 'lib', 'draft.js')); } catch { return; }
+  const res = D.checkFor(ws.root, text, { type, repoDir: r && r.dir });
+  if (res.level === 'off' || !res.hits.length) return;
+  const lines = D.format(res.hits).join(' · ');
+  const how = `틀: kedovi draft template <형식> · 검사: kedovi draft check --file <파일> --type ${type} · 끄기 · 알림만: 팀장이 kedovi team-mode enforce draft off|warn --team`;
+  if (res.level === 'block') die(`글 형식 ${res.hits.length}건이라 보내지 않았습니다: ${lines} (${how})`);
+  console.error(`⚠ 글 형식 ${res.hits.length}건: ${lines} (${how})`);
+}
+
 function repoOf(ws, name) {
   if (!name) die('--repo 가 필요합니다');
   const r = ws.repos.find((x) => x.name === name);
@@ -198,6 +213,7 @@ async function cmdCreate(ws, a) {
   if (!a.title || a.title === true) die('--title 이 필요합니다');
   if (!a['description-file']) die('--description-file 이 필요합니다');
   const description = fs.readFileSync(a['description-file'], 'utf8');
+  draftGuard(ws, r, description, 'mr');
   const remove = a['remove-source'] === undefined ? defaultRemoveSource(ws, source, a['dry-run'] ? null : await defaultBranchOf(ws, r)) : String(a['remove-source']) === 'true';
   const body = { source_branch: source, target_branch: target, title: a.title, description, remove_source_branch: remove };
 
@@ -641,7 +657,7 @@ async function main() {
 }
 
 module.exports = {
-  loadWs, parseArgs, die, token, api, apiRoot, apiBase, repoOf, repoOrOnly, defaultRemoveSource, pipelineFor,
+  loadWs, parseArgs, die, draftGuard, token, api, apiRoot, apiBase, repoOf, repoOrOnly, defaultRemoveSource, pipelineFor,
   // kedovi release · busy 가 다시 쓴다
   follow, finish, resolveCommit, refHead, allowWrite, cmdMerge, cmdCreate, vars, WAITING, DONE, sleep, clock, mark, took, pollMs, when,
 };

@@ -445,8 +445,10 @@ function issueReport(plan, from, to) {
   const list = (rs) => (rs.length ? rs.map((r) => `- ${issueLabel(r)}${r.branch ? ` (\`${r.branch}\`)` : ''}`) : ['- 없음']);
   const released = plan.issues.rows.filter((r) => inRange(r.released));
   const opened = plan.issues.rows.filter((r) => inRange(r.start));
-  const out = [`## 주간 보고 (${from} ~ ${to})`, '', `진행 ${s.active.length} · ${s.doneState || '완료'} ${released.length} · 새 접수 ${opened.length}${s.hold.length ? ` · 보류 ${s.hold.length}` : ''}`, '',
-    `### ${s.doneState || '완료'}`, '', ...released.map((r) => `- ${issueLabel(r)} (${r.released})`), ...(released.length ? [] : ['- 없음']), '',
+  // 형식 = 주간보고 틀 (lib/draft.js weekly: 요약 · 완료 · 진행 중). 다음 주 계획 · 요청은 보고하는 사람이 덧붙인다
+  const doneHead = !s.doneState || s.doneState === '완료' ? '완료' : `완료 (${s.doneState})`;
+  const out = [`## 주간 보고 (${from} ~ ${to})`, '', `**요약**: 진행 ${s.active.length} · ${s.doneState || '완료'} ${released.length} · 새 접수 ${opened.length}${s.hold.length ? ` · 보류 ${s.hold.length}` : ''}`, '',
+    `### ${doneHead}`, '', ...released.map((r) => `- ${issueLabel(r)} (${r.released})`), ...(released.length ? [] : ['- 없음']), '',
     '### 진행 중', ''];
   for (const st of Object.keys(s.counts)) {
     const rs = s.active.filter((r) => r.state === st);

@@ -444,6 +444,7 @@ async function main(argv) {
       await waitTurn('MR 만들기');
       const title = a.title && a.title !== true ? String(a.title) : `chore: [${br.release}] ${br.develop} 반영 (커밋 ${commits.length}개)`;
       const description = a['description-file'] ? fs.readFileSync(a['description-file'], 'utf8') : `## Summary\n${commits.map((c) => `- ${c.title}`).join('\n')}\n`;
+      if (a['description-file']) M.draftGuard(ws, r, description, 'mr');
       try { mr = await M.api(ws, r, 'POST', '/merge_requests', { source_branch: br.develop, target_branch: br.release, title, description, remove_source_branch: false }); created = true; } catch (e) {
         mr = e.status === 409 ? await openMr() : null;
         if (!mr) throw e;

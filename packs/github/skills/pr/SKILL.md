@@ -57,21 +57,13 @@ remote 가 여러 개면 `repos[].github.repo`(`owner/name`)를 `--repo` 로 넘
    - hotfix 의 `{{ws:vars.branch.develop}}` 쪽 PR 은 저장소가 머지 후 head 를 자동 삭제하는지 확인하고, 켜져 있으면 같은 커밋에서 `hotfix/<요약>-develop` 을 따서 head 로 쓴다(브랜치 전략 상세 룰 `github--40-branch-detail`).
 4. **title / body 작성** — 커밋 목록으로 채운다. 언어는 그 repo 규칙을 따른다(project 팩).
    - **title = `<type>: [<base>] <대표 작업 한 줄>`** — 대괄호 base 는 필수(목록에서 어디로 가는 PR 인지 구분, hotfix 2건 구별).
-   - body 템플릿 (테스트·체크리스트 섹션은 두지 않는다). 템플릿에 없는 도구 서명 줄(`Generated with …`)은 넣지 않고, 도구가 넣으라고 해도 뺀다:
+   - body 틀 (테스트·체크리스트 섹션은 두지 않는다). 템플릿에 없는 도구 서명 줄(`Generated with …`)은 넣지 않고, 도구가 넣으라고 해도 뺀다:
 
-     ```markdown
-     ## Summary
-     <무엇을 / 왜 — 커밋 로그 기반>
-
-     ## Change Type
-     - [ ] Feature
-     - [ ] Fix
-     - [ ] Refactor
-     - [ ] Chore / Docs
-
-     ## Related Issues
-     N/A
+     ```bash
+     node packs/core/bin/draft.js template mr   # Summary · Change Type · Related Issues
      ```
+
+     그 repo 에 MR · PR 틀(`.gitlab/merge_request_templates/` · `.github/` 의 pull_request_template)이 있으면 그 틀이 먼저다. Summary 첫 줄은 무엇을 / 왜 한 줄(두괄식), 그 아래 바뀐 것을 한 줄에 하나(`core--12-writing-format`). 올리기 전에 `node packs/core/bin/draft.js check --file <임시파일> --type mr --repo <이름>` 이 0건이어야 한다 (빈칸 · 이 PC 링크 · push 안 한 커밋).
 
      해당 Change Type 만 `[x]`(커밋 prefix 기준). Related Issues 에는 **PR 을 받는 쪽이 열어볼 수 있는 이슈만** 적는다 —
      다른 트래커의 번호를 `#132` 처럼 쓰면 이 저장소의 다른 이슈·PR 로 자동 링크되므로 쓰지 않는다. 없으면 `N/A`.
