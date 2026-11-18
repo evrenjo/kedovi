@@ -254,6 +254,13 @@
       "scope": "이 PC · 팀"
     },
     {
+      "id": "usage-pace",
+      "topic": "(?:주간|한도|사용량|토큰).{0,12}(?:빨리|금방|찼|차버|모자|부족|조절)|(?:Max|Ultra|울트라|맥스).{0,12}한도",
+      "say": "주간 사용량 속도 조절 · 맥락 교체 기준",
+      "cmd": "kedovi usage · kedovi team-mode enforce pace off|warn|block [--team] · vars.usage.* · vars.team.memberContextK (workspace.json)",
+      "scope": "이 PC · 팀"
+    },
+    {
       "id": "session-renew",
       "topic": "세션.{0,10}(?:느려|무거|길어|오래)|맥락.{0,6}(?:찼|가득|부족)",
       "say": "긴 세션 · 맥락 사용량 알림 (핸드오프 뒤 새 세션)",

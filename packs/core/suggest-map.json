@@ -205,6 +205,14 @@
       "scope": "이 PC · 설정은 팀"
     },
     {
+      "id": "usage-pace",
+      "topic": "(?:주간|한도|사용량).{0,12}(?:빨리|금방|찼|차버|모자|부족)|(?:Max|Ultra|울트라|맥스).{0,12}한도",
+      "say": "주간 사용량 속도 보기",
+      "why": "주간 사용률을 지난 시간과 견줘 빠르면 상한을 줄이고, 절약 단계에서는 Opus 호출을 막는다",
+      "cmd": "kedovi usage · kedovi team-mode enforce pace off|warn|block",
+      "scope": "이 PC · 설정은 팀"
+    },
+    {
       "id": "lead-board",
       "topic": "리더.{0,12}(?:어디까지|진행|보고|안\\s*와|소식)|진행판",
       "say": "작업 리더 진행판",

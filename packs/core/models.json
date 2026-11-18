@@ -712,7 +712,7 @@
           "effort": "xhigh"
         },
         "implementer": {
-          "model": "opus",
+          "model": "sonnet",
           "effort": "high"
         },
         "implementer-deep": {
@@ -760,7 +760,7 @@
         },
         "implementer": {
           "tool": "claude",
-          "model": "opus",
+          "model": "sonnet",
           "effort": "high",
           "fallback": "gpt-6.1-sol"
         },
@@ -948,7 +948,7 @@
     "note": "여유도: tight = 기본 한도(Pro·Plus 급) · ample = 그보다 많이 (Max·Pro 등) · metered = 쓴 만큼 비용(API 키·Enterprise·게이트웨이). detect = 로그인 정보(Claude ~/.claude.json organizationType·RateLimitTier·seatTier, Codex ~/.codex/auth.json chatgpt_plan_type)에 맞는 정규식. 2026-10-07 실제 값으로 확인한 것은 Max(옛 Max 5x, default_claude_max_5x)·Plus(plus) 뿐, 나머지는 이름 규칙 추정. 못 맞추면 사용자에게 가장 가까운 것을 묻고 그전엔 tight",
     "checked": "2026-11-11",
     "roomLimits": {
-      "note": "작업 리더(3층) 상한: 이 PC 의 Claude 요금제 여유도별 leaders(리더 동시) · members(리더당 팀원 동시) · total(요청당 모두). 요금제 항목의 limits 가 있으면 그것 (Max 는 5시간 한도에 자주 닿아 2×2 · 10). 팀 프로필 상한보다 높게는 안 된다",
+      "note": "작업 리더(3층) 상한: 이 PC 의 Claude 요금제 여유도별 leaders(리더 동시) · members(리더당 팀원 동시) · total(요청당 모두). 요금제 항목의 limits 가 있으면 그것 (Max 는 5시간 · 주간 한도에 자주 닿아 2×2 · 10, Ultra 는 주간 한도가 Max 의 2배뿐이라 3×2 · 20). 팀 프로필 상한보다 높게는 안 된다",
       "tight": {
         "leaders": 1,
         "members": 2,
@@ -997,16 +997,16 @@
         "label": "Ultra",
         "room": "ample",
         "detect": "max_20x|ultra",
-        "hint": "월 $200 · 주간 Pro 의 10배 · 인증된 계정은 5시간 제한 없음. 2026-10-30 전 이름 Max 20x",
+        "hint": "월 $200 · 주간 Pro 의 10배(Max 의 2배) · 5시간 제한은 인증된 계정만 없음. 2026-10-30 전 이름 Max 20x",
         "sources": [
           "https://claude.com/pricing"
         ],
         "limits": {
-          "leaders": 4,
-          "members": 3,
-          "total": 30
+          "leaders": 3,
+          "members": 2,
+          "total": 20
         },
-        "checked": "2026-11-11"
+        "checked": "2026-11-19"
       },
       {
         "id": "team-standard",

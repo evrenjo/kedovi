@@ -7,6 +7,7 @@
 // 3층 (작업 리더): 메인이 부르는 lead 역할은 leaders 상한, 리더(또는 역할 에이전트)가 부르는 팀원은 부른 쪽마다 members 상한, 모든 층 합계는 total.
 //   누가 불렀는지 = PreToolUse 입력의 agent_id (서브에이전트 안이면 그 id, 메인이면 없음). SubagentStart 의 agent_id 를 앞서 허용한 호출과 짝지어 부모를 적고, SubagentStop 에 그 칸을 뺀다.
 //   팀원(agent teams)은 SubagentStart · Stop 이 없어 요청마다 비운다.
+//   주간 사용량 속도(lib/usagepace.js)가 빠르면 상한을 줄이고, 절약 단계에서는 implementer-deep 밖의 Opus 호출을 막는다 (agents.enforce.usagePace, 기본 block).
 //   SubagentStop: 작업 리더가 자기 팀원이 도는 채 끝내려 하면 한 번 되돌린다 (agents.enforce.leadHold, 기본 block).
 'use strict';
 const fs = require('fs');
@@ -14,6 +15,7 @@ const path = require('path');
 const { readInput, deny, block, run, root, safeId } = require('../lib/hook');
 const { judge } = require('../lib/teammode');
 const { stateDir } = require('../lib/workspace');
+const Pace = require('../lib/usagepace');
 
 const LEAD_ROLE = 'lead';
 const HOUR = 3600000;
@@ -102,10 +104,14 @@ function handle(input, ws, file) {
   let limits = { parallel: 4, total: 10, leaders: 1, members: 2 };
   let nameCheck = 'block';
   let roster = 'warn';
+  let paceLevel = 'block';
+  let wsConfig = {};
   try {
     const kit = require(path.join(ws, 'bin', 'kit.js'));
-    const r = kit.resolveModels(ws, kit.loadWorkspace(ws));
+    wsConfig = kit.loadWorkspace(ws);
+    const r = kit.resolveModels(ws, wsConfig);
     limits = { ...limits, ...(r.limits || {}) };
+    paceLevel = (r.enforce || {}).usagePace || paceLevel;
     nameCheck = (r.enforce || {}).teammateName || nameCheck;
     roster = (r.enforce || {}).rosterAnnounce || roster;
   } catch { /* 옛 워크스페이스 — 기본값 */ }
@@ -115,6 +121,20 @@ function handle(input, ws, file) {
   const warns = [];
   const kitRole = !!type && /^[A-Za-z0-9._-]+$/.test(type) && fs.existsSync(path.join(ws, '.claude', 'agents', `${type}.md`));
   const isLead = type === LEAD_ROLE;
+  // 주간 사용량 속도: 줄임(2) · 절약(3) 단계면 상한을 낮춘다
+  let paceNote = '';
+  if (paceLevel !== 'off') {
+    const pace = Pace.state(wsConfig);
+    if (pace.known && pace.level >= 2) {
+      const msg = `주간 사용량 ${pace.label} 단계 (${Pace.line(pace)})`;
+      if (paceLevel === 'block') { limits = Pace.limitsFor(limits, pace.level); paceNote = `. ${msg}, kedovi usage`; } else warns.push(msg);
+      if (pace.level === 3 && type !== 'implementer-deep' && type !== 'fork' && (kitRole || !type || type === 'general-purpose' || ti.model) && Pace.usesTopModel(ws, type, ti.model)) {
+        const m = `${msg}: implementer-deep 밖의 에이전트는 Opus 를 쓰지 않는다. 호출에 model: sonnet 을 주고 다시 부르거나, 틀리면 비싼 구현이면 implementer-deep 으로 부른다`;
+        if (paceLevel === 'block') return deny(m);
+        warns.push(m);
+      }
+    }
+  }
   // 작업 리더는 팀 모드여도 서브에이전트로 띄운다 (이름을 주면 팀원이 되어 그 아래 팀원이 병렬로 못 돈다)
   if (isLead && parent === 'main' && String(ti.name || '').trim() && judge(ws).team) return deny('작업 리더(lead)는 팀 모드여도 이름(name) 없이 서브에이전트로 띄운다. 이름을 주면 팀원이 되어 그 아래 팀원이 병렬로 돌지 않는다 (team 스킬 「작업 리더」)');
   if (nameCheck !== 'off' && kitRole && !isLead && parent === 'main' && !String(ti.name || '').trim() && !ti.isolation && judge(ws).team) {
@@ -136,16 +156,16 @@ function handle(input, ws, file) {
   if (parent !== 'main' && String(ti.name || '').trim()) return deny('작업 리더 · 역할 에이전트 안에서는 팀원을 이름(name) 없이 부른다. 이름을 주면 팀원 세션이 되어 보고가 메인으로 가고 리더는 결과를 못 받는다. 이름 없이 다시 부르고, 팀원 결과를 받을 때까지 기다린 뒤 보고한다');
   if (isLead && parent !== 'main') return deny('작업 리더(lead)는 메인만 부른다. 리더 안에서 다른 리더를 부르지 않고, 팀원(역할 에이전트)을 부른다');
   if (st.turn >= limits.total) {
-    return deny(`역할 에이전트 상한: 이번 요청에 이미 ${st.turn}개를 불렀습니다 (한 요청 ${limits.total}개). 새로 부르지 말고 앞 에이전트에게 이어서 맡기세요 (메인 대화 전담이 꺼져 있으면 직접 해도 된다). 꼭 더 필요하면 이유와 함께 사용자에게 물어보세요 (사용자가 답하면 다시 셉니다). 상한은 kedovi ai show 의 limits`);
+    return deny(`역할 에이전트 상한: 이번 요청에 이미 ${st.turn}개를 불렀습니다 (한 요청 ${limits.total}개). 새로 부르지 말고 앞 에이전트에게 이어서 맡기세요 (메인 대화 전담이 꺼져 있으면 직접 해도 된다). 꼭 더 필요하면 이유와 함께 사용자에게 물어보세요 (사용자가 답하면 다시 셉니다). 상한은 kedovi ai show 의 limits${paceNote}`);
   }
   if (parent === 'main' && isLead && count(st, 'main', 'lead') >= limits.leaders) {
-    return deny(`작업 리더 상한: 리더가 이미 ${count(st, 'main', 'lead')}명 돌고 있습니다 (리더 동시 ${limits.leaders}명, 이 PC 요금제 기준). 끝난 리더의 결과를 받은 뒤 다음 단위를 맡기거나, 남은 단위를 도는 리더에게 이어서 맡기세요. 상한은 kedovi ai show`);
+    return deny(`작업 리더 상한: 리더가 이미 ${count(st, 'main', 'lead')}명 돌고 있습니다 (리더 동시 ${limits.leaders}명, 이 PC 요금제 기준). 끝난 리더의 결과를 받은 뒤 다음 단위를 맡기거나, 남은 단위를 도는 리더에게 이어서 맡기세요. 상한은 kedovi ai show${paceNote}`);
   }
   if (parent === 'main' && !isLead && count(st, 'main', 'role') >= limits.parallel) {
-    return deny(`역할 에이전트 상한: 지금 ${count(st, 'main', 'role')}개가 돌고 있습니다 (동시 ${limits.parallel}개). 먼저 끝난 결과를 받고 부르세요`);
+    return deny(`역할 에이전트 상한: 지금 ${count(st, 'main', 'role')}개가 돌고 있습니다 (동시 ${limits.parallel}개). 먼저 끝난 결과를 받고 부르세요${paceNote}`);
   }
   if (parent !== 'main' && count(st, parent) >= limits.members) {
-    return deny(`팀원 상한: 이 에이전트가 부른 팀원이 이미 ${count(st, parent)}명 돌고 있습니다 (리더당 팀원 동시 ${limits.members}명). 끝난 팀원의 결과를 받고 부르거나, 같은 역할은 앞 팀원에게 이어서 맡기세요`);
+    return deny(`팀원 상한: 이 에이전트가 부른 팀원이 이미 ${count(st, parent)}명 돌고 있습니다 (리더당 팀원 동시 ${limits.members}명). 끝난 팀원의 결과를 받고 부르거나, 같은 작업의 수정이면 앞 팀원에게 이어서 맡기세요${paceNote}`);
   }
   if (parent === 'main' && roster !== 'off' && kitRole && st.turn === 0) warns.push('이번 요청의 첫 역할 에이전트입니다. 「구성 (팀 모드 | 서브에이전트): 역할 모델·강도 · …」 한 줄을 사용자에게 아직 알리지 않았으면 지금 알립니다. 같은 세션에서 앞과 같은 구성이면 생략. 표는 승인이 필요할 때만 (team 스킬)');
   st.pending.push({ parent, type, at: Date.now() });

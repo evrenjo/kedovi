@@ -81,7 +81,7 @@
 
 **팀 에이전트 역할**: 분석 (`analyst`) · 설계 (`architect`) · 문서화 (`documenter`) · 구현 (깊게) (`implementer-deep`) · 구현 (`implementer`) · 작업 리더 (`lead`) · 리뷰 (`reviewer`) · 설계 문서 (`spec-writer`) · 테스트 (`tester`)
 
-**함께 설치**: 도구 34개 · 자동 점검 68개
+**함께 설치**: 도구 35개 · 자동 점검 70개
 
 </details>
 

@@ -82,6 +82,8 @@
 | `kedovi gitlab runner-watch add [--repo R] [--interval 초] [--dry-run]` · `check` · `status` | CI 러너 디스크가 차거나 대기열이 밀리는 것을 미리 알고 싶을 때 | 디스크 사용률 · 대기 작업 수와 대기 시간 · 작업 시간 급증(최근 중앙값 대비)을 텔레그램으로 알리고 docker 캐시를 상한에 맞춰 정리한다. 아래 「runner-watch 자세히」 |
 | `kedovi team board` `[--all] [--json]` · `kedovi team step --unit <단위> --stage <단계> [--done …] [--next …] [--eta HH:MM]` · `--end 완료\|막힘\|결정 필요` | 작업 리더가 어디까지 했는지 볼 때 | 리더 · 그 팀원은 서브에이전트라 tmux 창이 없다. 리더가 단계마다 · `vars.team.leadReportMinutes`(기본 15)분마다 적은 단계 · 끝난 것 · 다음 · 예상 종료를 표로 보인다. 보고 주기의 두 배 넘게 소식 없으면 ⚠ |
 | `kedovi verify areas` `[--repo R] [--base B] [--run]` · `full [--repo R] [--cmd "명령"]` · `mark --repo R` · `status` | 작업마다 무거운 시험을 전부 돌려 검증이 오래 걸릴 때 | 작업마다는 바뀐 파일의 영역 시험만(`vars.verify.areaMap`: 경로 글롭 → 명령), 전체 실제 스택 시험(`vars.verify.fullCmd`)은 `vars.verify.fullSuite` = `release`(기본)면 릴리스 직전 한 번. `full` 은 통과 커밋을 기록하고, 릴리스 MR(gitlab 팩)이 기록이 낡았으면 경고 |
+| `kedovi usage` `[--json]` | 주간 한도가 빨리 찰 때 | 주간 사용률 · 지금 시점 기준 · 단계(보통 · 알림 · 줄임 · 절약) · 줄어든 상한. Pro · Max · Ultra 공통 |
+| `kedovi team-mode enforce pace off\|warn\|block` `[--team]` | 주간 사용량 조절을 바꿀 때 | 속도가 빠르면 상한을 줄이고 절약 단계에서 Opus 호출을 막는다 (Claude Code, 기본 막기) |
 | `kedovi heavy run` `[--name 이름] -- <명령 …>` · `status [--json]` | 이 PC 에서 겹치면 안 되는 시험을 여럿이 돌릴 때 | 줄을 세워 하나씩(`vars.verify.heavySlots`) 돌리고, 줄 · 예상 시작 · 예상 끝(같은 이름의 최근 성공 시간 중앙값)을 보인다. 보고의 예상 종료는 이것으로 |
 | `kedovi board` | 팀 · 프로젝트 현황을 한눈에 볼 때 | 워크스페이스 현황판(로드맵 · 팀원별 마지막 핸드오프 · 미완 작업 · 공지)과 기록 쪽을 이 PC 의 `.agents/board/` 에 만들어 연다. 보기 전용 |
 | `kedovi screens compare <화면 ID>` | 프로토타입이 있는 화면을 구현한 뒤 | 프로토타입과 구현을 같은 폭(기본 PC 1280 · 폰 390)으로 찍어 나란히 보는 `compare.html` 과 배치 대조(옆 · 아래 · 폭이 바뀐 영역)를 만든다 (screens 팩, Playwright). 결과는 체크리스트 「비교」 · 「배치」 줄로 들어간다. 못 찍으면 「미실행」 이고 완료가 아니다. 찾는 곳 · 옵션은 아래 |

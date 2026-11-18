@@ -9,7 +9,7 @@
 | 분석 `analyst` | 현행 코드·요구사항·레거시 조사 | 읽기 전용 | high |
 | 설계 `architect` | 설계안·변경 계획·영향 범위 | 읽기 전용 | high |
 | 설계 문서 `spec-writer` | 합의된 결정을 설계서·기능정의서·대응표로 빠짐없이 옮김 (`check-docs --cover`) | 쓰기(문서) | high |
-| 구현 `implementer` | repo 관례대로 최소 변경 + 검사 | 쓰기 | high |
+| 구현 `implementer` | repo 관례대로 최소 변경 + 검사 (표준 성향은 Sonnet) | 쓰기 | high |
 | 테스트 `tester` | 재현·테스트 작성·검증표 | 쓰기 | standard |
 | 리뷰 `reviewer` | diff 검토 (정확성·보안·회귀·테스트 누락) | 읽기 전용 | high |
 | 문서화 `documenter` | README·사용법·이슈 문서 | 쓰기(문서) | low |
@@ -108,15 +108,26 @@ flowchart TD
 | 빠듯 (Pro · Team 표준 · 요금제 모름이면 팀 값) | 1 (사실상 2층) | 2 | 6 |
 | Max (월 $100 · 5시간 한도에 자주 닿아 따로 낮춤) | 2 | 2 | 10 |
 | 넉넉 (Team 프리미엄) | 3 | 2 | 15 |
-| Ultra (월 $200 · 5시간 제한 없음) · 종량 (API · Enterprise · 게이트웨이) | 4 | 3 | 30 |
+| Ultra (월 $200 · 주간 한도 Max 의 2배 · 인증 계정은 5시간 제한 없음) | 3 | 2 | 20 |
+| 종량 (API · Enterprise · 게이트웨이) | 4 | 3 | 30 |
 
-- 팀 프로필 상한: 절약 1×2 · 6, 표준 3×2 · 15, 최고 4×3 · 30. 그래서 Ultra 라도 팀이 표준이면 3×2 · 15 다.
+- 팀 프로필 상한: 절약 1×2 · 6, 표준 3×2 · 15, 최고 4×3 · 30. 그래서 Ultra 라도 팀이 표준이면 3×2 · 15, 최고면 3×2 · 20 이다.
 - **띄우는 법 (Claude Code)**: 리더는 팀 모드여도 이름 없이 서브에이전트로 띄우고(이름을 주면 팀원이 되어 그 아래 팀원이 병렬로 돌지 않는다), 리더도 팀원을 **이름 없이** 서브에이전트로 부르고 완료 알림을 받을 때까지 기다린다 (리더 안에서 이름을 주면 팀원 세션이 되어 보고가 메인으로 가고 리더는 결과 없이 끝난다. 훅이 막는다). sync 가 중첩 깊이를 2층(`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=2`)으로 정한다. Codex 는 하위 에이전트 중첩이 공식 문서에 없어 2층이다.
 - **세션 · 메모리**: 팀원(agent teams)은 각자 따로 프로세스라 프로젝트 MCP 를 팀원마다 새로 띄운다. 브라우저 MCP 는 `workspace.json mcp.<이름>.roles` 로 화면 작업 역할에만 붙인다 ([워크스페이스 구조](workspace.md)). 브라우저를 열고 닫지 않고 끝내면 훅이 막는다(`enforce browser`). Claude Code 프로세스 합계가 `vars.session.memoryWarnGB`(기본 8GB)를 넘거나 한 세션이 `vars.session.longHours`(기본 8시간)를 넘으면 요청 시작 때 한 줄로 알리고, 자세한 목록은 `kedovi doctor` 의 「메모리」. tmux 서버가 돌면 팀원 창 기록을 `vars.session.tmuxHistory`(기본 50000줄)로 올린다.
 - **진행 보기**: 이름 없는 리더 · 팀원은 tmux 창이 없다. `kedovi agents watch` 가 메인 → 리더 → 팀원 나무로 상태와 마지막 행동을 2초마다 보여 준다 (tmux 안이면 `--tmux` 로 오른쪽 창에). 긴 시험(⏳) · sleep 대기(⏲) · 권한 질문일 수 있는 도구 대기(⏸) · 끊은 에이전트(⏹)를 따로 보인다.
 - **리더 보고는 메시지로 먼저**: 백그라운드 리더의 끝남 알림은 그 아래 팀원 · 백그라운드 명령이 모두 끝나야 메인에 간다 (Claude Code 동작). 그래서 리더는 이정표 · 최종 보고 · 결정 요청을 먼저 메인에게 메시지로 보내고, 리더 하나에 단위 하나만 맡는다.
 - **멈춘 에이전트는 메인이 끈다**: 리더는 자기 팀원을 강제로 끝낼 수 없다. 리더가 「끊어 달라」 고 보내거나 진행 보기에 ⏸ · ◌ 가 보이면 메인이 확인하고 끈다.
 - **서브에이전트 권한 질문**: 리더 · 팀원의 권한 질문(위험한 rm · 셸이 풀지 못하는 복합 명령 · ask 규칙)은 메인 화면에만 떠서 자리를 비우면 몇 시간씩 멈춘다. 훅이 바로 거절하고 다른 방법(명령 나누기 · 스크립트 파일, 삭제는 경로를 보고로)을 알린다. 메인 세션의 질문은 그대로 (`kedovi team-mode enforce perm`).
+- **주간 사용량 속도**: 대화형 세션의 상태 줄이 받는 주간 사용률을 지금 시점 기준(7일 중 지난 비율)과 견준다. 전역 상태 줄은 그대로 보인다. Pro · Max · Ultra 모두 같은 기준이고, 값이 없거나 2시간 넘게 낡으면 조절하지 않는다. 보기 `kedovi usage`, 수준 `kedovi team-mode enforce pace`, 기준 `vars.usage.*`.
+
+  | 앞선 정도 | 단계 | 동작 |
+  |---|---|---|
+  | +10 | 알림 | 메인에 알림, 상태 줄 경고 |
+  | +20 | 줄임 | 리더 · 팀원 · 요청당 상한 절반 |
+  | 5시간 창 85% 이상 (값이 오는 계정) | 줄임 | 위와 같다. 인증된 Ultra 처럼 값이 없으면 주간만 본다 |
+  | +30 (또는 90% 이상이면서 앞섬) | 절약 | 상한 3분의 1, `implementer-deep` 밖은 Opus 호출을 막음 |
+
+- **맥락 교체**: 리더 · 팀원의 맥락이 `vars.team.memberContextK`(기본 200K 토큰)를 넘으면 훅이 인계를 알린다. 큰 맥락은 호출마다 다시 읽혀 주간 한도를 빠르게 쓴다.
 - **상한 확인**: `kedovi models limits` 가 실제 적용 값과 정한 곳(프로필 · 팀 직접 값 · 이 PC 직접 값 · 요금제)을 보여 준다. 프로필을 올렸는데 예전에 넣어 둔 `agents.limits` 가 더 낮으면 `kedovi models profile` 이 알리고 화면이면 지울지 묻는다. 지우기: `kedovi models limits clear [--team]`.
 - **같은 repo**: 리더마다 `kedovi worktree add <repo> <단위>` 로 작업 폴더(`.worktrees/<repo>/<단위>/`, 로컬 임시 브랜치)를 주고, 끝나면 메인이 `kedovi worktree merge` 로 본 작업 트리에 커밋하지 않은 변경으로 옮긴다. 통합 브랜치 직접 운영이어도 쓸 수 있다 (임시 브랜치는 이 PC 에만 있다).
 - **진행 보기**: `kedovi team` 현황의 「지금 도는 에이전트」 줄 (작업 리더 수 · 리더별 팀원 수).
@@ -159,7 +170,7 @@ flowchart TD
 | 분석 | Opus 5.5 (xhigh) | Opus 5.5 (high) | GPT-6.1 Sol (Codex 위임 · high) |
 | 설계 | Opus 5.5 (max) | Opus 5.5 (xhigh) | Sonnet 5.5 (high) |
 | 설계 문서 | Opus 5.5 (xhigh) | Sonnet 5.5 (high) | Sonnet 5.5 (medium) |
-| 구현 | Opus 5.5 (high) | Opus 5.5 (high) | Sonnet 5.5 |
+| 구현 | Opus 5.5 (high) | Sonnet 5.5 (high) | Sonnet 5.5 |
 | 구현 (깊게) | Opus 5.5 (xhigh) | Opus 5.5 (xhigh) | Sonnet 5.5 (high) |
 | 리뷰 | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · high) | GPT-6.1 Sol (Codex 위임 · medium) |
 | 테스트 | GPT-6.1 Sol (Codex 위임 · high) | Haiku 5.5 (xhigh) | Haiku 5.5 (xhigh) |
@@ -177,7 +188,7 @@ flowchart TD
 | 분석 | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) |
 | 설계 | Opus 5.5 (Claude 위임 · max) | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) |
 | 설계 문서 | GPT-6.1 Sol (xhigh) | GPT-6.1 Sol (high) | GPT-6.1 Sol (medium) |
-| 구현 | Opus 5.5 (Claude 위임 · high) | Opus 5.5 (Claude 위임 · high) | GPT-6.1 Sol (medium) |
+| 구현 | Opus 5.5 (Claude 위임 · high) | Sonnet 5.5 (Claude 위임 · high) | GPT-6.1 Sol (medium) |
 | 구현 (깊게) | Opus 5.5 (Claude 위임 · xhigh) | Opus 5.5 (Claude 위임 · xhigh) | GPT-6.1 Sol (high) |
 | 리뷰 | Opus 5.5 (Claude 위임 · xhigh) | Opus 5.5 (Claude 위임 · high) | Sonnet 5.5 (Claude 위임 · high) |
 | 테스트 | GPT-6.1 Sol (high) | GPT-6 Luna (max) | GPT-6 Luna (max) |

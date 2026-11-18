@@ -31,6 +31,7 @@ const notifyHome = fs.mkdtempSync(path.join(require('os').tmpdir(), 'kedovi-self
 process.env.KEDOVI_CONFIG_DIR = notifyHome;
 delete process.env.CLAUDE_CODE_BRIDGE_SESSION_ID; delete process.env.KEDOVI_CHANNEL; delete process.env.KEDOVI_DELEGATED; process.env.KEDOVI_REMOTE_CONTROL = '0'; // 리모트 컨트롤 세션에서 돌려도 같게 (세션 파일을 읽지 않는다)
 process.env.KEDOVI_TELEGRAM_API = 'http://127.0.0.1:9';
+process.env.KEDOVI_USAGE_FILE = path.join(os.tmpdir(), `kedovi-selftest-usage-${process.pid}.json`); // 이 PC 의 실제 주간 사용량이 상한 시험에 끼지 않게
 process.env.KEDOVI_LOGIN_PLANS = 'none'; // 상한(작업 리더)이 이 PC 의 Claude 요금제에 따라 달라지지 않게
 process.env.KEDOVI_IDLE_SECONDS = '100000'; // PC 앞이면 알림을 건너뛰므로, 테스트는 자리에 없는 것으로
 for (const k of ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID', 'TELEGRAM_TEAM_BOT_TOKEN', 'KEDOVI_CHANNEL']) delete process.env[k];
@@ -159,7 +160,7 @@ for (const c of cases) {
     const agentModel = (role) => (fs.readFileSync(path.join(dir, '.claude', 'agents', `${role}.md`), 'utf8').match(/^model: (.+)$/m) || [])[1];
     const codexModel = () => (fs.readFileSync(path.join(dir, '.codex', 'config.toml'), 'utf8').match(/^model = "(.+)"$/m) || [])[1];
     const got = [];
-    const std = agentModel('architect') === 'opus' && agentModel('implementer') === 'opus' && agentModel('documenter') === 'haiku'
+    const std = agentModel('architect') === 'opus' && agentModel('implementer') === 'sonnet' && agentModel('implementer-deep') === 'opus' && agentModel('documenter') === 'haiku'
       && JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8')).model === 'opusplan' && codexModel() === 'gpt-6.1-sol';
     got.push(`표준 ${std}`);
     const localFile = path.join(dir, '.agents', 'local.json');
@@ -974,7 +975,7 @@ if (fs.existsSync(EXPORT_JS) && fs.existsSync(path.join(KIT, 'public', '.github'
     && !withCli.files.has('.codex/agents/implementer.toml') && withCli.files.has('.claude/agents/implementer.md')
     && dc.codex.some((d) => d.role === 'reviewer' && d.tool === 'claude' && d.model === 'opus' && d.mode === 'read')
     && dc.claude.some((d) => d.role === 'reviewer' && d.tool === 'codex' && d.model === 'gpt-6.1-sol' && d.mode === 'read')
-    && dc.codex.some((d) => d.role === 'implementer' && d.tool === 'claude' && d.model === 'opus' && d.mode === 'write');
+    && dc.codex.some((d) => d.role === 'implementer' && d.tool === 'claude' && d.model === 'sonnet' && d.mode === 'write');
   const fellBack = /model: opus/.test(noCli.files.get('.claude/agents/reviewer.md')) && /model = "gpt-6\.1-sol"/.test(noCli.files.get('.codex/agents/implementer.toml')) && /model = "gpt-6\.1-sol"/.test(noCli.files.get('.codex/agents/reviewer.toml') || '') && warn.length === 3;
   // 실제 워크스페이스 sync — PC 별 지침에 위임 표
   const localMd = fs.existsSync(path.join(tmp, 'team-lead', 'CLAUDE.local.md')) ? fs.readFileSync(path.join(tmp, 'team-lead', 'CLAUDE.local.md'), 'utf8') : '';
@@ -1324,7 +1325,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const single = Object.values(apply({ compose: 'single' }).roles).every((m) => !m.claude && !m.codex);
   const gw = { models: ['claude/claude-opus-5-5', 'claude/claude-sonnet-5-5', 'claude/claude-haiku-4-5', 'codex/gpt-6.1-sol', 'codex/gpt-6-luna'], aliases: false };
   const g = apply({ connection: 'gateway', gateway: gw });
-  const native = g.roles.reviewer.claude === 'codex/gpt-6.1-sol' && g.roles.analyst.claude === 'claude/claude-opus-5-5[1m]' && g.roles.implementer.codex === 'claude:claude/claude-opus-5-5[1m]' && g.main.codex === 'codex/gpt-6.1-sol';
+  const native = g.roles.reviewer.claude === 'codex/gpt-6.1-sol' && g.roles.analyst.claude === 'claude/claude-opus-5-5[1m]' && /^claude:claude\/claude-sonnet-5-5/.test(g.roles.implementer.codex) && g.main.codex === 'codex/gpt-6.1-sol';
   // 1M 모델의 게이트웨이 이름에는 [1m] (Claude Code 가 모르는 이름을 200k 로 본다). 옛 200k 모델 · GPT · 별칭 연결은 그대로
   const win = kitLib.gatewayId(gw, 'claude', 'haiku') === 'claude/claude-haiku-4-5' && kitLib.gatewayId(gw, 'claude', 'claude/claude-opus-5-5[1m]') === 'claude/claude-opus-5-5[1m]'
     && kitLib.gatewayId(gw, 'codex', 'gpt-6.1-sol') === 'codex/gpt-6.1-sol' && kitLib.gatewayId({ ...gw, aliases: true }, 'claude', 'opus') === 'opus'
@@ -1466,11 +1467,33 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   fs.writeFileSync(wsFile, JSON.stringify({ ...JSON.parse(wsRaw), agents: { ...(JSON.parse(wsRaw).agents || {}), profile: 'rich' } }, null, 2));
   const rich = lim();
   fs.writeFileSync(wsFile, wsRaw);
-  const rooms = tight.leaders === 1 && tight.members === 2 && tight.total === 6 && mid.leaders === 2 && mid.members === 2 && mid.total === 10 && big.leaders === 3 && big.members === 2 && big.total === 15 && rich.leaders === 4 && rich.members === 3 && rich.total === 30 && /Ultra/.test((big.room || {}).label || '');
+  const rooms = tight.leaders === 1 && tight.members === 2 && tight.total === 6 && mid.leaders === 2 && mid.members === 2 && mid.total === 10 && big.leaders === 3 && big.members === 2 && big.total === 15 && rich.leaders === 3 && rich.members === 2 && rich.total === 20 && /Ultra/.test((big.room || {}).label || '');
   // 훅: 리더 3명까지 · 리더당 팀원 2명까지 · 팀원이 끝나면 다시 · 리더 안에서 리더 금지
   const hook = (ev, extra = {}) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'hooks', 'agent-budget.js'), '--agent=claude'], { cwd: dir, encoding: 'utf8', input: JSON.stringify({ session_id: 'selftest-tier', hook_event_name: ev, tool_name: 'Agent', ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: dir } }).stdout;
   const deny = (o) => /"permissionDecision":"deny"/.test(o || '');
   const spawn = (type, parent) => hook('PreToolUse', { tool_input: { subagent_type: type, prompt: 'x' }, ...(parent ? { agent_id: parent, agent_type: 'lead' } : {}) });
+  // 주간 사용량 속도: Ultra · Max 모두 줄임 · 절약 단계에서 상한이 줄고, 절약 단계는 implementer-deep 밖의 Opus 를 막는다
+  {
+    const put = (used, five) => fs.writeFileSync(process.env.KEDOVI_USAGE_FILE, JSON.stringify({ at: Date.now(), week: { used, resetsAt: Date.now() + 3.5 * 86400000 }, five: five ? { used: five, resetsAt: Date.now() + 3600000 } : null }));
+    const leadsAllowed = () => { hook('UserPromptSubmit'); let n = 0; while (n < 6 && !deny(spawn('lead'))) n++; hook('UserPromptSubmit'); return n; };
+    const member = (type, model) => { hook('UserPromptSubmit'); return hook('PreToolUse', { tool_input: { subagent_type: type, prompt: 'x', ...(model ? { model } : {}) }, agent_id: 'P1', agent_type: 'lead' }); };
+    const p = {};
+    put(50); p['Ultra 보통 3'] = leadsAllowed() === 3;
+    put(72); p['Ultra 줄임 2'] = leadsAllowed() === 2;
+    put(82); p['Ultra 절약 1'] = leadsAllowed() === 1;
+    p['절약: Opus 호출 막기'] = /Opus 를 쓰지 않는다/.test(member('implementer', 'opus')) && /Opus 를 쓰지 않는다/.test(member('general-purpose')) && !deny(member('general-purpose', 'sonnet')) && !deny(member('implementer-deep', 'opus'));
+    put(50, 90); p['Ultra 5시간 값이 오면 줄임 2'] = leadsAllowed() === 2;
+    setLocal({ plans: { claude: 'max5x' } });
+    put(50); p['Max 보통 2'] = leadsAllowed() === 2;
+    put(72); p['Max 줄임 1'] = leadsAllowed() === 1;
+    put(50, 90); p['Max 5시간 줄임 1'] = leadsAllowed() === 1;
+    setLocal({ plans: { claude: 'max20x' } });
+    fs.rmSync(process.env.KEDOVI_USAGE_FILE, { force: true });
+    p['기록 없으면 그대로'] = leadsAllowed() === 3;
+    const settings = JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8'));
+    p['상태 줄 설정'] = /usage-status\.js/.test((settings.statusLine || {}).command || '');
+    record('주간 사용량 속도 (Max · Ultra · 상한 · Opus 절약 · 상태 줄)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
+  }
   hook('UserPromptSubmit');
   const leads = ['L1', 'L2', 'L3'].map((id) => { const o = spawn('lead'); hook('SubagentStart', { agent_id: id, agent_type: 'lead' }); return o; });
   const leadCap = !leads.some(deny) && /작업 리더 상한/.test(spawn('lead'));
@@ -1534,7 +1557,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   fs.writeFileSync(wsFile, wsRaw);
   fs.rmSync(repo, { recursive: true, force: true }); fs.rmSync(path.join(dir, '.worktrees'), { recursive: true, force: true });
   record('작업 리더 3층 (요금제별 상한 · 층별 훅 · 중첩 깊이 · lead 역할 · kedovi worktree)', rooms && leadCap && memberCap && freed && noNested && namedInLead && treeOk && leadProgress && wired && add1 && listed && moved && stopped,
-    `요금제별 빠듯 1×2·6 · Max 2×2·10 · Ultra 3×2·15(팀 표준) · 최고 4×3·30 ${rooms} · 리더 상한 ${leadCap} · 리더당 팀원 상한 ${memberCap} · 끝나면 다시 ${freed} · 리더 안 리더 금지 ${noNested} · 리더 안 이름 금지 ${namedInLead} · 현황 나무 ${treeOk} · 리더 붙잡기 ${held && heldOnce} · 보고 주기 ${quiet && nudged && reset} · 메인 진행판 ${mainSees} · 설정 · 역할 · 지침 · gitignore ${wired} · 작업 폴더 ${add1 && listed} · 커밋 없이 옮김(남의 변경 유지) ${moved} · 겹치면 멈춤 ${stopped}`);
+    `요금제별 빠듯 1×2·6 · Max 2×2·10 · Ultra 3×2·15(팀 표준) · 3×2·20(최고) ${rooms} · 리더 상한 ${leadCap} · 리더당 팀원 상한 ${memberCap} · 끝나면 다시 ${freed} · 리더 안 리더 금지 ${noNested} · 리더 안 이름 금지 ${namedInLead} · 현황 나무 ${treeOk} · 리더 붙잡기 ${held && heldOnce} · 보고 주기 ${quiet && nudged && reset} · 메인 진행판 ${mainSees} · 설정 · 역할 · 지침 · gitignore ${wired} · 작업 폴더 ${add1 && listed} · 커밋 없이 옮김(남의 변경 유지) ${moved} · 겹치면 멈춤 ${stopped}`);
 }
 
 // 역할 에이전트 실행 방식 — SessionStart 훅이 환경(팀 기능 · teammateMode · tmux)으로 팀 모드/서브에이전트를 판정한다 (Claude 만)

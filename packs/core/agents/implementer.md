@@ -1,7 +1,7 @@
 ---
 name: implementer
 title: 구현
-description: 확정된 계획에 따라 배정된 파일만 최소한으로 고치고 해당 검사(포맷·린트·타입·테스트)를 돌릴 때 맡긴다. repo·계층별로 여러 명을 나눠 띄울 수 있다. 계약 · 스키마 · 보안 · 원인 분석이 필요한 결함은 implementer-deep.
+description: 확정된 계획에 따라 배정된 파일만 최소한으로 고치고 해당 검사(포맷·린트·타입·테스트)를 돌릴 때 맡긴다. repo·계층별로 여러 명을 나눠 띄울 수 있다. 계약 · 스키마 · 보안 · 돈이 오가는 경로 · 원인 분석이 필요한 결함은 implementer-deep.
 access: workspace-write
 effort: medium
 grade: high

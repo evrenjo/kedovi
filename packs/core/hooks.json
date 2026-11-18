@@ -1,90 +1,387 @@
 {
   "SessionStart": [
-    { "matcher": "startup", "script": "hooks/check-repo-updates.js", "timeout": 30 },
-    { "script": "hooks/check-context-sync.js", "timeout": 20 },
-    { "matcher": "startup", "script": "hooks/handoff-brief.js", "timeout": 10 },
-    { "matcher": "startup", "script": "hooks/session-brief.js", "timeout": 10 },
-    { "matcher": "startup", "script": "hooks/model-profile.js", "timeout": 5 },
-    { "matcher": "startup|resume|clear|compact", "script": "hooks/team-mode.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/channel-mode.js", "timeout": 5, "agents": "claude" },
-    { "matcher": "startup|resume", "script": "hooks/session-health.js", "timeout": 5, "agents": "claude" }
+    {
+      "matcher": "startup",
+      "script": "hooks/check-repo-updates.js",
+      "timeout": 30
+    },
+    {
+      "script": "hooks/check-context-sync.js",
+      "timeout": 20
+    },
+    {
+      "matcher": "startup",
+      "script": "hooks/handoff-brief.js",
+      "timeout": 10
+    },
+    {
+      "matcher": "startup",
+      "script": "hooks/session-brief.js",
+      "timeout": 10
+    },
+    {
+      "matcher": "startup",
+      "script": "hooks/model-profile.js",
+      "timeout": 5
+    },
+    {
+      "matcher": "startup|resume|clear|compact",
+      "script": "hooks/team-mode.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/channel-mode.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "matcher": "startup|resume",
+      "script": "hooks/session-health.js",
+      "timeout": 5,
+      "agents": "claude"
+    }
   ],
   "Stop": [
-    { "script": "hooks/task-check.js", "timeout": 10, "statusMessage": "완료 조건 점검" },
-    { "script": "hooks/decision-ask.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/mid-turn-messages.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/browser-close.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/answer-first.js", "timeout": 5 },
-    { "script": "hooks/long-answer.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/handoff-reminder.js", "timeout": 15, "statusMessage": "핸드오프 점검" },
-    { "script": "hooks/agent-cleanup.js", "timeout": 10 },
-    { "script": "hooks/budget-check.js", "timeout": 5 },
-    { "script": "hooks/team-idle.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/notify.js", "timeout": 10 }
+    {
+      "script": "hooks/task-check.js",
+      "timeout": 10,
+      "statusMessage": "완료 조건 점검"
+    },
+    {
+      "script": "hooks/decision-ask.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/mid-turn-messages.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/browser-close.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/answer-first.js",
+      "timeout": 5
+    },
+    {
+      "script": "hooks/long-answer.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/handoff-reminder.js",
+      "timeout": 15,
+      "statusMessage": "핸드오프 점검"
+    },
+    {
+      "script": "hooks/agent-cleanup.js",
+      "timeout": 10
+    },
+    {
+      "script": "hooks/budget-check.js",
+      "timeout": 5
+    },
+    {
+      "script": "hooks/team-idle.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/notify.js",
+      "timeout": 10
+    }
   ],
   "UserPromptSubmit": [
-    { "script": "hooks/agent-budget.js", "timeout": 10, "agents": "claude" },
-    { "script": "hooks/task-focus.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/prompt-time.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/chat-prefs.js", "timeout": 5, "agents": "all" },
-    { "script": "hooks/settings-hint.js", "timeout": 5, "agents": "all" },
-    { "script": "hooks/feature-suggest.js", "timeout": 5, "agents": "all" },
-    { "script": "hooks/budget-check.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/team-idle.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/decision-ask.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/plan-first.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/main-delegate.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/session-health.js", "timeout": 8, "agents": "claude" },
-    { "script": "hooks/lead-progress.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/long-answer.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/answer-first.js", "timeout": 5 },
-    { "script": "hooks/notify.js", "timeout": 5 }
+    {
+      "script": "hooks/agent-budget.js",
+      "timeout": 10,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/task-focus.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/prompt-time.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/chat-prefs.js",
+      "timeout": 5,
+      "agents": "all"
+    },
+    {
+      "script": "hooks/settings-hint.js",
+      "timeout": 5,
+      "agents": "all"
+    },
+    {
+      "script": "hooks/feature-suggest.js",
+      "timeout": 5,
+      "agents": "all"
+    },
+    {
+      "script": "hooks/budget-check.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/team-idle.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/decision-ask.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/plan-first.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/main-delegate.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/session-health.js",
+      "timeout": 8,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/lead-progress.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/usage-pace.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/long-answer.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/answer-first.js",
+      "timeout": 5
+    },
+    {
+      "script": "hooks/notify.js",
+      "timeout": 5
+    }
   ],
   "PreToolUse": [
-    { "matcher": "Agent|Task", "script": "hooks/agent-budget.js", "timeout": 10, "agents": "claude" },
-    { "matcher": "AskUserQuestion", "script": "hooks/notify.js", "timeout": 5, "agents": "claude" },
-    { "matcher": "AskUserQuestion", "script": "hooks/decision-ask.js", "timeout": 5, "agents": "claude" },
-    { "matcher": "Agent|Task", "script": "hooks/notify.js", "timeout": 5, "agents": "claude" },
-    { "matcher": "Edit|Write|MultiEdit|NotebookEdit", "script": "hooks/plan-first.js", "timeout": 5, "agents": "claude" },
-    { "matcher": "Edit|Write|MultiEdit|NotebookEdit", "script": "hooks/main-delegate.js", "timeout": 5, "agents": "claude" },
-    { "matcher": "Bash", "script": "hooks/team-guard.js", "timeout": 5, "agents": "claude" },
-    { "matcher": "Edit|Write|MultiEdit|NotebookEdit|apply_patch|Bash", "script": "hooks/repo-guard.js", "timeout": 5, "agents": "all" },
-    { "matcher": "Bash", "script": "hooks/git-guard.js", "timeout": 5, "agents": "all" },
-    { "matcher": "Bash", "script": "hooks/draft-guard.js", "timeout": 10, "agents": "all" },
-    { "matcher": "Bash|Read", "script": "hooks/secret-guard.js", "timeout": 5, "agents": "all" },
-    { "matcher": "Bash", "script": "hooks/review-gate.js", "timeout": 30, "agents": "claude" },
-    { "matcher": "Bash", "script": "hooks/spec-commit.js", "timeout": 30, "agents": "claude" },
-    { "matcher": "Edit|Write|MultiEdit|NotebookEdit|apply_patch", "script": "hooks/screen-gate.js", "timeout": 15, "agents": "all" },
-    { "script": "hooks/lead-progress.js", "timeout": 5, "agents": "claude" }
+    {
+      "matcher": "Agent|Task",
+      "script": "hooks/agent-budget.js",
+      "timeout": 10,
+      "agents": "claude"
+    },
+    {
+      "matcher": "AskUserQuestion",
+      "script": "hooks/notify.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "matcher": "AskUserQuestion",
+      "script": "hooks/decision-ask.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "matcher": "Agent|Task",
+      "script": "hooks/notify.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+      "script": "hooks/plan-first.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+      "script": "hooks/main-delegate.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "matcher": "Bash",
+      "script": "hooks/team-guard.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "matcher": "Edit|Write|MultiEdit|NotebookEdit|apply_patch|Bash",
+      "script": "hooks/repo-guard.js",
+      "timeout": 5,
+      "agents": "all"
+    },
+    {
+      "matcher": "Bash",
+      "script": "hooks/git-guard.js",
+      "timeout": 5,
+      "agents": "all"
+    },
+    {
+      "matcher": "Bash",
+      "script": "hooks/draft-guard.js",
+      "timeout": 10,
+      "agents": "all"
+    },
+    {
+      "matcher": "Bash|Read",
+      "script": "hooks/secret-guard.js",
+      "timeout": 5,
+      "agents": "all"
+    },
+    {
+      "matcher": "Bash",
+      "script": "hooks/review-gate.js",
+      "timeout": 30,
+      "agents": "claude"
+    },
+    {
+      "matcher": "Bash",
+      "script": "hooks/spec-commit.js",
+      "timeout": 30,
+      "agents": "claude"
+    },
+    {
+      "matcher": "Edit|Write|MultiEdit|NotebookEdit|apply_patch",
+      "script": "hooks/screen-gate.js",
+      "timeout": 15,
+      "agents": "all"
+    },
+    {
+      "script": "hooks/lead-progress.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/usage-pace.js",
+      "timeout": 5,
+      "agents": "claude"
+    }
   ],
   "PostToolUse": [
-    { "matcher": "Agent|Task", "script": "hooks/session-health.js", "timeout": 5, "agents": "claude" },
-    { "matcher": "mcp__.*", "script": "hooks/browser-close.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/channel-progress.js", "timeout": 10, "agents": "claude" },
-    { "script": "hooks/chat-prefs.js", "timeout": 5, "agents": "all" },
-    { "matcher": "Bash", "script": "hooks/secret-guard.js", "timeout": 5, "agents": "all" },
-    { "matcher": "Read|Bash", "script": "hooks/fact-freshness.js", "timeout": 5, "agents": "all" },
-    { "matcher": "AskUserQuestion", "script": "hooks/notify.js", "timeout": 5, "agents": "claude" },
-    { "matcher": "mcp__plugin_telegram.*reply", "script": "hooks/notify.js", "timeout": 5, "agents": "claude" }
+    {
+      "matcher": "Agent|Task",
+      "script": "hooks/session-health.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "matcher": "mcp__.*",
+      "script": "hooks/browser-close.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/channel-progress.js",
+      "timeout": 10,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/chat-prefs.js",
+      "timeout": 5,
+      "agents": "all"
+    },
+    {
+      "matcher": "Bash",
+      "script": "hooks/secret-guard.js",
+      "timeout": 5,
+      "agents": "all"
+    },
+    {
+      "matcher": "Read|Bash",
+      "script": "hooks/fact-freshness.js",
+      "timeout": 5,
+      "agents": "all"
+    },
+    {
+      "matcher": "AskUserQuestion",
+      "script": "hooks/notify.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "matcher": "mcp__plugin_telegram.*reply",
+      "script": "hooks/notify.js",
+      "timeout": 5,
+      "agents": "claude"
+    }
   ],
   "PermissionRequest": [
-    { "script": "hooks/agent-permission.js", "timeout": 5, "agents": "claude" }
+    {
+      "script": "hooks/agent-permission.js",
+      "timeout": 5,
+      "agents": "claude"
+    }
   ],
   "Notification": [
-    { "script": "hooks/team-idle.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/notify.js", "timeout": 10, "agents": "claude" }
+    {
+      "script": "hooks/team-idle.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/notify.js",
+      "timeout": 10,
+      "agents": "claude"
+    }
   ],
   "SubagentStart": [
-    { "script": "hooks/agent-budget.js", "timeout": 10, "agents": "claude" }
+    {
+      "script": "hooks/agent-budget.js",
+      "timeout": 10,
+      "agents": "claude"
+    }
   ],
   "SubagentStop": [
-    { "script": "hooks/browser-close.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/agent-report.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/agent-budget.js", "timeout": 10, "agents": "claude" },
-    { "script": "hooks/notify.js", "timeout": 5, "agents": "claude" }
+    {
+      "script": "hooks/browser-close.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/agent-report.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/agent-budget.js",
+      "timeout": 10,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/notify.js",
+      "timeout": 5,
+      "agents": "claude"
+    }
   ],
   "TeammateIdle": [
-    { "script": "hooks/team-idle.js", "timeout": 5, "agents": "claude" },
-    { "script": "hooks/notify.js", "timeout": 5, "agents": "claude" }
+    {
+      "script": "hooks/team-idle.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/notify.js",
+      "timeout": 5,
+      "agents": "claude"
+    }
   ]
 }

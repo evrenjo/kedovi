@@ -25,7 +25,7 @@ const { execFileSync, spawnSync } = require('child_process');
 const GEN_NOTE = '생성 파일: `node bin/kit.js sync` 로 다시 만든다. 직접 고치지 말 것 (정본 = packs/ · workspace.json)';
 const DEFAULT_AGENTS_MD_BYTES = 32 * 1024; // Codex project_doc_max_bytes 기본값
 const ENFORCE_LEVELS = ['off', 'warn', 'block']; // agents.enforce.* 훅 강제 수준 (약한 것부터)
-const ENFORCE_DEFAULTS = { teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'block', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' }, browserClose: { level: 'block', max: 'block' }, longAnswer: { level: 'block', max: 'block' }, agentReport: { level: 'block', max: 'block' }, screenChecklist: { level: 'block', max: 'block' }, permissionAsk: { level: 'block', max: 'block' }, draftCheck: { level: 'block', max: 'block' }, leadHold: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
+const ENFORCE_DEFAULTS = { usagePace: { level: 'block', max: 'block' }, teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'block', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' }, browserClose: { level: 'block', max: 'block' }, longAnswer: { level: 'block', max: 'block' }, agentReport: { level: 'block', max: 'block' }, screenChecklist: { level: 'block', max: 'block' }, permissionAsk: { level: 'block', max: 'block' }, draftCheck: { level: 'block', max: 'block' }, leadHold: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
 const UI_LAYER_PACKS = ['frontend', 'mobile', 'desktop', 'tv', 'watch']; // 화면을 만드는 레이어 팩 (repo 별 작업 규칙에 화면 정본 규칙을 앞에 둔다)
 const MAX_AGENTS_MD_BYTES = 96 * 1024; // 이 위로는 sync 가 막는다 (context 낭비)
 const PERSONAL_HEADROOM = 12 * 1024; // 개인 지침(응답 언어 · 대화 스타일 약 1.7KB · 역할 상한 · 팀 구성(역할 · 모델 메뉴) · 위임 표 · 잠금)이 AGENTS.override.md 에 더해지는 몫. 자동 모드에서 약 8KB
@@ -1169,6 +1169,8 @@ function generate(root) {
   base.attribution = { commit: '', pr: '', sessionUrl: false };
   // 서브에이전트 중첩 깊이: 메인 → 작업 리더 → 팀원 (2층 아래까지). 공식 기본은 3층. 팀이 바꾸려면 workspace.json claude.settings.env
   base.env = { CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH: '2' };
+  // 상태 줄: 요금제 사용률을 기록한다 (주간 속도 조절). 사용자의 전역 상태 줄은 이 스크립트가 대신 돌려 그대로 보인다
+  base.statusLine = { type: 'command', command: 'node "${CLAUDE_PROJECT_DIR:-.}/packs/core/hooks/usage-status.js"', refreshInterval: 60 };
   const excludes = guideExcludes(ws);
   if (excludes.length) base.claudeMdExcludes = excludes;
   const claudeSettings = deepMerge(base, (ws.claude && ws.claude.settings) || {});
@@ -1379,6 +1381,7 @@ function resolveModels(root, ws) {
   //   midTurnMessages = 작업 중 끼어 든 사용자 메시지를 답변에서 처리했는지 멈출 때 한 번 되묻는다 (Claude Code. block 기본 · off)
   //   permissionAsk = 서브에이전트(리더 · 그 아래 팀원)의 권한 질문을 묻지 않고 거절하고 다른 방법을 알린다 (Claude Code PermissionRequest. block 기본 · off: 메인 화면에 그대로 묻기)
   //   draftCheck = 사람이 읽는 글(이슈 · MR · 댓글 · 기획 repo 커밋)의 형식 검사: 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것 · 소스 코드 표현 (lib/draft.js. block 기본 = 올리기 · 커밋을 막기 · warn 알림만 · off)
+  //   usagePace = 주간 사용량 속도가 빠르면 상한을 줄이고 절약 단계에서 Opus 호출을 막는다 (Claude Code. block 기본 · warn 알림만 · off)
   //   leadHold = 작업 리더가 자기 팀원이 도는 채 차례를 끝내려 하면 한 번 되돌린다 (Claude Code SubagentStop. block 기본 · off)
   //   checkBeforeReview = 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 막는다 (리뷰 위임 · 리뷰 역할 에이전트)
   const longRun = { after: mins(te.runMinutes, 60) };
