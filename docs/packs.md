@@ -27,7 +27,7 @@
 <details>
 <summary><b>core</b> · 공통 코어: 소통·검증 규칙 · 핸드오프 · 로드맵 · 문서 사이트 · 진단</summary>
 
-협업 워크스페이스 기본: 팀 구성(자동: 리더가 작업마다 역할·모델 선택, 고정: 프로필대로), 커뮤니케이션·근거/검증 원칙·변경 영향 점검, 핸드오프/재개/작업 시작, 진행 방식(스프린트: 최소 기능부터 기능 단위 스프린트 · 데모 · 회고 · 백로그, 전체: 전체 설계 뒤 구축, 이슈형: 운영 · 유지보수의 이슈 보드 · 주간 보고), 유형 바꾸기(kedovi type), 신규 구축 아이디어 · 전체 그림(idea 스킬: 무엇을 왜 만드는지 대화 → 기능 지도 → MVP 범위), 로드맵(handoffs/PLAN.md: 종류 · 진행 방식별 기본 단계 · 단계 흐름도 · 영역 × 하위 작업 표 · 완료 보고 블록), 문서 사이트(kedovi docs build: 기획 repo 의 md → 같은 경로 구조의 HTML, 가이드와 같은 화면 틀 · 정의 ID 앵커 · 근거 색인 ids.json · docs-site.json 묶음), 워크스페이스 현황판(kedovi board), 쓰기 보고서(시험이 DB 에 쓴 것: 형식 · 보는 화면 · kedovi writes check 로 기능 문서 「저장」 표 대조 · 문서 사이트 「저장 데이터」), 컨텍스트 관리, 응답 언어 · 대화 스타일(kedovi prefs: 한국어 · English, 학습 · 일반 · 전문가, 요청마다 · 긴 작업 중 다시 한 줄 · Claude 출력 스타일 · 그림은 claude-mermaid 가 있으면 브라우저, 없으면 텍스트), 답변 첫 줄 시각 표시(요청 받은 시각, kedovi timestamp), 시간 예산(budget.js: 예산 1.5배를 넘으면 계속할지 묻게 함 · 월간 집계 kedovi budget report), 운영 결함 측정(기록 머리의 발견 · 해소 시각 · 분류, kedovi defects report 로 분류별 잠복 · 해소 시간), 환경 사실 신선도(「확인일」 칸이 오래된 표를 읽으면 재확인 알림), 리뷰 위임 차수(같은 범위 차수 · 앞 차수 블로커 · 3차부터 경고), 리뷰 전 검사(지시서의 검사: 줄), 착수 전 확인(코드 첫 수정 전 머리말), 오래 일하는 팀원 · 위임 알림(기본 60분), 레포 업데이트·죽은 참조 검사·핸드오프 알림 훅 · 텔레그램 알림(개인: 알림 수준 · 양방향 대화 · 자리 비움, 팀: 핸드오프·설정 변경·공지)
+협업 워크스페이스 기본: 팀 구성(자동: 리더가 작업마다 역할·모델 선택, 고정: 프로필대로), 커뮤니케이션·근거/검증 원칙·변경 영향 점검, 핸드오프/재개/작업 시작, 진행 방식(스프린트: 최소 기능부터 기능 단위 스프린트 · 데모 · 회고 · 백로그, 전체: 전체 설계 뒤 구축, 이슈형: 운영 · 유지보수의 이슈 보드 · 주간 보고), 유형 바꾸기(kedovi type), 신규 구축 아이디어 · 전체 그림(idea 스킬: 무엇을 왜 만드는지 대화 → 기능 지도 → MVP 범위), 로드맵(handoffs/PLAN.md: 종류 · 진행 방식별 기본 단계 · 단계 흐름도 · 영역 × 하위 작업 표 · 완료 보고 블록), 문서 사이트(kedovi docs build: 기획 repo 의 md → 같은 경로 구조의 HTML, 가이드와 같은 화면 틀 · 정의 ID 앵커 · 근거 색인 ids.json · docs-site.json 묶음), 워크스페이스 현황판(kedovi board), 쓰기 보고서(시험이 DB 에 쓴 것: 형식 · 보는 화면 · kedovi writes check 로 기능 문서 「저장」 표 대조 · 문서 사이트 「저장 데이터」), 컨텍스트 관리, 응답 언어 · 대화 스타일(kedovi prefs: 한국어 · English, 학습 · 일반 · 전문가, 요청마다 · 긴 작업 중 다시 한 줄 · Claude 출력 스타일 · 그림은 claude-mermaid 가 있으면 브라우저, 없으면 텍스트), 답변 첫 줄 시각 표시(요청 받은 시각, kedovi timestamp), 시간 예산( 예산 1.5배를 넘으면 계속할지 묻게 함 · 월간 집계 kedovi budget report), 운영 결함 측정(기록 머리의 발견 · 해소 시각 · 분류, kedovi defects report 로 분류별 잠복 · 해소 시간), 환경 사실 신선도(「확인일」 칸이 오래된 표를 읽으면 재확인 알림), 리뷰 위임 차수(같은 범위 차수 · 앞 차수 블로커 · 3차부터 경고), 리뷰 전 검사(지시서의 검사: 줄), 착수 전 확인(코드 첫 수정 전 머리말), 오래 일하는 팀원 · 위임 알림(기본 60분), 레포 업데이트·죽은 참조 검사·핸드오프 알림 훅 · 텔레그램 알림(개인: 알림 수준 · 양방향 대화 · 자리 비움, 팀: 핸드오프·설정 변경·공지)
 
 | 항목 | 내용 |
 |---|---|
@@ -81,9 +81,7 @@
 
 **팀 에이전트 역할**: 분석 (`analyst`) · 설계 (`architect`) · 문서화 (`documenter`) · 구현 (깊게) (`implementer-deep`) · 구현 (`implementer`) · 작업 리더 (`lead`) · 리뷰 (`reviewer`) · 설계 문서 (`spec-writer`) · 테스트 (`tester`)
 
-**도구**: `bin/agents-watch.js` · `bin/archrules.js` · `bin/board.js` · `bin/brief.js` · `bin/budget.js` · `bin/check-docs.js` · `bin/check-refs.js` · `bin/cross-review.js` · `bin/debate.js` · `bin/defects.js` · `bin/delegate.js` · `bin/docs-site.js` · `bin/doctor.js` · `bin/draft.js` · `bin/handoff.js` · `bin/heavy.js` · `bin/import-scan.js` · `bin/issue-check.js` · `bin/lead-board.js` · `bin/notify.js` · `bin/plan.js` · `bin/rename-ref.js` · `bin/repo-activity.js` · `bin/repo-check.js` · `bin/report.js` · `bin/review.js` · `bin/secret.js` · `bin/strip-ai-trailers.js` · `bin/suggest.js` · `bin/team-status.js` · `bin/tidy.js` · `bin/verify.js` · `bin/worktree.js` · `bin/writes.js`
-
-**훅**: 세션 시작: `check-repo-updates.js` · 세션 시작: `check-context-sync.js` · 세션 시작: `handoff-brief.js` · 세션 시작: `session-brief.js` · 세션 시작: `model-profile.js` · 세션 시작: `team-mode.js` · 세션 시작: `channel-mode.js` · 세션 시작: `session-health.js` · 세션 끝: `task-check.js` · 세션 끝: `decision-ask.js` · 세션 끝: `mid-turn-messages.js` · 세션 끝: `browser-close.js` · 세션 끝: `answer-first.js` · 세션 끝: `long-answer.js` · 세션 끝: `handoff-reminder.js` · 세션 끝: `agent-cleanup.js` · 세션 끝: `budget-check.js` · 세션 끝: `team-idle.js` · 세션 끝: `notify.js` · UserPromptSubmit: `agent-budget.js` · UserPromptSubmit: `task-focus.js` · UserPromptSubmit: `prompt-time.js` · UserPromptSubmit: `chat-prefs.js` · UserPromptSubmit: `settings-hint.js` · UserPromptSubmit: `feature-suggest.js` · UserPromptSubmit: `budget-check.js` · UserPromptSubmit: `team-idle.js` · UserPromptSubmit: `decision-ask.js` · UserPromptSubmit: `plan-first.js` · UserPromptSubmit: `main-delegate.js` · UserPromptSubmit: `session-health.js` · UserPromptSubmit: `lead-progress.js` · UserPromptSubmit: `long-answer.js` · UserPromptSubmit: `answer-first.js` · UserPromptSubmit: `notify.js` · PreToolUse: `agent-budget.js` · PreToolUse: `notify.js` · PreToolUse: `decision-ask.js` · PreToolUse: `notify.js` · PreToolUse: `plan-first.js` · PreToolUse: `main-delegate.js` · PreToolUse: `team-guard.js` · PreToolUse: `repo-guard.js` · PreToolUse: `git-guard.js` · PreToolUse: `draft-guard.js` · PreToolUse: `secret-guard.js` · PreToolUse: `review-gate.js` · PreToolUse: `spec-commit.js` · PreToolUse: `screen-gate.js` · PreToolUse: `lead-progress.js` · PostToolUse: `session-health.js` · PostToolUse: `browser-close.js` · PostToolUse: `channel-progress.js` · PostToolUse: `chat-prefs.js` · PostToolUse: `secret-guard.js` · PostToolUse: `fact-freshness.js` · PostToolUse: `notify.js` · PostToolUse: `notify.js` · PermissionRequest: `agent-permission.js` · Notification: `team-idle.js` · Notification: `notify.js` · SubagentStart: `agent-budget.js` · SubagentStop: `browser-close.js` · SubagentStop: `agent-report.js` · SubagentStop: `agent-budget.js` · SubagentStop: `notify.js` · TeammateIdle: `team-idle.js` · TeammateIdle: `notify.js`
+**함께 설치**: 도구 34개 · 자동 점검 68개
 
 </details>
 
@@ -156,7 +154,7 @@
 | `asis-analysis-team` | AS-IS(레거시) 분석 팀을 꾸려 한 기능을 레거시 소스·DB 정의·TO-BE 코드로 나눠 조사하고 사실 기반 비교 보고서를 낸다. "분석 팀", "AS-IS 분석해줘", "레거시 로직 전수 조사" 요청에 쓴다. |
 | `asis-compare` | 레거시(AS-IS) 프로그램과 TO-BE 구현의 정합표를 만든다: 쓰는 표 집합·컬럼 값·읽기 조건을 도구로 뽑아 대조하고 판정마다 확인됨/추정/미확인을 붙인다. "AS-IS 대조", "AS-IS 랑 같은지", "정합 확인" 요청에 쓴다. |
 
-**도구**: `bin/asis-config.js` · `bin/asis-dialect.js` · `bin/asis-effects.js` · `bin/asis-field-writes.js` · `bin/asis-reads.js` · `bin/asis-tobe-diff.js` · `bin/asis-tobe-map.js` · `bin/check-cobol-coverage.py`
+**함께 설치**: 도구 8개
 
 </details>
 
@@ -219,7 +217,7 @@ GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.
 | `gitlab-issue` | GitLab 이슈를 찾고 · 읽고 · 등록하고 · 조치 보고를 댓글로 단다. 초안 → 비슷한 이슈 · 민감정보 검사 → 사용자 OK → 등록 · 댓글. 닫기 · 라벨 · 담당자는 하지 않는다. "이슈 등록해줘", "#12 이슈 봐줘", "조치 내용 이슈에 남겨줘" 요청에 쓴다. |
 | `mr` | 지정한 source→target 으로 GitLab 머지리퀘스트를 만든다 (target 생략 시 통합 브랜치). 미리보기 → 사용자 OK → 생성 → 팀 배포 안내까지. 머지는 사람이 한다 (agentMerge 를 켠 워크스페이스는 지시받은 MR 만 배포 연쇄로). "MR 만들어줘", "QA MR", "배포해줘" 요청에 쓴다. |
 
-**도구**: `bin/ci-load.js` · `bin/gitlab-issue.js` · `bin/gitlab-mr.js` · `bin/release.js` · `bin/runner-watch.js`
+**함께 설치**: 도구 5개
 
 </details>
 
@@ -250,7 +248,7 @@ GitLab 협업: 브랜치 전략(작업 브랜치 → MR 이 기본, vars.gitlab.
 | `backend--80-testing` | 백엔드 테스트 | 필요할 때: 백엔드 동작을 바꾸거나 버그를 고쳐 테스트를 추가·수정할 때 |
 | `backend--85-write-report` | 백엔드 쓰기 보고서: 저장 로직 변경 | 필요할 때: DB 에 쓰는 코드(INSERT · UPDATE · DELETE · UPSERT · MERGE · 배치 저장 · 저장 쿼리 · 엔티티 저장)를 새로 쓰거나 고칠 때, 쓰기 보고서 · 기대값(approval) 시험이 실패할 때 |
 
-**도구**: `bin/apiledger.js` · `bin/check-views.js` · `bin/extremes.js`
+**함께 설치**: 도구 3개
 
 </details>
 
@@ -352,7 +350,7 @@ DBMS 공통 DB 작업 원칙: 환경 확정·운영 직접 변경 금지·파괴
 
 **팀 에이전트 역할**: 인프라 (`infra`)
 
-**도구**: `bin/ops.js`
+**함께 설치**: 도구 1개
 
 </details>
 
@@ -579,7 +577,7 @@ React + TypeScript + Vite + TanStack Query + React Router 구현 규약: 생성 
 |---|---|
 | `form-validation-pattern` | 폼 저장 오류 처리 공통 패턴: 서버 검증 오류(errors[] 의 field·message)를 그 입력칸 아래 인라인으로 표시한다. 폼·드로어·다이얼로그에 생성/수정 저장을 붙이거나 "검증 오류가 안 보인다" 를 고칠 때 쓴다. |
 
-**도구**: `bin/check-a11y-labels.py` · `bin/check-a11y-runtime.js` · `bin/check-shared-placement.js`
+**함께 설치**: 도구 3개
 
 </details>
 
@@ -608,7 +606,7 @@ Spring Boot + JPA + QueryDSL 구체 규칙: @Transactional 기본값·checked �
 | `stack-spring--60-clean-code` | Spring 레이어 책임 · 주입 · 설정값 | 상시 |
 | `stack-spring--70-testing` | Spring 테스트 인프라 · 컨텍스트 | 필요할 때: Spring 에서 통합 테스트(@SpringBootTest · 슬라이스 · Testcontainers)를 새로 쓰거나, 테스트 설정 · 컨테이너 기동 방식을 고치거나, 테스트가 느리거나 컨테이너가 많이 뜰 때 |
 
-**도구**: `bin/check-logging-convention.js` · `bin/check-querydsl-distinct-order.js` · `bin/check-querydsl-projection-arity.js` · `bin/query-predicates.js`
+**함께 설치**: 도구 4개
 
 </details>
 
@@ -778,7 +776,7 @@ Swift 소스가 있는 repo 에: 문장처럼 읽히는 이름 · 인자 레이�
 |---|---|
 | `datamodel` | 데이터 설계(테이블 정의서 · ERD)를 킷 양식으로 만든다. 진행 방식 합의 → DB 컨벤션 정하기 → 엔티티 목록(기능 ID 대조) → 스키마별 테이블 정의서 → ERD 생성과 검사 → 문서 사이트 반영. "데이터 설계", "테이블 정의서", "ERD", "DB 설계", "스키마 설계" 요청에 쓴다. |
 
-**도구**: `bin/check-datamodel.js`
+**함께 설치**: 도구 1개
 
 </details>
 
@@ -805,7 +803,7 @@ Swift 소스가 있는 repo 에: 문장처럼 읽히는 이름 · 인자 레이�
 |---|---|
 | `screens` | 화면설계서(스토리보드)를 킷 양식으로 만든다. 진행 방식 합의 → 화면 정책 → 화면 목록(화면 ID ↔ 기능 ID 대조) → 화면별 장 작성 → 문서 사이트 반영과 검사. "화면설계", "화면설계서", "스토리보드", "와이어프레임" 요청에 쓴다. |
 
-**도구**: `bin/check-screens.js` · `bin/compare-screens.js` · `bin/screens-inventory.js`
+**함께 설치**: 도구 3개
 
 </details>
 
@@ -825,7 +823,7 @@ Swift 소스가 있는 repo 에: 문장처럼 읽히는 이름 · 인자 레이�
 |---|---|
 | `debug-trace` | API · 함수 · 배치 · 화면 동작 한 번의 실행 흐름을 줄마다 값과 함께 기록해 이 PC 웹 페이지로 보여 준다 (kedovi trace). |
 
-**도구**: `bin/js.js` · `bin/py.js` · `bin/trace.js`
+**함께 설치**: 도구 3개
 
 </details>
 <!-- /packs:catalog -->

@@ -96,23 +96,24 @@ assert.deepStrictEqual(DR.health(dir, { maxKB: 1000 }).filter((x) => /큰 문서
   assert.ok(!DR.health(null, { docs: [{ rel: 'a.md', text: md }], codeMax: 40 }).some((x) => /긴 코드/.test(x)), '기준을 올리면 경고 없음');
 }
 
-// 문서 점검: 본문에 쓴 근거 · 출처 줄 (인용구 · 코드 블록 밖), 인용구 안 파일:줄은 괜찮다
+// 문서 점검: 본문에 쓴 근거 · 출처 줄 (인용구 · 코드 블록 밖), 인용구 안 파일:줄도 잡는다
 {
   const md = ['# 분석', '', '주문은 한 번 저장한다.', '근거: OrderService.java:120', '- 출처: 회의록 3', '**참고 자료**: 정책 문서', '', '> 근거: OrderDao.java:40', '', '| 근거 | 값 |', '|---|---|', '```', '근거: 코드', '```', '근거라는 말은 괜찮다', ''].join('\n');
   assert.deepStrictEqual(DR.sourceLines(md).map((x) => x.line), [4, 5, 6]);
-  assert.deepStrictEqual(DR.codeMarks(md, 15).refs.map((r) => r.text), ['OrderService.java:120'], '인용구 안 파일:줄은 뺀다');
+  assert.deepStrictEqual(DR.codeMarks(md, 15).refs.map((r) => r.text), ['OrderService.java:120', 'OrderDao.java:40'], '인용구 안 파일:줄도 잡는다');
   const hw = DR.health(null, { docs: [{ rel: 'a.md', text: md }] });
   assert.ok(hw.some((x) => /^본문에 쓴 근거 · 출처 3줄: a\.md:4 외 2줄\. .*인용구로/.test(x)), hw.join('\n'));
 }
 
-// 근거 분리(kedovi docs refs-quote): 본문 괄호 속 파일:줄 → 그 문단 · 목록 · 표 아래 「> 근거:」. 코드 블록 · 인용구 · 괄호 속 일반 말은 그대로, 두 번 돌려도 같다
+// 문서 점검: 소스 코드 표현 · 이름 모양. 코드 블록 · 명령 · 설정 키 · 표 안 변수는 뺀다 · 허용 목록 · 건너뛸 문서
 {
-  const md = ['# 주문', '', '주문은 즉시 체결한다 (근거: src/OrderService.java:120). 취소는 따로 (주문 화면).', '', '- 첫째 (`a.ts:12-30`)', '- 둘째 (b.py:3, c.go:9)', '', '| 항목 | 내용 |', '|---|---|', '| 주문 | 바로 체결 (OrderDao.java:12) |', '', '> 근거: x.js:1', '', '```', '(code.js:1)', '```', ''].join('\n');
-  const r = DR.refsToQuote(md);
-  assert.strictEqual(r.moved, 4);
-  assert.strictEqual(r.text, ['# 주문', '', '주문은 즉시 체결한다. 취소는 따로 (주문 화면).', '', '> 근거: src/OrderService.java:120', '', '- 첫째', '- 둘째', '', '> 근거: `a.ts:12-30` · b.py:3, c.go:9', '', '| 항목 | 내용 |', '|---|---|', '| 주문 | 바로 체결 |', '', '> 근거: OrderDao.java:12', '', '> 근거: x.js:1', '', '```', '(code.js:1)', '```', ''].join('\n'));
-  assert.strictEqual(DR.refsToQuote(r.text).moved, 0, '두 번째는 옮길 것 없음');
-  assert.deepStrictEqual(DR.codeMarks(r.text, 15).refs, [], '옮긴 뒤 「파일:줄 참조」 경고 없음');
+  const md = ['# 주문', '', '저장은 order.ts 의 saveOrder() 가 한다. OrderService 와 orderId 를 쓴다.', '`kedovi docs build x.js` · `vars.docs.maxKB` 는 괜찮다.', '| 필드 |', '|---|', '| orderId |', '```', 'a.js', '```', ''].join('\n');
+  const hw = DR.health(null, { docs: [{ rel: 'a.md', text: md }] });
+  assert.ok(hw.some((x) => /^소스 코드 표현 2곳 .*a\.md:3 「order\.ts」 · a\.md:3 「saveOrder\(\)」/.test(x)), hw.join('\n'));
+  assert.ok(hw.some((x) => /^코드 이름 모양 2곳 .*「OrderService」 · a\.md:3 「orderId」/.test(x)), hw.join('\n'));
+  const off = DR.health(null, { docs: [{ rel: 'a.md', text: md }], codeAllow: [/^order/i, /saveOrder/] });
+  assert.ok(!off.some((x) => /소스 코드 표현|코드 이름 모양/.test(x)), off.join('\n'));
+  assert.ok(!DR.health(null, { docs: [{ rel: 'a.md', text: md }], codeSkip: ['a.md'] }).some((x) => /소스 코드 표현/.test(x)));
 }
 
 // 코드 대조: 정의(제목 · 표 첫 칸 · 화면설계서 장) ↔ 코드 주석의 ID. 동결 · 「다음 스프린트」 는 누락에서 뺀다

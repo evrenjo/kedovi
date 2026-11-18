@@ -56,8 +56,8 @@ flowchart LR
 
 | 스택 | 넣는 것 | 프로젝트가 채우는 것 |
 |---|---|---|
-| node | `test/api-ledger/` (시뮬레이터 · 대조 시험) · `test-faults/api-ledger.cjs` | `expectations.cjs` |
-| python | `tests/` (시뮬레이터 · pytest 대조 · 실패 주입 `-m faults`) | `api_ledger_expectations.py` |
+| node | `test/api-ledger/` (시뮬레이터 · 대조 시험) · 실패 주입 시험 | 기대값 파일 |
+| python | `tests/` (시뮬레이터 · pytest 대조 · 실패 주입 `-m faults`) | 기대값 파일 |
 | java | `src/test/java/<기준 패키지>/apiledger/` (JUnit 5, 실패 주입은 태그 `faults`) | `ApiLedgerExpectations` |
 
 공통으로 장부 예시 · CI 작업 예시(`ci/api-faults.gitlab-ci.yml`)가 들어간다. 장부에 있는데 기대가 없는 동작은 대조 시험이 실패한다 (빠짐 없이 다루게). 시뮬레이터는 의존성이 없다 (Node 기본 모듈 · Python 표준 http.server + PyYAML · JDK HttpServer + SnakeYAML).
@@ -149,7 +149,7 @@ PostgreSQL 은 `kedovi extremes add postgres` 가 넣는 SQL 로 만든다 (표�
 
 ### 시간 예산 월간 집계
 
-`budget.js` 의 시작 · 늘림 · 끝을 이 PC 의 `.agents/history/budget.jsonl` 에 한 줄씩 남긴다 (커밋하지 않는다). `kedovi budget report [--month YYYY-MM]` 가 끝낸 작업 수 · 예산 초과율 · 1.5배 넘김 · 걸린 시간 중앙값 · 예산 대비 중앙값을 낸다. 끝내지 않고 하루가 지난 예산은 따로 센다.
+시간 예산의 시작 · 늘림 · 끝을 이 PC 의 `.agents/history/budget.jsonl` 에 한 줄씩 남긴다 (커밋하지 않는다). `kedovi budget report [--month YYYY-MM]` 가 끝낸 작업 수 · 예산 초과율 · 1.5배 넘김 · 걸린 시간 중앙값 · 예산 대비 중앙값을 낸다. 끝내지 않고 하루가 지난 예산은 따로 센다.
 
 ### 환경 사실 신선도
 

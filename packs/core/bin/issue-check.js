@@ -5,7 +5,7 @@
 /*
  * --file F     검사할 본문 (제목도 같이 보려면 첫 줄에 넣는다)
  * --repo R     workspace.json repos 의 이름. 그 repo 의 origin 이 공개면 경고한다 (막지는 않는다)
- * --type T     글 형식 (task · bug · issue · mr · done · comment …, lib/draft.js). 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것을 본다.
+ * --type T     글 형식 (task · bug · issue · mr · done · comment …, lib/draft.js). 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것 · 소스 코드 표현을 본다.
  *              없으면 comment (필수 절 없이). 수준은 agents.enforce.draftCheck (block 이면 걸릴 때 exit 1). 제목 줄은 본문에서 빼고 넘긴다
  * 걸린 것은 줄 번호와 종류만 찍는다 (값은 찍지 않는다). 하나라도 걸리면 exit 1.
  * 금지 낱말: workspace.json vars.issue.forbid (배열, 고객사 · 사내 이름 등). 줄에 gitleaks:allow 가 있으면 비밀값 검사를 넘긴다.
@@ -82,9 +82,9 @@ function main() {
     const body = titled ? ['', ...all.slice(1)].join('\n') : text;
     const r = name && ws ? ws.repos.find((x) => x.name === name) : null;
     form = D.checkFor(root, body, { type: arg('type') || 'comment', repoDir: r ? r.dir : null });
-    if (form.level !== 'off') for (const h of form.hits) console.log(`${form.level === 'block' ? '✖' : '⚠'} ${D.format([h])[0]} (글 형식)`);
+    if (form.level !== 'off') for (const h of form.hits) console.log(`${form.level === 'block' && !h.soft ? '✖' : '⚠'} ${D.format([h])[0]} (글 형식)`);
   } catch { /* 옛 core: 넘긴다 */ }
-  const formBlock = form.level === 'block' ? form.hits.length : 0;
+  const formBlock = form.level === 'block' ? form.hits.filter((h) => !h.soft).length : 0;
   if (hits.length || formBlock) { console.log(`✖ ${hits.length + formBlock}건: 해당 줄을 고치거나 *** 로 가린 뒤 다시 검사하세요${formBlock ? ' (글 형식: kedovi draft template <형식> · 끄기 · 알림만: 팀장이 kedovi team-mode enforce draft off|warn --team)' : ''}`); process.exit(1); }
   console.log(`✔ 비밀값 · 개인 경로 · 이메일 · 사설 IP · 금지 낱말 0건${form.level === 'off' ? '' : form.hits.length ? ` · 글 형식 ${form.hits.length}건 (알림만)` : ' · 글 형식 통과'}`);
 }

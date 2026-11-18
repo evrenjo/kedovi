@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 보고 페이지: 채팅에는 결론 · 핵심만 쓰고, 자세한 보고(바뀐 파일 · 검증 표 · 근거 · 남은 것)는 이 PC 의 웹 페이지로. 실행: kedovi report <명령>
+// 보고 페이지: 채팅에는 결론 · 핵심만 쓰고, 자세한 보고(바뀐 것 · 검증 표 · 근거 · 남은 것)는 이 PC 의 웹 페이지로. 실행: kedovi report <명령>
 /*
  * 명령
  *   new "<제목>"        .agents/reports/<날짜>/<시각>.md 를 틀로 만들고 (제목은 첫 줄) 파일 경로 · 링크를 준다 (AI 가 그 파일에 쓴다)
@@ -67,7 +67,7 @@ const TEMPLATE = (title, when) => `# ${title}
 
 ## 내용
 
-| 파일 | 무엇 |
+| 항목 | 무엇 |
 |---|---|
 
 ### 검증
@@ -77,7 +77,7 @@ const TEMPLATE = (title, when) => `# ${title}
 
 ### 근거
 
-- <파일:라인 · 명령 출력 · 출처>
+- <명령 출력 · 문서 링크 · 출처>
 
 ## 다음 할 일 · 요청
 
@@ -98,7 +98,10 @@ function cmdNew(title) {
 function blanks(file) {
   try {
     const D = require('../lib/draft');
-    const hits = D.check(fs.readFileSync(path.resolve(ROOT, file), 'utf8'), { type: 'report' }).filter((h) => !/이 PC 에만/.test(h.kind));
+    const all = D.check(fs.readFileSync(path.resolve(ROOT, file), 'utf8'), { type: 'report' }).filter((h) => !/이 PC 에만/.test(h.kind));
+    const hits = all.filter((h) => !/^코드 표현/.test(h.kind));
+    const code = all.filter((h) => /^코드 표현/.test(h.kind));
+    if (code.length) console.error(`⚠ 보고에 소스 코드 표현 ${code.length}곳: ${D.format(code).slice(0, 5).join(' · ')}${code.length > 5 ? ' …' : ''}. 기능 · 화면 이름으로 쓴다`);
     if (hits.length) console.error(`⚠ 보고에 채우지 않은 곳 ${hits.length}곳: ${D.format(hits).slice(0, 5).join(' · ')}${hits.length > 5 ? ' …' : ''}`);
   } catch { /* 없음 */ }
 }

@@ -64,6 +64,21 @@ const has = (list, re) => list.some((k) => re.test(k));
   assert.strictEqual(D.resolveType('comment', 'x'), null);
 }
 
+// 4-1. 소스 코드 표현: 파일:줄 · 파일명 · 경로 · 함수 호출은 막고, 클래스 · 변수 이름은 알림만. 인용구도 본다
+{
+  const t = ['- 원인: OrderService.java:120', '> 근거: a.py:3', '- order.ts 수정', '- src/order/index 정리', '- saveOrder(id) · flush() 호출', '- OrderService 와 order_id 확인', '- Node.js · package.json(설정) · example.com(도메인) · iPhone', '- `kedovi draft check --file x.js` · `vars.writing.bulletMax` · `vite.config.ts`', '- [문서](../src/a.js) https://x.test/a.py', '```', 'b.js:1 run()', '```'].join('\n');
+  const h = D.check(t, {});
+  const at = (n) => h.filter((x) => x.line === n);
+  for (const n of [1, 2, 3, 4]) assert.ok(at(n).length === 1 && !at(n)[0].soft, `${n}줄: ${JSON.stringify(at(n))}`);
+  assert.deepStrictEqual(at(5).map((x) => x.kind), ['코드 표현 함수 호출 「saveOrder」', '코드 표현 함수 호출 「flush()」']);
+  assert.ok(at(6).length === 2 && at(6).every((x) => x.soft), JSON.stringify(at(6)));
+  assert.match(D.format(at(6))[0], /\(알림만\)$/);
+  assert.deepStrictEqual(h.filter((x) => x.line > 6), [], '제품 이름 · 명령 · 설정 키 · 링크 주소 · 코드 블록은 뺀다');
+  assert.deepStrictEqual(D.check('- order.ts', { codeAllow: [/^order\.ts$/] }), []);
+  assert.ok(D.check('- order.ts', { codeSoft: true })[0].soft);
+  assert.deepStrictEqual(D.varsOf({ vars: { writing: { codeAllow: ['^a', '('] } } }).codeAllow.map(String), ['/^a/']);
+}
+
 // 5. 프로젝트 틀이 먼저 (여럿이면 본문과 가장 겹치는 것) · push 안 한 커밋
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kedovi-draft-'));
 try {
@@ -103,6 +118,16 @@ try {
   assert.match(s1.stderr, /old\.md 5줄: 값이 빈 항목/);
   assert.match(s1.stderr, /20-features\/order\.md 문서: 필수 절 없음: 수용 기준/);
   assert.doesNotMatch(s1.stderr, /_template\.md/);
+  // 코드 표현: 기획 repo 는 알림만, 위키 repo 는 막는다
+  dg('checkout', '-q', '--', '.'); dg('reset', '-q', '--hard');
+  fs.appendFileSync(path.join(docs, 'old.md'), '- order.ts 수정\n');
+  dg('add', '-A');
+  const s2 = staged();
+  assert.strictEqual(s2.status, 0, s2.stderr);
+  assert.match(s2.stderr, /⚠ old\.md 4줄: 코드 표현 소스 파일명 「order\.ts」 \(알림만\)/);
+  dg('remote', 'add', 'origin', 'https://git.test/team/app.wiki.git');
+  assert.strictEqual(staged().status, 1, '위키 repo');
+  dg('remote', 'remove', 'origin'); dg('reset', '-q', '--hard');
 
   // 7. 훅: gh · glab 본문 (heredoc · --body-file · cd 따라가기), 본문을 모르는 것은 넘김
   const { bodies } = require('../hooks/draft-guard');
@@ -115,6 +140,9 @@ try {
   const hook = (command) => spawnSync(process.execPath, [path.join(__dirname, '..', 'hooks', 'draft-guard.js'), '--agent=claude'], { encoding: 'utf8', cwd: tmp, input: JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command }, cwd: tmp, session_id: 'd1' }), env: { ...process.env, CLAUDE_PROJECT_DIR: tmp } }).stdout;
   assert.match(hook('gh issue comment 3 --body "- **조치**:"'), /"permissionDecision":"deny".*값이 빈 항목/);
   assert.strictEqual(hook('gh issue comment 3 --body "확인했습니다"'), '');
+  assert.match(hook('gh pr create --title t --body "## Summary\n- order.ts:3 수정"'), /"permissionDecision":"deny".*코드 표현 파일:줄/);
+  const soft = hook('gh issue comment 3 --body "orderId 확인"');
+  assert.ok(!/"permissionDecision"/.test(soft) && /코드 표현 변수 이름/.test(soft), soft);
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

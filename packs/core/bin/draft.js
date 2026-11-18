@@ -6,8 +6,9 @@
  *   template <형식>                        틀 (task 작업 항목 · bug 결함 · mr MR·PR · done 완료 댓글 · weekly 주간보고 · report 보고 · plan 기획 문서)
  *   check --file F [--type 형식|issue|comment|wiki] [--repo R]
  *                                          빈칸 자리표시자 · 필수 절 · 긴 글머리(개조식) · 이 PC 에만 있는 것(보고 링크 · .agents · 임시 폴더 · 로컬 브랜치 · push 안 한 커밋)
+ *                                          · 소스 코드 표현(파일:줄 · 소스 파일명 · 함수 호출은 막고, 클래스 · 변수 이름 모양은 알림만)
  *                                          issue = 작업 항목 · 결함 중 맞는 쪽, comment · wiki = 필수 절 없이. repo 에 GitLab · GitHub 틀이 있으면 그 절이 먼저
- *   staged <repo 폴더>                     커밋 훅용: 올리려는 md 의 더한 줄만 본다. 새 문서는 같은 폴더 _template.md 의 절까지
+ *   staged <repo 폴더>                     커밋 훅용: 올리려는 md 의 더한 줄만 본다. 새 문서는 같은 폴더 _template.md 의 절까지. 코드 표현은 위키 repo 만 막고 기획 repo 는 알린다
  * 수준 agents.enforce.draftCheck: block(기본) = 걸리면 exit 1 · warn = 알리고 통과 · off = 보지 않음 (kedovi team-mode enforce draft)
  */
 'use strict';
@@ -34,10 +35,11 @@ function wsRepoDir(name) {
 /** 결과 출력 → 끝 코드 */
 function finish(hits, level, where) {
   if (!hits.length) { console.log(`✔ 글 형식 검사 통과${where ? ` (${where})` : ''}`); return 0; }
-  const mark = level === 'block' ? '✖' : '⚠';
-  for (const h of hits) console.log(`${mark} ${where ? `${where} ` : ''}${D.format([h])[0]}`);
-  console.log(`${mark} 글 형식 ${hits.length}건: 고친 뒤 다시 검사 (틀: kedovi draft template <형식> · 규칙: core--12-writing-format · 끄기 · 알림만: 팀장이 kedovi team-mode enforce draft off|warn --team)`);
-  return level === 'block' ? 1 : 0;
+  const stop = level === 'block' && hits.some((h) => !h.soft);
+  const markOf = (h) => (level === 'block' && !h.soft ? '✖' : '⚠');
+  for (const h of hits) console.log(`${markOf(h)} ${where ? `${where} ` : ''}${D.format([h])[0]}`);
+  console.log(`${stop ? '✖' : '⚠'} 글 형식 ${hits.length}건: 고친 뒤 다시 검사 (틀: kedovi draft template <형식> · 규칙: core--12-writing-format · 끄기 · 알림만: 팀장이 kedovi team-mode enforce draft off|warn --team)`);
+  return stop ? 1 : 0;
 }
 
 function cmdCheck() {
@@ -69,6 +71,9 @@ function cmdStaged() {
   const local = readJson(path.join(ROOT, '.agents', 'local.json'));
   const v = D.varsOf(ws);
   const bullets = D.bulletsFor(D.prefsOf(ws, local), 'plan');
+  // 문서 사이트가 되는 기획 repo 는 옛 문서가 많아 알림부터, 위키 repo 는 새 글부터 막는다
+  let wiki = false;
+  try { wiki = /\.wiki(?:\.git)?\/?$/.test(git('remote', 'get-url', 'origin').trim()); } catch { /* origin 없음 */ }
   let all = [];
   for (let i = 0; i + 1 < parts.length; i += 2) {
     const [st, f] = [parts[i], parts[i + 1]];
@@ -94,14 +99,14 @@ function cmdStaged() {
         sections = fs.readFileSync(tpl, 'utf8').split('\n').map((l) => /^#{2,3}\s+(.+)$/.exec(l.trim())).filter((m) => m && !/[<>]/.test(m[1])).map((m) => [m[1].trim()]);
       } catch { sections = null; }
     }
-    const hits = D.check(text, { sections: sections || null, bullets, bulletMax: v.bulletMax, localPatterns: v.localPatterns, added: added || undefined });
+    const hits = D.check(text, { sections: sections || null, bullets, bulletMax: v.bulletMax, localPatterns: v.localPatterns, codeAllow: v.codeAllow, codeSoft: !wiki, added: added || undefined });
     all = all.concat(hits.map((h) => ({ ...h, file: f })));
   }
   if (!all.length) return 0;
-  const mark = level === 'block' ? '✖' : '⚠';
-  for (const h of all) console.error(`${mark} ${h.file} ${D.format([h])[0]}`);
-  console.error(`${mark} 글 형식 ${all.length}건${level === 'block' ? ': 커밋을 막았습니다' : ''}. 고친 뒤 다시 커밋 (규칙: core--12-writing-format · 끄기 · 알림만: 팀장이 kedovi team-mode enforce draft off|warn --team)`);
-  return level === 'block' ? 1 : 0;
+  const stop = level === 'block' && all.some((h) => !h.soft);
+  for (const h of all) console.error(`${level === 'block' && !h.soft ? '✖' : '⚠'} ${h.file} ${D.format([h])[0]}`);
+  console.error(`${stop ? '✖' : '⚠'} 글 형식 ${all.length}건${stop ? ': 커밋을 막았습니다' : ''}. 고친 뒤 다시 커밋 (규칙: core--12-writing-format · 끄기 · 알림만: 팀장이 kedovi team-mode enforce draft off|warn --team)`);
+  return stop ? 1 : 0;
 }
 
 function main() {
@@ -119,7 +124,7 @@ function main() {
   }
   if (cmd === 'check') return cmdCheck();
   if (cmd === 'staged') return cmdStaged();
-  console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(3, 12).map((l) => l.replace(/^ \* ?/, '')).join('\n'));
+  console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(3, 13).map((l) => l.replace(/^ \* ?/, '')).join('\n'));
   return cmd ? 2 : 0;
 }
 

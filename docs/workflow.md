@@ -1,7 +1,7 @@
 # 업무 흐름
 
 팀 리더(워크스페이스를 만드는 사람)와 팀원(합류하는 사람)이 **무엇을 고르고, 그 선택이 어디에 저장되는지**를 처음부터 끝까지 그린다.
-화면의 질문 문구는 실제 선택 화면(`bin/kedovi.js`)과 같다.
+화면의 질문 문구는 실제 선택 화면과 같다.
 
 > 이 문서는 선택 화면·명령과 한 쌍이다. 질문·선택지·저장 위치를 바꾸면 같은 커밋에서 고친다.
 > `npm test` 가 코드의 질문 문구와 명령이 이 문서에 모두 있는지 검사한다.
@@ -185,7 +185,7 @@ flowchart TD
 
 | 연결 | Claude Code 세션의 GPT 역할 | Codex 세션의 Claude 역할 |
 |---|---|---|
-| AI 서비스 직접 | `delegate.js` 로 Codex 에 위임 | `delegate.js` 로 Claude Code 에 위임 |
+| AI 서비스 직접 | 역할 위임 도구로 Codex 에 위임 | 역할 위임 도구로 Claude Code 에 위임 |
 | AI 게이트웨이 | **하위 에이전트로 바로** (역할 파일 모델 = 게이트웨이 모델 ID). GPT 를 메인으로도 쓸 수 있다 | 위임 (Codex 안에서 Claude 모델은 도구 호출이 끊겨 쓰지 않는다) |
 
 Codex 는 역할 파일(`.codex/agents`)을 하위 에이전트에 적용하지 않아서(0.158 확인), 개인 지침의 「팀 구성」 표(자동이면 리더가 고른 모델)대로 리더가 `spawn_agent` 에 모델·추론 강도를 넣는다.
@@ -275,7 +275,7 @@ flowchart TD
 시작하면 브리핑이 나온다: 프로젝트 · 로드맵(완료 n/N · 지금 단계 · 다음 한 줄 + 단계 흐름도 + 지금 단계 표) · 참고 자료 상태(기획·레거시·이슈 repo 가 비어 있는지) · 공지(워크스페이스 루트 `NOTICE.md`, 있을 때) · 마지막 핸드오프 · 미완 작업(진행 중 작업의 완료 조건) · 내 TODO(사용자가 등록한 것). 처음이면 시작 안내.
 `--no-brief` 나 `.agents/local.json` 의 `brief: false` 로 끈다 (훅도 조용해진다).
 
-> 참고: 본문은 세션 시작 훅(`session-brief.js`)이 컨텍스트로 넘기고 첫 메시지는 "세션 브리핑" 한 줄이라 화면에 전문이 찍히지 않는다.
+> 참고: 본문은 세션 시작 훅이 컨텍스트로 넘기고 첫 메시지는 "세션 브리핑" 한 줄이라 화면에 전문이 찍히지 않는다.
 
 지난 대화를 이어서 하려면 `kedovi start -c`(마지막 대화) · `kedovi start -r <세션 ID>`(`/exit` 때 나온 ID) · `kedovi start -r`(목록에서 고르기). 브리핑은 넣지 않고 모델 · 텔레그램 채널은 그대로 적용한다. Codex 는 `codex resume --last` · `resume <ID>` 로 바꿔 넘긴다.
 `kedovi start --pixel-agents` 는 이 PC 에 설치된 [Pixel Agents](https://github.com/pablodelucca/pixel-agents)(`npm i -g pixel-agents`)를 워크스페이스에서 띄우고 브라우저로 연다. 메인 에이전트 · 팀원 · 서브에이전트가 사무실 캐릭터로 움직인다(Claude Code 만). 세션이 끝나면 서버도 끈다. 설치돼 있지 않으면 알리고 화면 없이 시작한다. 처음 열 때 그 화면이 `~/.claude/settings.json` 에 훅을 넣을지 묻는다.
@@ -404,7 +404,7 @@ flowchart TD
 | `kedovi verify` | 검증 2단: `areas --repo <이름> [--run]`(바뀐 파일 → 영역 시험, `vars.verify.areaMap`) · `full`(전체 실제 스택 시험을 무거운 시험 줄에서, 통과 커밋 기록. `vars.verify.fullSuite` = release 면 릴리스 직전 한 번) · `mark` · `status` |
 | `kedovi heavy` | 무거운 시험 순번: `run [--name 이름] -- <명령>`(줄을 서고 차례에 돌림) · `status`(도는 것 · 기다리는 것 · 예상 시작 · 끝, 같은 이름 최근 시간 기준) |
 | `kedovi team step` · `kedovi team board` | 작업 리더 진행판: 리더가 단계마다 · `vars.team.leadReportMinutes` 분마다 단계 · 끝난 것 · 다음 · 예상 종료를 적고, 메인 · 사용자가 표로 본다 (tmux 창 없이도). 팀원이 도는 채 끝내는 리더는 훅이 되돌린다 (`kedovi team-mode enforce hold`) |
-| `kedovi draft` | 사람이 읽는 글의 틀과 올리기 전 검사: `template <형식>`(작업 항목 · 결함 · MR · 완료 댓글 · 주간보고 · 보고 · 기획 문서) · `check --file <파일> --type <형식>`(빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것). 수준은 `kedovi team-mode enforce draft` |
+| `kedovi draft` | 사람이 읽는 글의 틀과 올리기 전 검사: `template <형식>`(작업 항목 · 결함 · MR · 완료 댓글 · 주간보고 · 보고 · 기획 문서) · `check --file <파일> --type <형식>`(빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것 · 소스 코드 표현). 수준은 `kedovi team-mode enforce draft` |
 | `kedovi timestamp` | 답변 첫 줄 시각 표시 (Claude Code, 기본 켜짐): 요청 받은 시각 yyyy-MM-dd HH:mm:ss. `on\|off` 이 PC · `team` 이 PC 값 지우기 · `--team` 팀 기본값(팀장). 인자 없이 = 지금 값 |
 | `kedovi approach` | 진행 방식: MVP · 스프린트(최소 기능부터 기능 단위로 하나씩) · 워터폴 · 전체(전체 설계 뒤 구축) · 이슈형(운영 · 유지보수: 이슈마다 운영 반영, 이슈 보드). 인자 없이 = 지금 값 (팀장) |
 | `kedovi type` | 유형 바꾸기 (분석·설계 → 구축 · 고도화 등): 현행 repo 중 고칠 것을 개발 repo 로 · 진행 방식 · 유형 팩 교체 · 로드맵 새 뼈대. 인자 없이 = 지금 값 (팀장) |
@@ -422,7 +422,6 @@ flowchart TD
 | `kedovi debate list` · `watch [id]` · `status [id]` · `models` | 토론 모드: 목록 · 실시간 보기(모델별 주장 · 판정) · 지금 회차와 모델별 상태 · 쓸 수 있는 모델과 패널 예시 (시작은 채팅에서 "토론해줘") |
 | `kedovi docs serve [repo]` | `docs-site/` 를 이 PC 에서 웹 주소(`http://127.0.0.1:8000/`)로 보기. 전체 인쇄와 새로고침 없는 이동까지 된다 |
 | `kedovi docs pages [on\|off] [repo]` | 문서 사이트를 Pages 로 올리기 켜고 끄기 · 상태. on = 원격(GitLab · GitHub)에 맞는 CI 파일(`.gitlab-ci.yml` · `.github/workflows/pages.yml`)을 두고 `docs-site/` 를 커밋 대상으로(원격이 없으면 둘 다), off = `.gitignore` 에 `/docs-site/` (CI 는 두어도 돌지 않는다) |
-| `kedovi docs refs-quote <파일…>` | 본문 괄호 속 근거(파일:줄)를 그 문단 · 목록 · 표 아래 「> 근거:」 인용구로 옮긴다 (`--dry` = 수만) |
 | `kedovi docs trace` | 기획 ID(`vars.docs.traceIds`)와 코드의 `@spec` 주석 대조: 코드에 표시 없는 ID(⚠) · 테스트에 없는 수용 기준(⚠) · 기획에 정의 없는 ID(✖). `--md` 추적표 · `--new` 새 진입 파일 중 ID 없는 것 |
 | `kedovi repo add … --group <그룹>` · `kedovi repo move <이름> --group <그룹>` | 그룹 폴더 `repos/<그룹>/<이름>`: 더할 때 그룹을 주거나(이미 그룹을 쓰면 화면에서 고름) 있는 repo 를 옮긴다(폴더 · `workspace.json` · 문서의 옛 경로, `--no-group` 은 빼기) (팀장) |
 | `kedovi repo remove <이름>` | repo 빼기: `workspace.json` · 리뷰 대상에서 지우고 sync, 이름이 남은 문서를 알린다. 폴더는 `--delete` 일 때만 (커밋 안 한 변경 · push 안 한 커밋이 있으면 거부) (팀장) |

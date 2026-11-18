@@ -73,11 +73,11 @@ flowchart LR
 |---|---|
 | DB 가 만든 숫자 ID | `<컬럼-n>` (그 시험 안에서 원값 오름차순 번호) |
 | UUID 모양 문자열 | `<uuid>` |
-| 지금 시각 컬럼 (`created_at` · `updated_at` 등) · `now()` | `<now>` |
+| 지금 시각 컬럼 (`created_at` · `updated_at` 등) · 지금 시각 함수 | `<now>` |
 | JSON 문자열 | 키 이름순으로 다시 쓴 것 |
 | 오류 메시지의 「Detail:」 이후 | 지움 |
 
-설정 파일(Java `src/test/resources/write-report.properties`, Python · Node `write-report.json`)의 `ids` · `now` · `replace` 로 더하거나 바꾼다.
+설정 파일(Java 시험 리소스의 `write-report.properties`, Python · Node `write-report.json`)의 `ids` · `now` · `replace` 로 더하거나 바꾼다.
 
 ## 마스킹
 

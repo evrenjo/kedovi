@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 글 형식 검사 (Claude Code · Codex PreToolUse Bash): gh issue · pr 의 create · comment · edit 와 glab issue · mr 의 create · note · update 가 올리는 본문을 올리기 전에 본다.
 /*
- * 보는 것 = lib/draft.js: 빈칸 자리표시자 · 필수 절(이슈 · MR, repo 의 GitHub · GitLab 틀이 먼저) · 긴 글머리(개조식) · 이 PC 에만 있는 것(보고 링크 · .agents · 임시 폴더 · 로컬 브랜치 · push 안 한 커밋)
+ * 보는 것 = lib/draft.js: 빈칸 자리표시자 · 필수 절(이슈 · MR, repo 의 GitHub · GitLab 틀이 먼저) · 긴 글머리(개조식) · 이 PC 에만 있는 것(보고 링크 · .agents · 임시 폴더 · 로컬 브랜치 · push 안 한 커밋) · 소스 코드 표현(이름 모양은 알림만)
  * 본문 = --body · -b · --description · -d · --message · -m 값, --body-file · -F 파일(- 면 명령 안 heredoc). $(cat <<'EOF' … EOF) 는 안의 글을 본다. 그 밖의 $변수 · $(명령) 본문은 알 수 없어 넘긴다
  * 수준 agents.enforce.draftCheck: block(기본) = 막기 · warn = 알림 · off. 팀원 · 서브에이전트 안에서도 본다
  * 출력 = 막을 때 deny JSON · 알릴 때 additionalContext. 예외는 삼키고 항상 exit 0
@@ -66,13 +66,15 @@ if (require.main === module) run(() => {
   if (level === 'off') return;
   const cwd = input.cwd || process.cwd();
   const found = [];
+  let stop = false;
   for (const b of bodies(cmd, cwd)) {
     const r = D.checkFor(ROOT, b.body, { type: b.type, repoDir: b.dir });
+    if (r.hits.some((h) => !h.soft)) stop = true;
     if (r.hits.length) found.push(`${b.what}: ${D.format(r.hits).join(' · ')}`);
   }
   if (!found.length) return;
-  const msg = `글 형식 검사 (사람이 읽는 글): ${found.join(' / ')}. 빈칸은 채우거나 「없음」, 긴 글머리는 나누고, 이 PC 에만 있는 링크 · 경로는 빼거나 올릴 수 있는 것으로 바꾼다. 틀: kedovi draft template <형식> · 규칙: .agents/rules/core--12-writing-format.md · 끄기 · 알림만: 팀장이 kedovi team-mode enforce draft off|warn --team`;
-  if (level === 'block') deny(msg); else note(msg);
+  const msg = `글 형식 검사 (사람이 읽는 글): ${found.join(' / ')}. 빈칸은 채우거나 「없음」, 긴 글머리는 나누고, 이 PC 에만 있는 링크 · 경로는 빼거나 올릴 수 있는 것으로 바꾸고, 코드 표현은 기능 · 화면 이름으로 쓴다. 틀: kedovi draft template <형식> · 규칙: .agents/rules/core--12-writing-format.md · 끄기 · 알림만: 팀장이 kedovi team-mode enforce draft off|warn --team`;
+  if (level === 'block' && stop) deny(msg); else note(msg);
 }, { teammateEvents: ['PreToolUse'] }); // 리더 · 팀원도 이슈 · MR 에 글을 올린다
 
 module.exports = { bodies };

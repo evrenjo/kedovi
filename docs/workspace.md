@@ -192,7 +192,7 @@ kedovi secret rm GITLAB_TOKEN
 |---|---|
 | Claude Code 편집 · 셸 | 훅(`repo-guard`)이 담당자 · 팀장 이름과 함께 막고, 이 PC 의 편집 금지(`permissions.deny`)가 받친다 |
 | Codex `apply_patch` · 셸 | 같은 훅 (Codex 도구 사용 전 훅) |
-| repo 커밋 | 개발 repo · 기획 repo 의 pre-commit 이 담당이 아니면 거부한다 (`packs/core/bin/repo-check.js`) |
+| repo 커밋 | 개발 repo · 기획 repo 의 pre-commit 이 담당이 아니면 거부한다 |
 
 - **이 PC 사용자 확인**: `kedovi install` · `start` 가 워크스페이스 원격의 저장소 계정으로 username 을 찾아 `.agents/local.json` 의 `me` 에 둔다 (ssh 인사말 → `gh` → `glab` → git credential 순서, 못 찾으면 한 번 묻는다). 다시 확인 `kedovi team whoami --refresh`. 찾기 전에는 `git user.name` 으로 판정한다.
 - 명령(팀장): `kedovi team lead add <username> --nick <이름>` · `kedovi team add <username> --nick <이름> --repos a,b` · `kedovi team repos <username> <a,b|->` · `kedovi team nick <username> <이름>` · 보기 `kedovi team leads` · `kedovi team members`.

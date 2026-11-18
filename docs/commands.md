@@ -53,7 +53,7 @@
 | `kedovi delegate watch [id]` · `status [id]` · `list` | 다른 도구에 맡긴 리뷰 · 작업(Claude Code ↔ Codex)이 지금 무엇을 하는지 볼 때 | `watch` = 상대 에이전트가 읽은 파일 · 찾기 · 실행한 명령 · 고친 파일 · 중간에 한 말을 생기는 대로 한 줄씩(다른 터미널에서), 끝나면 요약. `status` = 경과 · 개수 · 최근 동작을 한 번. id 를 빼면 마지막 실행 중 작업 |
 | `kedovi models limits` · `set <parallel\|total\|leaders\|members>=<수> …` · `clear` `[--team]` | 상한이 생각보다 낮게 묶일 때 | 실제 적용 값과 정한 곳(프로필 · 팀 직접 값 `workspace.json agents.limits` · 이 PC 직접 값 · 요금제)을 표로. `set` 직접 값 넣기, `clear` 직접 값 지우고 프로필 · 요금제대로. 이 PC 값은 팀 값보다 낮게만. `kedovi ai show` 의 `limits` 에도 적용 값과 정한 곳 |
 | `kedovi report new "<제목>"` · `link <파일>` · `list` · `open [파일]` · `serve [--port N]` · `stop` | 보고가 길어 채팅에서 읽기 힘들 때 | 자세한 보고(바뀐 파일 · 검증 표 · 근거 · 남은 것)를 `.agents/reports/<날짜>/<시각>.md`(이 PC, 커밋 안 함)에 쓰고 현황판과 같은 틀의 웹 페이지(`http://127.0.0.1:<포트>/reports/…`)로 본다. `new` 가 틀 · 링크를 주고 서버를 뒤에서 띄운다. 페이지를 열 때 바뀐 보고를 다시 만든다. 현황판 메뉴 「보고 (이 PC)」 |
-| `kedovi draft list` · `template <형식>` · `check --file <파일> [--type <형식>] [--repo <이름>]` | 이슈 · MR · 완료 댓글 · 주간보고 · 보고를 쓰거나 올리기 전에 | 형식별 틀(작업 항목 `task` · 결함 `bug` · `mr` · 완료 댓글 `done` · 주간보고 `weekly` · 보고 · 위키 `report` · 기획 문서 `plan`)을 꺼내고, 빈칸 자리표시자 · 필수 절 · 긴 글머리(개조식) · 이 PC 에만 있는 것(보고 링크 · `.agents` · 임시 폴더 · 로컬 브랜치 · push 안 한 커밋)을 본다. repo 에 GitLab · GitHub 틀이 있으면 그 절이 먼저. 같은 검사를 gitlab 팩 도구 · `gh` · `glab` 명령 훅 · 기획 repo 커밋 훅이 한다 |
+| `kedovi draft list` · `template <형식>` · `check --file <파일> [--type <형식>] [--repo <이름>]` | 이슈 · MR · 완료 댓글 · 주간보고 · 보고를 쓰거나 올리기 전에 | 형식별 틀(작업 항목 `task` · 결함 `bug` · `mr` · 완료 댓글 `done` · 주간보고 `weekly` · 보고 · 위키 `report` · 기획 문서 `plan`)을 꺼내고, 빈칸 자리표시자 · 필수 절 · 긴 글머리(개조식) · 이 PC 에만 있는 것(보고 링크 · `.agents` · 임시 폴더 · 로컬 브랜치 · push 안 한 커밋) · 소스 코드 표현(파일:줄 · 소스 파일명 · 함수 호출은 막고, 클래스 · 변수 이름 모양은 알림만)을 본다. repo 에 GitLab · GitHub 틀이 있으면 그 절이 먼저. 같은 검사를 gitlab 팩 도구 · `gh` · `glab` 명령 훅 · 기획 repo 커밋 훅이 한다 |
 | `kedovi team-mode enforce long off\|block` `[--team]` | 답이 길게 올라올 때 | 마지막 답이 `vars.report.maxLines`(기본 25)줄이나 표 12줄을 넘는데 `자세히: <링크>` 가 없으면 보고 페이지로 옮기라고 한 번 되돌린다(기본). 요청에 「자세히 · 전부 · 길게」 가 있으면 보지 않는다. 정기 진행 현황(첫 줄 「진행 현황 · 진행 상황」)은 `vars.report.progressLines`(기본 50)줄까지 · 표 줄 수는 보지 않는다. Claude Code |
 | `kedovi team-mode enforce perm off\|block` `[--team]` | 밤새 맡긴 에이전트가 권한 질문에 멈출 때 | 서브에이전트(작업 리더 · 그 아래 팀원)의 권한 질문(위험한 rm · 셸이 풀지 못하는 복합 명령 · ask 규칙)은 메인 화면에만 떠서 아무도 답하지 않으면 몇 시간씩 멈춘다. 기본은 바로 거절하고 다른 방법(명령 나누기 · 스크립트 파일, 삭제는 경로를 보고로 넘기기)을 알린다. 메인 세션의 질문은 그대로. Claude Code |
 | `kedovi team-mode enforce draft off\|warn\|block` `[--team]` | 이슈 · MR · 댓글에 빈칸이 올라가거나 기획 문서가 긴 글머리로 쌓일 때 | 사람이 읽는 글을 올리기 전(gitlab 팩 이슈 · MR 도구, `gh` · `glab` 이슈 · PR · MR 명령)과 기획 repo 커밋 때 `kedovi draft check` 와 같은 검사를 한다. 기본은 막기, `warn` 은 알리고 통과. 기획 repo 커밋은 더한 줄만 보고, 새 문서는 같은 폴더 `_template.md` 의 절까지 본다 |
@@ -70,7 +70,6 @@
 | `kedovi docs serve [repo]` | Pages 없이 이 PC 에서 문서 사이트를 볼 때 | `docs-site/` 를 `http://127.0.0.1:8000/` 로 연다 (`--port` · `--open`). `file://` 로 열면 쪽 이동이 새로고침이 되고 전체 인쇄가 안 된다 |
 | `kedovi docs pages [on\|off] [repo]` | 문서 사이트를 Pages 로 올릴지 정할 때 | on = 원격에 맞는 CI 파일 · `docs-site/` 커밋 대상, off = `.gitignore` 에 `/docs-site/`. 인자 없이 = repo 마다 상태 |
 | `kedovi docs show <ID>` · `refs <ID>` | 근거를 볼 때 · 결정이 바뀌어 고칠 곳을 찾을 때 | `show` = 그 ID 의 정의 부분만(제목 절 · 표 행 · 문단 · 화면설계서 장). `refs` = 그 ID 가 나오는 곳(기획 · 코드 · 이슈 repo, 파일:줄, ★ 정의 · [동결]). 에이전트도 큰 문서를 통째로 열지 않고 이것을 쓴다 |
-| `kedovi docs refs-quote <파일…>` | 문서 점검의 「파일:줄 참조」 경고가 많을 때 | 본문 괄호 속 근거(파일:줄)를 그 문단 · 목록 · 표 아래 「> 근거:」 인용구로 옮긴다. `--dry` 는 옮길 곳 수만 |
 | `kedovi docs trace` `[--md] [--new]` | 기획대로 만들었는지 볼 때 | 기획 ID(`vars.docs.traceIds`, 예: FN,SCR,API,AC)와 코드의 `@spec` 주석을 대조. ⚠ 코드에 표시 없는 ID · ⚠ 테스트에 없는 수용 기준(AC-) · ✖ 기획에 정의 없는 ID(오타 · 지운 기능), 각각 파일:줄. `--md` = 추적표(ID · 정의 · 코드 · 테스트), `--new` = 새로 만들거나 고친 진입 파일(컨트롤러 · 화면 · 라우트 등) 중 기획 ID 가 없는 것 (커밋 전) |
 | `kedovi gitlab pipeline` | MR · 배포 뒤 파이프라인을 볼 때 | 최근 파이프라인 목록과 맨 위(또는 `--id`) 파이프라인의 단계별 작업 상태. `--ref <브랜치>` · `--mr <번호>`(MR 파이프라인이 없으면 머지 커밋의 것) · `--log`(실패한 작업의 로그 끝부분) · `--json`. 읽기만 한다 (gitlab 팩, `GITLAB_TOKEN`) |
 | `kedovi gitlab pipeline --id <ID> --play <작업> --yes` · `--retry <작업> --yes` | 수동 작업(배포 등)을 실행하거나 실패한 작업을 다시 돌릴 때 | `--play` 는 앞 작업이 끝나 manual 이 될 때까지 기다린 뒤 실행하고(created 일 때 눌러 생기는 `400 Unplayable Job` 을 피한다), 끝날 때까지 상태가 바뀔 때마다 한 줄. 앞 작업이 실패해 skipped 면 멈춘다. `--retry` 는 failed · canceled · success 작업만. `--yes` 가 없으면 실행할 내용과 「운영 배포 · 데이터를 바꾸는 작업은 사용자 승인 뒤에만」 확인 문구만 보이고 끝 코드 3. `--timeout 분`(기본 30) |
@@ -117,7 +116,7 @@
 | `kedovi remove [이름] [--force]` | 다시 만들 때 | 이름을 주면 `kedovi list` 에서 찾아 어디서든, 없으면 지금 폴더의 워크스페이스를 비운다 (`repos/` 포함, `.git`·README·LICENSE 는 남기고 `.gitignore` 는 킷이 넣은 줄만 걷어 내 그 자리에서 다시 init 할 수 있다). 커밋·push 안 한 작업이 있으면 멈추고, 예/아니오 확인 뒤 실행된다. 워크스페이스가 아닌 곳에서 이름 없이 실행하면 안내만 한다. |
 | `kedovi init-docs [폴더]` | 기획 repo 가 없을 때 | 기획자 repo 뼈대 생성 (읽는 순서대로: 개요 · 아이디어 · 규모 → 시스템 구성(아키텍처 양식) → 기능(요구 목록 · 영역별 기능 문서 · 업무 규칙) → 화면(목록 · 정책 · 프로토타입) → 데이터 · API → 결정 · 미결, 메뉴 `docs-site.json`)  기획 repo 를 두지 않는 프로젝트는 `workspace.json` 에 `"docsRepo": false` 를 넣으면 sync 의 "기획 repo 가 없습니다" 경고가 꺼진다 (운영·고도화 유형은 처음부터 경고하지 않는다) |
 | `kedovi sync` · `check` · `doctor` · `packs` | 필요할 때 | 생성 · 생성물 검사 · 환경 진단 · 팩 목록. `doctor` 의 「메모리」 는 이 PC 의 Claude Code 세션마다 메모리 · 경과 · 하위 프로세스(MCP · 브라우저)와 주인 없이 남은 브라우저 · MCP, Docker VM 을 보인다 (macOS · Linux) |
-| `kedovi upgrade [--add 팩]` | 킷 새 버전 후 | 워크스페이스의 `bin/kit.js` 와 팩을 이 킷 버전으로 (project 팩은 그대로). 몇 버전 뒤져도 한 번에 올라가고 그 사이 변경 기록을 모두 보여 준다. 저절로 켜지 않는 것은 한 줄씩 알린다: 그 유형의 기본 팩인데 꺼진 팩(`--add` 로 켬) · 진행 방식 · 새로 감지되는 스택 |
+| `kedovi upgrade [--add 팩]` | 킷 새 버전 후 | 워크스페이스의 생성 도구와 팩을 이 킷 버전으로 (project 팩은 그대로). 몇 버전 뒤져도 한 번에 올라가고 그 사이 변경 기록을 모두 보여 준다. 저절로 켜지 않는 것은 한 줄씩 알린다: 그 유형의 기본 팩인데 꺼진 팩(`--add` 로 켬) · 진행 방식 · 새로 감지되는 스택 |
 | `kedovi upgrade --all` `[--scan <폴더>] [--yes]` | `npm i -g` 로 새 버전을 받은 뒤 이 PC 의 워크스페이스를 모두 올릴 때 | `kedovi list` 의 워크스페이스(`--scan` 이면 그 폴더 아래에서 찾아 더함)를 버전과 함께 보이고, 옛 버전만 묻고 올린다. 팀장 아님 · 원격에 받지 않은 커밋(팀원이 먼저 올렸을 수 있음) · 커밋 안 한 변경이 있으면 건너뛴다. 끝나면 워크스페이스마다 commit · push 명령을 보여 준다. 새 버전을 받은 뒤 첫 kedovi 명령이 옛 버전 워크스페이스 수를 한 번 알린다 |
 
 `kedovi screens compare` 찾는 곳 · 옵션:
@@ -142,9 +141,9 @@
 |---|---|---|
 | Spring | ArchUnit 테스트 (`src/test/java/<기준 패키지>/archrules/`) | 패키지 배치 · 접미사 → 계층 · 기능 경계 · static 은 Logger 만 · 중첩 타입 금지 · 인스턴스 필드 private |
 | React | `eslint.boundaries.config.js` | FSD 레이어 방향 · 다른 slice 는 index 로만 · 생성 API 값은 api 세그먼트에서만 |
-| FastAPI | `.importlinter` + `tools/check_role_files.py` | 기능 안 계층 방향 · config · shared → feature 금지 · 파일 허용 목록 · 역할 파일 클래스 · 상수 |
+| FastAPI | `.importlinter` + 역할 파일 검사 도구 | 기능 안 계층 방향 · config · shared → feature 금지 · 파일 허용 목록 · 역할 파일 클래스 · 상수 |
 | NestJS (component-web) | `.dependency-cruiser.cjs` | feature → web 금지 · config · shared → feature · web 금지 · 화면끼리 금지 · web → 기능 저장소 금지 · 공통 → customer 금지 · 기능 안 컨트롤러 금지 |
-| Django (component-web) | `.importlinter` + `tools/check_web_layout.py` | feature → web 금지 · config · shared → feature · web 금지 · 기능 앱 안 views · urls · serializers 금지 · web 파일 목록 · 화면끼리 금지 · web 은 기능의 services · selectors · models · exceptions 만 · 고객사 경계 |
+| Django (component-web) | `.importlinter` + 화면 구조 검사 도구 | feature → web 금지 · config · shared → feature · web 금지 · 기능 앱 안 views · urls · serializers 금지 · web 파일 목록 · 화면끼리 금지 · web 은 기능의 services · selectors · models · exceptions 만 · 고객사 경계 |
 
 `vars.backend.layout = component-web` 이면 Spring 과 FastAPI 에도 web 층 검사가 더해진다: 최상위 feature · web · config · shared · customer, `web/views/<화면 경로>/<계층>` · `web/api/<묶음>/<계층>` 배치, 기능 안 진입점 금지, feature → web 금지, 화면끼리 금지, web 은 기능의 공개 계층만, 공통 → customer 금지. 이때 `spring.packageLayout = feature-first` · `fastapi.packageLayout = feature` 여야 한다 (아니면 sync 가 알리고 archrules 가 멈춘다).
 
@@ -154,7 +153,7 @@
 
 | 스택 | 기록 방식 | 출력 · 승인본 |
 |---|---|---|
-| `jooq` | jOOQ 실행 리스너 (Spring 시험) | `build/write-report` · `target/write-report`, 승인본 `src/test/resources/write-report/approved` |
+| `jooq` | jOOQ 실행 리스너 (Spring 시험) | `build/write-report` · `target/write-report`, 승인본은 시험 리소스의 `write-report/approved` |
 | `jdbc` | DataSource 감싸기 (JdbcTemplate · JPA 의 JDBC) | 위와 같음 |
 | `sqlalchemy` | SQLAlchemy 엔진 이벤트 (pytest) | `.write-report`, 승인본 `tests/write-report/approved` |
 | `node-pg` | pg 풀 감싸기 | `.write-report`, 승인본 `test/write-report/approved` |

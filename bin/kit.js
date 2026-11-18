@@ -1378,7 +1378,7 @@ function resolveModels(root, ws) {
   //   browserClose = 브라우저 MCP 로 브라우저를 열고 닫지 않은 채 끝내면 한 번 막는다 (Claude Code. block 기본 · off)
   //   midTurnMessages = 작업 중 끼어 든 사용자 메시지를 답변에서 처리했는지 멈출 때 한 번 되묻는다 (Claude Code. block 기본 · off)
   //   permissionAsk = 서브에이전트(리더 · 그 아래 팀원)의 권한 질문을 묻지 않고 거절하고 다른 방법을 알린다 (Claude Code PermissionRequest. block 기본 · off: 메인 화면에 그대로 묻기)
-  //   draftCheck = 사람이 읽는 글(이슈 · MR · 댓글 · 기획 repo 커밋)의 형식 검사: 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것 (lib/draft.js. block 기본 = 올리기 · 커밋을 막기 · warn 알림만 · off)
+  //   draftCheck = 사람이 읽는 글(이슈 · MR · 댓글 · 기획 repo 커밋)의 형식 검사: 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것 · 소스 코드 표현 (lib/draft.js. block 기본 = 올리기 · 커밋을 막기 · warn 알림만 · off)
   //   leadHold = 작업 리더가 자기 팀원이 도는 채 차례를 끝내려 하면 한 번 되돌린다 (Claude Code SubagentStop. block 기본 · off)
   //   checkBeforeReview = 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 막는다 (리뷰 위임 · 리뷰 역할 에이전트)
   const longRun = { after: mins(te.runMinutes, 60) };
@@ -2405,7 +2405,7 @@ function installCommitMsgHooks(root, ws) {
 
 const DOCS_HOOK_MARK = '# kedovi docs pre-commit';
 const DOCS_HOOK = (script) => `#!/bin/sh
-${DOCS_HOOK_MARK}: md 와 문서 사이트(docs-site/)가 어긋나면 · 올리는 md 에 글 형식 문제(빈칸 · 긴 글머리 · 이 PC 에만 있는 것 · 새 문서의 빠진 절)가 있으면 커밋을 막는다 (kedovi docs build 로 만든 적이 없으면 사이트는 보지 않는다). ${GEN_NOTE}
+${DOCS_HOOK_MARK}: md 와 문서 사이트(docs-site/)가 어긋나면 · 올리는 md 에 글 형식 문제(빈칸 · 긴 글머리 · 이 PC 에만 있는 것 · 새 문서의 빠진 절 · 위키의 소스 코드 표현)가 있으면 커밋을 막는다 (kedovi docs build 로 만든 적이 없으면 사이트는 보지 않는다). ${GEN_NOTE}
 S=${script}
 [ -f "$S" ] && command -v node >/dev/null 2>&1 || exit 0
 F="$(dirname "$S")/draft.js"

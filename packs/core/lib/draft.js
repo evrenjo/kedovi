@@ -1,4 +1,4 @@
-// 사람이 읽는 글의 틀과 올리기 · 커밋 전 검사 (빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것).
+// 사람이 읽는 글의 틀과 올리기 · 커밋 전 검사 (빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것 · 소스 코드 표현).
 /*
  * 쓰는 곳: bin/draft.js (kedovi draft) · issue-check.js · gitlab 팩 이슈 · MR 도구 · 훅 draft-guard.js(gh · glab 명령) · 기획 repo pre-commit · report.js new
  * 틀(FORMATS)이 정본이다. 스킬 · 룰은 `kedovi draft template <형식>` 으로 가리키고 틀을 옮겨 적지 않는다.
@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const CT = require('./codeterms');
 
 // 형식: label, sections = 필수 절(별칭 목록. 제목 · 굵은 머리 · 「이름:」 줄 어느 것이든), oneOf = 그중 하나의 묶음만 맞으면 됨, template
 const FORMATS = {
@@ -50,7 +51,7 @@ const FORMATS = {
     template: [
       '**결과**: <한 줄: 무엇을 고쳤고 어디에 반영됐나>', '',
       '- **원인**: <확정한 원인. 결함이 아니면 「해당 없음」>',
-      '- **조치**: <바뀐 것 · 커밋 · MR>',
+      '- **조치**: <바뀐 기능 · 동작, 커밋 · MR>',
       '- **영향 범위**: <같은 데이터 · 화면을 쓰는 곳>',
       '- **확인**: <검증 방법과 결과>',
       '- **재발 방지**: <없으면 「없음」>', '',
@@ -103,14 +104,14 @@ const LOCAL_RULES = [
   ['에이전트 ID', /\bagent-[0-9a-f]{8,}\b/],
 ];
 
-/** 이 워크스페이스 설정: { bulletMax, localPatterns: [[이름, RegExp]] } */
+/** 이 워크스페이스 설정: { bulletMax, localPatterns: [[이름, RegExp]], codeAllow: [RegExp] } */
 function varsOf(ws) {
   const w = ((ws || {}).vars || {}).writing || {};
   const n = Number(w.bulletMax);
   const local = (Array.isArray(w.localIds) ? w.localIds : String(w.localIds || '').split(',')).map((s) => String(s).trim()).filter(Boolean);
   const pats = [];
   for (const s of local) { try { pats.push(['로컬 ID', new RegExp(s)]); } catch { /* 잘못된 정규식은 넘긴다 */ } }
-  return { bulletMax: Number.isFinite(n) && n >= 40 ? n : DEFAULT_BULLET_MAX, localPatterns: pats };
+  return { bulletMax: Number.isFinite(n) && n >= 40 ? n : DEFAULT_BULLET_MAX, localPatterns: pats, codeAllow: CT.allowOf(ws) };
 }
 
 /** 글 형식 설정 (chat.writing · chat.writingExcept): 이 PC → 팀 → 기본(개조식 · 예외 없음) */
@@ -214,8 +215,8 @@ const EMPTY_ITEM = [/^\s*(?:[-*+]\s+)?\*\*[^*]+\*\*\s*[:：]?\s*$/, /^\s*(?:[-*+
 const plain = (s) => s.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/https?:\/\/\S+/g, 'URL').replace(/\*\*|__/g, '').trim();
 
 /**
- * 검사. 반환 [{ line, kind }] (line 0 = 문서 전체)
- * opts: type(FORMATS 키) · sections(필수 절, 없으면 형식의 것) · bullets(개조식 검사) · bulletMax · localPatterns · repoDir(push 안 한 커밋 확인) · added(Set: 이 줄 번호만 본다, 커밋 훅)
+ * 검사. 반환 [{ line, kind, soft? }] (line 0 = 문서 전체, soft = 알리기만 하고 막지 않는다)
+ * opts: type(FORMATS 키) · sections(필수 절, 없으면 형식의 것) · bullets(개조식 검사) · bulletMax · localPatterns · codeAllow(괜찮은 코드 표현 RegExp) · codeSoft(코드 표현을 모두 알림만) · repoDir(push 안 한 커밋 확인) · added(Set: 이 줄 번호만 본다, 커밋 훅)
  */
 function check(text, opts = {}) {
   const hits = [];
@@ -253,6 +254,11 @@ function check(text, opts = {}) {
     // 이 PC 에만 있는 것
     for (const [kind, re] of locals) if (re.test(x.raw.replace(/<!--[\s\S]*?-->/g, ''))) { add(x.n, `이 PC 에만 있는 것: ${kind}`); break; }
   });
+
+  // 소스 코드 표현: 파일:줄 · 소스 파일명 · 함수 호출은 막고, 클래스 · 변수 이름 모양은 알린다
+  for (const c of CT.scan(text, { allow: opts.codeAllow })) {
+    if (seen(c.line)) hits.push({ line: c.line, kind: `코드 표현 ${c.label} 「${c.text}」`, soft: c.soft || !!opts.codeSoft });
+  }
 
   // 빈 절: 제목 뒤에 내용 없이 같은 · 더 높은 제목이나 끝 (문서 전체를 볼 때만)
   if (!only) {
@@ -314,7 +320,7 @@ function checkFor(root, text, { type, repoDir, ws, local } = {}) {
   const v = varsOf(w);
   const hits = check(text, {
     type: k, sections: proj ? proj.sections : undefined, bullets: bulletsFor(prefsOf(w, l), target),
-    bulletMax: v.bulletMax, localPatterns: v.localPatterns, repoDir,
+    bulletMax: v.bulletMax, localPatterns: v.localPatterns, codeAllow: v.codeAllow, repoDir,
   });
   return { hits, type: k, level: levelOf(root), from: proj ? proj.from : null };
 }
@@ -327,7 +333,7 @@ function template(type) {
 
 /** 걸린 것 한 줄씩 */
 function format(hits) {
-  return hits.map((h) => `${h.line ? `${h.line}줄` : '문서'}: ${h.kind}`);
+  return hits.map((h) => `${h.line ? `${h.line}줄` : '문서'}: ${h.kind}${h.soft ? ' (알림만)' : ''}`);
 }
 
 module.exports = { FORMATS, TARGETS, DEFAULT_BULLET_MAX, LOCAL_RULES, varsOf, prefsOf, bulletsFor, levelOf, check, checkFor, issueType, resolveType, projectSections, template, format, headOf };

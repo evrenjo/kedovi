@@ -6,14 +6,13 @@
  *   check [repo|폴더]                          md 와 docs-site/ 가 어긋났는지 (어긋나면 exit 1). 정의 없는 ID 는 ⚠ 만
  *   serve [repo|폴더] [--port 8000] [--open]     docs-site/ 를 이 PC 에서 웹 주소로 보기 (Ctrl+C 로 끝). file:// 로도 열리지만 쪽 이동이 새로고침이 되고 전체 인쇄가 안 된다
  *   pages [on|off] [repo|폴더]                 Pages 로 올리기 켜고 끄기 · 상태. on = 원격(GitLab · GitHub)에 맞는 CI 파일을 두고 docs-site/ 를 커밋 대상으로, off = .gitignore 에 /docs-site/
- *   refs-quote <md 파일…> [--dry]              본문 괄호 속 근거(파일:줄)를 그 문단 · 목록 · 표 아래 「> 근거:」 인용구로 옮긴다
  *   hook <repo 폴더>                           기획 repo 의 pre-commit 이 부른다 (kedovi docs build 로 만든 적이 없으면 아무것도 안 한다)
  *   show <ID> [--in <파일 조각>] [--all]         그 ID 의 정의 부분만 출력 (문서를 통째로 읽지 않는다). --all = 정의가 여럿이면 모두
  *   refs <ID> [--docs]                         그 ID 가 나오는 곳 (기획 · 코드 · 이슈 repo, 파일:줄). --docs = 기획 repo 만
  *   trace [--ids FN,API] [--all] [--strict] [--md] [--new]   기획 ID 와 코드의 구현 표시(@spec 주석의 ID) 대조 (머리말: --ids → vars.docs.traceIds → vars.screens.functionIds → FN,SCR,API,AC). 코드에 없는 ID(⚠) · 기획에 정의 없는 ID(✖, 오타 · 지운 기능) · 테스트에 없는 수용 기준(AC-).
  *                                              --md = 추적표(ID · 정의 · 코드 · 테스트) · --new = 새로 만들거나 고친 진입 파일 중 기획 ID 가 없는 것
  *                                              --strict = ✖(또는 --new 의 ⚠)이 있으면 exit 1
- * build · check 는 문서 점검 경고도 낸다: 큰 문서(vars.docs.maxKB) · 문장형 제목 · 긴 코드 블록(vars.docs.codeMax) · 파일:줄 참조 · 머리말에 쌓인 변경 이력 · 여러 문서에 같은 문장 ·
+ * build · check 는 문서 점검 경고도 낸다: 큰 문서(vars.docs.maxKB) · 문장형 제목 · 긴 코드 블록(vars.docs.codeMax) · 파일:줄 참조 · 소스 코드 표현 · 코드 이름 모양 · 머리말에 쌓인 변경 이력 · 여러 문서에 같은 문장 ·
  *   긴 표 칸(vars.docs.cellMax) · 문단형 표(vars.docs.cellAvg) · 표 칸 안 경위 · 그림 없는 큰 문서(vars.docs.figureKB) · ASCII 그림 · 메뉴 「기타」 문서 ·
  *   오래된 환경 사실(「확인일」 칸이 vars.docs.factDays 일 넘음) · 확인일 없는 환경 사실 (「상태: 동결」 문서는 뺀다)
  * 기획 repo 의 docs-site.json (선택): { title, logo, version, source, ink: false(펜 필기 끔), printAll: { autoPrint: false }(전체 인쇄 쪽이 인쇄 창을 열지 않음), groups: [{ group, icon, files: [glob], split: true|[glob], collapsed, tree }], labels: { 'md 경로': '메뉴 이름' }, include: [glob], exclude: [glob], repos: { … } }. 메뉴 묶음 · 상단 바 · 원본 버튼 · 포함 범위.
@@ -605,7 +604,7 @@ function healthLines(t, ws, res) {
   const docs = res && res.files ? Object.entries(res.files).filter(([k, c]) => /\.md$/i.test(k) && typeof c === 'string' && wanted(k)).map(([rel, text]) => ({ rel, text, sheet: false })) : undefined;
   // 규모 문서 점검은 기획 repo 만 (워크스페이스 밖 폴더면 기획 repo 뼈대의 결정 폴더로 알아본다)
   const scale = t.kind ? t.kind === 'docs' : fs.existsSync(path.join(t.dir, '90-decisions'));
-  try { return DR.health(t.dir, { maxKB: v.maxKB, cellMax: v.cellMax, cellAvg: v.cellAvg, figureKB: v.figureKB, codeMax: v.codeMax, factDays: require('../lib/freshness').daysOf(ws), docs, scale }).map((w) => `⚠ 문서 점검: ${w}`); } catch { return []; }
+  try { return DR.health(t.dir, { maxKB: v.maxKB, cellMax: v.cellMax, cellAvg: v.cellAvg, figureKB: v.figureKB, codeMax: v.codeMax, codeAllow: require('../lib/codeterms').allowOf(ws), factDays: require('../lib/freshness').daysOf(ws), docs, scale }).map((w) => `⚠ 문서 점검: ${w}`); } catch { return []; }
 }
 
 /** show: ID 의 정의 부분만 */
@@ -628,23 +627,6 @@ function cmdShow(ws, id) {
 }
 
 /** refs: ID 가 나오는 곳 */
-/** 본문 괄호 속 근거(파일:줄)를 그 문단 · 목록 · 표 아래 「> 근거:」 인용구로 옮긴다. --dry 면 개수만 */
-function cmdRefsQuote(files) {
-  const list = files.filter((f) => !f.startsWith('--'));
-  if (!list.length) throw new Error('사용법: kedovi docs refs-quote <md 파일…> [--dry]');
-  let total = 0;
-  for (const f of list) {
-    if (!fs.existsSync(f)) { console.log(`✖ ${f}: 파일이 없습니다`); process.exitCode = 1; continue; }
-    const cur = fs.readFileSync(f, 'utf8');
-    const r = DR.refsToQuote(cur);
-    total += r.moved;
-    if (!r.moved) { console.log(`- ${f}: 옮길 근거 없음`); continue; }
-    if (!has('dry')) fs.writeFileSync(f, r.text);
-    console.log(`${has('dry') ? '·' : '✔'} ${f}: 근거 ${r.moved}곳${has('dry') ? ' (옮길 곳, --dry)' : '을 인용구로 옮김'}`);
-  }
-  if (list.length > 1) console.log(`  모두 ${total}곳`);
-}
-
 function cmdRefs(ws, id) {
   if (!id) throw new Error('사용법: kedovi docs refs <ID> [--docs]');
   const repos = ((ws && ws.repos) || []).filter((r) => (has('docs') ? r.kind === 'docs' : r.kind !== 'legacy'));
@@ -934,11 +916,10 @@ async function main() {
     if (cmd === 'hook') return await cmdCheck(ws, argv[1], true);
     if (cmd === 'show') return cmdShow(ws, argv[1]);
     if (cmd === 'refs') return cmdRefs(ws, argv[1]);
-    if (cmd === 'refs-quote') return cmdRefsQuote(argv.slice(1));
     if (cmd === 'trace') return cmdTrace(ws);
     if (cmd === 'pages') return cmdPages(ws);
     if (cmd === 'serve') return cmdServe(ws);
-    console.log('사용법: kedovi docs build [repo|폴더] [--out docs-site] [--force] [--write-config] · pages [on|off] [repo|폴더] · check [repo|폴더] · serve [repo|폴더] [--port 8000] [--open] · show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs] · refs-quote <md 파일…> [--dry] · trace [--ids FN] [--all] [--strict] [--md] [--new]');
+    console.log('사용법: kedovi docs build [repo|폴더] [--out docs-site] [--force] [--write-config] · pages [on|off] [repo|폴더] · check [repo|폴더] · serve [repo|폴더] [--port 8000] [--open] · show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs] · trace [--ids FN] [--all] [--strict] [--md] [--new]');
     process.exitCode = cmd ? 1 : 0;
   } catch (e) {
     console.error(`✖ ${e.message}`);

@@ -66,7 +66,7 @@ function warnLines(res) {
   const out = [];
   if ((res.unlisted || []).length) out.push(`⚠ 메뉴 「기타」 문서 ${res.unlisted.length}개 (docs-site.json groups 어느 묶음에도 안 맞음): ${res.unlisted.join(' · ')}`);
   const docs = Object.entries(res.files).filter(([rel]) => rel.endsWith('.md')).map(([rel, text]) => ({ rel, text }));
-  for (const w of DR.health(null, { docs })) out.push(`⚠ 문서 점검: ${w}`);
+  for (const w of DR.health(null, { docs, codeSkip: ['docs/kit-dev.md', 'docs/pack-making.md', 'docs/model-catalog.md'] })) out.push(`⚠ 문서 점검: ${w}`);
   const art = MC.asciiArt(Object.fromEntries(Object.entries(res.files).filter(([rel]) => rel.endsWith('.md'))));
   if (art.length) out.push(`⚠ ASCII 그림 ${art.length}개: ${art.map((a) => `${a.file}:${a.line}`).join(' · ')}. mermaid 로 바꿀 수 있는지 본다 (폴더 나무 · 화면 모양은 그대로 둬도 된다)`);
   return out;
@@ -143,12 +143,13 @@ function packCatalogMd() {
       const agents = list(path.join(pk.dir, 'agents'), (f) => f.endsWith('.md'));
       if (agents.length) out.push(`**팀 에이전트 역할**: ${agents.map((f) => { const fm = frontmatter(path.join(pk.dir, 'agents', f)); return `${fm.title || fm.name} (\`${fm.name}\`)`; }).join(' · ')}`, '');
       const tools = list(path.join(pk.dir, 'bin'), (f) => /\.(js|py|sh)$/.test(f) && !/\.test\.js$/.test(f));
-      if (tools.length) out.push(`**도구**: ${tools.map((f) => `\`bin/${f}\``).join(' · ')}`, '');
+      let hookCount = 0;
       try {
         const hooks = JSON.parse(fs.readFileSync(path.join(pk.dir, 'hooks.json'), 'utf8'));
-        const hs = Object.entries(hooks).flatMap(([ev, arr]) => arr.map((h) => `${ev === 'SessionStart' ? '세션 시작' : ev === 'Stop' ? '세션 끝' : ev}: \`${path.basename(h.script)}\``));
-        if (hs.length) out.push(`**훅**: ${hs.join(' · ')}`, '');
+        hookCount = Object.values(hooks).reduce((a, arr) => a + arr.length, 0);
       } catch { /* 훅 없음 */ }
+      const parts = [tools.length ? `도구 ${tools.length}개` : '', hookCount ? `자동 점검 ${hookCount}개` : ''].filter(Boolean);
+      if (parts.length) out.push(`**함께 설치**: ${parts.join(' · ')}`, '');
       out.push('</details>', '');
     }
   }

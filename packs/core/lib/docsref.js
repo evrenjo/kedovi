@@ -4,13 +4,14 @@
  *   정의 = 그 ID 로 시작하는 제목의 절 · 첫 칸이 그 ID 인 표 행(표 머리와 함께) · **ID** 로 시작하는 문단 · 화면설계서 장(<section id="ID">)
  * 동결 문서: 머리말 「상태: 동결」 (문단 또는 | 상태 | 동결 | 표). 구현이 끝나 코드가 정본이 된 문서. 점검에서 빼고, show · refs 에 [동결] 로 표시한다.
  * 코드 대조(trace): 머리말(FN 등) ID 의 정의와 코드 repo 의 구현 표시(주석의 ID)를 맞춰 본다. 코드에 없는 ID · 기획에 없는 ID.
- * 문서 점검(경고만): 큰 문서(vars.docs.maxKB) · 문장형 제목 · 긴 코드 블록(codeMax) · 파일:줄 참조(인용구 밖) · 본문 근거 줄 · 머리말에 쌓인 변경 이력 · 여러 문서에 같은 문장 · 긴 표 칸(cellMax) · 문단형 표(cellAvg) · 표 칸 안 경위 · 그림 없는 큰 문서(figureKB).
+ * 문서 점검(경고만): 큰 문서(vars.docs.maxKB) · 문장형 제목 · 긴 코드 블록(codeMax) · 파일:줄 참조 · 소스 코드 표현 · 코드 이름 모양 · 본문 근거 줄 · 머리말에 쌓인 변경 이력 · 여러 문서에 같은 문장 · 긴 표 칸(cellMax) · 문단형 표(cellAvg) · 표 칸 안 경위 · 그림 없는 큰 문서(figureKB).
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const FR = require('./freshness');
+const CT = require('./codeterms');
 
 const SKIP_DIRS = new Set(['docs-site', 'html', 'originals', 'node_modules', '.git', '.github', '.gitlab']);
 const SKIP_ROOT = new Set(['AGENTS.md', 'CLAUDE.md', 'AGENTS.override.md', 'CLAUDE.local.md']);
@@ -263,11 +264,10 @@ function sentenceHeads(text) {
   });
   return out;
 }
-// 코드 붙인 곳: mermaid · tree · screen 밖의 긴 코드 블록(codeMax 줄 넘음) · 파일:줄 참조(a.js:12 · #L12). 사람이 읽는 문서는 표 · 그림 + 짧은 설명으로
+// 코드 붙인 곳: mermaid · tree · screen 밖의 긴 코드 블록(codeMax 줄 넘음) · 파일:줄 참조(a.js:12 · #L12, 인용구 안도). 사람이 읽는 문서는 표 · 그림 + 짧은 설명으로
 const CODE_FIG = /^(mermaid|tree|screen)$/i;
-const FILE_LINE = /(?<![\w/])[\w./-]+\.(?:js|mjs|cjs|ts|tsx|jsx|java|kt|kts|py|go|rb|php|cs|swift|sql|xml|jsp|vue|svelte|c|cc|cpp|h|hpp|sh|gradle|json|ya?ml|properties):\d+(?:[-~]\d+)?|#L\d+/g;
 /** { blocks: [{ line, lang, lines }], refs: [{ line, text }] } */
-function codeMarks(text, codeMax) {
+function codeMarks(text, codeMax, allow) {
   const blocks = [];
   const refs = [];
   let open = null;
@@ -277,10 +277,8 @@ function codeMarks(text, codeMax) {
       if (open) { if (!CODE_FIG.test(open.lang) && i - open.line > codeMax) blocks.push({ line: open.line, lang: open.lang || '-', lines: i - open.line }); open = null; } else open = { line: i + 1, lang: f[1] };
       return;
     }
-    if (open || /^\s*>/.test(l)) return; // 인용구 안 근거(파일:줄)는 괜찮다
-    for (const m of l.replace(/`/g, '').match(FILE_LINE) || []) refs.push({ line: i + 1, text: m });
   });
-  return { blocks, refs };
+  return { blocks, refs: CT.scan(text, { allow }).filter((c) => c.kind === 'fileLine').map((c) => ({ line: c.line, text: c.text })) };
 }
 // 본문에 쓴 근거 · 출처 줄: 「근거: · 출처: · 참고: · 자료:」 로 시작하는 문단 · 목록 줄 (인용구 · 표 · 코드 블록 밖). 부가 설명은 인용구로
 const SRC_BODY = /^\s*(?:[-*]\s+|\d+\.\s+)?\**(?:근거|출처|참고|자료)(?:\s*(?:자료|문서|경로))?\**\s*[:：]/;
@@ -293,45 +291,12 @@ function sourceLines(text) {
   });
   return out;
 }
-/**
- * 본문 괄호 속 근거(파일:줄)를 그 문단 · 목록 · 표 아래 「> 근거: …」 인용구로 옮긴다 (kedovi docs refs-quote).
- * 괄호 안에 파일:줄이 하나라도 있으면 그 괄호를 통째로 옮긴다. 코드 블록 · 인용구 · 제목 줄은 건드리지 않는다.
- * @returns { text, moved: 옮긴 괄호 수 }
- */
-const PAREN = /\s?[(（]([^()（）\n]*)[)）]/g;
-function refsToQuote(text) {
-  const lines = String(text).split('\n');
-  const out = [];
-  let fence = false;
-  let got = [];
-  let moved = 0;
-  const flush = () => { if (got.length) { out.push('', `> 근거: ${got.join(' · ')}`); got = []; } };
-  for (const l of lines) {
-    if (/^\s*(```|~~~)/.test(l)) { if (!fence) flush(); fence = !fence; out.push(l); continue; }
-    if (fence) { out.push(l); continue; }
-    if (!l.trim()) { flush(); out.push(l); continue; }
-    if (/^\s*>/.test(l) || /^#{1,6}\s/.test(l)) { flush(); out.push(l); continue; }
-    const row = /^\s*\|/.test(l);
-    const next = l.replace(PAREN, (all, inner) => {
-      FILE_LINE.lastIndex = 0;
-      if (!FILE_LINE.test(inner.replace(/`/g, ''))) return all;
-      FILE_LINE.lastIndex = 0;
-      const ref = inner.trim().replace(/^\**(?:근거|출처|참고|자료)\**\s*[:：]\s*/, '');
-      if (ref) { got.push(ref); moved++; }
-      return '';
-    });
-    out.push(row ? next.replace(/[ \t]+\|/g, ' |') : next.replace(/\s+$/, '').replace(/\s+([.,。])/g, '$1'));
-  }
-  flush();
-  return { text: out.join('\n'), moved };
-}
-
 const n0 = (v, d) => (Number(v) > 0 ? Number(v) : d);
 const topList = (list, n, f) => `${list.slice(0, n).map(f).join(' · ')}${list.length > n ? ` 외 ${list.length - n}개` : ''}`;
 
 /**
  * 문서 점검 경고 (경고만. 동결 문서 · 화면설계서 장은 뺀다).
- * opts: { maxKB, headKB, headDates, minLen, codeMax(15), cellMax(400), cellAvg(80), figureKB(20), docs: [{ rel, text }] (주면 dir 대신) }
+ * opts: { maxKB, headKB, headDates, minLen, codeMax(15), codeAllow([RegExp]), cellMax(400), cellAvg(80), figureKB(20), docs: [{ rel, text }] (주면 dir 대신) }
  */
 function health(dir, opts = {}) {
   const maxKB = n0(opts.maxKB, 60);
@@ -383,11 +348,18 @@ function health(dir, opts = {}) {
   if (flat.length) warn.push(`그림 없는 큰 문서 ${flat.length}개 (${figureKB}KB 넘고 mermaid 0, 「→」 「①」 많음): ${topList(flat, 5, (x) => x)}. 흐름 · 구성 · 상태 전이는 mermaid 로`);
   const heads = docs.flatMap((d) => sentenceHeads(d.text).map((h) => ({ rel: d.rel, ...h })));
   if (heads.length) warn.push(`문장형 제목 ${heads.length}곳 (끝이 ~다 · ~요 · ~까 · ~나 · ~가 · ~기 · ?): ${topList(heads, 5, (x) => `${x.rel}:${x.line} 「${cut(x.text, 30)}」`)}. 제목 · 헤더는 명사 · 명사구로 (예: 「설치하기」 → 「설치」)`);
-  const code = docs.map((d) => ({ rel: d.rel, ...codeMarks(d.text, codeMax) }));
+  const code = docs.map((d) => ({ rel: d.rel, ...codeMarks(d.text, codeMax, opts.codeAllow) }));
   const cb = code.filter((x) => x.blocks.length);
   if (cb.length) warn.push(`긴 코드 블록 ${cb.reduce((a, x) => a + x.blocks.length, 0)}곳 (${codeMax}줄 넘음, vars.docs.codeMax. mermaid · tree · screen 제외): ${topList(cb, 5, (x) => `${x.rel}:${x.blocks[0].line} ${x.blocks[0].lines}줄${x.blocks.length > 1 ? ` 외 ${x.blocks.length - 1}곳` : ''}`)}. 사람이 읽는 문서에는 코드를 붙이지 않고 표 · mermaid 그림과 짧은 설명으로 (코드는 repo 가 정본)`);
   const fr = code.filter((x) => x.refs.length);
   if (fr.length) warn.push(`파일:줄 참조 ${fr.reduce((a, x) => a + x.refs.length, 0)}곳: ${topList(fr, 5, (x) => `${x.rel}:${x.refs[0].line} 「${x.refs[0].text}」${x.refs.length > 1 ? ` 외 ${x.refs.length - 1}곳` : ''}`)}. 줄 번호는 코드가 바뀌면 틀린다. 기능 · 화면 이름이나 기획 ID 로`);
+  const codeSkip = new Set(opts.codeSkip || []); // 독자가 그 파일을 직접 고치는 문서 (킷 개발 문서)
+  const terms = docs.filter((d) => !codeSkip.has(d.rel)).flatMap((d) => CT.scan(d.text, { allow: opts.codeAllow }).filter((c) => c.kind !== 'fileLine').map((c) => ({ rel: d.rel, ...c })));
+  const hard = terms.filter((c) => !c.soft);
+  const soft = terms.filter((c) => c.soft);
+  const place = (x) => `${x.rel}:${x.line} 「${cut(x.text, 40)}」`;
+  if (hard.length) warn.push(`소스 코드 표현 ${hard.length}곳 (소스 파일명 · 소스 경로 · 함수 호출): ${topList(hard, 5, place)}. 기능 · 화면 이름이나 기획 ID 로 (괜찮은 표현: vars.writing.codeAllow)`);
+  if (soft.length) warn.push(`코드 이름 모양 ${soft.length}곳 (클래스 · 변수, 표 안 변수는 뺌): ${topList(soft, 5, place)}. 사용자가 보는 이름으로. API 필드처럼 꼭 필요하면 vars.writing.codeAllow`);
   const srcs = docs.map((d) => ({ rel: d.rel, list: sourceLines(d.text) })).filter((x) => x.list.length);
   if (srcs.length) warn.push(`본문에 쓴 근거 · 출처 ${srcs.reduce((a, x) => a + x.list.length, 0)}줄: ${topList(srcs, 5, (x) => `${x.rel}:${x.list[0].line}${x.list.length > 1 ? ` 외 ${x.list.length - 1}줄` : ''}`)}. 부가 설명 · 근거 · 출처는 본문을 가리지 않게 인용구로 (> 근거: …)`);
   // 환경 사실 표(「확인일」 칸): 확인일이 factDays 일 넘은 행 · 확인일이 빈 행
@@ -453,4 +425,4 @@ function scaleWarn(docs, all = docs) {
   return null;
 }
 
-module.exports = { listDocs, isFrozen, sentenceHeads, codeMarks, sourceLines, refsToQuote, defsIn, defIdsIn, prefixRe, show, refs, trace, health, tableCells, cut, scaleFilled };
+module.exports = { listDocs, isFrozen, sentenceHeads, codeMarks, sourceLines, defsIn, defIdsIn, prefixRe, show, refs, trace, health, tableCells, cut, scaleFilled };

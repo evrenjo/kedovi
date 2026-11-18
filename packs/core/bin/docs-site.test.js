@@ -139,13 +139,6 @@ assert.match(fs.readFileSync(path.join(g, 'docs-site', 'assets', 'site.js'), 'ut
 assert.strictEqual(tool('check').status, 0, '붙인 결과와 같으면 check 통과');
 gput('docs-site.extra.css', '.page h1{color:blue}\n');
 assert.notStrictEqual(tool('check').status, 0, '덧붙임을 고치면 어긋남');
-// 근거 분리 명령: 본문 괄호 속 파일:줄 → 인용구 (--dry 는 고치지 않는다)
-gput('refs.md', '# 근거\n\n바로 저장한다 (a.js:3).\n');
-const rq = (...a) => spawnSync(process.execPath, [path.join(__dirname, 'docs-site.js'), 'refs-quote', ...a], { cwd: g, encoding: 'utf8' });
-assert.match(rq('refs.md', '--dry').stdout, /· refs\.md: 근거 1곳 \(옮길 곳, --dry\)/);
-assert.match(fs.readFileSync(path.join(g, 'refs.md'), 'utf8'), /\(a\.js:3\)/);
-assert.match(rq('refs.md').stdout, /✔ refs\.md: 근거 1곳을 인용구로 옮김/);
-assert.strictEqual(fs.readFileSync(path.join(g, 'refs.md'), 'utf8'), '# 근거\n\n바로 저장한다.\n\n> 근거: a.js:3\n');
 fs.rmSync(g, { recursive: true, force: true });
 // 옮겨진 문서: 옛 주소에 새 주소로 넘기는 쪽, 다음 build · check 도 같다
 {
