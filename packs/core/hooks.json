@@ -300,6 +300,12 @@
       "agents": "all"
     },
     {
+      "matcher": "Edit|Write|MultiEdit|apply_patch",
+      "script": "hooks/config-comment.js",
+      "timeout": 5,
+      "agents": "all"
+    },
+    {
       "matcher": "Bash",
       "script": "hooks/secret-guard.js",
       "timeout": 5,

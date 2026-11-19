@@ -105,6 +105,10 @@
       "default": "150",
       "desc": "사람이 읽는 글의 글머리 한 줄 최대 글자 수 (링크 주소 · 인라인 코드 제외). 넘으면 글 형식 검사(kedovi draft check · 올리기 전 · 기획 repo 커밋)가 「긴 글머리」 로 잡는다. 개조식일 때만 본다 (kedovi prefs writing)"
     },
+    "writing.sentenceMax": { "default": "100", "desc": "한 문장 글자 수 기준. 넘으면 글 형식 검사 · 문서 점검이 알린다" },
+    "writing.dotMax": { "default": "3", "desc": "한 문장에 쓸 가운데점 수. 넘으면 표나 하위 글머리로 나누라고 알린다" },
+    "writing.parenMax": { "default": "40", "desc": "괄호 안 글자 수 기준. 넘으면 따로 한 줄로 쓰라고 알린다" },
+    "writing.paragraphMax": { "default": "400", "desc": "한 단락 글자 수 기준. 넘으면 나누라고 알린다" },
     "writing.localIds": {
       "default": [],
       "desc": "이 PC · 이 팀 안에서만 뜻이 있어 이슈 · MR · 댓글에 나가면 안 되는 ID 모양 (정규식 배열). 보고 링크 · .agents · 임시 폴더 · worktree · 로컬 브랜치 · push 안 한 커밋은 이미 본다"

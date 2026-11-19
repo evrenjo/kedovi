@@ -1,7 +1,9 @@
-# 실패 주입 세트 CI 작업 (kedovi apiledger add 가 넣음). .gitlab-ci.yml 에서 가져온다:
+# 실패 주입 세트 CI 작업 (kedovi apiledger add 가 넣음).
+# .gitlab-ci.yml 에서 가져온다:
 #   include:
 #     - local: ci/api-faults.gitlab-ci.yml
-# test 와 같은 단계에서 병렬로 돈다 (needs: [] 라 앞 단계를 기다리지 않는다). 개발 루프(커밋 · 일반 test)에는 대기를 더하지 않는다.
+# test 와 같은 단계에서 병렬로 돈다 (needs: [] 라 앞 단계를 기다리지 않는다).
+# 개발 루프(커밋 · 일반 test)에는 대기를 더하지 않는다.
 # image · before_script · cache 는 이 repo 의 test 작업과 같게 맞춘다 (extends 로 가져오면 한 곳만 고친다).
 api-faults:
   stage: test

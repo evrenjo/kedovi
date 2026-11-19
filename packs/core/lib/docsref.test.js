@@ -44,7 +44,9 @@ const same = '이 문장은 두 문서에 똑같이 들어 있어서 한 문서�
 put('big.md', `# 큰 문서\n\n| 변경 | ${Array.from({ length: 6 }, (_, i) => `2026-10-0${i + 1}: 결정 반영 ${'가'.repeat(200)}`).join(' · ')} |\n\n## 본문\n\n${same}\n\n${'긴 본문 '.repeat(9000)}\n`);
 put('dup.md', `# 다른 문서\n\n${same}\n`);
 put('old2.md', `# 동결\n\n상태: 동결\n\n${'옛 본문 '.repeat(20000)}\n${same}\n`);
-const w = DR.health(dir, { maxKB: 60 });
+const all = DR.health(dir, { maxKB: 60 });
+assert.ok(all.some((x) => /^쉬운 글 \d+곳 \(.*긴 단락/.test(x)), all.join('\n'));
+const w = all.filter((x) => !/^쉬운 글/.test(x));
 assert.strictEqual(w.length, 3, w.join('\n'));
 assert.match(w[0], /큰 문서 1개 \(상한 60KB, vars\.docs\.maxKB\): big\.md \d+KB/);
 assert.match(w[1], /머리말에 변경 이력이 쌓인 문서 1개: big\.md \dKB · 날짜 6/);

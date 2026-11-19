@@ -1,6 +1,9 @@
-# 외부 API 동작 장부. 형식: kedovi 킷 문서 「운영 검증 장치」 (킷 원본 packs/backend/assets/api-ledger/FORMAT.md)
-# 규칙: 코드는 status: measured 인 동작만 기대한다. unverified 는 시뮬레이터가 worst(최악)로 응답한다.
-# 새로 관찰하면 이 파일을 고친다 (checked 확인일 · evidence 근거). 검사: kedovi apiledger check
+# 외부 API 동작 장부
+# 형식: kedovi 킷 문서 「운영 검증 장치」
+# 규칙: 코드는 status: measured 인 동작만 기대한다.
+# unverified 는 시뮬레이터가 worst(최악)로 응답한다.
+# 새로 관찰하면 이 파일을 고친다 (checked 확인일 · evidence 근거).
+# 검사: kedovi apiledger check
 version: 1
 staleDays: 30            # 확인일이 이보다 오래되면 재확인 목록에 (기본 30)
 apis:

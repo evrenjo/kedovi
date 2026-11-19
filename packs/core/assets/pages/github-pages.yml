@@ -1,7 +1,10 @@
-# kedovi docs pages: 문서 사이트(docs-site/)를 GitHub Pages 로 올린다. docs-site/ 는 kedovi docs build 로 만들어 커밋한 것을 그대로 쓴다.
+# kedovi docs pages: 문서 사이트(docs-site/)를 GitHub Pages 로 올린다.
+# docs-site/ 는 kedovi docs build 로 만들어 커밋한 것을 그대로 쓴다.
 # 켜고 끄기: kedovi docs pages on | off (끄면 docs-site/ 를 커밋하지 않아 이 작업이 돌지 않는다).
-# 액션은 커밋 SHA 로 고정한다 (태그 바꿔치기 대비, 뒤 주석이 그 버전). 킷을 올리고 kedovi docs pages on 을 다시 하면 새 SHA 로 바뀐다.
-# 한 번만: Settings > Pages > Build and deployment > Source 를 「GitHub Actions」 로. 비공개 repo 는 유료 요금제여야 Pages 를 쓸 수 있다.
+# 액션은 커밋 SHA 로 고정한다 (태그 바꿔치기 대비, 뒤 주석이 그 버전).
+# 킷을 올리고 kedovi docs pages on 을 다시 하면 새 SHA 로 바뀐다.
+# 한 번만: Settings > Pages > Build and deployment > Source 를 「GitHub Actions」 로.
+# 비공개 repo 는 유료 요금제여야 Pages 를 쓸 수 있다.
 name: pages
 on:
   push:

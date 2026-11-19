@@ -90,7 +90,7 @@
  *   kedovi usage [--json]   주간 사용량 속도: 사용률 · 지금 시점 기준 · 단계 · 줄어든 상한 (Pro · Max · Ultra 공통)
  *   kedovi team-mode enforce pace off|warn|block [--team]   주간 사용량 속도 조절 (Claude Code): 빠르면 상한을 줄이고 절약 단계에서 Opus 호출을 막는다 (기본 막기)
  *   kedovi team-mode enforce hold off|block [--team]   작업 리더 붙잡기 (Claude Code): 리더가 자기 팀원이 도는 채 끝내려 하면 한 번 되돌린다 (기본 막기)
- *   kedovi draft list · template <형식> · check --file F [--type 형식] [--repo R]   사람이 읽는 글의 틀과 올리기 전 검사: 형식 task(작업 항목) · bug(결함) · mr · done(완료 댓글) · weekly(주간보고) · report(보고 · 위키) · plan(기획 문서). 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것
+ *   kedovi draft list · template <형식> · check --file F [--type 형식] [--repo R] · config --file F   사람이 읽는 글의 틀과 올리기 전 검사, 환경 · 설정 파일 주석 검사: 형식 task(작업 항목) · bug(결함) · mr · done(완료 댓글) · weekly(주간보고) · report(보고 · 위키) · plan(기획 문서). 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것
  *   kedovi timestamp [on|off|team] [--team]   답변 첫 줄에 요청 받은 시각(yyyy-MM-dd HH:mm:ss) 표시 (Claude Code, 기본 켜짐). 이 PC 값이 팀 값보다 먼저, team = 이 PC 값 지우기. 인자 없이 = 지금 값
  *   kedovi type [유형] [--approach a] [--code 이름,…]   유형 바꾸기: 분석·설계 → 구축 · 고도화 등. 유형 팩 · 현행 repo 중 고칠 것(개발 repo 로) · 진행 방식 · 로드맵 새 뼈대 (팀장)
  *   kedovi approach [sprint|full|issue]   진행 방식: MVP · 스프린트(최소 기능부터, 스프린트마다 데모하며 하나씩) · 워터폴 · 전체(전체 설계 뒤 구축) · 이슈형(운영 · 유지보수, 이슈 보드). 바꾸면 로드맵도 맞춘다 (팀장)

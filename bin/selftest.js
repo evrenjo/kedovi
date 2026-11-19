@@ -1860,7 +1860,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const off = cli('team-mode', 'enforce', 'draft', 'off', '--team').status === 0 && /꺼짐/.test(cli('draft', 'check', '--file', f).stdout);
     cli('team-mode', 'enforce', 'draft', 'block', '--team');
     const check = blocked.status === 1 && /필수 절 없음: 확인/.test(blocked.stdout) && /값이 빈 항목/.test(blocked.stdout) && warn && off && /## 핵심 요약/.test(cli('draft', 'template', 'report').stdout);
-    const wired = /draft-guard/.test(claudeHooks) && /draft-guard/.test(codexHooks);
+    const wired = /draft-guard/.test(claudeHooks) && /draft-guard/.test(codexHooks) && /config-comment/.test(claudeHooks) && /config-comment/.test(codexHooks);
     record('글 형식 (kedovi prefs writing · kedovi draft · enforce draft · 훅 연결)', def && except && prose && back && check && wired,
       `기본 개조식 · 룰 ${def} · 예외 대상 ${except} · 서술식 ${prose} · 팀 값으로 ${back} · 검사 막기 · 알림 · 끄기 · 틀 ${check} · 훅 연결(Claude · Codex) ${wired}`);
   }

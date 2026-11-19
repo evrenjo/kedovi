@@ -12,6 +12,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const FR = require('./freshness');
 const CT = require('./codeterms');
+const PS = require('./prosestyle');
 
 const SKIP_DIRS = new Set(['docs-site', 'html', 'originals', 'node_modules', '.git', '.github', '.gitlab']);
 const SKIP_ROOT = new Set(['AGENTS.md', 'CLAUDE.md', 'AGENTS.override.md', 'CLAUDE.local.md']);
@@ -348,6 +349,13 @@ function health(dir, opts = {}) {
   if (flat.length) warn.push(`그림 없는 큰 문서 ${flat.length}개 (${figureKB}KB 넘고 mermaid 0, 「→」 「①」 많음): ${topList(flat, 5, (x) => x)}. 흐름 · 구성 · 상태 전이는 mermaid 로`);
   const heads = docs.flatMap((d) => sentenceHeads(d.text).map((h) => ({ rel: d.rel, ...h })));
   if (heads.length) warn.push(`문장형 제목 ${heads.length}곳 (끝이 ~다 · ~요 · ~까 · ~나 · ~가 · ~기 · ?): ${topList(heads, 5, (x) => `${x.rel}:${x.line} 「${cut(x.text, 30)}」`)}. 제목 · 헤더는 명사 · 명사구로 (예: 「설치하기」 → 「설치」)`);
+  const style = docs.flatMap((d) => PS.scan(d.text, opts.style || PS.DEFAULTS).map((h) => ({ rel: d.rel, ...h })));
+  if (style.length) {
+    const label = (k) => k.split(/ \d| 「| \(/)[0];
+    const kinds = new Map();
+    for (const h of style) kinds.set(label(h.kind), (kinds.get(label(h.kind)) || 0) + 1);
+    warn.push(`쉬운 글 ${style.length}곳 (${[...kinds].map(([k, n]) => `${k} ${n}`).join(' · ')}): ${topList(perDoc(style), 5, ([r, n]) => `${r} ${n}곳`)}. 한 문장에 한 가지, 나열은 표나 글머리로 나눈다`);
+  }
   const code = docs.map((d) => ({ rel: d.rel, ...codeMarks(d.text, codeMax, opts.codeAllow) }));
   const cb = code.filter((x) => x.blocks.length);
   if (cb.length) warn.push(`긴 코드 블록 ${cb.reduce((a, x) => a + x.blocks.length, 0)}곳 (${codeMax}줄 넘음, vars.docs.codeMax. mermaid · tree · screen 제외): ${topList(cb, 5, (x) => `${x.rel}:${x.blocks[0].line} ${x.blocks[0].lines}줄${x.blocks.length > 1 ? ` 외 ${x.blocks.length - 1}곳` : ''}`)}. 사람이 읽는 문서에는 코드를 붙이지 않고 표 · mermaid 그림과 짧은 설명으로 (코드는 repo 가 정본)`);

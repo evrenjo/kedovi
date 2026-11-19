@@ -159,3 +159,42 @@ try {
 }
 
 console.log('draft.test.js OK');
+
+// 쉬운 글: 알림만, 기준값, 코드 · 표 제외
+{
+  const P = require('./prosestyle');
+  const k = (t, c) => P.scan(t, c || P.DEFAULTS).map((h) => h.kind).join(' / ');
+  assert.match(k(`- ${'가'.repeat(101)}`), /긴 문장 101자/);
+  assert.match(k('- 가 · 나 · 다 · 라 · 마'), /가운데점 나열 5개/);
+  assert.strictEqual(k('- 가 · 나 · 다 · 라'), '');
+  assert.match(k(`설명 (${'가'.repeat(41)})`), /긴 괄호 41자/);
+  assert.match(k('개발에 있어서 중요한 것에 있어서 품질'), /번역 투/);
+  assert.strictEqual(k('집에 있어서 못 갔다'), '', '일반 문장');
+  assert.match(k('담당자 확인 요망'), /줄인 말투/);
+  assert.match(k('감사합니다.'), /인사말/);
+  assert.match(k('가'.repeat(401)), /긴 단락 401자/);
+  assert.strictEqual(k(`| ${'가'.repeat(200)} |\n\n\`\`\`\n${'가'.repeat(200)}\n\`\`\`\n\n\`${'가'.repeat(200)}\``), '', '표 · 코드 제외');
+  assert.strictEqual(k(`---\ntitle: ${'가'.repeat(200)}\n---\n본문`), '', '머리말 제외');
+  assert.deepStrictEqual(P.settings({ vars: { writing: { sentenceMax: '60', dotMax: 'x' } } }), { ...P.DEFAULTS, sentenceMax: 60 });
+  const h = D.check('감사합니다.', { style: P.DEFAULTS });
+  assert.ok(h.length === 1 && h[0].soft, '막지 않는다');
+  assert.deepStrictEqual(D.check('감사합니다.', {}), [], '설정이 없으면 보지 않는다');
+  assert.deepStrictEqual(D.check('감사합니다.\n\n감사합니다.', { style: P.DEFAULTS, added: new Set([3]) }).map((x) => x.line), [3]);
+}
+
+// 환경 · 설정 파일 주석: 값을 찍지 않는다
+{
+  const C = require('./confcomments');
+  const k = (f, t) => C.scan(f, t).map((h) => `${h.line}:${h.kind}`);
+  assert.deepStrictEqual([C.kindOf('.env'), C.kindOf('a/.env.example'), C.kindOf('x.properties'), C.kindOf('a.yml'), C.kindOf('a.js')], ['env', 'env', 'properties', 'structured', null]);
+  assert.match(k('.env', 'A=secret-value # 설명').join(), /1:값 뒤 주석/);
+  assert.ok(!/secret-value/.test(JSON.stringify(C.scan('.env', 'A=secret-value # 설명'))));
+  assert.deepStrictEqual(k('.env', 'A="x # y"'), [], '따옴표 안');
+  assert.match(k('a.properties', 'a=1 # 설명').join(), /값의 일부/);
+  assert.deepStrictEqual(k('a.yml', 'a: 1 # 설명'), [], 'YAML 은 값 뒤 주석이 표준');
+  assert.match(k('.env.example', 'A=1').join(), /설명 없는 키/);
+  assert.deepStrictEqual(k('.env.example', '# 묶음 설명\nA=1\nB=2'), [], '묶음 주석');
+  assert.match(k('.env', '# 첫 문장. 둘째 문장.').join(), /여러 문장/);
+  assert.match(k('.env', '# 요청에 따라 바꾼 값').join(), /작업 경위/);
+  assert.deepStrictEqual(k('.env', `#A=1\n# 예: ${'가'.repeat(200)}\n# ======`), [], '꺼 둔 키 · 예시 · 구분선');
+}

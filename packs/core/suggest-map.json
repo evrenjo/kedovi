@@ -193,7 +193,7 @@
       "topic": "이슈\\s*(?:등록|올려|써)|(?:MR|PR)\\s*(?:본문|설명)|완료\\s*댓글|조치\\s*보고|주간\\s*보고|작업\\s*항목|위키",
       "say": "사람이 읽는 글 틀 · 올리기 전 검사",
       "why": "작업 항목 · 결함 · MR · 완료 댓글 · 주간보고 · 보고 틀을 꺼내 쓰고, 빈칸 · 빠진 절 · 긴 글머리 · 이 PC 링크를 올리기 전에 잡는다",
-      "cmd": "kedovi draft template <형식> · kedovi draft check --file <파일> --type <형식>",
+      "cmd": "kedovi draft template <형식> · kedovi draft check --file <파일> --type <형식> · kedovi draft config --file <설정 파일>",
       "scope": "이 PC"
     },
     {

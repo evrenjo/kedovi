@@ -3,11 +3,14 @@
 # 붙이는 법: .gitlab-ci.yml 에
 #   include:
 #     - local: __OPS_DIR__/lifecycle.gitlab-ci.yml
-# stage 는 프로젝트의 stages 에 맞춰 바꾼다. release 브랜치에서만 돌아 개발 루프(develop 커밋) 대기는 0 이다.
+# stage 는 프로젝트의 stages 에 맞춰 바꾼다.
+# release 브랜치에서만 돌아 개발 루프(develop 커밋) 대기는 0 이다.
 #
 # 러너: docker 실행기 + docker:dind 서비스(privileged), 또는 Docker 가 있는 shell 러너.
-# SIGKILL · 좀비 검사는 도우미 컨테이너를 --pid=host 로 띄운다. 막혀 있으면 SIGKILL 은 docker kill + start 로 대신하고 경고한다.
-# 시험할 이미지: compose 파일이 release 이미지를 가리키게 한다 (예: 이미지 태그를 CI 변수로 받는 override 파일을 COMPOSE 에 더함).
+# SIGKILL · 좀비 검사는 도우미 컨테이너를 --pid=host 로 띄운다.
+# 막혀 있으면 SIGKILL 은 docker kill + start 로 대신하고 경고한다.
+# 시험할 이미지: compose 파일이 release 이미지를 가리키게 한다.
+# 방법: 이미지 태그를 CI 변수로 받는 override 파일을 COMPOSE 에 더한다.
 
 ops-lifecycle:
   stage: test

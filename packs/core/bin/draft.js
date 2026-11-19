@@ -8,6 +8,7 @@
  *                                          빈칸 자리표시자 · 필수 절 · 긴 글머리(개조식) · 이 PC 에만 있는 것(보고 링크 · .agents · 임시 폴더 · 로컬 브랜치 · push 안 한 커밋)
  *                                          · 소스 코드 표현(파일:줄 · 소스 파일명 · 함수 호출은 막고, 클래스 · 변수 이름 모양은 알림만)
  *                                          issue = 작업 항목 · 결함 중 맞는 쪽, comment · wiki = 필수 절 없이. repo 에 GitLab · GitHub 틀이 있으면 그 절이 먼저
+ *   config --file F [--file G …]         환경 · 설정 파일 주석: 긴 줄 · 한 줄 여러 문장 · 가운데점 나열 · 작업 경위 · 값 뒤 주석 · 설명 없는 키(.env.example). 알림만, 값은 찍지 않는다
  *   staged <repo 폴더>                     커밋 훅용: 올리려는 md 의 더한 줄만 본다. 새 문서는 같은 폴더 _template.md 의 절까지. 코드 표현은 위키 repo 만 막고 기획 repo 는 알린다
  * 수준 agents.enforce.draftCheck: block(기본) = 걸리면 exit 1 · warn = 알리고 통과 · off = 보지 않음 (kedovi team-mode enforce draft)
  */
@@ -99,7 +100,7 @@ function cmdStaged() {
         sections = fs.readFileSync(tpl, 'utf8').split('\n').map((l) => /^#{2,3}\s+(.+)$/.exec(l.trim())).filter((m) => m && !/[<>]/.test(m[1])).map((m) => [m[1].trim()]);
       } catch { sections = null; }
     }
-    const hits = D.check(text, { sections: sections || null, bullets, bulletMax: v.bulletMax, localPatterns: v.localPatterns, codeAllow: v.codeAllow, codeSoft: !wiki, added: added || undefined });
+    const hits = D.check(text, { sections: sections || null, bullets, bulletMax: v.bulletMax, localPatterns: v.localPatterns, codeAllow: v.codeAllow, codeSoft: !wiki, style: v.style, added: added || undefined });
     all = all.concat(hits.map((h) => ({ ...h, file: f })));
   }
   if (!all.length) return 0;
@@ -107,6 +108,22 @@ function cmdStaged() {
   for (const h of all) console.error(`${level === 'block' && !h.soft ? '✖' : '⚠'} ${h.file} ${D.format([h])[0]}`);
   console.error(`${stop ? '✖' : '⚠'} 글 형식 ${all.length}건${stop ? ': 커밋을 막았습니다' : ''}. 고친 뒤 다시 커밋 (규칙: core--12-writing-format · 끄기 · 알림만: 팀장이 kedovi team-mode enforce draft off|warn --team)`);
   return stop ? 1 : 0;
+}
+
+/** 환경 · 설정 파일 주석 검사 (알림만, 항상 exit 0) */
+function cmdConfig() {
+  const files = argv.flatMap((a, i) => (argv[i - 1] === '--file' ? [a] : []));
+  if (!files.length) die('--file 이 필요합니다');
+  const C = require('../lib/confcomments');
+  const cfg = require('../lib/prosestyle').settings(readJson(path.join(ROOT, 'workspace.json')));
+  let n = 0;
+  for (const f of files) {
+    if (!fs.existsSync(f)) die(`${f} 가 없습니다`);
+    if (!C.kindOf(f)) { console.log(`- ${f}: 설정 파일 형식이 아니라 건너뜀`); continue; }
+    for (const h of C.scan(f, fs.readFileSync(f, 'utf8'), cfg)) { n++; console.log(`⚠ ${f} ${h.line}줄: ${h.kind}`); }
+  }
+  console.log(n ? `⚠ 설정 파일 주석 ${n}건 (규칙: core--12-writing-format)` : '✔ 설정 파일 주석 검사 통과');
+  return 0;
 }
 
 function main() {
@@ -123,8 +140,9 @@ function main() {
     return 0;
   }
   if (cmd === 'check') return cmdCheck();
+  if (cmd === 'config') return cmdConfig();
   if (cmd === 'staged') return cmdStaged();
-  console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(3, 13).map((l) => l.replace(/^ \* ?/, '')).join('\n'));
+  console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(3, 14).map((l) => l.replace(/^ \* ?/, '')).join('\n'));
   return cmd ? 2 : 0;
 }
 

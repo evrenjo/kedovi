@@ -1,7 +1,10 @@
-# 운영 수명 경보 규칙 (Prometheus). 지표는 container-metrics.sh 가 node_exporter textfile 로 낸다 (접두사 __PREFIX__).
+# 운영 수명 경보 규칙 (Prometheus).
+# 지표는 container-metrics.sh 가 node_exporter textfile 로 낸다 (접두사 __PREFIX__).
 #
-# 붙이는 법: prometheus.yml 의 rule_files 에 이 파일을 더한다. 검사: promtool check rules <이 파일>
-# 기준값(증가 속도 · 비율 · 시간)은 서비스 실측으로 고친다. 아래 값은 출발점이다.
+# 붙이는 법: prometheus.yml 의 rule_files 에 이 파일을 더한다.
+# 검사: promtool check rules <이 파일>
+# 기준값(증가 속도 · 비율 · 시간)은 서비스 실측으로 고친다.
+# 아래 값은 출발점이다.
 #
 # 메모리 판정
 #   anon(앱이 쥔 메모리)이 꾸준히 늘면 누수 의심 → 경보.

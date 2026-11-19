@@ -604,7 +604,7 @@ function healthLines(t, ws, res) {
   const docs = res && res.files ? Object.entries(res.files).filter(([k, c]) => /\.md$/i.test(k) && typeof c === 'string' && wanted(k)).map(([rel, text]) => ({ rel, text, sheet: false })) : undefined;
   // 규모 문서 점검은 기획 repo 만 (워크스페이스 밖 폴더면 기획 repo 뼈대의 결정 폴더로 알아본다)
   const scale = t.kind ? t.kind === 'docs' : fs.existsSync(path.join(t.dir, '90-decisions'));
-  try { return DR.health(t.dir, { maxKB: v.maxKB, cellMax: v.cellMax, cellAvg: v.cellAvg, figureKB: v.figureKB, codeMax: v.codeMax, codeAllow: require('../lib/codeterms').allowOf(ws), factDays: require('../lib/freshness').daysOf(ws), docs, scale }).map((w) => `⚠ 문서 점검: ${w}`); } catch { return []; }
+  try { return DR.health(t.dir, { maxKB: v.maxKB, cellMax: v.cellMax, cellAvg: v.cellAvg, figureKB: v.figureKB, codeMax: v.codeMax, codeAllow: require('../lib/codeterms').allowOf(ws), style: require('../lib/prosestyle').settings(ws), factDays: require('../lib/freshness').daysOf(ws), docs, scale }).map((w) => `⚠ 문서 점검: ${w}`); } catch { return []; }
 }
 
 /** show: ID 의 정의 부분만 */

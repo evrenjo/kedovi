@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const CT = require('./codeterms');
+const P = require('./prosestyle');
 
 // 형식: label, sections = 필수 절(별칭 목록. 제목 · 굵은 머리 · 「이름:」 줄 어느 것이든), oneOf = 그중 하나의 묶음만 맞으면 됨, template
 const FORMATS = {
@@ -104,14 +105,14 @@ const LOCAL_RULES = [
   ['에이전트 ID', /\bagent-[0-9a-f]{8,}\b/],
 ];
 
-/** 이 워크스페이스 설정: { bulletMax, localPatterns: [[이름, RegExp]], codeAllow: [RegExp] } */
+/** 이 워크스페이스 설정: { bulletMax, localPatterns: [[이름, RegExp]], codeAllow: [RegExp], style(쉬운 글 기준) } */
 function varsOf(ws) {
   const w = ((ws || {}).vars || {}).writing || {};
   const n = Number(w.bulletMax);
   const local = (Array.isArray(w.localIds) ? w.localIds : String(w.localIds || '').split(',')).map((s) => String(s).trim()).filter(Boolean);
   const pats = [];
   for (const s of local) { try { pats.push(['로컬 ID', new RegExp(s)]); } catch { /* 잘못된 정규식은 넘긴다 */ } }
-  return { bulletMax: Number.isFinite(n) && n >= 40 ? n : DEFAULT_BULLET_MAX, localPatterns: pats, codeAllow: CT.allowOf(ws) };
+  return { bulletMax: Number.isFinite(n) && n >= 40 ? n : DEFAULT_BULLET_MAX, localPatterns: pats, codeAllow: CT.allowOf(ws), style: P.settings(ws) };
 }
 
 /** 글 형식 설정 (chat.writing · chat.writingExcept): 이 PC → 팀 → 기본(개조식 · 예외 없음) */
@@ -190,24 +191,7 @@ function projectSections(repoDir, target, text) {
   return best ? { from: best.from, sections: best.sections } : null;
 }
 
-/** 본문 → 검사할 줄 [{ n, text }] (코드 블록 · HTML 주석 · 인라인 코드 빼고) */
-function lines(text) {
-  const out = [];
-  let fence = null;
-  let comment = false;
-  String(text).split('\n').forEach((raw, i) => {
-    let l = raw;
-    const f = /^\s*(```+|~~~+)/.exec(l);
-    if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length) fence = null; return; }
-    if (f) { fence = f[1]; return; }
-    if (comment) { const e = l.indexOf('-->'); if (e < 0) return; l = l.slice(e + 3); comment = false; }
-    l = l.replace(/<!--[\s\S]*?-->/g, '');
-    const s = l.indexOf('<!--');
-    if (s >= 0) { l = l.slice(0, s); comment = true; }
-    out.push({ n: i + 1, raw, text: l.replace(/`[^`\n]*`/g, '``') });
-  });
-  return out;
-}
+const { lines } = P;
 
 const BULLET = /^(\s*)(?:[-*+]|\d+[.)])\s+/;
 // 값이 빈 항목: 「- 원인:」 · 「**결과**:」 · 「- **조치**」
@@ -216,7 +200,7 @@ const plain = (s) => s.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/https?
 
 /**
  * 검사. 반환 [{ line, kind, soft? }] (line 0 = 문서 전체, soft = 알리기만 하고 막지 않는다)
- * opts: type(FORMATS 키) · sections(필수 절, 없으면 형식의 것) · bullets(개조식 검사) · bulletMax · localPatterns · codeAllow(괜찮은 코드 표현 RegExp) · codeSoft(코드 표현을 모두 알림만) · repoDir(push 안 한 커밋 확인) · added(Set: 이 줄 번호만 본다, 커밋 훅)
+ * opts: type(FORMATS 키) · sections(필수 절, 없으면 형식의 것) · bullets(개조식 검사) · bulletMax · localPatterns · codeAllow(괜찮은 코드 표현 RegExp) · codeSoft(코드 표현을 모두 알림만) · style(쉬운 글 기준, 주면 알림으로 본다) · repoDir(push 안 한 커밋 확인) · added(Set: 이 줄 번호만 본다, 커밋 훅)
  */
 function check(text, opts = {}) {
   const hits = [];
@@ -259,6 +243,9 @@ function check(text, opts = {}) {
   for (const c of CT.scan(text, { allow: opts.codeAllow })) {
     if (seen(c.line)) hits.push({ line: c.line, kind: `코드 표현 ${c.label} 「${c.text}」`, soft: c.soft || !!opts.codeSoft });
   }
+
+  // 쉬운 글: 긴 문장 · 가운데점 나열 · 긴 괄호 · 번역 투 · 인사말 · 긴 단락 (알림만)
+  if (opts.style) for (const h of P.scan(text, opts.style, only)) hits.push({ ...h, soft: true });
 
   // 빈 절: 제목 뒤에 내용 없이 같은 · 더 높은 제목이나 끝 (문서 전체를 볼 때만)
   if (!only) {
@@ -320,7 +307,7 @@ function checkFor(root, text, { type, repoDir, ws, local } = {}) {
   const v = varsOf(w);
   const hits = check(text, {
     type: k, sections: proj ? proj.sections : undefined, bullets: bulletsFor(prefsOf(w, l), target),
-    bulletMax: v.bulletMax, localPatterns: v.localPatterns, codeAllow: v.codeAllow, repoDir,
+    bulletMax: v.bulletMax, localPatterns: v.localPatterns, codeAllow: v.codeAllow, style: v.style, repoDir,
   });
   return { hits, type: k, level: levelOf(root), from: proj ? proj.from : null };
 }

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="kedovi docs">
+<title>글쓰기 기준 · kedovi 문서</title>
+<script>try { var t = localStorage.getItem('kedovi-docs-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="stylesheet" href="../assets/site.css?v=428a6722">
+<link rel="icon" href="data:,">
+</head>
+<body data-root="../">
+<div id="ds-app">
+<header>
+  <div class="left"><button class="menu-btn" id="menu" type="button" aria-label="메뉴" aria-expanded="false" aria-controls="side-nav">☰</button><a class="brand" href="../index.html"><span class="logo">ai</span>kedovi 문서</a></div>
+  <div class="search"><input id="q" placeholder="검색 (제목 · 본문 · ID)" autocomplete="off"><kbd>⌘K</kbd><div class="results" id="results"></div></div>
+  <div class="tools"><span>v0.103.0</span><button id="ink" type="button" title="펜 필기 (끝내기: Esc)" aria-label="펜 필기" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 21h8"/><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg></button><button id="print" type="button" title="인쇄 (이 문서 · 전체 문서)" aria-label="인쇄" aria-haspopup="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg></button><button id="theme" type="button" title="테마" aria-label="테마"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg></button></div>
+</header>
+<div class="layout">
+  <nav class="side" id="side-nav" data-page="docs/writing.html"><noscript><a class="nav-link" href="../index.html">문서 목록</a></noscript></nav><div class="nav-backdrop" id="nav-backdrop"></div>
+  <main id="main"><article class="page">
+<div class="page-head"><div><div class="crumb">쓰는 법</div><h1>글쓰기 기준</h1></div><a class="src" href="https://github.com/evrenjo/kedovi/blob/main/docs/writing.md" title="원본 md">원본 writing.md</a></div>
+<div class="ds-body">
+
+<p>채팅 답변, 사람이 읽는 문서, 환경 설정 주석에 같은 기준을 적용합니다. 에이전트는 이 기준으로 쓰고, 검사 도구는 어긋난 곳을 알립니다.</p>
+<h2 id="4대-원칙">4대 원칙<a class="anchor" href="#4대-원칙" aria-label="이 절 주소">#</a></h2>
+<div class="table"><table><thead><tr><th>원칙</th><th>기준</th><th>검사</th></tr></thead><tbody><tr><td>두괄식</td><td>첫 줄에 결론이나 요청. 절차 문장만 조건을 먼저 씀</td><td>규칙으로 지킴</td></tr><tr><td>개조식</td><td>글머리 한 줄에 사실 하나. 끝은 명사형</td><td>긴 글머리, 한 글머리 여러 문장</td></tr><tr><td>간결성</td><td>한 문장에 정보 하나</td><td>긴 문장, 가운데점 나열, 긴 괄호</td></tr><tr><td>가독성</td><td>제목, 빈 줄, 표로 구조를 보여 줌</td><td>긴 단락</td></tr></tbody></table></div>
+<h2 id="지나친-압축-방지">지나친 압축 방지<a class="anchor" href="#지나친-압축-방지" aria-label="이 절 주소">#</a></h2>
+<ul><li>행위 주체가 모호하면 주어를 씀</li><li>명사를 셋 이상 잇지 않고 조사나 서술어를 넣음</li><li>「요망」 같은 줄인 말투 대신 할 일을 씀</li><li>번역 투 표현을 피함</li></ul>
+<h2 id="환경-설정-주석">환경 설정 주석<a class="anchor" href="#환경-설정-주석" aria-label="이 절 주소">#</a></h2>
+<div class="table"><table><thead><tr><th>항목</th><th>기준</th></tr></thead><tbody><tr><td>위치</td><td>키 바로 윗줄</td></tr><tr><td>첫 줄</td><td>이 값의 뜻</td></tr><tr><td>다음 줄</td><td>허용값, 기본값, 단위, 바꿀 때 영향</td></tr><tr><td>분량</td><td>한 줄에 한 문장</td></tr><tr><td>금지</td><td>비밀값, 작업 경위, 값 뒤 주석</td></tr></tbody></table></div>
+<div class="code"><button class="copy" type="button">복사</button><pre><code class="lang-bash">kedovi draft config --file .env.example</code></pre></div>
+<p>코드 주석은 다른 기준을 씁니다. 코드에서 알 수 없는 이유와 제약만 적습니다.</p>
+<h2 id="검사-기준값">검사 기준값<a class="anchor" href="#검사-기준값" aria-label="이 절 주소">#</a></h2>
+<div class="table"><table><thead><tr><th>설정</th><th>기본값</th><th>뜻</th></tr></thead><tbody><tr><td><code>vars.writing.sentenceMax</code></td><td>100</td><td>한 문장 글자 수</td></tr><tr><td><code>vars.writing.dotMax</code></td><td>3</td><td>한 문장의 가운데점 수</td></tr><tr><td><code>vars.writing.parenMax</code></td><td>40</td><td>괄호 안 글자 수</td></tr><tr><td><code>vars.writing.paragraphMax</code></td><td>400</td><td>한 단락 글자 수</td></tr></tbody></table></div>
+<p>이 항목은 알리기만 하고 막지 않습니다. 한국어 글자 수 기준은 공식 수치가 없어 킷이 정한 시작값입니다. 팀에 맞게 조정합니다.</p>
+<blockquote><p class="q-src">출처: <a href="https://korean.go.kr/common/download.do?c_file_name=901b4032-ae19-4457-87b7-e0f61c04378e.pdf&amp;file_path=etcData&amp;o_file_name=guide.pdf">쉬운 공공언어 쓰기 길잡이</a>: 짧은 문장, 번역 투, 명사 나열</p>
+<p class="q-src">출처: <a href="https://digital.gov/guides/plain-language/writing/clear-short">digital.gov 쉬운 글 안내</a>: 한 문장 한 생각, 단락 길이</p>
+<p class="q-src">출처: <a href="https://www.nngroup.com/articles/how-users-read-on-the-web/">NN/g 웹 글 읽기 연구</a>: 결론 먼저, 훑기 쉬운 구조</p>
+<p class="q-src">출처: <a href="https://developers.google.com/style/highlights">Google 개발자 문서 스타일</a>: 조건을 지시보다 먼저</p>
+<p class="q-src">출처: <a href="https://google.github.io/styleguide/cppguide.html">Google 코드 스타일</a>: 주석은 이유를 설명</p></blockquote>
+</div>
+</article>
+  <div class="pager"><a class="prev" href="docs-site.html"><small>이전 · 쓰는 법</small>문서 사이트 · 화면설계서 · 데이터 설계</a><a class="next" href="write-report.html"><small>다음 · 쓰는 법</small>쓰기 보고서</a></div></main>
+  <aside class="toc"><div class="toc-title">이 페이지</div><div id="toc"><a class="l2" href="#4대-원칙" data-id="4대-원칙">4대 원칙</a><a class="l2" href="#지나친-압축-방지" data-id="지나친-압축-방지">지나친 압축 방지</a><a class="l2" href="#환경-설정-주석" data-id="환경-설정-주석">환경 설정 주석</a><a class="l2" href="#검사-기준값" data-id="검사-기준값">검사 기준값</a></div></aside>
+</div>
+</div>
+<script type="application/json" id="ds-page">{"page":"docs/writing.html","kind":"doc","title":"글쓰기 기준","head":"글쓰기 기준 · kedovi 문서","crumb":"쓰는 법","status":"","h1":"글쓰기 기준","lead":"","src":{"href":"https://github.com/evrenjo/kedovi/blob/main/docs/writing.md","name":"writing.md"},"toc":[{"lvl":2,"sid":"4대-원칙","text":"4대 원칙"},{"lvl":2,"sid":"지나친-압축-방지","text":"지나친 압축 방지"},{"lvl":2,"sid":"환경-설정-주석","text":"환경 설정 주석"},{"lvl":2,"sid":"검사-기준값","text":"검사 기준값"}],"prev":{"p":"docs/docs-site.html","t":"문서 사이트 · 화면설계서 · 데이터 설계","g":"쓰는 법"},"next":{"p":"docs/write-report.html","t":"쓰기 보고서","g":"쓰는 법"},"site":{"title":"kedovi 문서","logo":"ai","version":"v0.103.0","ink":true}}</script>
+<script src="../assets/search.js?v=fc0d9fa5"></script>
+<script src="../assets/nav.js?v=4aa6ae91"></script>
+<script src="../assets/vendor.js?v=93f62565"></script>
+<script src="../assets/site.js?v=d425b1d1"></script>
+</body>
+</html>

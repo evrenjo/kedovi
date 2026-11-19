@@ -50,7 +50,7 @@ function resolve(root, ws, local) {
 }
 
 // 글 형식 (lib/draft.js 가 정본): 개조식(bullet, 기본) · 서술식(prose), 개조식에서 뺄 대상
-const WRITING = { bullet: { label: '개조식', hint: '두괄식 · 글머리 한 줄에 한 가지 · 비교는 표' }, prose: { label: '서술식', hint: '두괄식 · 짧은 문장 단락, 글머리는 목록일 때만' } };
+const WRITING = { bullet: { label: '개조식', hint: '두괄식 · 글머리 한 줄에 한 가지 · 짧은 문장 · 비교는 표' }, prose: { label: '서술식', hint: '두괄식 · 짧은 문장 단락, 글머리는 목록일 때만' } };
 function writingOf(ws, local) {
   try { return require('./draft').prefsOf(ws, local); } catch { return { writing: 'bullet', except: [], from: { writing: 'default', except: 'default' }, team: {}, local: {} }; }
 }
@@ -100,17 +100,17 @@ function writingLine(p) {
   const T = writingTargets();
   const ex = (p.writingExcept || []).map((k) => T[k] || k);
   const head = p.writing === 'prose'
-    ? '**글 형식: 서술식.** 사람이 읽는 글(문서 · 기획 · 위키 · 이슈 · MR · 댓글 · 보고 · 채팅)은 두괄식으로, 짧은 문장 단락에 글머리는 목록일 때만 쓴다. 비교는 표 · 인사말 없음 · 빈칸 없음은 그대로.'
-    : `**글 형식: 개조식.** 사람이 읽는 글(문서 · 기획 · 위키 · 이슈 · MR · 댓글 · 보고 · 채팅)은 두괄식 · 개조식 · 한 글머리 한 가지 · 핵심만 굵게 · 비교는 표 · 인사말 없음${ex.length ? ` (개조식 예외: ${ex.join(' · ')}. 그 글은 짧은 문장 단락)` : ''}.`;
-  return `${head} AI 규칙 문서(AGENTS · CLAUDE · 룰 · 스킬)는 대상이 아니다. 문서 · 이슈 · MR · 댓글 · 보고를 쓰기 전에 \`.agents/rules/core--12-writing-format.md\` 를 읽는다.`;
+    ? '**글 형식: 서술식.** 사람이 읽는 글(문서 · 기획 · 위키 · 이슈 · MR · 댓글 · 보고 · 채팅)은 두괄식으로, 한 문장에 정보 하나만 담은 단락으로 쓰고 글머리는 목록일 때만 쓴다. 가독성 · 비교는 표 · 인사말 없음 · 빈칸 없음은 그대로.'
+    : `**글 형식: 개조식.** 사람이 읽는 글(문서 · 기획 · 위키 · 이슈 · MR · 댓글 · 보고 · 채팅)은 두괄식 · 개조식 · 간결성(한 문장 한 정보, 가운데점 · 괄호로 늘이지 않음) · 가독성(제목 · 빈 줄 · 표) · 핵심만 굵게 · 인사말 없음${ex.length ? ` (개조식 예외: ${ex.join(' · ')}. 그 글은 짧은 문장 단락)` : ''}.`;
+  return `${head} AI 규칙 문서(AGENTS · CLAUDE · 룰 · 스킬)는 대상이 아니다. 문서 · 이슈 · MR · 댓글 · 보고 · 환경 설정 주석을 쓰기 전에 \`.agents/rules/core--12-writing-format.md\` 를 읽는다.`;
 }
 
 /** 요청마다 넣는 한 줄 (훅 chat-prefs.js). 긴 작업 중 다른 언어로 새는 것을 막는다 */
 function reminder(p) {
   const S = STYLES[p.style];
   const W = (WRITING[p.writing] || WRITING.bullet).label;
-  if (p.language === 'en') return `Reply in English only, progress notes included · style: ${p.style} · writing: ${p.writing === 'prose' ? 'prose' : 'bullets'} · diagram: mermaid_preview if available, else text`;
-  return `응답: 한국어만 (진행 알림 포함, 코드 · 명령 · 로그 · 현업 용어만 원문) · 스타일 ${S.label} · 글 ${W} · 그림: mermaid_preview 있으면 그것, 없으면 텍스트`;
+  if (p.language === 'en') return `Reply in English only, progress notes included · style: ${p.style} · writing: ${p.writing === 'prose' ? 'prose' : 'bullets'}, answer first, one idea per sentence · diagram: mermaid_preview if available, else text`;
+  return `응답: 한국어만 (진행 알림 포함, 코드 · 명령 · 로그 · 현업 용어만 원문) · 스타일 ${S.label} · 글 ${W}, 결론 먼저, 한 문장 한 정보 · 그림: mermaid_preview 있으면 그것, 없으면 텍스트`;
 }
 
 /** Claude Code 출력 스타일 파일 (.claude/output-styles/kedovi-<스타일>.md). 일반은 기본 스타일이라 만들지 않는다 */
