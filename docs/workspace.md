@@ -78,12 +78,15 @@ repo 가 많으면(MSA · 화면 repo 여럿) `repos/` 아래를 그룹으로 �
 
 | 할 일 | 명령 |
 |---|---|
+| 새 워크스페이스 | `kedovi init` 이 repo 3개 이상이면 「repo 폴더 묶기」 를 묻는다. 주소 경로에서 공통 앞부분을 뺀 첫 단계가 그룹이다 (예: `…/team/dcim/dcim-api` · `…/team/fms/fms-ui` → `dcim` · `fms`). 주소가 모두 같은 단계면 이름 앞부분 기준을 추천한다 |
+| 한 번에 묶기 | `kedovi repo group` 으로 추천 표를 보고 `--apply` 로 옮긴다 |
 | 그룹에 더하기 | `kedovi repo add <주소> --group server` (이미 그룹을 쓰면 화면에서 고른다) |
 | 있는 repo 옮기기 | `kedovi repo move order-api --group server`: 폴더를 옮기고 `workspace.json` 과 사람이 쓴 md 의 옛 경로를 고친 뒤 sync. `--no-group` 은 `repos/<이름>` 으로 되돌린다 |
 | 팀원 PC | `workspace.json` 을 받은 뒤 같은 `kedovi repo move` 를 하거나, 옛 폴더를 지우고 `kedovi install`. `kedovi doctor` 가 「그룹 폴더와 실제 위치가 다름」 으로 알린다 |
 
 - AGENTS.md 의 repo 표에 그룹 칸이 생기고 그룹 순서로 묶인다. 경로는 표의 위치를 쓴다.
 - 그룹 이름은 그룹 없는 repo 이름과 같으면 안 된다 (`repos/<이름>` 폴더가 겹친다).
+- 작업 폴더(worktree)는 `repos/` 가 아니라 `.worktrees/<repo>/<단위>` 에 둔다 (`kedovi worktree add`). repo 를 옮기면 그 작업 폴더 연결도 다시 잇는다.
 - 그룹을 안 쓰는 워크스페이스는 생성물이 그대로다.
 
 ### repo 자체 지침

@@ -135,7 +135,7 @@
         false,
         true
       ],
-      "desc": "머지가 확인된 로컬 브랜치 · worktree 를 에이전트가 머지 직후 정리할지. false(기본) = 지우지도 제안하지도 않는다. true = git status 와 merge-base 로 잃을 것이 없음을 보인 뒤 지운다 (원격 브랜치 삭제는 건마다 승인)"
+      "desc": "머지가 확인된 로컬 작업 브랜치를 에이전트가 머지 직후 정리할지. false(기본) = 지우지도 제안하지도 않는다. true = git status 와 merge-base 로 잃을 것이 없음을 보인 뒤 지운다 (원격 브랜치 삭제는 건마다 승인). 작업 폴더(worktree)는 이 값과 상관없이 kedovi worktree clean 이 끝난 것만 지운다 (true 면 그 브랜치도)"
     },
     "session.memoryWarnGB": {
       "default": "8",

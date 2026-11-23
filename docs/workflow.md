@@ -74,8 +74,11 @@ flowchart TD
     L2 --> H
     H{"주소만으로 GitHub·GitLab 을<br/>모르는 호스트가 있는가"}
     H -->|"있음"| H1["&lt;호스트&gt; 의 협업 도구<br/>GitLab · GitHub · 기타·없음"]
-    H -->|"없음"| OK
-    H1 --> OK{"이대로 만들까요?"}
+    H -->|"없음"| GQ
+    H1 --> GQ{"repo 3개 이상이고 주소 경로 · 이름 앞부분이<br/>두 repo 이상 겹치는가"}
+    GQ -->|"예"| GP["repo 폴더 묶기<br/>주소 경로 기준 · 이름 앞부분 기준 · 묶지 않음<br/>→ repos/&lt;그룹&gt;/&lt;이름&gt;"]
+    GQ -->|"아니오"| OK
+    GP --> OK{"이대로 만들까요?"}
     OK -->|"아니오"| X(["만들지 않고 끝"])
     OK -->|"예"| MK["워크스페이스 생성 · repo clone<br/>스택 자동 감지"]
     MK --> RF{"clone 하지 못한 repo 가 있는가"}
@@ -366,7 +369,8 @@ flowchart TD
     RI --> RG["그룹 폴더 (이미 그룹을 쓰는 워크스페이스만)<br/>기존 그룹 · 그룹 없음 · 새 그룹 → 새 그룹 이름<br/>→ repos/&lt;그룹&gt;/&lt;이름&gt;"]
     RG --> RH["이 repo 의 협업 도구<br/>(주소로 GitHub·GitLab 을 모를 때만)"]
     RH --> RX["clone · 링크 · 새로 만들기 → 스택 확인 → sync"]
-    Q -->|"repo 를 그룹 폴더로"| RMV["kedovi repo move &lt;이름&gt; --group &lt;그룹&gt; · --no-group (팀장)<br/>폴더 옮김 · workspace.json group · 문서의 옛 경로 → sync"]
+    Q -->|"repo 를 그룹 폴더로"| RMV["kedovi repo move &lt;이름&gt; --group &lt;그룹&gt; · --no-group (팀장)<br/>폴더 옮김 · worktree 다시 잇기 · workspace.json group · 문서의 옛 경로 → sync"]
+    Q -->|"repo 를 주소별 폴더로 한 번에"| RGP["kedovi repo group: 추천 표 (주소 경로, 없으면 이름 앞부분)<br/>--apply [--by remote · name] 로 모두 옮김 (팀장)"]
     Q -->|"새로 만든 repo 를 원격에 올림"| RP["git -C repos/&lt;이름&gt; remote add origin &lt;주소&gt; → push"]
     RP --> RF["sync 가 workspace.json 에 remote 기록 (local 삭제)<br/>→ workspace.json commit · push → 팀원 git pull · kedovi install"]
     Q -->|"명령 찾기"| HLP["kedovi --help: 자주 쓰는 명령 · 분류 목록<br/>분류를 고르세요 (터미널) → 그 분류의 명령과 설명<br/>kedovi help &lt;번호&gt; · kedovi help --all · kedovi &lt;명령&gt; --help"]
@@ -419,12 +423,12 @@ flowchart TD
 | `kedovi tips` | 화면 보기 안내: `/tui fullscreen` · `/focus` · `Ctrl+O` (start 가 처음 한 번) |
 | `kedovi suggest` | 기능 추천 기록: 대화 중 추천받은 기능 · 결정(씀 · 안 씀) 보기 · 다시 묻기 · 끄기 |
 | `kedovi agents watch` | 에이전트 진행 보기: 메인 → 작업 리더 → 팀원 나무로 상태 · 마지막 행동 (Claude Code, 이름 없는 서브에이전트도). `--once` · `--all` · `--json` · `--tmux` |
-| `kedovi worktree add <repo> <단위>` · `merge` · `remove` · `list` | 작업 리더 작업 폴더: 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 `.worktrees/<repo>/<단위>`, merge 는 본 작업 트리에 커밋하지 않은 변경으로 옮김 |
+| `kedovi worktree add <repo> <단위>` · `merge` · `remove` · `list` · `clean` | 작업 폴더: 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 `.worktrees/<repo>/<단위>`, merge 는 본 작업 트리에 커밋하지 않은 변경으로 옮김. clean 은 끝난 작업 폴더를 지우고 킷 밖에 만든 것을 `.worktrees/` 로 옮김 |
 | `kedovi debate list` · `watch [id]` · `status [id]` · `models` | 토론 모드: 목록 · 실시간 보기(모델별 주장 · 판정) · 지금 회차와 모델별 상태 · 쓸 수 있는 모델과 패널 예시 (시작은 채팅에서 "토론해줘") |
 | `kedovi docs serve [repo]` | `docs-site/` 를 이 PC 에서 웹 주소(`http://127.0.0.1:8000/`)로 보기. 전체 인쇄와 새로고침 없는 이동까지 된다 |
 | `kedovi docs pages [on\|off] [repo]` | 문서 사이트를 Pages 로 올리기 켜고 끄기 · 상태. on = 원격(GitLab · GitHub)에 맞는 CI 파일(`.gitlab-ci.yml` · `.github/workflows/pages.yml`)을 두고 `docs-site/` 를 커밋 대상으로(원격이 없으면 둘 다), off = `.gitignore` 에 `/docs-site/` (CI 는 두어도 돌지 않는다) |
 | `kedovi docs trace` | 기획 ID(`vars.docs.traceIds`)와 코드의 `@spec` 주석 대조: 코드에 표시 없는 ID(⚠) · 테스트에 없는 수용 기준(⚠) · 기획에 정의 없는 ID(✖). `--md` 추적표 · `--new` 새 진입 파일 중 ID 없는 것 |
-| `kedovi repo add … --group <그룹>` · `kedovi repo move <이름> --group <그룹>` | 그룹 폴더 `repos/<그룹>/<이름>`: 더할 때 그룹을 주거나(이미 그룹을 쓰면 화면에서 고름) 있는 repo 를 옮긴다(폴더 · `workspace.json` · 문서의 옛 경로, `--no-group` 은 빼기) (팀장) |
+| `kedovi repo add … --group <그룹>` · `kedovi repo move <이름> --group <그룹>` · `kedovi repo group [--apply]` | 그룹 폴더 `repos/<그룹>/<이름>`: 더할 때 그룹을 주거나(이미 그룹을 쓰면 화면에서 고름) 있는 repo 를 옮긴다(폴더 · `workspace.json` · 문서의 옛 경로, `--no-group` 은 빼기). `repo group` 은 주소 경로 기준 추천대로 한 번에 (팀장) |
 | `kedovi repo remove <이름>` | repo 빼기: `workspace.json` · 리뷰 대상에서 지우고 sync, 이름이 남은 문서를 알린다. 폴더는 `--delete` 일 때만 (커밋 안 한 변경 · push 안 한 커밋이 있으면 거부) (팀장) |
 | `kedovi tidy` | 정리 후보 찾기 (읽기만): 이번 작업 새 파일 · 안 쓰는 자료 · 링크 없는 문서 · 백업 이름. 지우기는 `tidy` 스킬 (표 → 승인 → 지움 → 검증) |
 | `kedovi import` | 기존 AI 작업 폴더 훑기 (읽기만): 종류별 분류 · 큰 폴더 · 문서 속 절대경로 · 비밀값 의심 줄. 옮기기는 `import` 스킬 (계획 → 승인 → 반영) |
@@ -500,7 +504,7 @@ flowchart TD
 | `workspace.json` | init · detect · models(팀) · team-mode(팀) · team add · rules · upgrade | git 공유 | 유형 · repo · 스택 · 팀 모델 프로필 · 팀 구성(`agents.mode` · `save` · `prefer`) · 훅 강제 수준 · 리뷰 확인 대상 · 대기 팀원 시간(`agents.enforce`) · 팀원의 높은 프로필 허용(`agents.allowHigherProfile`) · 팀 직접 지정 모델 · 팀 명단 · 팀장 · 설정 수정 권한(`team`) · 끈 규칙(`rules.off`) · 필요할 때만 읽는 규칙(`rules.onDemand`) |
 | `.agents/local.json` | install · agent · ai · models(내 PC) | 이 PC 만 | 시작 도구 · 인자 · AI 연결 방식(`agents.access`: 게이트웨이 주소·키 환경변수 이름·모델 목록, 키 값은 없음) · 내 프로필(팀과 같거나 낮은 것만) · 내가 직접 고른 모델 · 역할 상한(`agents.limits`, 팀 값 이내) |
 | `.claude/agents` · `.codex/agents` | sync | 이 PC 만 (사람마다 모델이 달라서) | 역할 에이전트 파일 |
-| `.worktrees/<repo>/<단위>/` | kedovi worktree add | 이 PC 만 (gitignore) | 작업 리더 작업 폴더 · 로컬 임시 브랜치 `kedovi/<단위>` (merge · remove 때 지운다) |
+| `.worktrees/<repo>/<단위>/` | kedovi worktree add · clean | 이 PC 만 (gitignore) | 작업 폴더 · 로컬 임시 브랜치 `kedovi/<단위>` (merge · remove · clean 때 지운다). 작업 폴더는 여기에만 만든다 (`git worktree add` 로 repo 옆에 만들면 훅이 막는다) |
 | `CLAUDE.local.md` · `AGENTS.override.md` · `.claude/settings.local.json` | sync | 이 PC 만 | 개인 지침 · 역할 위임 표 · 설정 잠금 지침과 편집 금지(팀원) |
 | `AGENTS.md` · `CLAUDE.md` · `.claude/settings.json` · `.codex/config.toml` | sync | git 공유 | 규칙 · 스킬 · 훅 · 팀 메인 모델 |
 | `handoffs/<id>/` | handoff · 인수(resume <id> · kedovi team --take) | git 공유 (워크스페이스 repo) | 본인 작업별 기록(미완 작업의 정본) · LATEST · 주간 기록 · TODO(사용자가 등록한 것). 각자 자기 폴더만 |

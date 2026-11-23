@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 팀원 git 안전장치 (Claude Code · Codex PreToolUse Bash): 팀원 · 서브에이전트 · 위임 세션은 워크스페이스 루트 repo 에 git 쓰기를 하지 않고, push 는 어디서도 하지 않는다 (리더만). 통합 브랜치 직접 운영(vars.gitlab.branchMode = trunk)이면 새 브랜치 · worktree 도 막는다 (리더는 경고).
+// 팀원 git 안전장치 (Claude Code · Codex PreToolUse Bash): 팀원 · 서브에이전트 · 위임 세션은 워크스페이스 루트 repo 에 git 쓰기를 하지 않고, push 는 어디서도 하지 않는다 (리더만). 통합 브랜치 직접 운영(vars.gitlab.branchMode = trunk)이면 새 브랜치 · worktree 도 막는다 (리더는 경고). git worktree add 를 .worktrees/ · .claude/worktrees/ 밖에 하는 것은 누구든 막는다 (kedovi worktree add 로).
 // 명령을 나눠 cd 를 따라가며 실제로 git 이 도는 위치를 본다. cd 대상이 없으면(실패하면 그 자리에서 다음 명령이 돈다) 위치가 바뀌지 않은 것으로, $변수 · `명령` 이면 위치를 모르는 것으로 본다.
 // bash x.sh · sh x.sh · ./x.sh 로 부르는 스크립트와 bash -c "…" 의 내용도 같은 방법으로 본다 (python · make 안의 git 은 못 본다).
 // cd 뒤에 && · || exit · set -e 없이 이어지는 git 쓰기도 막는다 (git -C <절대경로> 로). 리더 세션은 막지 않고 경고(additionalContext)만, push 는 리더 몫이라 조용. 막을 때만 deny JSON, 예외는 삼키고 항상 exit 0
@@ -116,6 +116,16 @@ function findGit(cmd, cwd, root, depth = 0) {
     if (!sub) continue;
     if (sub === 'init' || sub === 'clone') { if (where) inited.push(sub === 'init' ? abs(rest.find((x) => !x.startsWith('-')) || '.', where) : abs(rest.filter((x) => !x.startsWith('-'))[1] || path.basename(String(rest.filter((x) => !x.startsWith('-'))[0] || '')).replace(/\.git$/, ''), where)); continue; }
     if (sub === 'push') { out.push({ kind: 'push', sub, where }); continue; }
+    // 작업 폴더 위치: .worktrees/ · .claude/worktrees/ 밖(repos/ 안 등)에 만들지 않는다 (누구든)
+    if (sub === 'worktree' && rest[0] === 'add') {
+      let target = null;
+      for (let q = 1; q < rest.length; q++) { if (/^(-b|-B|--reason)$/.test(rest[q])) { q++; continue; } if (!rest[q].startsWith('-')) { target = rest[q]; break; } }
+      if (target && !DYNAMIC.test(target) && (where || path.isAbsolute(target))) {
+        const to = abs(target, where || '/');
+        const ok = [path.join(root, '.worktrees'), path.join(root, '.claude', 'worktrees')].some((d) => to === d || to.startsWith(d + path.sep) || (real(path.dirname(to)) + path.sep).startsWith(real(d) + path.sep));
+        if (!ok) out.push({ kind: 'wtpath', sub, where, target: path.relative(root, to) || to });
+      }
+    }
     // 새 브랜치 · worktree (통합 브랜치 직접 운영에서 막는다)
     if ((sub === 'worktree' && rest[0] === 'add') || (sub === 'switch' && rest.some((x) => /^-[cC]$|^--(create|force-create)/.test(x))) || (sub === 'checkout' && rest.some((x) => /^-[bB]$/.test(x))) || (sub === 'branch' && !READ_FORM.branch(rest) && !rest.some((x) => /^-[dDmMcC]$|^--(delete|move|copy|set-upstream-to|unset-upstream)/.test(x)))) out.push({ kind: 'newbranch', sub, where });
     if (!ROOT_WRITE.has(sub) || (READ_FORM[sub] && READ_FORM[sub](rest))) continue;
@@ -131,6 +141,7 @@ function message(hit, root) {
   const via = hit.via ? ` (스크립트 ${hit.via} 안)` : '';
   if (hit.kind === 'push') return `팀원은 git push 를 하지 않는다${via}. push 는 리더만 한다: 커밋까지 끝났으면 여기서 다시 시도하지 말고 올릴 repo · 브랜치 · 커밋을 리더에게 보고하고 일을 마친다.`;
   if (hit.kind === 'newbranch') return `이 워크스페이스는 통합 브랜치에서 직접 작업한다 (vars.gitlab.branchMode = trunk)${via}. git ${hit.sub} 로 브랜치 · worktree 를 만들지 않고 지금 브랜치(또는 메인이 준 작업 폴더)에서 고친다. 같은 repo 를 나눠 맡아야 하면 메인이 kedovi worktree add <repo> <단위> 로 만든다. 그 밖에 브랜치가 꼭 필요하면 멈추고 리더에게 알린다.`;
+  if (hit.kind === 'wtpath') return `작업 폴더(worktree)를 ${hit.target} 에 만들지 않는다${via}. repo 폴더 사이에 섞여 구분 · 정리가 어려워진다. \`kedovi worktree add <repo> <단위>\` 로 .worktrees/<repo>/<단위> 에 만든다 (있는 브랜치를 받으려면 --branch <브랜치>, 기준을 바꾸려면 --base <ref>). 끝나면 kedovi worktree merge 또는 kedovi worktree clean.`;
   if (hit.kind === 'unsafe-cd') return `cd 뒤 git ${hit.sub} 이(가) && 연결 · set -e 없이 이어진다${via}. cd 가 실패하면 워크스페이스 루트 repo 에서 돈다. \`git -C <절대경로> ${hit.sub} …\` 로 위치를 명시해 다시 실행한다 (또는 \`cd <경로> && git …\`).`;
   if (hit.kind === 'unknown') return `git ${hit.sub} 이(가) 어느 repo 에서 도는지 알 수 없다${via} (cd · -C 대상이 변수이거나 위치가 바뀐 뒤). cd 가 실패하면 워크스페이스 루트 repo 에서 돈다. 맡은 repo 를 \`git -C repos/<이름> ${hit.sub} …\` 처럼 실제 경로로 적어 다시 실행한다.`;
   return `팀원은 워크스페이스 루트 repo(${root}) 에 git ${hit.sub} 을(를) 하지 않는다${via}. 사용자의 미커밋 파일이 사라질 수 있다. 맡은 repo 를 \`git -C repos/<이름> ${hit.sub} …\` 로 부른다. 루트를 바꿔야 하면 멈추고 리더에게 알린다.`;
@@ -146,6 +157,8 @@ function main() {
   if (!/\bgit\b|\.(?:sh|bash|zsh)\b|\b(?:bash|sh|zsh)\b|\.\//.test(cmd)) return;
   const trunk = (() => { try { return ((JSON.parse(fs.readFileSync(path.join(R, 'workspace.json'), 'utf8')).vars || {}).gitlab || {}).branchMode === 'trunk'; } catch { return false; } })();
   const hits = findGit(cmd, input.cwd || R, path.resolve(R)).filter((h) => h.kind !== 'newbranch' || trunk);
+  const wt = hits.find((h) => h.kind === 'wtpath');
+  if (wt) { deny(`${message(wt, R)} (git 안전장치: packs/core/hooks/git-guard.js)`); return; }
   if (member) { if (hits[0]) deny(`${message(hits[0], R)} (팀원 git 안전장치: packs/core/hooks/git-guard.js)`); return; }
   // 리더: push 는 리더 몫이라 그대로, 나머지는 막지 않고 경고만
   // 루트 커밋은 리더 일(워크스페이스 설정 · 기록)이라 지우는 쪽(reset · clean · checkout · restore · stash · rebase · branch)만

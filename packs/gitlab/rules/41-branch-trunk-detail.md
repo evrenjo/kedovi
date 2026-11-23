@@ -32,4 +32,4 @@ git push
 
 ### 예외로 브랜치 · worktree 를 썼을 때
 
-실험 · 큰 리팩터링처럼 사용자가 브랜치를 쓰라고 한 건만. 머지가 확인되면 바로 정리한다 (core 「git 기본」 의 브랜치 정리 설정과 상관없이): `git status` 로 잃을 것이 없음을, `git merge-base --is-ancestor <브랜치> origin/{{ws:vars.branch.develop}}` 로 머지됨을 보인 뒤 로컬 브랜치 · worktree 를 지운다. 원격 브랜치 삭제는 건마다 승인받는다.
+실험 · 큰 리팩터링처럼 사용자가 브랜치를 쓰라고 한 건만. 머지가 확인되면 바로 정리한다 (core 「git 기본」 의 브랜치 정리 설정과 상관없이): `git status` 로 잃을 것이 없음을, `git merge-base --is-ancestor <브랜치> origin/{{ws:vars.branch.develop}}` 로 머지됨을 보인 뒤 로컬 브랜치를 지우고, 작업 폴더는 `kedovi worktree clean --branches` 로 함께 정리한다. 원격 브랜치 삭제는 건마다 승인받는다.

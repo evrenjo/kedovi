@@ -129,7 +129,7 @@ flowchart TD
 
 - **맥락 교체**: 리더 · 팀원의 맥락이 `vars.team.memberContextK`(기본 200K 토큰)를 넘으면 훅이 인계를 알린다. 큰 맥락은 호출마다 다시 읽혀 주간 한도를 빠르게 쓴다.
 - **상한 확인**: `kedovi models limits` 가 실제 적용 값과 정한 곳(프로필 · 팀 직접 값 · 이 PC 직접 값 · 요금제)을 보여 준다. 프로필을 올렸는데 예전에 넣어 둔 `agents.limits` 가 더 낮으면 `kedovi models profile` 이 알리고 화면이면 지울지 묻는다. 지우기: `kedovi models limits clear [--team]`.
-- **같은 repo**: 리더마다 `kedovi worktree add <repo> <단위>` 로 작업 폴더(`.worktrees/<repo>/<단위>/`, 로컬 임시 브랜치)를 주고, 끝나면 메인이 `kedovi worktree merge` 로 본 작업 트리에 커밋하지 않은 변경으로 옮긴다. 통합 브랜치 직접 운영이어도 쓸 수 있다 (임시 브랜치는 이 PC 에만 있다).
+- **같은 repo**: 리더마다 `kedovi worktree add <repo> <단위>` 로 작업 폴더(`.worktrees/<repo>/<단위>/`, 로컬 임시 브랜치)를 주고, 끝나면 메인이 `kedovi worktree merge` 로 본 작업 트리에 커밋하지 않은 변경으로 옮긴다. 통합 브랜치 직접 운영이어도 쓸 수 있다 (임시 브랜치는 이 PC 에만 있다). `git worktree add` 로 repo 옆(`repos/<repo>-wt/`)에 만들면 훅이 막고, 남은 작업 폴더는 `kedovi worktree clean` 이 정리한다.
 - **진행 보기**: `kedovi team` 현황의 「지금 도는 에이전트」 줄 (작업 리더 수 · 리더별 팀원 수).
 
 > 근거: Claude Code 서브에이전트 중첩(메인 아래 3층까지 · 동시 20)과 훅 입력의 agent_id 는 공식 문서(code.claude.com/docs/en/sub-agents · /hooks), agent teams 의 중첩 팀 불가는 /agent-teams. 2026-11-11 Claude Code 2.1.322 에서 리더 2명 아래 팀원 4명이 함께 도는 것을 확인. 여러 에이전트는 채팅의 약 15배 토큰을 쓴다 (anthropic.com/engineering/multi-agent-research-system). 그래서 독립 단위가 있을 때만 쓴다.

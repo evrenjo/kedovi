@@ -24,7 +24,8 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 화면이 너무 많이 올라가 읽기 힘들 때 | `kedovi tips` (Claude Code `/tui fullscreen` · `/focus` · `Ctrl+O` 안내, 사용자가 직접 친다) | 읽기만 |
 | 기능 추천 보기 · 그만 묻기 · 다시 묻기 · 끄기 (훅의 「기능 추천」 에 사용자가 답했을 때 기록) | `kedovi suggest` · `set <id> yes\|no [--all]` · `reset [<id>]` · `off\|on [--all]` | 이 PC (`--all` = 모든 프로젝트) |
 | 에이전트 진행 보기 (Claude Code: 작업 리더 · 역할 에이전트 · 리더 아래 팀원, 이름 없는 서브에이전트도) | `kedovi agents watch` (2초마다 새로 그림) · `--once` (채팅에서는 이것) · `--all` (끝난 것까지) · `--json` · `--tmux` (tmux 안이면 오른쪽 창에) | 읽기만 |
-| 작업 리더 작업 폴더 | `kedovi worktree add <repo> <단위>` · `merge <repo> <단위>` (본 작업 트리에 커밋하지 않은 변경으로 옮기고 작업 폴더 · 임시 브랜치 삭제, 겹치면 멈춤) · `remove <repo> <단위> [--force]` · `list`. 같은 repo 를 여러 작업 리더가 동시에 고칠 때 (`team` 스킬 「작업 리더」) | 개인 |
+| 작업 폴더 (worktree) | `kedovi worktree add <repo> <단위> [--base <ref> \| --branch <브랜치>]` (`.worktrees/<repo>/<단위>`) · `merge <repo> <단위>` (본 작업 트리에 커밋하지 않은 변경으로 옮기고 작업 폴더 · 임시 브랜치 삭제, 겹치면 멈춤) · `remove <repo> <단위> [--force]` · `list` (모든 repo 의 작업 폴더 · 상태). 같은 repo 를 여러 작업 리더가 동시에 고칠 때 (`team` 스킬 「작업 리더」). `git worktree add` 를 직접 쓰지 않는다 (훅이 막는다) | 개인 |
+| 끝난 작업 폴더 정리 ("worktree 정리해줘") | `kedovi worktree clean [--dry-run] [--branches] [--now]`: 바뀐 파일 없고 브랜치 내용이 기준 브랜치에 있는(squash 머지 포함) 작업 폴더를 지운다. 진행 중인데 킷 밖에 있는 것은 `.worktrees/<repo>/` 로 옮긴다 | 개인 |
 | 로드맵 보기 · 점검 | `kedovi plan` (흐름도 · 지금 단계 표 · 다음, 이슈형은 이슈 보드) · `kedovi plan --short` (한 줄) · `kedovi plan check` (갱신 누락 ⚠) · `kedovi plan --report [시작 [끝]]` (이슈형 주간 보고) | 보기 |
 | 일정 정본을 밖에 둘 때 (GitLab 마일스톤 · 외부 일정표) | `kedovi plan external "<위치>"` (workspace.json `vars.plan.external` 에 적고 handoffs/PLAN.md 갱신 경고를 내지 않는다) · `kedovi plan external off` (PLAN.md 를 다시 정본으로) · `kedovi plan external` (지금 값). "일정은 GitLab 마일스톤에서 관리해" 같은 말에 쓴다 | 팀 |
 | 팀 구성 바꾸기 | `kedovi team-mode auto\|fixed` · `prefer <역할> <claude\|codex>:<모델>` (`--team` 은 팀 기본값, 팀장) | 이 PC · 팀 |
@@ -65,6 +66,7 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 설정 수정 권한 | `kedovi team edit allow\|deny` · `kedovi team admins [id…]` | 팀 |
 | repo 추가 | `kedovi repo add <git 주소\|폴더\|새 이름> [--kind code\|docs\|issues\|legacy] [--group <그룹>]` (그룹이면 `repos/<그룹>/<이름>`. 이름만 주면 원격 없이 새로 만든다, 레거시 제외) | 팀 |
 | repo 그룹 폴더로 옮기기 | `kedovi repo move <이름> --group <그룹>` · `--no-group` (폴더 · workspace.json · 문서의 옛 경로를 고치고 sync) | 팀 (팀장) |
+| repo 를 주소 · 이름별 폴더로 묶기 ("repo 폴더 정리해줘") | `kedovi repo group` (주소 경로 기준 추천 표, 겹침이 없으면 이름 앞부분 기준) · `--apply [--by remote\|name]` (모두 옮김: 폴더 · worktree 연결 · 문서 경로 · sync) | 팀 (팀장) |
 | repo 안의 기존 AI 지침 | `kedovi repo guides` (보기) · `kedovi repo guides <이름> follow\|kit\|ignore` (follow = repo 지침 우선, 기본 · kit = 킷 규칙 우선 · ignore = 무시) · `kedovi repo guides --rescan [<이름>]` (다시 훑기). "이 repo 의 CLAUDE.md 는 무시해줘" 같은 요청 | 팀 (팀장) |
 | repo 빼기 | `kedovi repo remove <이름> [--delete]` (workspace.json · 리뷰 대상에서 지우고 sync, 이름이 남은 문서를 알림. 폴더는 `--delete` 일 때만, 커밋 안 한 변경 · push 안 한 커밋이 있으면 거부) | 팀 (팀장) |
 | 스택 다시 감지 | `kedovi detect` · 감지 힌트 `kedovi detect --hint <스택> --contains <정규식>` | 팀 |

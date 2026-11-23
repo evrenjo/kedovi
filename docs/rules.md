@@ -68,7 +68,7 @@ kedovi detect --hint spring --contains 'com\.example\.platform:platform-starter'
 | 설정 | 값 | 바뀌는 것 |
 |---|---|---|
 | `gitlab.branchMode` | `feature`(기본) · `trunk` | feature = 작업 브랜치 → 통합 브랜치 MR. trunk = 작업 브랜치 · worktree 없이 통합 브랜치에 직접 커밋 · push, 운영 배포만 MR (팀원 브랜치 생성은 훅이 막고, 같은 repo 를 두 팀원에게 동시에 맡기지 않는다) |
-| `git.cleanupMerged` | `false`(기본) · `true` | true 면 머지가 확인된 로컬 브랜치 · worktree 를 머지 직후 정리 (원격 삭제는 건마다 승인) |
+| `git.cleanupMerged` | `false`(기본) · `true` | true 면 머지가 확인된 로컬 작업 브랜치를 머지 직후 정리 (원격 삭제는 건마다 승인). 작업 폴더는 이 값과 상관없이 `kedovi worktree clean` 이 끝난 것만 지운다 |
 | `cleanCode.helperMethods` | `few`(기본) · `none` | 역할 클래스의 도우미 메서드(접근 제한자 무관) 기준. none 이면 0개, `kedovi archrules` 검사도 켜진다 |
 
 

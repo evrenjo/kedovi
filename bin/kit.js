@@ -39,6 +39,54 @@ const REPO_SEG = /^(?!\.{1,2}$)[A-Za-z0-9._][A-Za-z0-9._-]*$/;
 const safeRemote = (v) => typeof v === 'string' && !!v && !v.startsWith('-') && !/^[A-Za-z][A-Za-z0-9+.-]*::/.test(v);
 /** workspace.json 의 repo 항목을 디스크에 써도 되는지 (이름 · 그룹 · 주소). 팀원이 고친 workspace.json 도 이걸 거친 뒤에만 clone · 링크한다 */
 const repoSafe = (r) => REPO_SEG.test(r.name || '') && (r.group === undefined || (typeof r.group === 'string' && REPO_SEG.test(r.group))) && (!r.remote || safeRemote(r.remote));
+
+/** clone 주소에서 호스트와 repo 이름을 뺀 경로 단계. 예: https://h/a/b/c.git → ['a', 'b'] · git@h:a/c.git → ['a']. 주소가 아니면 null */
+function remoteNamespace(url) {
+  const s = String(url || '').trim().replace(/\/+$/, '').replace(/\.git$/, '');
+  const m = s.match(/^[a-z][a-z0-9+.-]*:\/\/[^/]+\/(.+)$/i) || s.match(/^[^@\s/:]+@[^:\s]+:(.+)$/);
+  return m ? m[1].split('/').filter(Boolean).slice(0, -1) : null;
+}
+
+/**
+ * repo 그룹 폴더 추천: { remote: { 이름: 그룹 } | null, name: { 이름: 그룹 } | null }
+ * remote = 주소 경로에서 모든 repo 가 같은 앞부분을 뺀 첫 단계 (예: …/team/dcim/api · …/team/fms/ui → dcim · fms)
+ * name = 이름의 첫 낱말이 절반 넘게 같으면 둘째 낱말, 아니면 첫 낱말 (예: shop-order-api · shop-order-ui → order). 마지막 낱말은 그룹으로 쓰지 않는다
+ * 두 repo 이상이 모인 그룹만 남긴다. 모두 한 그룹이거나 그룹 없는 repo 이름과 겹치면 쓰지 않는다. repos: [{ name, remote? }]
+ */
+function suggestGroups(repos) {
+  const list = (repos || []).filter((r) => r && REPO_SEG.test(r.name || ''));
+  const finish = (pairs) => {
+    const count = {};
+    for (const [, g] of pairs) if (g) count[g] = (count[g] || 0) + 1;
+    const out = {};
+    for (const [n, g] of pairs) if (g && count[g] >= 2 && REPO_SEG.test(g)) out[n] = g;
+    const used = new Set(Object.values(out));
+    for (const g of used) if (list.some((r) => !out[r.name] && r.name === g)) for (const n of Object.keys(out)) if (out[n] === g) delete out[n];
+    const groups = new Set(Object.values(out));
+    if (!groups.size || (groups.size === 1 && Object.keys(out).length === list.length)) return null;
+    return out;
+  };
+  const seg = (x) => String(x || '').replace(/[^A-Za-z0-9._-]/g, '-').replace(/^[-.]+/, '');
+  // 주소 기준
+  const withNs = list.map((r) => [r.name, remoteNamespace(r.remote)]).filter(([, ns]) => ns);
+  let remote = null;
+  if (withNs.length >= 2) {
+    let common = 0;
+    const first = withNs[0][1];
+    while (common < first.length && withNs.every(([, ns]) => ns[common] === first[common])) common++;
+    remote = finish(withNs.map(([n, ns]) => [n, seg(ns[common])]));
+  }
+  // 이름 기준
+  const words = list.map((r) => [r.name, r.name.split(/[-_.]+/).filter(Boolean)]);
+  const head = {};
+  for (const [, w] of words) head[w[0]] = (head[w[0]] || 0) + 1;
+  const name = list.length >= 3 ? finish(words.map(([n, w]) => {
+    const i = head[w[0]] * 2 > list.length ? 1 : 0;
+    return [n, w.length > i + 1 ? seg(w[i]) : ''];
+  })) : null;
+  return { remote, name };
+}
+
 const LOCAL_CONFIG = '.agents/local.json'; // 이 PC·이 워크스페이스 전용 설정 (메인 에이전트 등)
 // 시작 유형 (SI 분류) — 유형마다 자동으로 들어가는 팩과, 필수·경고 대상 자료 종류
 const PROJECT_TYPES = {
@@ -1097,7 +1145,7 @@ const GITIGNORE_END = '# <<< kit <<<';
 
 function buildGitignore(current, ws) {
   const block = [GITIGNORE_BEGIN, '# 개인 지침: 공유하지 않는다',
-    '.agents/local.md', LOCAL_CONFIG, 'CLAUDE.local.md', 'AGENTS.override.md', '.claude/settings.local.json', '.handoff-snooze', '.agents/bin/', '.agents/board/', '.agents/board.serve.json', '.agents/reports/', '.agents/traces/', '.agents/history/', '.agents/status/', '.agents/heavy/', '.agents/verify/', '.worktrees/',
+    '.agents/local.md', LOCAL_CONFIG, 'CLAUDE.local.md', 'AGENTS.override.md', '.claude/settings.local.json', '.handoff-snooze', '.agents/bin/', '.agents/board/', '.agents/board.serve.json', '.agents/reports/', '.agents/traces/', '.agents/history/', '.agents/status/', '.agents/heavy/', '.agents/verify/', '.worktrees/', '.claude/worktrees/',
     '# 팀 에이전트: 모델이 사람마다 다를 수 있어 각자 sync 가 만든다', '.claude/agents/', '.codex/agents/', LOCAL_MANIFEST,
     '# repo: 각자 kedovi install 로 clone 한다', `/${REPOS_DIR}/`, GITIGNORE_END].join('\n');
   const re = new RegExp(`${GITIGNORE_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${GITIGNORE_END}`);
@@ -2833,4 +2881,4 @@ function main() {
 
 main();
 
-module.exports = { LIMIT_KEYS, LIMIT_DEFAULTS, claudeRoom, claudeModelEnv, hasFamily, gatewayAliasFix, gatewayAliasCheck, gatewayAliasHint, gatewayFetchNotices, scanGuides, fillGuides, guideChanges, GUIDE_MODES, isGuideMode, hintedCatalog, parseRepos, repoLanguages, labelLanguages, ruleRepos, projectRulesPinning, fillLanguages, loadLanguages, claudeKey, window1m, claudeWindow, SECRET_PATTERNS, secretHits, repoRel, repoSafe, ENFORCE_LEVELS, ENFORCE_DEFAULTS, APPROACHES, missingTypePacks, ensurePlan, roleGrades, teamOptions, teamSection, loadCatalogFor, loginPlanValues, detectPlans, vendorRooms, profileRank, profileLabel, profileNotice, countPicks, applyAccess, normalizeAccess, gatewayVendors, gatewayId, startToolOf, migrateTypes, lockState, generate, buildAgentFiles, splitModel, fillLocalRemotes, installRepos, effortOf, profileModels, fillStackPaths, setStackPaths, detectLine, addStackHint, HINT_HELP, auditModels, resolveModels, stacksLabel, stackLabel, loadLayers, LAYER_PACKS, folderState, HOSTS, inferHost, hostOf, detectRepos, loadCatalog, repoPacks, PROJECT_NAME, PROJECT_NAME_RULE, PROJECT_TYPES, TYPE_RULES, REPO_KINDS, REPOS_DIR, LOCAL_CONFIG, initWorkspace, cmdInstall, cmdSync, cmdCheck, loadWorkspace, findRoot, kitRoot, isGitUrl };
+module.exports = { suggestGroups, remoteNamespace, LIMIT_KEYS, LIMIT_DEFAULTS, claudeRoom, claudeModelEnv, hasFamily, gatewayAliasFix, gatewayAliasCheck, gatewayAliasHint, gatewayFetchNotices, scanGuides, fillGuides, guideChanges, GUIDE_MODES, isGuideMode, hintedCatalog, parseRepos, repoLanguages, labelLanguages, ruleRepos, projectRulesPinning, fillLanguages, loadLanguages, claudeKey, window1m, claudeWindow, SECRET_PATTERNS, secretHits, repoRel, repoSafe, ENFORCE_LEVELS, ENFORCE_DEFAULTS, APPROACHES, missingTypePacks, ensurePlan, roleGrades, teamOptions, teamSection, loadCatalogFor, loginPlanValues, detectPlans, vendorRooms, profileRank, profileLabel, profileNotice, countPicks, applyAccess, normalizeAccess, gatewayVendors, gatewayId, startToolOf, migrateTypes, lockState, generate, buildAgentFiles, splitModel, fillLocalRemotes, installRepos, effortOf, profileModels, fillStackPaths, setStackPaths, detectLine, addStackHint, HINT_HELP, auditModels, resolveModels, stacksLabel, stackLabel, loadLayers, LAYER_PACKS, folderState, HOSTS, inferHost, hostOf, detectRepos, loadCatalog, repoPacks, PROJECT_NAME, PROJECT_NAME_RULE, PROJECT_TYPES, TYPE_RULES, REPO_KINDS, REPOS_DIR, LOCAL_CONFIG, initWorkspace, cmdInstall, cmdSync, cmdCheck, loadWorkspace, findRoot, kitRoot, isGitUrl };

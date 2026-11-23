@@ -82,7 +82,7 @@ argument-hint: "<source 브랜치> [target 브랜치]"
    임시파일은 세션 임시 폴더에 둔다. 4xx/5xx 면 응답을 그대로 보고하고 반복 재시도하지 않는다.
 7. **작업 브랜치를 떠난다** (source 가 작업 브랜치일 때만) — source 가 영구 · 상시 브랜치(`{{ws:vars.branch.develop}}` · `{{ws:vars.branch.release}}` · `vars.gitlab.persistentBranches`)면 이 단계를 건너뛰고 그 브랜치에 남는다 (`{{ws:vars.branch.develop}}` → `{{ws:vars.branch.release}}` MR 뒤 `{{ws:vars.branch.release}}` 로 옮겨 가지 않게).
    작업 브랜치면: 미커밋 변경이 없을 때 통합 브랜치(`{{ws:vars.branch.develop}}`, hotfix 는 target)로 `git switch` + `git pull --ff-only`. 있으면 옮기지 말고 보고한다(임의 stash 금지). 머지되면 원격 source 가 지워지므로 그 위에서 다음 작업을 시작하지 않기 위함이다.
-   브랜치 정리 설정(`vars.git.cleanupMerged`)이 `true` 면 머지가 확인된 뒤 core 「git 기본」 대로 그 작업 브랜치 · worktree 를 지운다.
+   브랜치 정리 설정(`vars.git.cleanupMerged`)이 `true` 면 머지가 확인된 뒤 core 「git 기본」 대로 그 작업 브랜치를 지운다. 그 브랜치의 작업 폴더는 설정과 상관없이 `kedovi worktree clean` 으로 정리한다.
 8. **팀 배포 안내** — 아래 §배포 안내. MR 을 실제로 만들었을 때만 낸다.
 
 ## 배포 안내 (MR 생성 후 마지막에)

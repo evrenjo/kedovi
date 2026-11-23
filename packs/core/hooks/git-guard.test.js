@@ -52,12 +52,22 @@ assert.deepStrictEqual(kinds(`cd repos/app; git -C ${app} commit -m x`), []);
 assert.deepStrictEqual(kinds('cd repos/app; git status; git log'), []);
 assert.deepStrictEqual(kinds('bash -c "cd repos/app && git push"'), ['push:push']);
 assert.deepStrictEqual(findGit('bash deploy.sh', ws, ws)[0].via, 'deploy.sh');
+// 작업 폴더 위치: .worktrees/ · .claude/worktrees/ 밖이면 막는다 (repos/ 안에 섞이지 않게)
+const wtk = (cmd, cwd = ws) => findGit(cmd, cwd, ws).filter((x) => x.kind === 'wtpath').map((x) => x.target);
+assert.deepStrictEqual(wtk('git worktree add -b fix ../app-wt/fix', app), ['repos/app-wt/fix']);
+assert.deepStrictEqual(wtk('git -C repos/app worktree add ../app-wt/x origin/main'), ['repos/app-wt/x']);
+assert.deepStrictEqual(wtk(`git -C repos/app worktree add ${ws}/.worktrees/app/x`), []);
+assert.deepStrictEqual(wtk('git worktree add ../../.claude/worktrees/y', app), []);
+assert.deepStrictEqual(wtk('git worktree add "$DIR"', app), []);
+assert.deepStrictEqual(wtk('git worktree list && git worktree prune', app), []);
 
 // 훅: 리더는 통과, 서브에이전트(agent_id) · 위임 세션(KEDOVI_DELEGATED)은 막음
 const hook = (input, env = {}) => spawnSync(process.execPath, [path.join(__dirname, 'git-guard.js')], { cwd: ws, input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, KEDOVI_DELEGATED: '', CLAUDE_PROJECT_DIR: ws, ...env } });
 const bash = (command, extra = {}) => ({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command }, cwd: ws, ...extra });
 const deny = (r) => /"permissionDecision":"deny"/.test(r.stdout);
 assert.strictEqual(hook(bash('git commit -am x')).stdout, '', '리더 루트 커밋은 조용');
+assert.ok(deny(hook(bash('git -C repos/app worktree add ../app-wt/a'))), '리더도 킷 밖 작업 폴더는 막음');
+assert.match(hook(bash('git -C repos/app worktree add ../app-wt/a')).stdout, /kedovi worktree add/);
 const lead = hook(bash('git reset --hard'));
 assert.ok(!deny(lead) && /additionalContext/.test(lead.stdout) && /리더라 막지 않음/.test(lead.stdout), '리더는 경고만');
 assert.strictEqual(hook(bash('git -C repos/app push origin HEAD')).stdout, '', '리더 push 는 조용');
@@ -68,11 +78,11 @@ assert.ok(!deny(hook(bash('git -C repos/app commit -m x', { agent_id: 'a1' }))),
 assert.strictEqual(hook(bash('git commit -am x', { agent_id: 'a1' })).status, 0);
 
 // 통합 브랜치 직접 운영(trunk): 팀원의 새 브랜치 · worktree 는 막고, feature 운영이면 통과
-assert.deepStrictEqual(kinds('git -C repos/app switch -c feat/x && git -C repos/app worktree add ../w && git -C repos/app checkout -b y && git -C repos/app branch z'), ['newbranch:switch', 'newbranch:worktree', 'newbranch:checkout', 'newbranch:branch']);
+assert.deepStrictEqual(kinds('git -C repos/app switch -c feat/x && git -C repos/app worktree add ../../.worktrees/app/w && git -C repos/app checkout -b y && git -C repos/app branch z'), ['newbranch:switch', 'newbranch:worktree', 'newbranch:checkout', 'newbranch:branch']);
 assert.deepStrictEqual(kinds('git -C repos/app branch -d old && git -C repos/app switch develop && git -C repos/app branch'), []);
 assert.ok(!deny(hook(bash('git -C repos/app switch -c feat/x', { agent_id: 'a1' }))), 'feature 운영: 팀원 브랜치 생성 통과');
 fs.writeFileSync(path.join(ws, 'workspace.json'), '{"repos":[],"vars":{"gitlab":{"branchMode":"trunk"}}}');
-const tb = hook(bash('git -C repos/app worktree add ../w', { agent_id: 'a1' }));
+const tb = hook(bash('git -C repos/app worktree add ../../.worktrees/app/w', { agent_id: 'a1' }));
 assert.ok(deny(tb) && /trunk/.test(tb.stdout), 'trunk: 팀원 worktree 막음');
 assert.ok(!deny(hook(bash('git -C repos/app commit -m x', { agent_id: 'a1' }))), 'trunk: 팀원 커밋은 통과');
 const tl = hook(bash('git -C repos/app switch -c feat/x'));

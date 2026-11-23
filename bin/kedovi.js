@@ -15,6 +15,7 @@
  *   kedovi rules ondemand|always <ID…|repo-tasks>   상시 규칙을 필요할 때만 읽게 (AGENTS.md 를 줄인다) · 되돌리기
  *   kedovi repo add [주소|폴더|이름] [--kind …] [--group <그룹>]   repo 를 더한다 (이름만 주면 repos/<이름> 에 원격 없이 새로 만든다, legacy 제외. --group 이면 repos/<그룹>/<이름>)
  *   kedovi repo move <이름> --group <그룹>|--no-group   repo 를 그룹 폴더로 옮긴다: 폴더 · workspace.json · 문서의 경로를 고치고 sync
+ *   kedovi repo group [--apply] [--by remote|name]   주소 경로(또는 이름 앞부분) 기준 그룹 폴더 추천을 보이고, --apply 면 모두 옮긴다
  *   kedovi repo remove <이름> [--delete]   repo 를 뺀다: workspace.json · 리뷰 대상에서 지우고 sync, 이름이 남은 문서를 알린다. 폴더는 --delete 일 때만 (커밋 안 한 변경 · push 안 한 커밋이 있으면 거부)
  *   kedovi repo guides [<이름> follow|kit|ignore] [--rescan [<이름>]]   repo 안에 원래 있던 AI 지침(CLAUDE.md · AGENTS.md · 룰 · 스킬 등) 보기 · 따르는 방식 정하기 (follow = repo 지침 우선, 기본 · kit = 킷 규칙 우선 · ignore = 무시) · 다시 훑기
  *   kedovi team [id] [--take 1,2|all]   팀 현황 (모두의 핸드오프) · 한 사람 자세히 · 그 사람 TODO 항목을 내 TODO 로 인수
@@ -47,7 +48,7 @@
  *   kedovi suggest [list] · set <id> yes|no [--all] · reset [<id>] · off|on [--all]   기능 추천: 대화 주제 · 상태에 맞는 킷 기능을 에이전트가 가끔 답 끝에 한 줄로 묻는다. 정한 것(씀 · 안 씀)은 다시 묻지 않는다 (--all = 이 PC 의 모든 프로젝트)
  *   kedovi tips   출력이 많아 읽기 힘들 때 쓰는 Claude Code 화면 기능 (/tui fullscreen · /focus · Ctrl+O). kedovi start 가 이 PC 에서 처음 한 번 보여 준다
  *   kedovi agents watch [--once] [--all] [--json] [--tmux]   에이전트 진행 보기 (Claude Code): 메인이 부른 작업 리더 · 역할 에이전트 · 그 아래 팀원이 지금 무엇을 하는지 나무 모양으로 (이름 없는 서브에이전트도). 읽기만
- *   kedovi worktree add|merge|remove <repo> <단위> · list   작업 리더 worktree: 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 .worktrees/<repo>/<단위> (merge = 본 작업 트리에 커밋하지 않은 변경으로 옮김)
+ *   kedovi worktree add|merge|remove <repo> <단위> · list · clean   작업 폴더(worktree): 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 .worktrees/<repo>/<단위> (merge = 본 작업 트리에 커밋하지 않은 변경으로 옮김, clean = 끝난 작업 폴더 정리 · 킷 밖에 만든 것은 .worktrees/ 로)
  *   kedovi docs build [repo|폴더] [--out docs-site] [--force] [--no-source] [--write-config] · check [repo|폴더]   문서 사이트: 기획 repo 의 md · 화면설계서 장 → docs-site/ (가이드와 같은 화면 틀 · 근거 색인 ids.json · 묶음은 docs-site.json) · 어긋남 검사 · 문서 점검 경고
  *   kedovi docs show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs]   기획 문서를 ID 단위로: 정의 부분만 출력 · 그 ID 가 나오는 곳(기획 · 코드 · 이슈 repo, 파일:줄)
  *   kedovi docs trace [--ids FN] [--all] [--strict] [--md] [--new]   기획 ID 와 코드의 @spec 주석 대조: 코드에 없는 ID · 테스트에 없는 수용 기준 · 기획에 정의 없는 ID. --md 추적표 · --new 새 진입 파일 중 ID 없는 것 (커밋 전)
@@ -1103,6 +1104,8 @@ const validateOne = (taken, required, allowNew) => (v) => {
 
 /** ~ 로 시작하는 경로를 홈 폴더로 */
 const expandHome = (x) => (/^~(?=$|[\\/])/.test(x) ? path.join(require('os').homedir(), x.slice(1)) : x);
+/** 로컬 repo 폴더의 origin 주소 (없으면 '') */
+const originOf = (dir) => { try { return execFileSync('git', ['-C', dir, 'remote', 'get-url', 'origin'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return ''; } };
 const isFolder = (x) => { try { return fs.statSync(path.resolve(expandHome(x))).isDirectory(); } catch { return false; } };
 
 /** repo 를 넣는 방식 — clone(git 주소) · 기존 로컬 폴더(링크) · 새로 만들기(git init). 원격 없이 로컬에만 둔 repo 는 기존 폴더로 넣는다 */
@@ -1235,7 +1238,7 @@ async function cmdInit(argv) {
   if (given && !/^[a-z][a-z0-9-]*$/.test(given)) fail(`프로젝트명은 영문 소문자·숫자·'-' 로 쓰고 문자로 시작합니다: ${given}`);
   const here = ['empty', 'fresh-repo'].includes(kit.folderState(cwd)) && path.basename(cwd) !== '' ? cwd : null;
   const targetOf = (name) => (here && (kit.folderState(cwd) === 'fresh-repo' || path.basename(cwd) === name) ? cwd : path.resolve(cwd, name));
-  const a = { title: given, type: undefined, approach: undefined, from: '', code: [], docs: [], issues: [], legacy: [], hosts: {}, pages: false };
+  const a = { title: given, type: undefined, approach: undefined, from: '', code: [], docs: [], issues: [], legacy: [], hosts: {}, pages: false, grouping: undefined };
   const flow = () => TYPE_FLOW[a.type || 'new'];
   // 다른 목록에 이미 넣은 값 (같은 repo 를 두 종류로 넣지 않게)
   const othersOf = (kind) => ['code', 'docs', 'issues', 'legacy'].filter((k) => k !== kind).flatMap((k) => a[k]);
@@ -1311,6 +1314,18 @@ async function cmdInit(argv) {
       }
       return a.hosts;
     }, set: () => {} },
+    // repo 가 여럿이면 주소 경로 · 이름으로 그룹 폴더(repos/<그룹>/<이름>)를 추천한다
+    { when: () => !!groupChoices(), run: async () => {
+      const c = groupChoices();
+      const preview = (m) => { const by = {}; for (const [n, g] of Object.entries(m)) (by[g] = by[g] || []).push(n); return Object.entries(by).map(([g, ns]) => `${g}/ ${ns.length}개`).join(' · '); };
+      const options = [
+        ...(c.remote ? [{ value: 'remote', label: '주소 경로 기준 (권장)', hint: preview(c.remote) }] : []),
+        ...(c.name ? [{ value: 'name', label: c.remote ? '이름 앞부분 기준' : '이름 앞부분 기준 (권장)', hint: preview(c.name) }] : []),
+        { value: 'none', label: '묶지 않음', hint: 'repos/<이름> 한 단계' },
+      ];
+      return choose({ message: 'repo 폴더 묶기', hint: 'repo 를 repos/<그룹>/<이름> 으로 나눠 받습니다. 그룹에 들지 않는 repo 는 repos/<이름>. 나중에 kedovi repo group 으로 바꿉니다.',
+        initialValue: options.some((o) => o.value === a.grouping) ? a.grouping : options[0].value, options });
+    }, set: (v) => { a.grouping = v; } },
     { run: async () => {
       p.note(summary().join('\n'), '만들 내용');
       return yesNo({ message: '이대로 만들까요?', hint: '예를 누르면 워크스페이스를 만들고 repo 를 clone 합니다.' });
@@ -1333,8 +1348,17 @@ async function cmdInit(argv) {
       if (kind === 'code' || kind === 'issues') { const h = hostFor(list[i]); if (h) r.host = h; }
       return r;
     });
-    return [...(flow().code ? withHost(a.code, 'code') : []), ...withHost(a.docs, 'docs'), ...withHost(a.issues, 'issues'),
+    const list = [...(flow().code ? withHost(a.code, 'code') : []), ...withHost(a.docs, 'docs'), ...withHost(a.issues, 'issues'),
       ...(flow().legacy ? withHost(a.legacy, 'legacy') : [])];
+    const pick = a.grouping && a.grouping !== 'none' ? (groupChoices(list) || {})[a.grouping] : null;
+    if (pick) for (const r of list) if (pick[r.name]) r.group = pick[r.name];
+    return list;
+  };
+  // 그룹 추천 (repo 3개 이상): 로컬 폴더는 그 origin 주소로 본다
+  const groupChoices = (list = repos()) => {
+    if (list.length < 3) return null;
+    const c = kit.suggestGroups(list.map((r) => ({ name: r.name, remote: r.remote || (r.path ? originOf(path.resolve(root(), r.path)) : '') })));
+    return c.remote || c.name ? c : null;
   };
   const summary = () => {
     const typePack = kit.TYPE_RULES[a.type].pack;
@@ -1344,7 +1368,7 @@ async function cmdInit(argv) {
       `유형   ${kit.PROJECT_TYPES[a.type]}${['enhancement', 'new'].includes(a.type) && a.approach ? ` · 진행 방식 ${kit.APPROACHES[a.approach].split(' (')[0]}` : ''}`,
       ...(a.from ? [`이어 받음 ${a.from}`] : []),
       `규칙   core${typePack ? `, ${typePack} (유형)` : ''} + repo 마다 스택·협업 도구 규칙`,
-      ...(rs.length ? rs.map((r) => `repos/${r.name.padEnd(16)} ${padTo(kit.REPO_KINDS[r.kind], 14)} ${padTo(r.host ? kit.HOSTS[r.host] : '', 7)} ← ${r.remote || r.path || '새로 만듦 (원격 없음, git init)'}`) : ['repo   (없음: 나중에 workspace.json 에 추가)']),
+      ...(rs.length ? rs.map((r) => `${kit.repoRel(r).padEnd(23)} ${padTo(kit.REPO_KINDS[r.kind], 14)} ${padTo(r.host ? kit.HOSTS[r.host] : '', 7)} ← ${r.remote || r.path || '새로 만듦 (원격 없음, git init)'}`) : ['repo   (없음: 나중에 workspace.json 에 추가)']),
       ...(a.docs.length ? [`Pages  ${a.pages ? '켬: 기획 repo 에 원격에 맞는 CI 파일을 두고 docs-site/ 를 커밋한다' : '끔 (나중에 kedovi docs pages on)'}`] : []),
       '스택은 repo 를 받은 뒤 감지한다. 역할·브랜치는 workspace.json 에서 고친다',
     ];
@@ -2072,7 +2096,7 @@ async function cmdRules(argv = []) {
 
 // ───────────────────────── repo add ─────────────────────────
 
-const REPO_USAGE = 'kedovi repo add [<git 주소 | 폴더 | 새로 만들 이름>] [--kind code|docs|issues|legacy] [--group <그룹>] · kedovi repo move <이름> --group <그룹>|--no-group · kedovi repo remove <이름> [--delete] · kedovi repo guides [<이름> follow|kit|ignore] [--rescan]';
+const REPO_USAGE = 'kedovi repo add [<git 주소 | 폴더 | 새로 만들 이름>] [--kind code|docs|issues|legacy] [--group <그룹>] · kedovi repo move <이름> --group <그룹>|--no-group · kedovi repo group [--apply] [--by remote|name] · kedovi repo remove <이름> [--delete] · kedovi repo guides [<이름> follow|kit|ignore] [--rescan]';
 
 /** 워크스페이스에 repo 를 더한다 — clone · 링크 · (이름만 주면) repos/<이름> 에 새로 만들기 → 스택 확인 → sync */
 /** repo 빼기: workspace.json repos(와 리뷰 대상 목록)에서 지우고 sync. 폴더는 --delete 일 때만, 커밋 안 한 변경 · push 안 한 커밋이 없을 때 지운다 */
@@ -2179,6 +2203,40 @@ function requireGroups(root) {
   if (!ok) fail('이 워크스페이스의 킷은 그룹 폴더(--group)를 모릅니다. kedovi upgrade 후 다시 하세요');
 }
 
+/** repo 하나를 그룹 폴더로 옮긴다 (폴더 · worktree 연결 · workspace.json 항목 · 사람이 쓴 문서 경로). sync 는 부르는 쪽이. 반환: { from, to, folder, isLink, fixed } */
+function moveRepoFolder(root, raw, repo, group) {
+  const from = kit.repoRel(repo);
+  const to = kit.repoRel({ ...repo, group });
+  const src = path.join(root, from), dst = path.join(root, to);
+  if (fs.existsSync(dst)) fail(`${to} 가 이미 있습니다. 비우거나 다른 그룹을 고르세요`);
+  let folder = '없음 (kedovi install 때 새 위치로 받습니다)';
+  let isLink = false;
+  try { isLink = fs.lstatSync(src).isSymbolicLink(); } catch { /* 없음 */ }
+  if (isLink) { fs.unlinkSync(src); folder = '링크 지움 (sync 뒤 install 이 새 위치에 다시 링크)'; }
+  else if (fs.existsSync(src)) {
+    fs.mkdirSync(path.dirname(dst), { recursive: true });
+    fs.renameSync(src, dst);
+    folder = '옮김';
+    // 이 repo 의 worktree 가 옛 경로를 가리키지 않게 다시 잇는다
+    if (fs.existsSync(path.join(dst, '.git'))) spawnSync('git', ['-C', dst, 'worktree', 'repair'], { stdio: 'ignore' });
+  }
+  // 빈 그룹 폴더는 지운다
+  const oldParent = path.dirname(src);
+  if (repo.group && oldParent !== path.join(root, kit.REPOS_DIR)) { try { fs.rmdirSync(oldParent); } catch { /* 비어 있지 않음 */ } }
+  if (group) repo.group = group; else delete repo.group;
+  // 사람이 쓴 문서 (워크스페이스 git 의 md · 생성물 · handoffs 제외) 의 옛 경로를 바꾼다
+  const re = new RegExp(`(?<![\\w.-])${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w.-])`, 'g');
+  const listed = (spawnSync('git', ['-C', root, 'grep', '-l', '-F', '-e', from, '--', '*.md', ':!repos', ':!AGENTS.md', ':!CLAUDE.md', ':!.agents', ':!.claude', ':!.codex', ':!handoffs'], { encoding: 'utf8' }).stdout || '').trim().split('\n').filter(Boolean);
+  const fixed = [];
+  for (const f of listed) {
+    const file = path.join(root, f);
+    const cur = read(file);
+    const next = cur.replace(re, to);
+    if (next !== cur) { fs.writeFileSync(file, next); fixed.push(f); }
+  }
+  return { from, to, folder, isLink, fixed };
+}
+
 /** repo 를 그룹 폴더로 옮긴다: 폴더 이동 → workspace.json group → 사람이 쓴 문서의 경로 → sync */
 function cmdRepoMove(rest) {
   const name = rest.find((x, i) => !x.startsWith('--') && rest[i - 1] !== '--group');
@@ -2195,38 +2253,46 @@ function cmdRepoMove(rest) {
   if (group && raw.repos.some((r) => !r.group && r.name === group)) fail(`그룹 '${group}' 이 그룹 없는 repo 이름과 같아 폴더가 겹칩니다`);
   if ((repo.group || '') === group) { console.log(`이미 ${kit.repoRel(repo)} 입니다`); return; }
   if (group) requireGroups(root);
-  const from = kit.repoRel(repo);
-  const to = kit.repoRel({ ...repo, group });
-  const src = path.join(root, from), dst = path.join(root, to);
-  if (fs.existsSync(dst)) fail(`${to} 가 이미 있습니다. 비우거나 다른 그룹을 고르세요`);
-  let folder = '없음 (kedovi install 때 새 위치로 받습니다)';
-  let isLink = false;
-  try { isLink = fs.lstatSync(src).isSymbolicLink(); } catch { /* 없음 */ }
-  if (isLink) { fs.unlinkSync(src); folder = '링크 지움 (sync 뒤 install 이 새 위치에 다시 링크)'; }
-  else if (fs.existsSync(src)) {
-    fs.mkdirSync(path.dirname(dst), { recursive: true });
-    fs.renameSync(src, dst);
-    folder = '옮김';
-  }
-  // 빈 그룹 폴더는 지운다
-  const oldParent = path.dirname(src);
-  if (repo.group && oldParent !== path.join(root, kit.REPOS_DIR)) { try { fs.rmdirSync(oldParent); } catch { /* 비어 있지 않음 */ } }
-  if (group) repo.group = group; else delete repo.group;
+  const m = moveRepoFolder(root, raw, repo, group);
   fs.writeFileSync(wsFile, JSON.stringify(raw, null, 2) + '\n');
-  // 사람이 쓴 문서 (워크스페이스 git 의 md · 생성물 · handoffs 제외) 의 옛 경로를 바꾼다
-  const re = new RegExp(`(?<![\\w.-])${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w.-])`, 'g');
-  const listed = (spawnSync('git', ['-C', root, 'grep', '-l', '-F', '-e', from, '--', '*.md', ':!repos', ':!AGENTS.md', ':!CLAUDE.md', ':!.agents', ':!.claude', ':!.codex', ':!handoffs'], { encoding: 'utf8' }).stdout || '').trim().split('\n').filter(Boolean);
-  const fixed = [];
-  for (const f of listed) {
-    const file = path.join(root, f);
-    const cur = read(file);
-    const next = cur.replace(re, to);
-    if (next !== cur) { fs.writeFileSync(file, next); fixed.push(f); }
-  }
-  const ok = runWorkspaceKit(root, isLink ? ['install'] : ['sync', '--quiet']);
-  console.log(`✔ repo 옮김: ${from} → ${to} · 폴더 ${folder}`);
-  if (fixed.length) console.log(`  문서 경로 고침: ${fixed.join(', ')}`);
+  const ok = runWorkspaceKit(root, m.isLink ? ['install'] : ['sync', '--quiet']);
+  console.log(`✔ repo 옮김: ${m.from} → ${m.to} · 폴더 ${m.folder}`);
+  if (m.fixed.length) console.log(`  문서 경로 고침: ${m.fixed.join(', ')}`);
   console.log('  workspace.json 이 바뀌었습니다. commit · push 하면 팀에 적용됩니다 (팀원 PC 는 kedovi repo move 를 같이 하거나, 옛 폴더를 지우고 kedovi install)');
+  console.log('  열려 있는 IDE · 터미널은 새 경로로 다시 엽니다');
+  if (!ok) process.exit(1);
+}
+
+/** 주소 경로 · 이름 기준 그룹 폴더 추천을 보이고, --apply [--by remote|name] 면 그대로 옮긴다 */
+function cmdRepoGroup(rest) {
+  const root = locateWorkspace();
+  const wsFile = path.join(root, 'workspace.json');
+  const raw = JSON.parse(read(wsFile));
+  const repos = raw.repos || [];
+  const bi = rest.indexOf('--by');
+  const by = bi >= 0 ? rest[bi + 1] : undefined;
+  if (by !== undefined && !['remote', 'name'].includes(by)) fail('--by 는 remote | name');
+  const remoteOf = (r) => r.remote || originOf(path.join(root, kit.repoRel(r)));
+  const c = kit.suggestGroups(repos.map((r) => ({ name: r.name, remote: remoteOf(r) })));
+  const pickBy = by || (c.remote ? 'remote' : c.name ? 'name' : null);
+  const plan = pickBy ? c[pickBy] : null;
+  if (!plan) { console.log('그룹 추천 없음: 주소 경로 · 이름 앞부분이 두 repo 이상 겹치는 묶음이 없습니다. 손으로 옮기려면 kedovi repo move <이름> --group <그룹>'); return; }
+  const moves = repos.filter((r) => (plan[r.name] || '') !== (r.group || '') && (plan[r.name] || !r.group));
+  const label = { remote: '주소 경로 기준', name: '이름 앞부분 기준' };
+  console.log(`그룹 추천 (${label[pickBy]}${c.remote && c.name && !by ? ' · 다른 기준: --by ' + (pickBy === 'remote' ? 'name' : 'remote') : ''})\n`);
+  console.log('| repo | 지금 | 옮길 곳 |\n|---|---|---|');
+  for (const r of repos) console.log(`| ${r.name} | ${kit.repoRel(r)} | ${moves.includes(r) ? kit.repoRel({ ...r, group: plan[r.name] }) : '그대로'} |`);
+  if (!moves.length) { console.log('\n이미 추천대로입니다'); return; }
+  if (!rest.includes('--apply')) { console.log(`\n옮기기: kedovi repo group --apply${by ? ` --by ${by}` : ''} (폴더 · worktree 연결 · 문서 경로를 고치고 sync)`); return; }
+  requireAdmin(root, 'repo 옮기기');
+  requireGroups(root);
+  const done = [];
+  for (const r of moves) done.push(moveRepoFolder(root, raw, r, plan[r.name] || ''));
+  fs.writeFileSync(wsFile, JSON.stringify(raw, null, 2) + '\n');
+  const ok = runWorkspaceKit(root, done.some((m) => m.isLink) ? ['install'] : ['sync', '--quiet']);
+  console.log(`\n✔ ${done.length}개 옮김`);
+  for (const m of done) console.log(`  ${m.from} → ${m.to} · 폴더 ${m.folder}${m.fixed.length ? ` · 문서 경로 고침 ${m.fixed.join(', ')}` : ''}`);
+  console.log('  workspace.json 이 바뀌었습니다. commit · push 하면 팀에 적용됩니다 (팀원 PC 는 kedovi repo group --apply 를 같이 하거나, 옛 폴더를 지우고 kedovi install)');
   console.log('  열려 있는 IDE · 터미널은 새 경로로 다시 엽니다');
   if (!ok) process.exit(1);
 }
@@ -2236,6 +2302,7 @@ async function cmdRepo(argv = []) {
   if (sub === 'remove' || sub === 'rm') return cmdRepoRemove(rest);
   if (sub === 'guides') return cmdRepoGuides(rest);
   if (sub === 'move' || sub === 'mv') return cmdRepoMove(rest);
+  if (sub === 'group') return cmdRepoGroup(rest);
   if (sub !== 'add') fail(`사용법: ${REPO_USAGE}`);
   const root = locateWorkspace();
   requireAdmin(root, 'repo 추가');
@@ -2271,7 +2338,9 @@ async function cmdRepo(argv = []) {
   // 그룹 폴더 repos/<그룹>/<이름>: 이미 그룹을 쓰는 워크스페이스면 대화형에서 고른다
   const groups = [...new Set((raw.repos || []).map((r) => r.group).filter(Boolean))];
   if (group === undefined && tty && groups.length) {
-    const v = ask(await choose({ message: '그룹 폴더', hint: `repos/<그룹>/${repo.name} 에 받습니다. 그룹 없음 = repos/${repo.name}`, initialValue: groups[0],
+    const c = kit.suggestGroups([...(raw.repos || []).map((r) => ({ name: r.name, remote: r.remote || originOf(path.join(root, kit.repoRel(r))) })), { name: repo.name, remote: repo.remote || (repo.path ? originOf(path.resolve(root, repo.path)) : '') }]);
+    const guess = ((c.remote || {})[repo.name]) || ((c.name || {})[repo.name]);
+    const v = ask(await choose({ message: '그룹 폴더', hint: `repos/<그룹>/${repo.name} 에 받습니다. 그룹 없음 = repos/${repo.name}`, initialValue: groups.includes(guess) ? guess : groups[0],
       options: [...groups.map((g) => ({ value: g, label: g })), { value: '', label: '그룹 없음' }, { value: NEW_GROUP, label: '새 그룹' }] }));
     group = v === NEW_GROUP ? ask(await input({ message: '새 그룹 이름', hint: '영문·숫자·._- (예: server · client · plans)', validate: (x) => (GROUP_NAME.test(String(x || '').trim()) ? undefined : '영문·숫자·._- 만') })).trim() : v;
   }
