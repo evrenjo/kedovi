@@ -1284,6 +1284,23 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   record('upgrade 가 .gitignore 기본 줄 보강', up.ok && restored && once && kitBlock, got.join(' · '));
 }
 
+// 옛 kedovi 으로 upgrade 해도 새 워크스페이스를 낮은 버전으로 덮어쓰지 않는다 (--allow-downgrade 로만)
+{
+  const dir = path.join(tmp, 'no-downgrade');
+  run(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dir, '--type', 'new'], tmp);
+  const wsFile = path.join(dir, 'workspace.json');
+  const ws = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+  ws.kit = { ...(ws.kit || {}), version: '99.0.0' };
+  fs.writeFileSync(wsFile, JSON.stringify(ws, null, 2) + '\n');
+  const blocked = run(process.execPath, ['bin/kit.js', 'upgrade', '--from', KIT], dir);
+  const kept = JSON.parse(fs.readFileSync(wsFile, 'utf8')).kit.version === '99.0.0';
+  const cli = run(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'upgrade'], dir);
+  const forced = run(process.execPath, ['bin/kit.js', 'upgrade', '--from', KIT, '--allow-downgrade'], dir);
+  const down = JSON.parse(fs.readFileSync(wsFile, 'utf8')).kit.version !== '99.0.0';
+  const msg = /낮은 버전으로 덮어쓰지 않습니다/.test(blocked.out) && /npm i -g/.test(cli.out);
+  record('낮은 kedovi 의 upgrade 는 멈춤', !blocked.ok && kept && !cli.ok && msg && forced.ok && down, `kit.js 멈춤 ${!blocked.ok} · 그대로 ${kept} · CLI 멈춤 ${!cli.ok} · 안내 ${msg} · --allow-downgrade ${forced.ok && down}`);
+}
+
 // 화면 없이 설정 바꾸기 (AI 가 대신 실행) — models profile · set(위임 포함) · agent --codex
 {
   const dir = path.join(tmp, 'noui-ws');

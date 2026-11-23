@@ -215,6 +215,13 @@ function copyDir(src, dst) {
   }
 }
 
+/** a 가 b 보다 높은 버전인가 (x.y.z) */
+function versionGt(a, b) {
+  const x = String(a).split('.').map((n) => parseInt(n, 10) || 0), y = String(b).split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+}
+
 function parseArgs(argv) {
   const out = { _: [] };
   for (let i = 0; i < argv.length; i++) {
@@ -2861,6 +2868,12 @@ function cmdUpgrade(root, args) {
   if (!exists(path.join(kit, 'bin', 'kit.js')) || !isDir(path.join(kit, 'packs'))) die(`${kit} 는 킷이 아닙니다`);
   loadWorkspace(root); // 형식 확인만 — 저장은 원본 JSON 으로 (파생 값이 workspace.json 에 새지 않게)
   const ws = JSON.parse(read(path.join(root, 'workspace.json')));
+  // 옛 전역 kedovi 이 새 워크스페이스를 덮어쓰지 않게 한다 (upgrade 는 워크스페이스의 kit.js 가 돌아 옛 CLI 에서도 막힌다)
+  const kitVer = JSON.parse(read(path.join(kit, 'package.json'))).version;
+  const usedVer = (ws.kit || {}).version;
+  if (usedVer && versionGt(usedVer, kitVer) && !args['allow-downgrade']) {
+    die(`이 워크스페이스는 킷 ${usedVer} 인데 설치된 kedovi 은 ${kitVer} 입니다. 낮은 버전으로 덮어쓰지 않습니다.\n  전역 kedovi 올리기: npm i -g kedovi → kedovi --version 확인 → kedovi upgrade\n  (일부러 내리려면 kedovi upgrade --allow-downgrade)`);
+  }
   ws.packs = ws.packs || ['core'];
   const add = args.add ? String(args.add).split(',').map((s) => s.trim()).filter(Boolean) : [];
   const addPack = (n) => {

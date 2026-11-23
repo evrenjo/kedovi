@@ -119,7 +119,7 @@
  *   kedovi team-mode enforce idle off|warn|block [--after 분] [--remind 분] [--team]   대기 팀원 점검 (Claude Code agent teams): 일을 마치고 대기로 오래 남은 팀원을 리더에게 알린다. block(기본) 멈출 때 한 번 막기 · warn 요청 시작 때 한 줄 · off. 대기 상한(기본 10분) · 다시 알리는 간격(기본 30분)은 팀 값(--team)
  *   kedovi team-mode enforce name off|warn|block · roster off|warn [--team]   훅 강제 수준. name: 팀 모드(Claude Code agent teams)에서 역할 에이전트를 이름 없이 띄우면 막기(기본) · 경고 · 끄기. roster: 한 요청의 첫 역할 에이전트 때 실행 방식 · 구성표를 알렸는지 한 줄(기본) · 끄기. 이 PC 값은 팀 값보다 세게만
  *   kedovi sync | check | doctor | packs   생성물 다시 만들기 · 생성물 검사 · 환경 진단 · 팩 목록
- *   kedovi upgrade [--add 팩]   이 킷 버전으로 워크스페이스의 bin·팩을 갱신
+ *   kedovi upgrade [--add 팩]   이 킷 버전으로 워크스페이스의 bin·팩을 갱신 (워크스페이스가 더 높은 버전이면 멈춤, 일부러 내리기 --allow-downgrade)
  *   kedovi upgrade --all [--scan <폴더>] [--yes]   이 PC 의 워크스페이스(kedovi list)를 설치된 킷 버전으로 한꺼번에 올린다. 팀장 아님 · 원격에 받지 않은 커밋 · 커밋 안 한 변경이 있으면 건너뛴다. --scan 은 폴더 아래 워크스페이스를 찾아 목록에 더한다
  *   kedovi help [번호|명령|--all]   명령 도움말: 인자 없이 = 자주 쓰는 명령 · 분류 목록 (터미널이면 분류를 골라 보기) · 번호 = 그 분류의 명령 · --all = 전체
  */
@@ -3946,7 +3946,7 @@ async function cmdHelp(rest) {
 }
 
 /** 상태를 바꾸는 명령: 모르는 옵션이면 실행하지 않는다 (오타 · 다른 명령의 옵션으로 엉뚱하게 돌지 않게) */
-const KNOWN_OPTS = { upgrade: ['--add', '--all', '--scan', '--yes'], reset: ['--yes', '--all'], install: [], setup: [] };
+const KNOWN_OPTS = { upgrade: ['--add', '--all', '--scan', '--yes', '--allow-downgrade'], reset: ['--yes', '--all'], install: [], setup: [] };
 
 /** Node 버전과 상관없는 kedovi 명령 (고정 위치 실행 파일 + PATH). 처음 한 번만 알린다 */
 function ensureGlobalShim() {
@@ -4023,8 +4023,13 @@ async function main() {
       const root = locateWorkspace();
       requireAdmin(root, '킷 업그레이드');
       const addAt = rest.indexOf('--add');
-      const args = ['upgrade', '--from', KIT_ROOT, ...(addAt >= 0 ? ['--add', rest[addAt + 1]] : [])];
+      const args = ['upgrade', '--from', KIT_ROOT, ...(addAt >= 0 ? ['--add', rest[addAt + 1]] : []), ...(rest.includes('--allow-downgrade') ? ['--allow-downgrade'] : [])];
       const from = ((kit.loadWorkspace(root) || {}).kit || {}).version;
+      // 옛 워크스페이스 kit.js 는 이 검사를 몰라서 여기서도 막는다
+      const installed = JSON.parse(fs.readFileSync(path.join(KIT_ROOT, 'package.json'), 'utf8')).version;
+      if (from && semverGt(from, installed) && !rest.includes('--allow-downgrade')) {
+        fail(`이 워크스페이스는 킷 ${from} 인데 이 PC 의 kedovi 은 ${installed} 입니다. 낮은 버전으로 덮어쓰지 않습니다.\n  전역 kedovi 올리기: npm i -g ${PKG_NAME} → kedovi --version 확인 → kedovi upgrade\n  (일부러 내리려면 kedovi upgrade --allow-downgrade)`);
+      }
       if (!runWorkspaceKit(root, args)) process.exit(1);
       // 요약은 전역 kedovi 이 찍는다 (upgrade 를 도는 건 워크스페이스의 옛 kit.js 라 새 형식을 모른다)
       process.on('exit', (code) => { if (code === 0) upgradeSummary(root, from); });

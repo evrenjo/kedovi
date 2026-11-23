@@ -133,7 +133,7 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | compose 스택 운영 검증 넣기 (release 수명 시험 · 운영 수명 경보 · 배포 전 확인) | `kedovi ops add lifecycle\|alerts\|preflight\|all [--repo <이름>] [--dir <compose 폴더>] [--dry-run]` (수명 시험 스크립트 + CI job · 지표 수집 cron + Prometheus 경보 규칙(메모리 anon/file 분리) · preflight 스크립트 + 설정. 있는 파일은 덮지 않는다). "수명 시험 넣어줘" · "컨테이너 경보 만들어줘" · "배포 전 확인 넣어줘" 같은 말에 쓴다. 먼저 `--dry-run` 으로 넣을 파일을 보인다 | 코드 repo (infra 팩) |
 | 배포 전 확인 · 수명 시험 실행 | `kedovi ops preflight [<서비스>…] [--repo <이름> \| --dir <배포 폴더>] [-- <배포 명령>]` (재생성될 컨테이너 · 사라지는 상태 · 도는 배치, 위험하면 exit 1) · `kedovi ops lifecycle [<서비스>…]` (떠 있는 스택에 수명 시험). `--force` 는 **사용자가 위험을 보고 진행하라고 한 뒤에만** 붙인다 | 코드 repo (infra 팩) |
 | 팩 켜기 (upgrade 가 「꺼져 있음」 이라 알린 기본 팩 · 다른 유형의 screens · datamodel 등) | `kedovi upgrade --add <팩,팩>` | 팀 |
-| 킷 새 버전 반영 | `kedovi upgrade` | 팀 |
+| 킷 새 버전 반영 | `kedovi upgrade` (워크스페이스가 더 높은 버전이면 멈춤: 전역 kedovi 먼저 올림) | 팀 |
 | 이 PC 의 워크스페이스 모두 새 버전으로 | `kedovi upgrade --all [--scan <폴더>] [--yes]` (목록 · 건너뛸 것을 보인 뒤 묻고 올림. 팀장 아님 · 원격에 받지 않은 커밋 · 커밋 안 한 변경이면 건너뜀. 채팅에서는 목록을 보여 주고 승인받은 뒤 `--yes`) | 팀 |
 
 - 역할 이름: `analyst` · `architect` · `implementer` · `tester` · `reviewer` · `documenter`, 메인 `main`, 교차 검토 `crossReview`.
