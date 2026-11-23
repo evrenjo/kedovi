@@ -7,7 +7,7 @@
 // 3층 (작업 리더): 메인이 부르는 lead 역할은 leaders 상한, 리더(또는 역할 에이전트)가 부르는 팀원은 부른 쪽마다 members 상한, 모든 층 합계는 total.
 //   누가 불렀는지 = PreToolUse 입력의 agent_id (서브에이전트 안이면 그 id, 메인이면 없음). SubagentStart 의 agent_id 를 앞서 허용한 호출과 짝지어 부모를 적고, SubagentStop 에 그 칸을 뺀다.
 //   팀원(agent teams)은 SubagentStart · Stop 이 없어 요청마다 비운다.
-//   주간 사용량 속도(lib/usagepace.js)가 빠르면 상한을 줄이고, 절약 단계에서는 implementer-deep 밖의 Opus 호출을 막는다 (agents.enforce.usagePace, 기본 block).
+//   주간 사용량 속도(lib/usagepace.js)가 빠르면 상한을 줄이고, 절약 단계에서는 implementer-deep 밖의 Opus 호출을 Sonnet 으로 바꿔 띄운다 (agents.enforce.usagePace, 기본 block. warn 은 알림만).
 //   SubagentStop: 작업 리더가 자기 팀원이 도는 채 끝내려 하면 한 번 되돌린다 (agents.enforce.leadHold, 기본 block).
 'use strict';
 const fs = require('fs');
@@ -91,7 +91,9 @@ function handle(input, ws, file) {
     const members = Object.entries(st.kids).filter(([, v]) => v.parent === kid);
     if (!input.stop_hook_active && members.length && ((st.kids[kid] || {}).type === LEAD_ROLE || String(input.agent_type || '') === LEAD_ROLE) && holdLevel(ws) === 'block') {
       const mins = leadMinutes(ws);
-      block(`팀원 ${members.length}명(${members.map(([, v]) => v.type || '에이전트').join(' · ')})이 아직 돌고 있습니다. 차례를 끝내지 말고 끝남 알림을 기다립니다 (백그라운드 대기 · Monitor). 기다리는 동안 ${mins ? `${mins}분마다 ` : ''}진행판(kedovi team step)과 메인 메시지로 단계를 알리고, 팀원 결과를 받아 다음 순서로 넘어간다. 팀원이 멈췄으면 메인에게 「끊어 달라」 를 보낸다`);
+      // 차례를 끝내면 Claude Code 가 그때마다 메인에 중간 알림을 보내 메인이 한 차례씩 돈다. 앞에서 도는 기다리기 명령으로 차례를 이어 간다
+      const wait = `node ${path.join(ws, 'packs', 'core', 'bin', 'agent-wait.js')} --session ${safeId(input.session_id)} --parent ${safeId(kid)}`;
+      block(`팀원 ${members.length}명(${members.map(([, v]) => v.type || '에이전트').join(' · ')})이 아직 돌고 있습니다. 차례를 끝내면 그때마다 메인에 중간 알림이 가서 메인이 한 차례씩 돕니다. 차례를 끝내지 말고 이 명령을 앞에서(백그라운드 아님, 제한 시간 10분) 실행해 팀원이 끝날 때까지 기다린다: ${wait}. 끝난 팀원 결과를 받아 다음 순서로 넘어가고, 남은 팀원이 있으면 같은 명령을 다시 부른다. ${mins ? `${mins}분마다 ` : ''}진행판(kedovi team step)과 메인 메시지로 단계를 알린다. 팀원이 멈췄으면 메인에게 「끊어 달라」 를 보낸다`);
       return save();
     }
     if (st.kids[kid]) delete st.kids[kid];
@@ -122,16 +124,17 @@ function handle(input, ws, file) {
   const kitRole = !!type && /^[A-Za-z0-9._-]+$/.test(type) && fs.existsSync(path.join(ws, '.claude', 'agents', `${type}.md`));
   const isLead = type === LEAD_ROLE;
   // 주간 사용량 속도: 줄임(2) · 절약(3) 단계면 상한을 낮춘다
+  // 절약(3) 단계의 Opus 호출: block 이면 막지 않고 호출의 model 을 sonnet 으로 바꿔 띄운다 (updatedInput, 리더 · 팀원 모두. implementer-deep · fork 는 그대로)
   let paceNote = '';
+  let swapModel = null;
   if (paceLevel !== 'off') {
     const pace = Pace.state(wsConfig);
     if (pace.known && pace.level >= 2) {
       const msg = `주간 사용량 ${pace.label} 단계 (${Pace.line(pace)})`;
-      if (paceLevel === 'block') { limits = Pace.limitsFor(limits, pace.level); paceNote = `. ${msg}, kedovi usage`; } else warns.push(msg);
+      if (paceLevel === 'block') { limits = Pace.limitsFor(limits, pace.level); paceNote = `. ${msg}, kedovi usage`; } else warns.push(`${msg}. 상한은 줄이지 않음 (알림만, agents.enforce.usagePace=warn)`);
       if (pace.level === 3 && type !== 'implementer-deep' && type !== 'fork' && (kitRole || !type || type === 'general-purpose' || ti.model) && Pace.usesTopModel(ws, type, ti.model)) {
-        const m = `${msg}: implementer-deep 밖의 에이전트는 Opus 를 쓰지 않는다. 호출에 model: sonnet 을 주고 다시 부르거나, 틀리면 비싼 구현이면 implementer-deep 으로 부른다`;
-        if (paceLevel === 'block') return deny(m);
-        warns.push(m);
+        if (paceLevel === 'block') swapModel = `${msg}: ${type || '이 에이전트'} 를 Opus 대신 Sonnet 으로 띄웠다 (호출의 model 을 sonnet 으로 바꿈). 틀리면 비싼 구현이면 implementer-deep 으로 부른다`;
+        else warns.push(`${msg}: 알림만이라 Opus 그대로 띄운다. 권장: implementer-deep 밖은 호출에 model: sonnet`);
       }
     }
   }
@@ -176,6 +179,8 @@ function handle(input, ws, file) {
     const R = require('../lib/review');
     if (kitRole && R.REVIEW_ROLE.test(type)) { const rs = R.settings(ws); if (rs.level !== 'off') R.record(ws, require('../lib/workspace').load(ws), rs, { by: `${type} 역할 에이전트` }); }
   } catch { /* 기록은 부가 기능 */ }
+  // updatedInput 은 입력 전체를 바꾸므로 원래 입력을 다 옮기고 model 만 바꾼다. allow 와 함께 줘야 자동 모드에서도 바뀐 입력이 돈다 (code.claude.com/docs/en/hooks#pretooluse-decision-control). 다른 훅의 deny 가 먼저다
+  if (swapModel) return process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', permissionDecisionReason: '주간 사용량 절약 단계: model 을 sonnet 으로', updatedInput: { ...ti, model: 'sonnet' }, additionalContext: [swapModel, ...warns.map((w) => `⚠ ${w}`)].join('\n') } }));
   if (warns.length) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: warns.map((w) => `⚠ ${w}`).join('\n') } }));
 }
 

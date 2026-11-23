@@ -1,6 +1,7 @@
 ---
 title: 컨텍스트 관리
 load: always
+member: skip
 ---
 
 ## 컨텍스트 관리

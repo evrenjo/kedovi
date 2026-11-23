@@ -3,7 +3,7 @@
 /*
  * 세션 시작 때 읽은 규칙은 대화가 길어지거나 컨텍스트가 압축되면 흐려진다. 행동 직전에 매번 다시 넣는 것이 가장 덜 놓친다.
  * 출력: 평문 1~2줄 (컨텍스트에 추가). 날짜가 된 예약([>] 오늘 예정 · 지난 예약)이 있는 작업, 그다음 최근 7일 안에 손댄 진행 중 작업, 모두 2개까지. 없으면 출력하지 않는다. 항상 exit 0.
- * 같은 세션에서 직전 요청과 내용이 같으면 작업 이름만 한 줄로 (매번 같은 문단을 쌓지 않는다). 상태 폴더의 <session>.focus
+ * 같은 세션에서 직전 요청과 내용이 같으면 넣지 않는다 (2시간 지나면 다시). 상태 폴더의 <session>.focus
  * Codex 는 UserPromptSubmit 의 평문 출력 계약이 확인되지 않아 Claude 에만 건다 (hooks.json agents: claude).
  */
 'use strict';
@@ -34,7 +34,10 @@ run(() => {
   const file = sid ? path.join(stateDir(ws.root), `${sid}.focus`) : null;
   let prev = null;
   try { if (file) prev = fs.readFileSync(file, 'utf8'); } catch { /* 처음 */ }
-  if (prev === text) return context(`🎯 진행 중 작업: ${topics.map((t) => t.name).join(' | ')} (미완 · 지킬 것은 앞과 같음)`);
+  // 직전과 같으면 넣지 않는다. 같아도 2시간이 지났으면 다시 (맥락이 요약돼 잊었을 수 있다)
+  let at = 0;
+  try { if (file) at = fs.statSync(file).mtimeMs; } catch { /* 처음 */ }
+  if (prev === text && Date.now() - at < 2 * 3600000) return;
   if (file) fs.writeFileSync(file, text);
   context(text);
 });

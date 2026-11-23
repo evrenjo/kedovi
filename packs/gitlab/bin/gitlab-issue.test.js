@@ -1,4 +1,4 @@
-// gitlab-issue.js 점검 (로컬 가짜 API): 찾기 · 읽기(시스템 기록 제외) · 등록 · 댓글 · dry-run · 비밀값 모양이면 안 보냄 · 출력에 토큰 없음. 실행: node gitlab-issue.test.js
+// gitlab-issue.js 점검 (로컬 가짜 API): 찾기 · 읽기(시스템 기록 제외) · 등록 · 댓글 · 닫기 · dry-run · 비밀값 모양이면 안 보냄 · 출력에 토큰 없음. 실행: node gitlab-issue.test.js
 'use strict';
 const assert = require('assert');
 const fs = require('fs');
@@ -24,6 +24,8 @@ const server = http.createServer((req, res) => {
     else if (req.method === 'GET' && p === '/issues/3/notes') out = [{ id: 1, system: true, body: 'changed label', author: { username: 'dev' } }, { id: 2, system: false, body: '재현됩니다', author: { username: 'qa' }, created_at: '2026-01-03T00:00:00Z' }];
     else if (req.method === 'POST' && p === '/issues') out = { iid: 9, web_url: 'http://git.test/i/9' };
     else if (req.method === 'POST' && p === '/issues/3/notes') out = { id: 77 };
+    else if (req.method === 'GET' && p === '/issues/1') out = issue(1, 'closed', '로그인 느림');
+    else if (req.method === 'PUT' && p === '/issues/3') out = { ...issue(3, 'closed', '로그인 실패') };
     if (!out) { res.writeHead(404); return res.end('{"message":"404 Not Found"}'); }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(out));
@@ -74,6 +76,18 @@ server.listen(0, '127.0.0.1', async () => {
     r = await run(['comment', '--iid', '3', '--body-file', desc], ws);
     assert.ok(r.code === 0 && r.out.includes('✔ 이슈 #3 댓글 77'), r.out);
 
+    // 닫기: dry-run 은 보내지 않는다 · 사유 댓글 → 닫기 · 이미 닫힌 것은 알리고 성공
+    let m = seen.length;
+    r = await run(['close', '--iid', '3', '--reason-file', desc, '--dry-run'], ws);
+    assert.ok(r.code === 0 && r.out.includes('[dry-run] PUT') && r.out.includes('"state_event": "close"') && seen.length === m, r.out);
+    r = await run(['close', '--iid', '3', '--reason-file', desc], ws);
+    assert.ok(r.code === 0 && r.out.includes('사유 댓글 77') && r.out.includes('✔ 이슈 #3 닫음'), r.out);
+    assert.deepStrictEqual(seen.slice(m).map((s) => `${s.method} ${s.path.replace(/^\/api\/v4\/projects\/7/, '')}`), ['GET /issues/3', 'POST /issues/3/notes', 'PUT /issues/3']);
+    assert.deepStrictEqual(seen.at(-1).body, { state_event: 'close' });
+    m = seen.length;
+    r = await run(['close', '--iid', '1', '--reason-file', desc], ws);
+    assert.ok(r.code === 0 && r.out.includes('이미 닫혀') && seen.length === m + 1, r.out);
+
     // 비밀값 모양이면 보내지 않는다 (제목 · 본문 · 댓글)
     const leak = path.join(tmp, 'leak.md');
     fs.writeFileSync(leak, `로그\ntoken=${'glpat-'}abcdefghij0123456789\n`);
@@ -81,6 +95,8 @@ server.listen(0, '127.0.0.1', async () => {
     r = await run(['create', '--title', 't', '--description-file', leak], ws);
     assert.ok(r.code === 1 && r.out.includes('2줄 GitLab 토큰') && !r.out.includes('abcdefghij0123456789'), r.out);
     r = await run(['comment', '--iid', '3', '--body-file', leak], ws);
+    assert.ok(r.code === 1 && seen.length === n, r.out);
+    r = await run(['close', '--iid', '3', '--reason-file', leak], ws);
     assert.ok(r.code === 1 && seen.length === n, r.out);
 
     // 인자 확인 · 토큰은 헤더로만

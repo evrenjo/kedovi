@@ -1481,7 +1481,15 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     put(50); p['Ultra 보통 3'] = leadsAllowed() === 3;
     put(72); p['Ultra 줄임 2'] = leadsAllowed() === 2;
     put(82); p['Ultra 절약 1'] = leadsAllowed() === 1;
-    p['절약: Opus 호출 막기'] = /Opus 를 쓰지 않는다/.test(member('implementer', 'opus')) && /Opus 를 쓰지 않는다/.test(member('general-purpose')) && !deny(member('general-purpose', 'sonnet')) && !deny(member('implementer-deep', 'opus'));
+    // 절약: Opus 호출은 막지 않고 model 만 sonnet 으로 바꿔 띄운다 (updatedInput = 입력 전체 + allow). 리더도, implementer-deep · 이미 sonnet 은 그대로
+    const swapped = (o) => { try { const h = JSON.parse(o).hookSpecificOutput; return h.permissionDecision === 'allow' && h.updatedInput.model === 'sonnet' && h.updatedInput.prompt === 'x' && /Sonnet 으로 띄웠다/.test(h.additionalContext); } catch { return false; } };
+    const leadCall = () => { hook('UserPromptSubmit'); return hook('PreToolUse', { tool_input: { subagent_type: 'lead', prompt: 'x', model: 'opus' } }); };
+    p['절약: Opus → Sonnet'] = swapped(member('implementer', 'opus')) && swapped(member('general-purpose')) && swapped(leadCall()) && !/updatedInput/.test(member('general-purpose', 'sonnet')) && !/updatedInput|deny/.test(member('implementer-deep', 'opus'));
+    // warn(팀 값): 바꾸지 않고 알림만, 상한도 그대로
+    fs.writeFileSync(wsFile, JSON.stringify({ ...JSON.parse(wsRaw), agents: { ...(JSON.parse(wsRaw).agents || {}), enforce: { ...((JSON.parse(wsRaw).agents || {}).enforce || {}), usagePace: 'warn' } } }, null, 2));
+    const w = member('implementer', 'opus');
+    p['절약 warn: 알림만'] = !/updatedInput|deny/.test(w) && /알림만이라 Opus 그대로/.test(w) && leadsAllowed() === 3;
+    fs.writeFileSync(wsFile, wsRaw);
     put(50, 90); p['Ultra 5시간 값이 오면 줄임 2'] = leadsAllowed() === 2;
     setLocal({ plans: { claude: 'max5x' } });
     put(50); p['Max 보통 2'] = leadsAllowed() === 2;
@@ -1508,8 +1516,14 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const tree = require(path.join(dir, 'packs', 'core', 'hooks', 'agent-budget.js')).tree(state);
   const treeOk = tree.filter((x) => x.type === 'lead').length === 3 && tree.find((x) => x.id === 'L1').members.length === 1;
   // 리더 붙잡기: 팀원이 도는 리더가 끝내려 하면 한 번 되돌림 · 두 번째는 통과 · 팀원 없는 리더는 통과
-  const held = /"decision":"block".*팀원 1명/.test(hook('SubagentStop', { agent_id: 'L1', agent_type: 'lead' }));
+  const holdOut = hook('SubagentStop', { agent_id: 'L1', agent_type: 'lead' });
+  const held = /"decision":"block".*팀원 1명/.test(holdOut);
+  const aw = (...a) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'agent-wait.js'), ...a, '--max', '1', '--every', '1'], { cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: dir } });
+  const waitBusy = aw('--session', 'selftest-tier', '--parent', 'L1').status === 3; // 리더가 끝나면 팀원 기록도 빠지니 그 전에
   const heldOnce = !hook('SubagentStop', { agent_id: 'L1', agent_type: 'lead', stop_hook_active: true }) && !hook('SubagentStop', { agent_id: 'L3', agent_type: 'lead' });
+  // 리더 기다리기: 되돌림 안내에 앞에서 도는 기다리기 명령 · 팀원이 도는 동안은 시간 초과(3) · 끝나면 0
+  const waitCmd = /agent-wait\.js --session selftest-tier --parent L1/.test(holdOut); // 되돌림은 한 번뿐이라 첫 출력에서 본다
+  const waitNone = aw('--session', 'selftest-tier', '--parent', 'L3').status === 0;
   // 리더 보고 주기: 처음은 조용 · 주기가 지나면 알림 · 진행판을 고치면 다시 셈 · 메인 요청 시작 때 진행판
   const lp = (extra) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'hooks', 'lead-progress.js'), '--agent=claude'], { cwd: dir, encoding: 'utf8', input: JSON.stringify({ session_id: 'selftest-tier', ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: dir } }).stdout;
   const inLead = (tool, input) => lp({ hook_event_name: 'PreToolUse', agent_id: 'L2', agent_type: 'lead', tool_name: tool, tool_input: input });
@@ -1520,15 +1534,37 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   fs.writeFileSync(lpFile, JSON.stringify({ last: Date.now() - 20 * 60000 }));
   const reset = !inLead('Bash', { command: 'kedovi team step --unit a --stage 구현' }) && !inLead('Read', { file_path: 'a' }) && !lp({ hook_event_name: 'PreToolUse', agent_id: 'X', agent_type: 'implementer', tool_name: 'Read' });
   spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'lead-board.js'), 'step', '--unit', '주문', '--stage', '구현', '--eta', '15:30'], { cwd: dir });
-  const mainSees = /작업 리더 진행판 .*주문 · 구현 .*예상 종료 15:30/.test(lp({ hook_event_name: 'UserPromptSubmit' }));
+  const mainSees = /작업 리더 진행판 바뀐 것 .*주문 · 구현 .*예상 종료 15:30/.test(lp({ hook_event_name: 'UserPromptSubmit' }));
+  const sameQuiet = !lp({ hook_event_name: 'UserPromptSubmit' }); // 바뀐 것이 없으면 조용
+  // 저절로 닫기: 리더가 적은 단위를 기억 → 리더가 끝나고(SubagentStop) 10분 넘게 소식 없으면 닫힘 · 다시 step 하면 이어서
+  lp({ hook_event_name: 'PreToolUse', agent_id: 'L4', agent_type: 'lead', tool_name: 'Bash', tool_input: { command: 'kedovi team step --unit "주문" --stage 검사' } });
+  lp({ hook_event_name: 'SubagentStop', agent_id: 'L4', agent_type: 'lead' });
+  const unitFile = path.join(dir, '.agents', 'status', '주문.json');
+  const u0 = JSON.parse(fs.readFileSync(unitFile, 'utf8'));
+  fs.writeFileSync(unitFile, JSON.stringify({ ...u0, updatedAt: u0.stoppedAt - 11 * 60000, stoppedAt: u0.stoppedAt - 11 * 60000 }));
+  const closedNote = lp({ hook_event_name: 'UserPromptSubmit' });
+  const autoClosed = !!u0.stoppedAt && /끝\(리더 끝남/.test(closedNote) && !!JSON.parse(fs.readFileSync(unitFile, 'utf8')).auto;
+  spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'lead-board.js'), 'step', '--unit', '주문', '--stage', '리뷰'], { cwd: dir });
+  const u1 = JSON.parse(fs.readFileSync(unitFile, 'utf8'));
+  const reopened = !u1.endedAt && u1.stage === '리뷰' && u1.history.length >= 2;
   fs.rmSync(path.join(dir, '.agents', 'status'), { recursive: true, force: true });
-  const leadProgress = held && heldOnce && quiet && nudged && reset && mainSees;
+  const leadProgress = held && heldOnce && waitCmd && waitBusy && waitNone && quiet && nudged && reset && mainSees && sameQuiet && autoClosed && reopened;
   // 설정 · 역할 · 지침
   if (localRaw) fs.writeFileSync(localFile, localRaw);
   spawnSync(process.execPath, [path.join(dir, 'bin', 'kit.js'), 'sync', '--quiet'], { cwd: dir });
   const settings = JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8'));
+  // 팀원용 지침: 리더 밖 역할은 CLAUDE.md 대신 발췌(대화 규칙 · 스킬 목록 · 팀 구성 뺌, 응답 언어 포함), 리더는 전체
+  const memberBriefOk = () => {
+    const ag = (n) => fs.readFileSync(path.join(dir, '.claude', 'agents', `${n}.md`), 'utf8');
+    const im = ag('implementer');
+    const ver = (spawnSync('claude', ['--version'], { encoding: 'utf8' }).stdout || '').match(/(\d+)\.(\d+)\.(\d+)/);
+    const old = ver && [2, 1, 271].reduce((c, n, i) => c || Number(ver[i + 1]) - n, 0) < 0;
+    if (old) return !/omitClaudeMd/.test(im);
+    return /^omitClaudeMd: true$/m.test(im) && /## 팀원 공통/.test(im) && /## git 기본/.test(im) && !/## 커뮤니케이션|## 역할 에이전트 쓰기|## 스킬|## 팀 구성/.test(im) && /## 응답 언어/.test(im) && !/omitClaudeMd/.test(ag('lead'));
+  };
   const wired = (settings.env || {}).CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH === '2' && fs.existsSync(path.join(dir, '.claude', 'agents', 'lead.md')) && JSON.stringify((settings.hooks || {}).SubagentStart || []).includes('agent-budget')
-    && /작업 리더\(3층, Claude Code\): \*\*리더 동시 \d · 리더당 팀원 동시 \d\*\*/.test(fs.readFileSync(path.join(dir, 'CLAUDE.local.md'), 'utf8')) && /^\/?\.worktrees\/$/m.test(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'));
+    && /작업 리더\(3층, Claude Code\): \*\*리더 동시 \d · 리더당 팀원 동시 \d\*\*/.test(fs.readFileSync(path.join(dir, 'CLAUDE.local.md'), 'utf8')) && /^\/?\.worktrees\/$/m.test(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'))
+    && memberBriefOk();
   // kedovi worktree: 같은 repo 두 단위 → 본 작업 트리에 커밋하지 않은 변경으로 옮김 · 겹치면 멈추고 작업 폴더를 남김
   const repo = path.join(dir, 'repos', 'wt-demo');
   fs.mkdirSync(repo, { recursive: true });
@@ -1557,7 +1593,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   fs.writeFileSync(wsFile, wsRaw);
   fs.rmSync(repo, { recursive: true, force: true }); fs.rmSync(path.join(dir, '.worktrees'), { recursive: true, force: true });
   record('작업 리더 3층 (요금제별 상한 · 층별 훅 · 중첩 깊이 · lead 역할 · kedovi worktree)', rooms && leadCap && memberCap && freed && noNested && namedInLead && treeOk && leadProgress && wired && add1 && listed && moved && stopped,
-    `요금제별 빠듯 1×2·6 · Max 2×2·10 · Ultra 3×2·15(팀 표준) · 3×2·20(최고) ${rooms} · 리더 상한 ${leadCap} · 리더당 팀원 상한 ${memberCap} · 끝나면 다시 ${freed} · 리더 안 리더 금지 ${noNested} · 리더 안 이름 금지 ${namedInLead} · 현황 나무 ${treeOk} · 리더 붙잡기 ${held && heldOnce} · 보고 주기 ${quiet && nudged && reset} · 메인 진행판 ${mainSees} · 설정 · 역할 · 지침 · gitignore ${wired} · 작업 폴더 ${add1 && listed} · 커밋 없이 옮김(남의 변경 유지) ${moved} · 겹치면 멈춤 ${stopped}`);
+    `요금제별 빠듯 1×2·6 · Max 2×2·10 · Ultra 3×2·15(팀 표준) · 3×2·20(최고) ${rooms} · 리더 상한 ${leadCap} · 리더당 팀원 상한 ${memberCap} · 끝나면 다시 ${freed} · 리더 안 리더 금지 ${noNested} · 리더 안 이름 금지 ${namedInLead} · 현황 나무 ${treeOk} · 리더 붙잡기 ${held && heldOnce} · 리더 기다리기 ${waitCmd && waitBusy && waitNone} · 보고 주기 ${quiet && nudged && reset} · 메인 진행판 ${mainSees} · 설정 · 역할 · 지침 · gitignore ${wired} · 작업 폴더 ${add1 && listed} · 커밋 없이 옮김(남의 변경 유지) ${moved} · 겹치면 멈춤 ${stopped}`);
 }
 
 // 역할 에이전트 실행 방식 — SessionStart 훅이 환경(팀 기능 · teammateMode · tmux)으로 팀 모드/서브에이전트를 판정한다 (Claude 만)
@@ -1764,7 +1800,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const focus = hook('task-focus.js', 'selftest-task-3');
   const focused = /주문-목록/.test(focus) && /미완 2/.test(focus) && /응답 봉투/.test(focus) && focus.trim().split('\n').length <= 2;
   const again = hook('task-focus.js', 'selftest-task-3');
-  const compact = /주문-목록/.test(again) && /앞과 같음/.test(again) && !/응답 봉투/.test(again);
+  const compact = !again.trim(); // 직전과 같으면 넣지 않는다
   fs.writeFileSync(topic, body(false).replace(/- \[ \] /g, '- [~] '));
   const waitingQuiet = !hook('task-check.js', 'selftest-task-6');
   // 날짜 예약 [>] YYYY-MM-DD: 그날 전에는 조용 · 그날은 「오늘 예정」 으로 막고 세션 시작 줄에 · 지나면 「지난 예약」 (check ⚠) · 날짜 없으면 check ✖
@@ -1793,8 +1829,51 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const claudeHooks = fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8');
   const codexHooks = fs.readFileSync(path.join(dir, '.codex', 'hooks.json'), 'utf8');
   const wired = /task-check/.test(claudeHooks) && /task-focus/.test(claudeHooks) && /task-check/.test(codexHooks) && !/task-focus/.test(codexHooks);
-  got.push(`id ${!!id}`, `미완이면 막음 ${blocked}`, `세션당 한 번 ${once}`, `루프 방지 ${loopSafe}`, `요청마다 주입 ${focused}`, `같으면 한 줄 ${compact}`, `손대지 않은 세션 조용 ${untouchedQuiet}`, `[~] 제외 ${waitingQuiet}`, `다 끝나면 조용 ${doneQuiet}`, `check 경고 ${warned}`, `훅 연결(Claude 둘 · Codex Stop 만) ${wired}`);
+  got.push(`id ${!!id}`, `미완이면 막음 ${blocked}`, `세션당 한 번 ${once}`, `루프 방지 ${loopSafe}`, `요청마다 주입 ${focused}`, `같으면 조용 ${compact}`, `손대지 않은 세션 조용 ${untouchedQuiet}`, `[~] 제외 ${waitingQuiet}`, `다 끝나면 조용 ${doneQuiet}`, `check 경고 ${warned}`, `훅 연결(Claude 둘 · Codex Stop 만) ${wired}`);
   record('작업 완료 조건 (Stop 훅 · 요청마다 주입 · check · 날짜 예약)', !!id && blocked && once && loopSafe && focused && compact && untouchedQuiet && waitingQuiet && futureQuiet && dueToday && overdue && badDate && doneQuiet && warned && wired, got.join(' · '));
+  // 요청 장부 (UserPromptSubmit 기록 · Stop 답변 끝 표 검사 · kedovi requests): 맞장구 제외 · 짧은 승인은 직전 요청에 · 끼어 든 메시지 · 진행 중 작업으로 오인하지 않음
+  {
+    const rl = (ev, sid, extra = {}) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'hooks', 'request-ledger.js'), '--agent=claude'], { cwd: dir, encoding: 'utf8', input: JSON.stringify({ session_id: sid, hook_event_name: ev, ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: dir } }).stdout;
+    const req = (...a) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'requests.js'), ...a], { cwd: dir, encoding: 'utf8' });
+    const L = require(path.join(dir, 'packs', 'core', 'lib', 'requests.js'));
+    const rows = () => L.read(dir, id || 'kim');
+    const first = rl('UserPromptSubmit', 'req-1', { prompt: '주문 목록 화면에서 합계가 틀려요. 고쳐 주세요' });
+    const recorded = /요청 #1 로 기록/.test(first) && /kedovi requests set 1/.test(first) && rows().length === 1 && rows()[0].agent === '메인' && rows()[0].status === '접수';
+    const ackQuiet = !rl('UserPromptSubmit', 'req-1', { prompt: '고마워' }).trim() && rows().length === 1;
+    const go = rl('UserPromptSubmit', 'req-1', { prompt: '진행해' });
+    const attached = /직전 요청 #1 에 이어 붙임/.test(go) && rows().length === 1 && rows()[0].status === '진행' && /\(\+ 진행해\)/.test(rows()[0].text);
+    const short = /^📋 요청 #2 로 기록 \(kedovi requests\)$/.test(rl('UserPromptSubmit', 'req-1', { prompt: 'API 응답 시간도 재 줘' }).trim());
+    const secret = rl('UserPromptSubmit', 'req-2', { prompt: `API_TOKEN=${['Zx81kPq0', 'Lm23Ab9Rt7Yu'].join('')} 로 붙여 봐` }) && /비밀값 모양이 있어 내용 가림/.test(rows()[2].text);
+    const subQuiet = !rl('UserPromptSubmit', 'req-1', { agent_id: 'A1', prompt: '팀원 요청' }).trim() && rows().length === 3;
+    const notTopic = !/요청-목록/.test(hook('task-focus.js', 'req-focus')) && !/요청-목록/.test(spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'handoff.js'), 'check'], { cwd: dir, encoding: 'utf8' }).stdout);
+    const set = req('set', '1', '--status', '완료', '--result', '합계 고침').status === 0 && rows()[0].status === '완료' && rows()[0].result === '합계 고침' && req('set', '1', '--status', '끝').status !== 0 && req('set', '99', '--status', '완료').status !== 0;
+    const table = req('table').stdout;
+    const tableOk = /^\| 번호 \| 요청 \| 맡은 에이전트 \| 상태 \| 결과 \|/.test(table) && /\| 2 \|/.test(table) && !/\| 1 \|/.test(table);
+    const missing = rl('Stop', 'req-1', { last_assistant_message: '고쳤습니다.' });
+    const blocked = /"decision":"block"/.test(missing) && /열린 요청 2건/.test(missing) && /\| 번호 \| 요청 \|/.test(missing);
+    const withTable = !rl('Stop', 'req-1', { last_assistant_message: `고쳤습니다.\n\n${table}` }).trim();
+    const loopSafe = !rl('Stop', 'req-1', { last_assistant_message: '고쳤습니다.', stop_hook_active: true }).trim();
+    req('set', '2', '--status', '취소'); req('set', '3', '--status', '보류');
+    const viaCli = spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'requests', 'list', '--json'], { cwd: dir, encoding: 'utf8' });
+    const cli = viaCli.status === 0 && JSON.parse(viaCli.stdout).map((r) => r.no).join() === '3';
+    req('set', '3', '--status', '완료');
+    const noneQuiet = !rl('Stop', 'req-1', { last_assistant_message: '네.' }).trim();
+    // 작업 중 끼어 든 메시지도 Stop 때 적는다 (한 번만)
+    const tr = path.join(tmp, 'req-transcript.jsonl');
+    fs.writeFileSync(tr, [{ type: 'user', message: { role: 'user', content: '배포 준비해 줘' } }, { type: 'attachment', attachment: { type: 'queued_command', prompt: '테스트 결과도 표로 보여 줘', delivery_id: 'd1' } }].map((x) => JSON.stringify(x)).join('\n'));
+    const mid1 = rl('Stop', 'req-3', { transcript_path: tr, last_assistant_message: '했습니다.' });
+    rl('Stop', 'req-3', { transcript_path: tr, last_assistant_message: '했습니다.', stop_hook_active: true });
+    const midTurn = /"decision":"block"/.test(mid1) && rows().filter((r) => /테스트 결과도 표로/.test(r.text)).length === 1;
+    // 수준: off 면 아무것도 적지 않는다
+    spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'team-mode', 'enforce', 'req', 'off', '--team'], { cwd: dir, encoding: 'utf8' });
+    const before = rows().length;
+    const off = !rl('UserPromptSubmit', 'req-4', { prompt: '새 기능 만들어 줘' }).trim() && rows().length === before;
+    spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'team-mode', 'enforce', 'req', 'block', '--team'], { cwd: dir, encoding: 'utf8' });
+    const st = JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8')).hooks || {};
+    const wiredReq = ['UserPromptSubmit', 'Stop'].every((ev) => JSON.stringify(st[ev] || []).includes('request-ledger'));
+    record('요청 장부 (요청마다 기록 · 답변 끝 표 검사 · kedovi requests)', recorded && ackQuiet && attached && short && secret && subQuiet && notTopic && set && tableOk && blocked && withTable && loopSafe && cli && noneQuiet && midTurn && off && wiredReq,
+      `기록 ${recorded} · 맞장구 제외 ${ackQuiet} · 짧은 승인은 직전 요청에 ${attached} · 두 번째부터 한 줄 ${short} · 비밀값 가림 ${!!secret} · 서브에이전트 조용 ${subQuiet} · 진행 중 작업으로 안 봄 ${notTopic} · set ${set} · 표 ${tableOk} · 표 없으면 막음 ${blocked} · 표 있으면 통과 ${withTable} · 루프 방지 ${loopSafe} · kedovi requests ${cli} · 열린 요청 없으면 조용 ${noneQuiet} · 끼어 든 메시지 ${midTurn} · off ${off} · 훅 연결 ${wiredReq}`);
+  }
   // 답변 첫 줄 시각 (UserPromptSubmit): 기본 켜짐 · 팀 값 · 이 PC 값이 먼저 · kedovi timestamp · Claude 에만
   {
     const ts = () => hook('prompt-time.js', 'selftest-time-1');
@@ -1814,7 +1893,8 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   // 응답 언어 · 대화 스타일 (kedovi prefs): 기본(팀 문서 언어 · 일반) · 이 PC 값 먼저 · 팀 값 · 개인 지침 머리 · settings.local.json · 출력 스타일 · 요청마다 한 줄(Claude 만)
   {
     const cli = (...a) => spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'prefs', ...a], { cwd: dir, encoding: 'utf8' });
-    const line = () => hook('chat-prefs.js', 'selftest-prefs-1');
+    let seq = 0;
+    const line = () => hook('chat-prefs.js', `selftest-prefs-${++seq}`); // 같은 세션은 바뀔 때만 넣으니 매번 새 세션
     const local = () => JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.local.json'), 'utf8'));
     const head = (f) => fs.readFileSync(path.join(dir, f), 'utf8');
     const wsFile = path.join(dir, 'workspace.json');
@@ -1836,11 +1916,12 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const bad = cli('style', 'chatty').status !== 0 && cli('language', 'jp').status !== 0;
     const wiredP = /chat-prefs/.test(claudeHooks) && /chat-prefs/.test(codexHooks) && (JSON.parse(codexHooks).hooks.PostToolUse || []).some((g) => JSON.stringify(g).includes('chat-prefs'));
     // 긴 작업 중 다시 알림 (PostToolUse): 요청 시작 뒤 도구 14번은 조용, 15번째에 한 줄, 다시 세기
-    hook('chat-prefs.js', 'selftest-prefs-long');
+    const firstAsk = hook('chat-prefs.js', 'selftest-prefs-long');
+    const askQuiet = /한국어만/.test(firstAsk) && !hook('chat-prefs.js', 'selftest-prefs-long').trim(); // 같은 세션 다음 요청은 조용
     const tool = () => hook('chat-prefs.js', 'selftest-prefs-long', { hook_event_name: 'PostToolUse', tool_name: 'Bash' });
     const quiet = Array.from({ length: 14 }, tool).every((o) => !o.trim());
     const again = tool();
-    const longRun = quiet && /"hookEventName":"PostToolUse"/.test(again) && /한국어만/.test(again) && !tool().trim() && /chat-prefs[^\n]*/.test(claudeHooks) && (JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8')).hooks.PostToolUse || []).some((g) => JSON.stringify(g).includes('chat-prefs'));
+    const longRun = askQuiet && quiet && /"hookEventName":"PostToolUse"/.test(again) && /한국어만/.test(again) && !tool().trim() && /chat-prefs[^\n]*/.test(claudeHooks) && (JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8')).hooks.PostToolUse || []).some((g) => JSON.stringify(g).includes('chat-prefs'));
     record('응답 언어 · 대화 스타일 (kedovi prefs · 개인 지침 머리 · 출력 스타일 · 요청마다 한 줄 · 긴 작업 중 다시)', def && styles && expert && en && mineFirst && teamFollow && cleared && userStyleKept && bad && wiredP && longRun,
       `기본 ${def} · 출력 스타일 파일 ${styles} · 전문가 ${expert} · 영어 ${en} · 이 PC 값 먼저 ${mineFirst} · team 이면 팀 값 ${teamFollow} · 일반 = Concise ${cleared} · 직접 고른 스타일 유지 ${userStyleKept} · 잘못된 값 ${bad} · 훅 연결(Claude · Codex) ${wiredP} · 긴 작업 중 다시 알림 ${longRun}`);
   }
@@ -1848,7 +1929,8 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   {
     const cli = (...a) => spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), ...a], { cwd: dir, encoding: 'utf8' });
     const head = () => fs.readFileSync(path.join(dir, 'CLAUDE.local.md'), 'utf8');
-    const line = () => hook('chat-prefs.js', 'selftest-writing-1');
+    let seq = 0;
+    const line = () => hook('chat-prefs.js', `selftest-writing-${++seq}`);
     const def = /글 형식: 개조식\.\*\*/.test(head()) && /core--12-writing-format/.test(head()) && /글 개조식/.test(line()) && fs.existsSync(path.join(dir, '.agents', 'rules', 'core--12-writing-format.md'));
     const except = cli('prefs', 'writing-except', 'chat,plan').status === 0 && /개조식 예외: 채팅 답변 · 기획 문서/.test(head()) && cli('prefs', 'writing-except', 'nope').status !== 0;
     const prose = cli('prefs', 'writing', 'prose').status === 0 && /글 형식: 서술식/.test(head()) && /글 서술식/.test(line());

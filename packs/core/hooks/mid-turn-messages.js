@@ -37,7 +37,7 @@ function midTurn(transcript) {
   return out;
 }
 
-run(() => {
+if (require.main === module) run(() => {
   const input = readInput();
   if (String(input.hook_event_name || '') !== 'Stop') return;
   const id = safeId(input.session_id);
@@ -59,3 +59,5 @@ run(() => {
     + '각각 처리했는지 확인한다. 안 했으면 지금 처리하거나(맡길 일이면 에이전트에), 답변 끝에 `작업 중 받은 메시지: <요약> → 처리함 | 할 일로 남김(이유)` 줄을 적고 끝낸다. '
     + '끄기: kedovi team-mode enforce msg off');
 });
+
+module.exports = { midTurn };

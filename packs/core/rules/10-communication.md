@@ -1,6 +1,7 @@
 ---
 title: 커뮤니케이션
 load: always
+member: skip
 ---
 
 ## 커뮤니케이션

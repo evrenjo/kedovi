@@ -6,6 +6,7 @@
  * UserPromptSubmit (30분에 한 번):
  *   메모리: 이 PC 의 Claude Code 세션 나무(MCP · 셸 · 브라우저 포함) 합계가 vars.session.memoryWarnGB(기본 8)를 넘으면 세션 수 · 큰 세션 · 주인 없이 남은 브라우저 · MCP 를 한 줄로
  *   오래된 세션: 이 세션(claude 프로세스)이 vars.session.longHours(기본 8) 시간을 넘으면 핸드오프 뒤 새로 시작하라고 (같은 세션에 2시간마다)
+ *   킷 버전: 전역 kedovi 이 워크스페이스 kit.version 보다 낮으면 올리라고 (메인 세션, 6시간에 한 번)
  *   작업 폴더: 하루 넘게 손대지 않았거나 킷 밖(.worktrees/ · .claude/worktrees/ 밖)에 만든 worktree 가 있으면 kedovi worktree clean 을 (메인 세션, 6시간에 한 번)
  *   맥락: 대화 기록의 마지막 응답 사용량(입력 + 캐시)이 맥락 창의 vars.session.renewContextPct(기본 70)% 를 넘으면 같은 제안 (같은 세션에 한 번, 10%p 더 늘면 다시)
  * 자세히: kedovi doctor 의 「메모리」 항목. 판정은 lib/procmem.js (Windows 는 하지 않는다)
@@ -54,6 +55,20 @@ function contextUse(file, ROOT) {
     const window = big || tokens > 200000 ? 1000000 : 200000;
     return { tokens, window, pct: Math.round((tokens / window) * 100) };
   }
+  return null;
+}
+
+/** 전역 kedovi 버전이 워크스페이스 kit.version 보다 낮으면 { cli, ws }. 전역 kedovi 이 없거나 같거나 높으면 null */
+function cliBehind(ROOT) {
+  let ws = null;
+  try { ws = (JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace.json'), 'utf8')).kit || {}).version; } catch { return null; }
+  if (!ws) return null;
+  const r = spawnSync('kedovi', ['--version'], { encoding: 'utf8', timeout: 8000, shell: process.platform === 'win32', env: { ...process.env, KEDOVI_NO_UPDATE_CHECK: '1' } });
+  const cli = r.status === 0 ? String(r.stdout || '').trim().split('\n').pop() : '';
+  if (!/^\d+\.\d+\.\d+/.test(cli)) return null;
+  const v = (s) => s.split('-')[0].split('.').map((n) => Number(n) || 0);
+  const [a, b] = [v(cli), v(ws)];
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] < b[i] ? { cli, ws } : null;
   return null;
 }
 
@@ -127,6 +142,12 @@ run(() => {
       st.wtWarned = now;
       out.push(`⚠ 작업 폴더(worktree) ${w.total}개가 남아 있습니다 (하루 넘게 손대지 않음 ${w.stale}개 · 킷 밖 위치 ${w.stray}개 · 폴더 없는 기록 ${w.missing}개). 사용자에게 한 줄 알리고 kedovi worktree clean 으로 끝난 것을 정리한다 (바뀐 파일 · 머지 안 된 커밋이 있는 것은 남고, 킷 밖의 것은 .worktrees/ 로 옮긴다. 미리 보기 --dry-run)`);
     }
+  }
+  // 전역 kedovi 이 워크스페이스 킷보다 낮음 (메인 세션, 6시간에 한 번): 새 하위 명령이 「모르는 명령」 이나 엉뚱한 명령으로 빠진다
+  if (!input.agent_id && (!st.verChecked || now - st.verChecked > 6 * 3600000)) {
+    st.verChecked = now;
+    const b = cliBehind(ROOT);
+    if (b) out.push(`⚠ 전역 kedovi ${b.cli} 이 워크스페이스 킷 ${b.ws} 보다 낮습니다. 새 kedovi 명령이 「모르는 명령」 으로 실패할 수 있습니다. 사용자에게 npm i -g kedovi 를 한 줄 권하고, 그 전에는 워크스페이스 도구를 직접 쓴다 (node packs/core/bin/<도구>.js)`);
   }
   try { fs.writeFileSync(file, JSON.stringify(st)); } catch { /* 기록 실패 */ }
   if (out.length) context(out.join('\n'));

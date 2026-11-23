@@ -59,6 +59,11 @@
       "agents": "claude"
     },
     {
+      "script": "hooks/request-ledger.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
       "script": "hooks/browser-close.js",
       "timeout": 5,
       "agents": "claude"
@@ -103,6 +108,11 @@
     },
     {
       "script": "hooks/task-focus.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/request-ledger.js",
       "timeout": 5,
       "agents": "claude"
     },
@@ -359,6 +369,11 @@
   "SubagentStop": [
     {
       "script": "hooks/browser-close.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
+      "script": "hooks/lead-progress.js",
       "timeout": 5,
       "agents": "claude"
     },

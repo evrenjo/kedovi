@@ -71,13 +71,41 @@ try {
   fs.writeFileSync(sub, line(120));
   assert.strictEqual(hook({ agent_id: 'a1', agent_type: 'implementer' }), '', '기준 아래');
   fs.appendFileSync(sub, line(230));
-  assert.match(hook({ agent_id: 'a1', agent_type: 'implementer' }), /맥락이 약 230K.*보고하고 끝낸다/);
+  const first = hook({ agent_id: 'a1', agent_type: 'implementer' });
+  assert.match(first, /맥락이 약 230K.*보고하고 끝낸다/);
+  const doc = (first.match(/인계 파일 틀을 만들었다: (\S+)/) || [])[1];
+  assert.ok(doc && fs.existsSync(path.join(ws, doc)), `인계 파일 틀: ${first}`);
+  assert.match(fs.readFileSync(path.join(ws, doc), 'utf8'), /## 바뀐 파일[\s\S]*## 채울 것/);
+  // 맥락 창 기준: 20만 창의 70% = 140K 에서 (비용 기준 200K 보다 먼저)
+  const sub2 = path.join(subDir, 'agent-a2.jsonl');
+  fs.writeFileSync(sub2, line(150));
+  assert.match(hook({ agent_id: 'a2', agent_type: 'tester' }), /약 150K.*기준 140K.*renewContextPct/);
   fs.appendFileSync(sub, line(240));
   assert.strictEqual(hook({ agent_id: 'a1', agent_type: 'implementer' }), '', '5만 안 늘면 다시 안 알림');
   fs.appendFileSync(sub, line(285));
   assert.match(hook({ agent_id: 'a1', agent_type: 'implementer' }), /약 285K/);
   fs.writeFileSync(main, line(400));
   assert.strictEqual(hook({}), '', '메인은 세션 알림이 맡는다');
+
+  // 메인 알림 문구가 실제 적용 수준과 맞는다: block = 줄였다 · warn = 줄이지 않음, 이 PC 값이 팀 값보다 세면 출처
+  fs.mkdirSync(path.join(ws, 'bin'));
+  fs.copyFileSync(path.join(__dirname, '..', '..', '..', 'bin', 'kit.js'), path.join(ws, 'bin', 'kit.js'));
+  const prompt = (sid) => spawnSync(process.execPath, [path.join(hooks, 'usage-pace.js'), '--agent=claude'], { cwd: ws, encoding: 'utf8', input: JSON.stringify({ session_id: sid, hook_event_name: 'UserPromptSubmit' }), env: { ...process.env, CLAUDE_PROJECT_DIR: ws } }).stdout;
+  const setWs = (enforce) => fs.writeFileSync(path.join(ws, 'workspace.json'), JSON.stringify({ project: { name: 'x' }, repos: [], packs: ['core'], agents: { enforce } }));
+  const live = (used) => P.record({ seven_day: { used_percentage: used, resets_at: (Date.now() + P.WEEK / 2) / 1000 } });
+  live(82);
+  setWs({ usagePace: 'block' });
+  const blk = prompt('m1');
+  assert.match(blk, /줄였다/); assert.match(blk, /Sonnet 으로 바꿔 띄운다/); assert.doesNotMatch(blk, /이 PC 값/);
+  assert.strictEqual(prompt('m1'), '', '같은 단계 · 같은 수준이면 1시간 안에 다시 안 알림');
+  setWs({ usagePace: 'warn' });
+  const wrn = prompt('m1');
+  assert.match(wrn, /줄이지 않았다 \(알림만, agents\.enforce\.usagePace=warn\)/, '수준을 바꾸면 바로 다시');
+  assert.doesNotMatch(wrn, /줄였다|바꿔 띄운다/);
+  fs.mkdirSync(path.join(ws, '.agents'), { recursive: true });
+  fs.writeFileSync(path.join(ws, '.agents', 'local.json'), JSON.stringify({ agents: { enforce: { usagePace: 'block' } } }));
+  assert.match(prompt('m2'), /줄였다.*팀 값은 warn 이지만 이 PC 값/);
+  fs.rmSync(path.join(ws, '.agents', 'local.json'));
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

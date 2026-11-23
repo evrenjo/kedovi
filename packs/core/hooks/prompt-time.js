@@ -9,7 +9,8 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { run, context, root } = require('../lib/hook');
+const { run, context, root, readInput, safeId } = require('../lib/hook');
+const { stateDir } = require('../lib/workspace');
 
 /** 켜져 있나: 이 PC 값 → 팀 값 → 기본 켜짐 */
 function enabled(r) {
@@ -28,7 +29,15 @@ function stamp(d = new Date()) {
 
 if (require.main === module) {
   run(() => {
-    if (!enabled(root())) return;
+    const r = root();
+    if (!enabled(r)) return;
+    // 지시 문장은 세션 첫 요청과 30분마다만, 그 사이는 시각만 짧게 (요청마다 같은 문장을 쌓지 않는다)
+    const id = safeId(readInput().session_id);
+    const file = id ? path.join(stateDir(r), `${id}.ptime`) : null;
+    let last = 0;
+    try { if (file) last = Number(fs.readFileSync(file, 'utf8')) || 0; } catch { /* 처음 */ }
+    if (file && Date.now() - last < 30 * 60000) return context(`⏱ ${stamp()} (첫 답변 첫 줄에 이 시각만)`);
+    try { if (file) fs.writeFileSync(file, String(Date.now())); } catch { /* 기록 실패 */ }
     context(`⏱ 요청 받은 시각 ${stamp()}. 이번 요청의 첫 답변 글 첫 줄에 이 시각만 그대로 쓴다 (yyyy-MM-dd HH:mm:ss, 다른 말 없이). 같은 요청의 다음 글에는 다시 쓰지 않는다`);
   });
 }

@@ -25,7 +25,7 @@ const { execFileSync, spawnSync } = require('child_process');
 const GEN_NOTE = '생성 파일: `node bin/kit.js sync` 로 다시 만든다. 직접 고치지 말 것 (정본 = packs/ · workspace.json)';
 const DEFAULT_AGENTS_MD_BYTES = 32 * 1024; // Codex project_doc_max_bytes 기본값
 const ENFORCE_LEVELS = ['off', 'warn', 'block']; // agents.enforce.* 훅 강제 수준 (약한 것부터)
-const ENFORCE_DEFAULTS = { usagePace: { level: 'block', max: 'block' }, teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'block', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' }, browserClose: { level: 'block', max: 'block' }, longAnswer: { level: 'block', max: 'block' }, agentReport: { level: 'block', max: 'block' }, screenChecklist: { level: 'block', max: 'block' }, permissionAsk: { level: 'block', max: 'block' }, draftCheck: { level: 'block', max: 'block' }, leadHold: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
+const ENFORCE_DEFAULTS = { usagePace: { level: 'block', max: 'block' }, teammateName: { level: 'block', max: 'block' }, rosterAnnounce: { level: 'warn', max: 'warn' }, reviewBeforePush: { level: 'off', max: 'block' }, idleTeammates: { level: 'block', max: 'block' }, waitStatus: { level: 'block', max: 'block' }, decisionAsk: { level: 'block', max: 'block' }, longRunning: { level: 'block', max: 'block' }, checkBeforeReview: { level: 'block', max: 'block' }, planFirst: { level: 'warn', max: 'block' }, answerFirst: { level: 'block', max: 'block' }, mainDelegate: { level: 'block', max: 'block' }, midTurnMessages: { level: 'block', max: 'block' }, browserClose: { level: 'block', max: 'block' }, longAnswer: { level: 'block', max: 'block' }, agentReport: { level: 'block', max: 'block' }, screenChecklist: { level: 'block', max: 'block' }, permissionAsk: { level: 'block', max: 'block' }, draftCheck: { level: 'block', max: 'block' }, leadHold: { level: 'block', max: 'block' }, requestLedger: { level: 'block', max: 'block' } }; // 기본값 · 가장 센 값
 const UI_LAYER_PACKS = ['frontend', 'mobile', 'desktop', 'tv', 'watch']; // 화면을 만드는 레이어 팩 (repo 별 작업 규칙에 화면 정본 규칙을 앞에 둔다)
 const MAX_AGENTS_MD_BYTES = 96 * 1024; // 이 위로는 sync 가 막는다 (context 낭비)
 const PERSONAL_HEADROOM = 12 * 1024; // 개인 지침(응답 언어 · 대화 스타일 약 1.7KB · 역할 상한 · 팀 구성(역할 · 모델 메뉴) · 위임 표 · 잠금)이 AGENTS.override.md 에 더해지는 몫. 자동 모드에서 약 8KB
@@ -999,9 +999,25 @@ function guideExcludes(ws) {
   return out;
 }
 
-function buildAgentsMd(ws, rules, skills, repoMap = {}, catalog = [], extra = new Map(), languages = []) {
+/**
+ * 팀원 지침 머리 (역할 에이전트용 발췌의 첫 절). 사용자 대화 규칙(10-communication 등 member: skip 룰) 대신 팀원에게 필요한 것만.
+ * 발췌 = 워크스페이스 AGENTS.md 에서 member: skip 룰 · 스킬 목록을 뺀 것 + 개인 지침의 응답 언어 · 담당 잠금 (팀 구성 · 상한 · 위임 절은 뺀다)
+ */
+const MEMBER_COMMON = [
+  '> 역할 에이전트(팀원)용 발췌다. 워크스페이스 `AGENTS.md` 전체 대신 이것을 읽는다 (`vars.team.memberBrief`, 정본 = `packs/`). 위 지침이 「`AGENTS.md` 의 …」 라고 하면 이 발췌의 같은 절이다.',
+  '',
+  '## 팀원 공통',
+  '',
+  '- **보고는 부른 쪽에게** (리더 · 메인). 사용자에게 직접 묻지 않고, 결정이 필요하면 멈추고 질문을 보고한다.',
+  '- **결론 먼저 · 간결**: 첫 줄에 결론, 근거는 `파일:라인` · 명령 출력. 과정 서술은 넣지 않는다. 긴 보고는 `node packs/core/bin/report.js new "<제목>"` 이 준 파일에 쓰고 `자세히: <링크>` 를 붙인다.',
+  '- **언어**: 문서 · 보고는 아래 「응답 언어」, 코드 · 커밋 · 식별자는 영어.',
+  '- **사람이 읽는 글**(문서 · 이슈 · MR · 댓글 · 보고)은 쓰기 전에 `.agents/rules/core--12-writing-format.md`, 남이 읽는 확인 요청 글은 `.agents/rules/core--11-confirm-request-tone.md` 를 읽는다.',
+  '- **커밋 · push · 게시는 지시받은 것만**. 소유 범위 밖 파일은 고치지 않고 보고한다.',
+];
+
+function buildAgentsMd(ws, rules, skills, repoMap = {}, catalog = [], extra = new Map(), languages = [], { member = false } = {}) {
   const p = ws.project;
-  const parts = [`<!-- ${GEN_NOTE} -->`, '', `# ${p.title || p.name || '워크스페이스'}`, ''];
+  const parts = member ? [`# 팀원 지침: ${p.title || p.name || '워크스페이스'}`, ''] : [`<!-- ${GEN_NOTE} -->`, '', `# ${p.title || p.name || '워크스페이스'}`, ''];
   if (p.type) parts.push(`**프로젝트 유형: ${PROJECT_TYPES[p.type] || p.type}**`, '');
   if (p.approach === 'sprint') {
     parts.push(`**진행 방식: ${APPROACHES.sprint}**`, '',
@@ -1015,7 +1031,8 @@ function buildAgentsMd(ws, rules, skills, repoMap = {}, catalog = [], extra = ne
       '- 주간 보고는 `node packs/core/bin/plan.js --report [시작 [끝]]` 출력을 쓴다 (숫자는 표에서 센 것만). 형식은 주간보고 틀(`kedovi draft template weekly`): 다음 주 · 요청을 덧붙인다.', '');
   } else if (p.approach === 'full') parts.push(`**진행 방식: ${APPROACHES.full}**`, '');
   if (p.description) parts.push(p.description, '');
-  parts.push('> 이 문서는 **Claude Code 와 Codex 가 같은 내용을 읽는다** (Claude 는 `CLAUDE.md` 가 이 파일을 가져온다).',
+  if (member) parts.push(...MEMBER_COMMON, '');
+  else parts.push('> 이 문서는 **Claude Code 와 Codex 가 같은 내용을 읽는다** (Claude 는 `CLAUDE.md` 가 이 파일을 가져온다).',
     '> 룰·스킬을 고치려면 `packs/` 를 고치고 `node bin/kit.js sync` 를 돌린다.', '');
   const repos = repoTable(ws);
   if (repos) parts.push(repos);
@@ -1024,9 +1041,9 @@ function buildAgentsMd(ws, rules, skills, repoMap = {}, catalog = [], extra = ne
   const guides = repoGuidesSection(ws);
   if (guides) parts.push(guides);
 
-  const always = rules.filter((r) => r.load === 'always' && r.agents === 'all' && r.scope !== 'repo');
+  const always = rules.filter((r) => r.load === 'always' && r.agents === 'all' && r.scope !== 'repo' && !(member && String((r.meta || {}).member || '') === 'skip'));
   for (const r of always) {
-    parts.push(`<!-- 출처: ${r.src} -->`, r.body.trim(), '');
+    parts.push(...(member ? [] : [`<!-- 출처: ${r.src} -->`]), r.body.trim(), '');
   }
 
   const onDemand = rules.filter((r) => r.load === 'on-demand' && r.agents === 'all' && r.scope !== 'repo');
@@ -1037,7 +1054,7 @@ function buildAgentsMd(ws, rules, skills, repoMap = {}, catalog = [], extra = ne
       ...onDemand.map((r) => `| ${r.meta.when} | \`${r.out}\` (${r.title}) |`), '');
   }
 
-  if (skills.length) {
+  if (skills.length && !member) {
     parts.push('## 스킬', '', '호출: Claude Code `/이름` · Codex `$이름` (또는 `/skills`). 설명에 맞는 요청이면 명시 호출 없이도 쓴다.', '',
       '| 이름 | 설명 |', '|---|---|',
       ...skills.map((s) => `| \`${s.name}\` | ${briefSkill(s.description).replace(/\|/g, '\\|')} |`), '');
@@ -1182,6 +1199,7 @@ function generate(root) {
 
   const agentsMd = buildAgentsMd(ws, rules, skills, repoMap, catalog, files, languages);
   files.set('AGENTS.md', agentsMd);
+  const memberMd = buildAgentsMd(ws, rules, skills, repoMap, catalog, new Map(), languages, { member: true });
   files.set('CLAUDE.md', buildClaudeMd(rules));
   for (const r of rules) {
     files.set(r.out, `<!-- ${GEN_NOTE} · 출처: ${r.src} -->\n\n${r.body.trim()}\n`);
@@ -1262,7 +1280,7 @@ function generate(root) {
 
   const roles = collectRoles(packs, ws, errors);
   for (const a of auditModels(root, ws)) warnings.push(a.message); // 퇴역 모델은 경고로 — 생성은 막지 않는다 (개인 설정 때문에 팀 커밋이 막히지 않게)
-  return { ws, files, roles, packs, errors, warnings, allRules, ruleState, repoMap, stats: { rules: rules.length, always: rules.filter((r) => r.load === 'always').length, skills: skills.length, hooks: hooks.length, bytes, limit: effective } };
+  return { ws, files, roles, packs, errors, warnings, allRules, ruleState, repoMap, memberMd, stats: { rules: rules.length, always: rules.filter((r) => r.load === 'always').length, skills: skills.length, hooks: hooks.length, bytes, limit: effective } };
 }
 
 /** 개인 지침(.agents/local.md) → CLAUDE.local.md · AGENTS.override.md. 둘 다 gitignore 대상이라 check 대상이 아니다. */
@@ -1429,8 +1447,9 @@ function resolveModels(root, ws) {
   //   midTurnMessages = 작업 중 끼어 든 사용자 메시지를 답변에서 처리했는지 멈출 때 한 번 되묻는다 (Claude Code. block 기본 · off)
   //   permissionAsk = 서브에이전트(리더 · 그 아래 팀원)의 권한 질문을 묻지 않고 거절하고 다른 방법을 알린다 (Claude Code PermissionRequest. block 기본 · off: 메인 화면에 그대로 묻기)
   //   draftCheck = 사람이 읽는 글(이슈 · MR · 댓글 · 기획 repo 커밋)의 형식 검사: 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것 · 소스 코드 표현 (lib/draft.js. block 기본 = 올리기 · 커밋을 막기 · warn 알림만 · off)
-  //   usagePace = 주간 사용량 속도가 빠르면 상한을 줄이고 절약 단계에서 Opus 호출을 막는다 (Claude Code. block 기본 · warn 알림만 · off)
+  //   usagePace = 주간 사용량 속도가 빠르면 상한을 줄이고 절약 단계에서 implementer-deep 밖의 Opus 호출을 Sonnet 으로 바꿔 띄운다 (Claude Code. block 기본 · warn 알림만 · off)
   //   leadHold = 작업 리더가 자기 팀원이 도는 채 차례를 끝내려 하면 한 번 되돌린다 (Claude Code SubagentStop. block 기본 · off)
+  //   requestLedger = 사용자 요청을 장부(handoffs/<id>/topics/요청-목록.md)에 적고, 열린 요청이 있는데 답변 끝에 요청 표가 없으면 한 번 되돌린다 (Claude Code. block 기본 · warn 기록만 · off)
   //   checkBeforeReview = 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 막는다 (리뷰 위임 · 리뷰 역할 에이전트)
   const longRun = { after: mins(te.runMinutes, 60) };
   return { team, effective, base, run, access, runWarnings, limits, teamLimits, limitParts, enforce, teamEnforce, review, idle, longRun, profile: { team: teamProfile, local: localProfile, blocked, allowHigher } };
@@ -1983,8 +2002,33 @@ function delegationSection(tool, rows, mode = 'fixed') {
   ].join('\n');
 }
 
+/** omitClaudeMd 를 아는 Claude Code (2.1.271). 이보다 낮으면 발췌를 싣지 않는다 (CLAUDE.md 도 읽어 맥락이 오히려 는다) */
+const MEMBER_BRIEF_MIN = [2, 1, 271];
+
+/** 팀원용 지침 발췌 (vars.team.memberBrief 가 off 가 아니고, 이 PC 의 claude 가 알면). 아니면 '' */
+function memberBriefText(root, generated, chatHead, lockText, warnings = []) {
+  const raw = lookup((generated.ws || {}).vars || {}, 'team.memberBrief');
+  const v = String(raw === undefined ? 'on' : raw);
+  if (v === 'off' || v === 'false' || !generated.memberMd) return '';
+  let ver = null;
+  try {
+    const { findCli } = require(path.join(root, 'packs', 'core', 'lib', 'cli.js'));
+    const bin = findCli('claude');
+    if (bin) {
+      const out = require('child_process').execFileSync(bin, ['--version'], { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] });
+      const m = String(out).match(/(\d+)\.(\d+)\.(\d+)/);
+      if (m) ver = m.slice(1, 4).map(Number);
+    }
+  } catch { /* 모름: 싣는다 */ }
+  if (ver && ver.reduce((c, n, i) => c || n - MEMBER_BRIEF_MIN[i], 0) < 0) {
+    warnings.push(`Claude Code ${ver.join('.')} 는 팀원용 지침(omitClaudeMd)을 몰라 역할 에이전트가 전체 지침을 읽습니다. ${MEMBER_BRIEF_MIN.join('.')} 이상으로 올리면 맥락이 줄어듭니다 (claude update)`);
+    return '';
+  }
+  return [generated.memberMd.trim(), chatHead ? chatHead.trim() : '', lockText ? lockText.trim() : ''].filter(Boolean).join('\n\n');
+}
+
 /** 역할 → 도구별 에이전트 파일 (Claude Code · Codex). 모델이 사람마다 다를 수 있어 git 에 넣지 않고 각자 sync 가 만든다. 위임 역할은 그 도구 파일을 만들지 않는다 */
-function buildAgentFiles(roles, models, { cliFor = () => true, warnings = [], mcp = {} } = {}) {
+function buildAgentFiles(roles, models, { cliFor = () => true, warnings = [], mcp = {}, memberBrief = '' } = {}) {
   const files = new Map();
   const note = (r) => `${GEN_NOTE} · 출처: ${r.src} · 모델은 프로필 → workspace.json agents(팀) → .agents/local.json agents(개인, 팀보다 낮추기만). kedovi models`;
   const dele = delegations(roles, models, { cliFor, warnings });
@@ -2000,7 +2044,10 @@ function buildAgentFiles(roles, models, { cliFor = () => true, warnings = [], mc
       // 이 역할에만 붙이는 MCP: 역할이 시작할 때 연결하고 끝나면 끊는다 (tmux 팀원도. in-process 팀원은 이 칸을 무시한다)
       const ownMcp = Object.entries(mcp || {}).filter(([, srv]) => mcpRoles(srv).includes(r.name) || mcpRoles(srv).includes('*'));
       if (ownMcp.length) cl.push('mcpServers:', ...ownMcp.map(([name, srv]) => `  - ${name}: ${JSON.stringify(mcpEntry(srv))}`));
-      cl.push('---', '', `<!-- ${note(r)} -->`, '', r.body, '');
+      // 팀원용 지침: 리더 밖 역할은 CLAUDE.md(워크스페이스 AGENTS.md · 개인 지침) 대신 발췌를 정의에 싣는다 (맥락 절약). 리더는 팀 구성 · 상한이 필요해 전체를 읽는다
+      const brief = memberBrief && r.name !== 'lead';
+      if (brief) cl.push('omitClaudeMd: true');
+      cl.push('---', '', `<!-- ${note(r)} -->`, '', r.body, '', ...(brief ? ['---', '', memberBrief.trim(), ''] : []));
       files.set(`.claude/agents/${r.name}.md`, cl.join('\n'));
     }
     // Codex — .codex/agents/<name>.toml (name · description · developer_instructions · model · model_reasoning_effort · sandbox_mode)
@@ -2150,16 +2197,17 @@ function cmdSync(root, { quiet, soft } = {}) {
   try { const { findCli } = require(path.join(root, 'packs', 'core', 'lib', 'cli.js')); cliFor = (t) => !!findCli(t); } catch { /* 옛 워크스페이스 */ }
   const agentWarnings = [];
   const resolved = resolveModels(root, ws);
-  const built = buildAgentFiles(generated.roles, resolved.run, { cliFor, warnings: agentWarnings, mcp: ws.mcp });
+  const lockText = lockSection(root, ws);
+  const chatHead = applyChatPrefs(root, ws);
+  const memberBrief = memberBriefText(root, generated, chatHead, lockText, agentWarnings);
+  const built = buildAgentFiles(generated.roles, resolved.run, { cliFor, warnings: agentWarnings, mcp: ws.mcp, memberBrief });
   for (const [name, srv] of Object.entries(ws.mcp || {})) {
     const bad = mcpRoles(srv).filter((x) => x !== '*' && !generated.roles.some((r) => r.name === x));
     if (bad.length) warnings.push(`MCP ${name}: roles 에 없는 역할 ${bad.join(', ')} (있는 역할: ${generated.roles.map((r) => r.name).join(', ')})`);
   }
   writeLocalGenerated(root, built.files);
   warnings.push(...resolved.runWarnings, ...agentWarnings);
-  const lockText = lockSection(root, ws);
   applyEditGuard(root, ws);
-  const chatHead = applyChatPrefs(root, ws);
   const limitText = limitSection(resolved.limits, resolved.teamLimits);
   let localAgents = {};
   try { localAgents = JSON.parse(read(path.join(root, LOCAL_CONFIG))).agents || {}; } catch { /* 없음 */ }

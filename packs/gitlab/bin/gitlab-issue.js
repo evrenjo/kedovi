@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// GitLab 이슈 찾기 · 읽기 · 등록 · 댓글 도우미 (닫기 · 라벨 · 담당자는 하지 않는다). 사용: node packs/gitlab/bin/gitlab-issue.js <search|view|create|comment> --repo <name> …
+// GitLab 이슈 찾기 · 읽기 · 등록 · 댓글 · 닫기 도우미 (다시 열기 · 라벨 · 담당자는 하지 않는다). 사용: node packs/gitlab/bin/gitlab-issue.js <search|view|create|comment|close> --repo <name> …
 'use strict';
 
 /*
@@ -11,6 +11,8 @@
  *     이슈를 등록한다. 본문에 비밀값 모양이 있거나 글 형식(kedovi draft check)에 걸리면 보내지 않는다. --dry-run 이면 보낼 요청만 출력한다.
  * comment  [--repo R] --iid N --body-file F [--type done] [--dry-run]
  *     이슈에 댓글(조치 보고 등)을 단다. 완료 댓글이면 --type done (필수 절까지). 검사 · --dry-run 은 create 와 같다.
+ * close    [--repo R] --iid N [--reason-file F] [--type done] [--dry-run]
+ *     이슈를 닫는다. 사유 파일이 있으면 댓글로 먼저 남긴다 (검사는 comment 와 같다). 이미 닫혔으면 알리고 끝낸다.
  *
  * 설정 · 토큰은 gitlab-mr.js 와 같다: workspace.json repos[].gitlab = { host, projectId, apiBase? }, GITLAB_TOKEN.
  * --repo 는 gitlab 설정이 있는 repo 가 하나면 생략. 토큰은 어떤 출력에도 찍지 않는다.
@@ -100,12 +102,41 @@ async function cmdComment(ws, a) {
   console.log(`✔ 이슈 #${iid} 댓글 ${n.id}`);
 }
 
+async function cmdClose(ws, a) {
+  const r = repoOrOnly(ws, a.repo);
+  const iid = iidOf(a);
+  const text = a['reason-file'] !== undefined ? readFile(a['reason-file'], 'reason-file') : null;
+  if (text !== null) {
+    guard(ws, text);
+    draftGuard(ws, r, text, a.type && a.type !== true ? a.type : 'comment');
+  }
+  if (a['dry-run']) {
+    if (text !== null) {
+      console.log(`[dry-run] POST ${apiBase(r)}/projects/${r.gitlab.projectId}/issues/${iid}/notes`);
+      console.log(JSON.stringify({ body: text }, null, 2));
+    }
+    console.log(`[dry-run] PUT ${apiBase(r)}/projects/${r.gitlab.projectId}/issues/${iid}`);
+    console.log('[dry-run] header: PRIVATE-TOKEN: ***');
+    console.log(JSON.stringify({ state_event: 'close' }, null, 2));
+    return;
+  }
+  const cur = await api(ws, r, 'GET', `/issues/${iid}`);
+  if (cur.state === 'closed') { console.log(`✔ 이슈 #${iid} 는 이미 닫혀 있습니다 (사유 댓글도 남기지 않음) ${cur.web_url || ''}`.trim()); return; }
+  if (text !== null) {
+    const n = await api(ws, r, 'POST', `/issues/${iid}/notes`, { body: text });
+    console.log(`✔ 이슈 #${iid} 사유 댓글 ${n.id}`);
+  }
+  const i = await api(ws, r, 'PUT', `/issues/${iid}`, { state_event: 'close' });
+  if (i.state !== 'closed') die(`이슈 #${iid} 를 닫지 못했습니다 (상태: ${i.state || '알 수 없음'})`);
+  console.log(`✔ 이슈 #${iid} 닫음 ${i.web_url || ''}`.trim());
+}
+
 async function main() {
   const a = parseArgs(process.argv.slice(2));
   const cmd = a._[0];
-  const run = { search: cmdSearch, view: cmdView, create: cmdCreate, comment: cmdComment }[cmd];
+  const run = { search: cmdSearch, view: cmdView, create: cmdCreate, comment: cmdComment, close: cmdClose }[cmd];
   if (!run) {
-    console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(5, 17).map((l) => l.replace(/^ \* ?/, '')).join('\n'));
+    console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(5, 19).map((l) => l.replace(/^ \* ?/, '')).join('\n'));
     process.exit(cmd ? 1 : 0);
   }
   return run(loadWs(), a);

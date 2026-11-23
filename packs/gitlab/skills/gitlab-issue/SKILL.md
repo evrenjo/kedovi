@@ -1,12 +1,12 @@
 ---
 name: gitlab-issue
-description: GitLab 이슈를 찾고 · 읽고 · 등록하고 · 조치 보고를 댓글로 단다. 초안 → 비슷한 이슈 · 민감정보 검사 → 사용자 OK → 등록 · 댓글. 닫기 · 라벨 · 담당자는 하지 않는다. "이슈 등록해줘", "#12 이슈 봐줘", "조치 내용 이슈에 남겨줘" 요청에 쓴다.
+description: GitLab 이슈를 찾고 · 읽고 · 등록하고 · 조치 보고를 댓글로 달고 · 닫는다. 초안 → 비슷한 이슈 · 민감정보 검사 → 사용자 OK → 등록 · 댓글 · 닫기. 다시 열기 · 라벨 · 담당자는 하지 않는다. "이슈 등록해줘", "#12 이슈 봐줘", "조치 내용 이슈에 남겨줘", "#12 닫아줘" 요청에 쓴다.
 argument-hint: "<등록할 내용 | 이슈 번호> [repo]"
 ---
 
-# gitlab-issue: GitLab 이슈 찾기 · 읽기 · 등록 · 댓글
+# gitlab-issue: GitLab 이슈 찾기 · 읽기 · 등록 · 댓글 · 닫기
 
-도우미: `node packs/gitlab/bin/gitlab-issue.js` (`search` · `view` · `create` · `comment`, 보내는 것은 `--dry-run` 지원). 보내기 직전에 비밀값 모양이나 글 형식 문제(`kedovi draft check`)가 있으면 스스로 멈춘다.
+도우미: `node packs/gitlab/bin/gitlab-issue.js` (`search` · `view` · `create` · `comment` · `close`, 보내는 것은 `--dry-run` 지원). 보내기 직전에 비밀값 모양이나 글 형식 문제(`kedovi draft check`)가 있으면 스스로 멈춘다.
 설정 · 토큰은 `mr` 스킬과 같다: `workspace.json` 의 `repos[].gitlab = {"host", "projectId"}`, 토큰 `GITLAB_TOKEN`(권한 api). 설정이 없으면 무엇을 채워야 하는지 안내하고 멈춘다.
 사용자가 repo 를 말하지 않았으면: 이슈 기록 repo(kind `issues`) → 지금 작업 중인 repo 순으로 고르고, 후보가 둘 이상이면 묻는다 (`gitlab-mr.js repos` 로 후보를 본다).
 
@@ -17,12 +17,13 @@ argument-hint: "<등록할 내용 | 이슈 번호> [repo]"
 | "이슈 등록해줘: <내용>" | 초안 → 검사 → 미리보기 → OK 뒤 등록 |
 | "#12 이슈 봐줘" · 이슈 번호만 | 읽기만 (본문 · 댓글 요약) |
 | "조치 내용 #12 에 남겨줘" | `ticket` 조치 보고를 댓글 초안으로 → 검사 → 미리보기 → OK 뒤 댓글 |
+| "#12 닫아줘" | 닫는 사유 확인 → (사유 댓글 검사 · 미리보기) → OK 뒤 닫기 |
 
 ## 절대 규칙
 
-- **미리보기를 낸 뒤 사용자의 명시적 OK 없이 등록 · 댓글하지 않는다.** 이슈는 지워도 번호 · 알림 메일이 남는다. 지난번 승인 · 다른 주제의 지시는 OK 가 아니다.
+- **미리보기를 낸 뒤 사용자의 명시적 OK 없이 등록 · 댓글 · 닫기를 하지 않는다.** 이슈는 지워도 번호 · 알림 메일이 남는다. 지난번 승인 · 다른 주제의 지시는 OK 가 아니다.
 - **검사에서 걸리면 올리지 않는다.** 해당 줄을 고치거나 `***` 로 가린 뒤 다시 검사한다. 검사 결과 값은 화면에 다시 찍지 않는다.
-- **닫기 · 다시 열기 · 라벨 · 담당자 · 마일스톤은 하지 않는다** (사람이 GitLab 에서). 본문에 `Closes #n` 을 쓰지 않는다.
+- **닫기는 사용자가 닫으라고 했거나 OK 했을 때만** `close` 로 한다. 다시 열기 · 라벨 · 담당자 · 마일스톤은 하지 않는다 (사람이 GitLab 에서). 본문에 `Closes #n` 을 쓰지 않는다. API 를 직접 부르지 않는다.
 - 토큰을 출력 · 기록하지 않는다.
 
 ## 등록 절차
@@ -82,4 +83,16 @@ node packs/gitlab/bin/gitlab-issue.js view --repo <이름> --iid <번호>
    node packs/gitlab/bin/gitlab-issue.js comment ...같은 인자... (--dry-run 없이)
    ```
 
-   닫을지는 사용자에게 맡긴다 ("닫는 것은 GitLab 에서 직접 하시면 됩니다").
+   닫을지는 사용자에게 묻는다. 닫으라고 하면 아래 「닫기」 로.
+
+## 닫기
+
+1. 닫는 사유를 확인한다. 조치 댓글을 이미 달았으면 사유 파일 없이 닫는다. 아니면 사유(완료 · 중복 · 재현 안 됨 등)를 짧은 댓글 초안으로 만들어 등록 절차 3~4 와 같이 검사 → 미리보기 → 멈춤.
+2. OK 뒤:
+
+   ```bash
+   node packs/gitlab/bin/gitlab-issue.js close --repo <이름> --iid <번호> [--reason-file <사유 파일>] [--type done] --dry-run   # 먼저 확인
+   node packs/gitlab/bin/gitlab-issue.js close ...같은 인자... (--dry-run 없이)
+   ```
+
+   이미 닫혀 있으면 도우미가 알리고 사유 댓글도 남기지 않는다.

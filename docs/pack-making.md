@@ -110,6 +110,7 @@ agents: all             # all(기본) | claude. claude 는 CLAUDE.md 에만 들�
 required: true          # (선택) 킷의 전제라 워크스페이스가 끄거나 바꿀 수 없다. core 의 근거·안전·보안만
 replaces: <규칙 ID>      # (선택, project 팩) 킷 규칙 대신 이 규칙을 넣는다. 규칙 ID = <팩>--<파일이름>
 if: vars.gitlab.branchMode=trunk   # (선택) 설정값이 맞을 때만 넣는다. != 는 다를 때. 값이 없으면 빈 문자열로 본다
+member: skip   # (선택) 역할 에이전트용 발췌(팀원 지침)에서 뺀다. 사용자 대화 · 에이전트 부르기처럼 메인 · 리더만 쓰는 규칙
 ---
 
 ## 본문 제목
@@ -185,7 +186,7 @@ description: 오늘 작업을 마무리하고 인계 기록을 남긴다. "핸�
   - `Stop`: stdout 은 **JSON 이거나 비어 있어야 한다** (Codex 는 평문을 오류로 본다).
     계속 작업시키려면 `{"decision":"block","reason":"..."}`. 알리기만 할 거면 출력하지 않는다.
   - `PreToolUse`: 막을 때만 `deny(reason)` 의 JSON, 허용이면 출력하지 않는다. 막지 않고 알리기만 할 때는 `note(text)`(additionalContext JSON, Claude). Codex 도 같은 deny JSON 으로 셸(`Bash`) · 파일 편집(`apply_patch`, matcher `apply_patch` · `Edit` · `Write`)을 막는다 (codex-cli 0.165 실측, core `repo-guard.js`). 대부분의 PreToolUse 훅은 Claude 전용이다
-  - `UserPromptSubmit`: stdout 평문 = 그 요청의 컨텍스트에 추가 (Claude · Codex 모두, Codex 는 codex-cli 0.159 에서 확인). 요청마다 들어가므로 **2줄 이내**, 없으면 출력하지 않는다.
+  - `UserPromptSubmit`: stdout 평문 = 그 요청의 컨텍스트에 추가 (Claude · Codex 모두, Codex 는 codex-cli 0.159 에서 확인). 요청마다 들어가므로 **2줄 이내**, 없으면 출력하지 않는다. 같은 세션에서 직전과 같은 내용이면 다시 넣지 않는다 (상태 폴더에 마지막 출력을 두고 바뀔 때만 · 일정 시간마다).
   - `PostToolUse`: 문맥을 넣으려면 JSON `{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"…"}}` (Codex 는 평문을 버리고, `hookEventName` 이 없으면 실패로 본다). 도구마다 불리므로 가볍게, 대부분 출력하지 않는다.
   - 공통 헬퍼: `packs/core/lib/hook.js`: `root()`, `agent()`, `readInput()`, `context(text)`, `block(reason)`, `deny(reason)`, `note(text)`.
 - 훅은 **세션을 깨지 않는다.** 예외는 잡고 exit 0. 네트워크가 필요한 검사는 timeout 안에 끝나게.

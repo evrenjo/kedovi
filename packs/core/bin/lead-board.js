@@ -5,6 +5,7 @@
  *   step --unit <단위> --stage <단계> [--done "끝난 것"] [--next "다음"] [--eta HH:MM]   리더가 단계마다 · vars.team.leadReportMinutes 분마다
  *   step --unit <단위> --end 완료|막힘|결정 필요 [--done …]                              최종 보고 때 닫는다
  *   board [--all] [--json]                                                                 단위마다 단계 · 끝난 것 · 다음 · 예상 종료 · 갱신 (닫힌 지 2시간 넘은 것은 --all 때만)
+ * 저절로 닫힘: 리더가 끝난 뒤 10분 넘게 소식 없음 · 보고 주기 4배(최소 2시간) 넘게 소식 없음. 그 뒤 같은 단위에 step 하면 이어서 연다
  * 기록 = 워크스페이스의 .agents/status/<단위>.json (gitignore). 메인의 요청 시작 훅(lead-progress.js)도 이 파일을 읽어 진행 중인 단위를 한 줄씩 넣는다
  */
 'use strict';
@@ -26,20 +27,51 @@ function reportMinutes() {
   try { const n = Number((((require('../lib/workspace').load(ROOT).vars || {}).team) || {}).leadReportMinutes); return Number.isFinite(n) && n >= 0 ? n : 15; } catch { return 15; }
 }
 
-/** 진행판 항목 (닫힌 지 2시간 넘은 것은 all 일 때만) */
+/**
+ * 저절로 닫을 단위인가: 리더가 끝났는데(SubagentStop 이 stoppedAt 을 적음) 그 뒤 10분 넘게 소식이 없거나,
+ * 보고 주기의 4배(최소 2시간) 넘게 소식이 없다. 리더가 --end 없이 끝나도 진행판에 「소식 없음」 으로 계속 남지 않게
+ */
+function staleEnd(u, mins, now = Date.now()) {
+  if (u.endedAt) return null;
+  if (u.stoppedAt && u.stoppedAt >= u.updatedAt && now - u.stoppedAt > 10 * 60000) return '리더 끝남 (최종 보고 없음)';
+  if (now - u.updatedAt > Math.max(120, 4 * (mins || 15)) * 60000) return '멈춤 (소식 없음)';
+  return null;
+}
+
+/** 진행판 항목 (닫힌 지 2시간 넘은 것은 all 일 때만). 저절로 닫을 단위는 닫아 기록한다 */
 function units({ all = false } = {}) {
   let names = [];
   try { names = fs.readdirSync(DIR).filter((f) => f.endsWith('.json')); } catch { return []; }
   const out = [];
+  const mins = reportMinutes();
+  const now = Date.now();
   for (const f of names) {
     try {
-      const u = JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8'));
-      if (!all && u.endedAt && Date.now() - u.endedAt > 2 * 3600000) continue;
-      if (!all && !u.endedAt && Date.now() - u.updatedAt > 24 * 3600000) continue; // 하루 넘게 소식 없는 것은 버려진 것
+      const file = path.join(DIR, f);
+      const u = JSON.parse(fs.readFileSync(file, 'utf8'));
+      const why = staleEnd(u, mins, now);
+      if (why) {
+        Object.assign(u, { end: why, endedAt: now, auto: true });
+        try { fs.writeFileSync(file, JSON.stringify(u, null, 2)); } catch { /* 읽기 전용 */ }
+      }
+      if (!all && u.endedAt && now - u.endedAt > 2 * 3600000) continue;
       out.push(u);
     } catch { /* 깨진 기록 */ }
   }
   return out.sort((a, b) => (!!a.endedAt - !!b.endedAt) || b.updatedAt - a.updatedAt);
+}
+
+/** 리더(agent)가 끝났다고 적는다 (lead-progress.js 의 SubagentStop). 그 리더가 적은 열린 단위만 */
+function markStopped(unitNames, now = Date.now()) {
+  for (const name of unitNames || []) {
+    const f = path.join(DIR, `${slug(name)}.json`);
+    try {
+      const u = JSON.parse(fs.readFileSync(f, 'utf8'));
+      if (u.endedAt) continue;
+      u.stoppedAt = now;
+      fs.writeFileSync(f, JSON.stringify(u, null, 2));
+    } catch { /* 없음 */ }
+  }
 }
 
 /** 한 줄 요약 (훅 · 보고용) */
@@ -60,7 +92,8 @@ function cmdStep() {
   const f = path.join(DIR, `${slug(unit)}.json`);
   let u = {};
   try { u = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { /* 처음 */ }
-  if (u.endedAt && stage) u = {}; // 닫힌 단위를 다시 열면 새로
+  if (u.endedAt && stage && u.auto) { delete u.end; delete u.endedAt; delete u.auto; delete u.stoppedAt; } // 저절로 닫힌 단위는 이어서
+  else if (u.endedAt && stage) u = {}; // 닫힌 단위를 다시 열면 새로
   const now = Date.now();
   u = { unit, startedAt: u.startedAt || now, history: u.history || [], ...u, updatedAt: now };
   if (stage) u.stage = stage;
@@ -100,4 +133,4 @@ if (require.main === module) {
   process.exit(c ? 2 : 0);
 }
 
-module.exports = { units, line, reportMinutes };
+module.exports = { units, line, reportMinutes, staleEnd, markStopped, slug };

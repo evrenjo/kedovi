@@ -1,6 +1,7 @@
 ---
 title: 역할 에이전트 쓰기
 load: always
+member: skip
 ---
 
 ## 역할 에이전트 쓰기

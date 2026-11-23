@@ -288,6 +288,13 @@ function overview() {
   console.log('자세히: --id <id> · 인수: --take <id> --items <번호,…|all>');
 }
 
+// 낮은 전역 kedovi 은 kedovi team step · board 를 핸드오프 조회(--id step)로 넘긴다: 진행판 도구로 돌려 보낸다
+if (['step', 'board'].includes(val('id'))) {
+  const i = args.indexOf('--id');
+  const r = require('child_process').spawnSync(process.execPath, [path.join(__dirname, 'lead-board.js'), val('id'), ...args.slice(i + 2)], { stdio: 'inherit' });
+  console.error('ℹ 전역 kedovi 이 낮아 워크스페이스 진행판 도구로 넘겼습니다. 올리기: npm i -g kedovi');
+  process.exit(r.status == null ? 1 : r.status);
+}
 if (args.includes('--watch')) watch();
 else if (val('take')) take(val('take'), val('items'));
 else if (val('id')) detail(val('id'));
