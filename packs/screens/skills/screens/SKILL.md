@@ -13,6 +13,7 @@ description: 화면설계서(스토리보드)를 킷 양식으로 만든다. 진
 | `packs/screens/assets/storyboard/storyboard.css` · `src/` | 양식 스타일 · 뷰어 (문서 사이트를 만들 때 `assets/storyboard/` 로 들어간다. 기획 repo 에 따로 두지 않는다) |
 | `packs/core/bin/docs-site.js` | `kedovi docs build` : 기획 repo 의 md 와 장 HTML 로 문서 사이트(`<기획 repo>/docs-site/`)와 근거 색인(`<기획 repo>/docs-site/assets/ids.json`)을 만든다 |
 | `packs/screens/bin/check-screens.js` | `kedovi screens check` : 장의 근거 ID · 화면 ID 중복 · 기능 ID 누락 |
+| `packs/screens/bin/ui-slop.js` | `kedovi screens slop` : 프로토타입 · 화면 코드의 AI 티를 파일:줄로 (경고) |
 
 ## 1. 진행 방식 합의
 
@@ -22,7 +23,7 @@ description: 화면설계서(스토리보드)를 킷 양식으로 만든다. 진
 - **근거 문서**: 요구사항 · 기능정의 · 설계 문서가 어디에 있는가. 화면은 기능 ID(없으면 요구사항 ID)를 근거로 그린다. 근거 없이 화면 요소를 지어내지 않는다.
 - **ID 체계**: 화면 ID 꼴(예: `SCR-<영역>-<번호>`)과 기능 ID 머리말. 기능 ID 머리말은 `workspace.json` 의 `vars.screens.functionIds` 에 적는다 (누락 검사가 쓴다).
 - **색**(물을 때만): 기본 인디고. 바꾸려면 `workspace.json` 의 `vars.screens.theme` 에 `blue` · `teal` · `orange` · `rose` 중 하나.
-- **화면 방식** (먼저 고른다): ① 프로토타입이 정본 (권장, 뼈대 기본 `<기획 repo>/30-screens/prototype/`): 2 화면 정책 · 3 화면 목록까지 하고, 4 대신 프로토타입 화면마다 화면 ID 를 표시하고 스크린샷(`shots/<화면 ID>.png`)을 화면 목록에 건다. 배치 · 문구를 문서에 다시 쓰지 않는다. ② 화면설계서(장 HTML)가 정본 (납품 양식이 필요한 프로젝트): 아래 4단계까지. 두 방식을 같이 쓰면 둘이 어긋나므로, 같이 써야 하면 화면설계서는 프로토타입 스크린샷 · 설명만 둔다.
+- **화면 방식** (먼저 고른다): ① 프로토타입이 정본 (권장, 뼈대 기본 `<기획 repo>/30-screens/prototype/`): 2 화면 정책 · 3 화면 목록까지 하고, 4 대신 프로토타입 화면마다 화면 ID 를 표시하고 스크린샷(`shots/<화면 ID>.png`)을 화면 목록에 건다. 배치 · 문구를 문서에 다시 쓰지 않는다. 프로토타입을 만들거나 다듬을 때는 「AI 티 없는 화면」 규칙(방향 5줄 승인 → 언슬롭 스킬 손질 → `<화면 폴더>/prototype/tokens.css` → `kedovi screens slop`)을 따른다. ② 화면설계서(장 HTML)가 정본 (납품 양식이 필요한 프로젝트): 아래 4단계까지. 두 방식을 같이 쓰면 둘이 어긋나므로, 같이 써야 하면 화면설계서는 프로토타입 스크린샷 · 설명만 둔다.
 - **산출물 위치**: 기획 repo 의 화면 폴더(뼈대 기본 `<기획 repo>/30-screens/`, 옛 뼈대 `<기획 repo>/02-screens/`). **설계서 하나 = 장 파일 하나**(예: `<화면 폴더>/screens.html`)가 기본이고, 영역 · 메뉴 구분은 장의 `data-group` 으로 나눈다. 파일을 나누면 뷰어 · 장 선택 · 썸네일이 파일마다 따로 생겨 설계서 전체를 한 번에 넘겨 볼 수 없다. 대상이 전혀 다른 설계서(예: 관리자 웹과 모바일 앱)만 파일을 나눈다.
 - **순서**: 공통(메뉴 구조 · 화면 정책) → 영역별 화면.
 

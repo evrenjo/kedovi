@@ -337,6 +337,7 @@ flowchart TD
     Q -->|"CI 러너 감시"| RW["kedovi gitlab runner-watch add [--repo R] [--dry-run]<br/>디스크 · 대기열 · 작업 시간 급증 → 알림, docker 캐시 상한<br/>→ launchd plist · systemd timer (등록은 사람이) · kedovi gitlab busy (겹침 확인)"]
     Q -->|"compose 운영 검증"| OPS["kedovi ops add lifecycle · alerts · preflight · all [--repo R] [--dry-run]<br/>수명 시험 + CI job · 지표 cron + 경보 규칙(anon · file) · preflight + 설정 → repo 의 ops/<br/>kedovi ops preflight [서비스…] [-- 배포 명령] (위험하면 멈춤, --force) · kedovi ops lifecycle"]
     Q -->|"화면 정본 · 요소"| SCI["kedovi screens inventory &lt;화면 ID&gt;<br/>정본 판정(프로토타입 · 화면설계서 · 둘 다 · 없음)<br/>→ handoffs/나/screens/화면 ID.md 요소 체크리스트<br/>kedovi screens checklist --start · 완료 전 · kedovi screens review [--implement]"]
+    Q -->|"AI 티 없는 화면"| SLP["프로토타입 작업 시작 → 방향 5줄 제안 · 승인<br/>→ 언슬롭 스킬로 손질 (없으면 설치 안내) → prototype/tokens.css<br/>kedovi screens slop [경로] [--changed] (AI 티를 파일:줄로 경고)<br/>→ 구현은 토큰대로 · 커밋 때 바뀐 화면 파일의 AI 티를 훅이 알림"]
     Q -->|"화면 위치"| SCL["kedovi screens locate [--dir 폴더] [--prototype 파일#{id}] [--scope main]<br/>후보 폴더 · 프로토타입 찾기 → workspace.json vars.screens"]
     Q -->|"화면 이름 대조"| VWC["kedovi views check<br/>component-web: 프론트 화면 폴더 ↔ 백엔드 web/views/화면<br/>대소문자 · - · _ 무시 · 화면 폴더 커밋 때 훅이 알림"]
     Q -->|"화면 비교"| SCC["kedovi screens compare &lt;화면 ID&gt; [--mock 픽스처]<br/>프로토타입 ↔ 구현을 같은 폭(PC · 폰)으로 찍어 compare.html<br/>구현 주소 = @spec 줄의 @route 또는 --impl · 배치 대조(옆 · 아래 · 폭)<br/>→ 체크리스트 비교 · 배치 줄 · 배치 행"]
@@ -443,6 +444,7 @@ flowchart TD
 | `kedovi screens inventory <화면 ID>` | 화면 정본 판정 + 정본 요소 체크리스트 `handoffs/<나>/screens/<화면 ID>.md` (screens 팩). 둘 다 있고 다르거나 둘 다 없으면 멈추고 묻는다 |
 | `kedovi screens checklist <화면 ID>` | 체크리스트 점검: `--start` 착수 전(데이터 원천) · 기본 완료 전(판정 · 결정 없는 다름 · 후속 없는 보류 · 배치 · 비교) · `--md` MR 본문 표 |
 | `kedovi screens review <화면 ID…> [--implement]` | 구현 · 리뷰 지시서용 화면 정본 대조 블록 (`kedovi delegate` 는 역할에 맞게 저절로) |
+| `kedovi screens slop [경로…] [--changed]` | AI 티 검사: 보라 그라데이션 · 번짐 그림자 · 이모지 아이콘 · `transition-all` · 일회성 간격 · 800~900 굵기 · 느낌표 문구 등을 파일:줄로 (경고만, 일부러 쓴 줄은 `slop-ok`). 화면 전체 손질은 프로토타입에서 언슬롭 스킬로 |
 | `kedovi screens locate` | 화면 폴더 · 프로토타입 위치 보기 · 정하기 (`--dir` · `--prototype "<파일>#{id}"` · `--scope`, workspace.json `vars.screens`) |
 | `kedovi screens compare <화면 ID>` | 프로토타입과 구현 화면을 같은 폭(PC 1280 · 폰 390)으로 찍어 나란히 보는 `compare.html` 과 배치 대조(옆 · 아래 · 폭이 바뀐 영역) (screens 팩, Playwright). 프로토타입 = 화면 목록의 「프로토타입」 칸 · `prototype/` 파일 이름, 구현 = `@spec` 줄의 `@route` · `--impl`. 백엔드 없이 `--mock <픽스처>` |
 | `kedovi screens check [repo]` | 화면설계서 검사 (screens 팩): 근거 ID 가 색인에 있는지 · 화면 ID 중복 · 기능 ID 누락(「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |

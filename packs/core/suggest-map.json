@@ -1,5 +1,5 @@
 {
-  "_note": "기능 추천 지도 (feature-suggest 훅 · kedovi suggest). 대화 주제(topic 정규식, 대소문자 무시)가 맞고 상태 조건(when)이 맞으면 한 세션에 몇 개까지 에이전트가 답 끝에 한 줄로 쓸지 묻는다. 사용자가 정하면(kedovi suggest set <id> yes|no) 다시 묻지 않는다. anytime = 주제 없이도 세션 중간에 추천해도 되는 항목. when: packOn · packOff (팩 켜짐 · 꺼짐) · unset (workspace.json 값이 비었을 때) · localUnset (.agents/local.json) · not { 경로: 값 } (그 값이 아닐 때) · localNot · stack (repo 스택 · 언어 정규식) · notify on|off (개인 알림). 위에 있는 항목이 먼저다. 새 기능 명령을 만들면 맞는 항목을 더한다 (packs/core/skills/kedovi/SKILL.md 표와 짝)",
+  "_note": "기능 추천 지도 (feature-suggest 훅 · kedovi suggest). 대화 주제(topic 정규식, 대소문자 무시)가 맞고 상태 조건(when)이 맞으면 한 세션에 몇 개까지 에이전트가 답 끝에 한 줄로 쓸지 묻는다. 사용자가 정하면(kedovi suggest set <id> yes|no) 다시 묻지 않는다. anytime = 주제 없이도 세션 중간에 추천해도 되는 항목. when: packOn · packOff (팩 켜짐 · 꺼짐) · unset (workspace.json 값이 비었을 때) · localUnset (.agents/local.json) · not { 경로: 값 } (그 값이 아닐 때) · localNot · stack (repo 스택 · 언어 정규식) · notify on|off (개인 알림) · skillMissing (그 스킬이 이 PC · 워크스페이스에 없을 때). 위에 있는 항목이 먼저다. 새 기능 명령을 만들면 맞는 항목을 더한다 (packs/core/skills/kedovi/SKILL.md 표와 짝)",
   "entries": [
     {
       "id": "trace",
@@ -27,6 +27,15 @@
       "why": "기획 repo 의 화면 폴더 · 한 페이지 앱 프로토타입이 기본 위치가 아니면 정본을 못 찾아 체크리스트 없이 만들게 된다",
       "cmd": "kedovi screens locate",
       "scope": "팀 (workspace.json)"
+    },
+    {
+      "id": "unslop",
+      "topic": "프로토타입|시안|목업|랜딩\\s*페이지|AI\\s*티|AI\\s*가\\s*만든\\s*(?:것\\s*)?같|촌스럽|디자인.{0,8}(?:다듬|개선|세련)|예쁘게|unslop|언슬롭",
+      "when": { "packOn": "screens", "skillMissing": "unslop" },
+      "say": "언슬롭(unslop) 스킬을 깔면 화면의 AI 티를 알아서 걷어 냄",
+      "why": "설치하면 프로토타입 · 시안을 만들 때 화면을 보고 AI 티(보라 그라데이션 · 번짐 · 이모지 아이콘 · 들쭉날쭉한 간격 · 과한 굵기 · 느낌표 문구)를 위치까지 짚고, 제품에 맞는 방향 5줄을 제안한 뒤 간격 · 색 · 아이콘 · 문구 · 글꼴 · 배치 · 움직임 순으로 디자이너처럼 손질한다 (라이브 주소만으로도 점검). 정한 값은 토큰으로 남아 실제 구현도 그 모양을 따른다. 지금은 킷 검사기(kedovi screens slop)로 기계로 잡히는 것만 본다",
+      "cmd": "claude plugin install unslop --marketplace heydamir/unslop",
+      "scope": "이 PC 의 모든 프로젝트. Codex 는 저장소의 skills/unslop 폴더를 ~/.agents/skills/ 에 복사"
     },
     {
       "id": "notify",

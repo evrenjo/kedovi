@@ -1,0 +1,9 @@
+{
+  "UserPromptSubmit": [
+    {
+      "script": "hooks/ai-look.js",
+      "timeout": 5,
+      "agents": "all"
+    }
+  ]
+}

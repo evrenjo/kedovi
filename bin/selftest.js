@@ -1301,6 +1301,53 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   record('낮은 kedovi 의 upgrade 는 멈춤', !blocked.ok && kept && !cli.ok && msg && forced.ok && down, `kit.js 멈춤 ${!blocked.ok} · 그대로 ${kept} · CLI 멈춤 ${!cli.ok} · 안내 ${msg} · --allow-downgrade ${forced.ok && down}`);
 }
 
+// 기능 추천: skillMissing (스킬이 깔려 있으면 추천하지 않음: 스킬 폴더 · Claude Code 플러그인)
+{
+  const SG = require(path.join(KIT, 'packs', 'core', 'lib', 'suggest.js'));
+  const home = path.join(tmp, 'skill-home');
+  const prev = process.env.KEDOVI_SKILL_HOME;
+  process.env.KEDOVI_SKILL_HOME = home;
+  const ctx = { ws: { packs: ['core', 'screens'] }, local: {}, root: path.join(tmp, 'none') };
+  const when = { packOn: 'screens', skillMissing: 'unslop' };
+  const before = SG.whenOk(when, ctx);
+  fs.mkdirSync(path.join(home, '.agents', 'skills', 'unslop'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.agents', 'skills', 'unslop', 'SKILL.md'), '---\nname: unslop\n---\n');
+  const folder = !SG.whenOk(when, ctx);
+  fs.rmSync(path.join(home, '.agents'), { recursive: true, force: true });
+  fs.mkdirSync(path.join(home, '.claude', 'plugins'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.claude', 'plugins', 'installed_plugins.json'), JSON.stringify({ version: 2, plugins: { 'unslop@heydamir': [{ scope: 'user' }] } }));
+  const plugin = !SG.whenOk(when, ctx);
+  if (prev === undefined) delete process.env.KEDOVI_SKILL_HOME; else process.env.KEDOVI_SKILL_HOME = prev;
+  const entry = SG.loadMap(path.join(KIT, 'packs', 'core')).entries.find((e) => e.id === 'unslop');
+  const topic = !!entry && new RegExp(entry.topic, 'i').test('프로토타입 시안 만들어 줘') && new RegExp(entry.topic, 'i').test('화면이 AI 티 나');
+  record('기능 추천 skillMissing (언슬롭)', before && folder && plugin && topic, `없음 → 추천 ${before} · 스킬 폴더 있음 → 안 함 ${folder} · 플러그인 있음 → 안 함 ${plugin} · 주제 ${topic}`);
+}
+
+// 화면 디자인 요청 훅 (screens 팩 ai-look): 방향 먼저 · 언슬롭 없으면 얻는 것과 함께 권함 · 한 세션 한 번 · 기능 추천과 안 겹침
+{
+  const dir = path.join(tmp, 'new');
+  const home = path.join(tmp, 'ailook-home');
+  fs.mkdirSync(home, { recursive: true });
+  const hook = (prompt, sid, extraHome) => spawnSync(process.execPath, [path.join(dir, 'packs', 'screens', 'hooks', 'ai-look.js'), '--agent=claude'], { cwd: dir, encoding: 'utf8', input: JSON.stringify({ hook_event_name: 'UserPromptSubmit', session_id: sid, prompt, cwd: dir }), env: { ...process.env, CLAUDE_PROJECT_DIR: dir, KEDOVI_SKILL_HOME: extraHome || home } }).stdout.trim();
+  const fsug = (prompt, sid) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'hooks', 'feature-suggest.js'), '--agent=claude'], { cwd: dir, encoding: 'utf8', input: JSON.stringify({ hook_event_name: 'UserPromptSubmit', session_id: sid, prompt, cwd: dir }), env: { ...process.env, CLAUDE_PROJECT_DIR: dir, KEDOVI_SKILL_HOME: home } }).stdout.trim();
+  const first = hook('주문 대시보드 프로토타입 시안 만들어 줘', 'ail-1');
+  const dirFirst = /방향 5줄/.test(first) && /screens--15-ai-look\.md/.test(first) && /깔면 얻는 것/.test(first) && /claude plugin install unslop/.test(first);
+  const noDup = !/unslop/.test(fsug('주문 대시보드 프로토타입 시안 만들어 줘', 'ail-1'));
+  const once = hook('시안 색만 조금 바꿔 줘', 'ail-1') === '';
+  const direct = hook('화면이 AI 티 나', 'ail-1');
+  const again = /방향 5줄/.test(direct) && !/claude plugin install/.test(direct);
+  const off = hook('API 응답 형식 고쳐 줘', 'ail-2') === '';
+  const ihome = path.join(tmp, 'ailook-installed');
+  fs.mkdirSync(path.join(ihome, '.claude', 'skills', 'unslop'), { recursive: true });
+  fs.writeFileSync(path.join(ihome, '.claude', 'skills', 'unslop', 'SKILL.md'), '---\nname: unslop\n---\n');
+  const inst = hook('랜딩 페이지 디자인 다듬어 줘', 'ail-3', ihome);
+  const useSkill = /깔려 있다/.test(inst) && /\/unslop/.test(inst) && !/plugin install/.test(inst);
+  const settings = fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8');
+  const wired = /packs\/screens\/hooks\/ai-look\.js/.test(settings);
+  record('화면 디자인 요청 훅 (방향 먼저 · 언슬롭 권함 · 한 번 · 추천과 안 겹침)', dirFirst && noDup && once && again && off && useSkill && wired,
+    `방향 · 얻는 것 · 설치 명령 ${dirFirst} · 기능 추천 중복 없음 ${noDup} · 같은 세션 조용 ${once} · 직접 말하면 다시(권유는 안 함) ${again} · 상관없는 말 조용 ${off} · 깔려 있으면 그 스킬 ${useSkill} · 설정 연결 ${wired}`);
+}
+
 // 화면 없이 설정 바꾸기 (AI 가 대신 실행) — models profile · set(위임 포함) · agent --codex
 {
   const dir = path.join(tmp, 'noui-ws');
@@ -2787,6 +2834,27 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const rule2 = /kedovi screens inventory/.test(agentsMd) && /둘 다 없음/.test(agentsMd);
     record('화면 정본 · 요소 체크리스트 (inventory · checklist · review · 커밋 훅 · compare --mock)', protoCanon && startFail && startOk && doneFail && doneOk && kept && sbCanon && both && bothWait && picked && none && review && hook && hookOff && mock && mockErr && rule2,
       `프로토타입 정본 · 요소 ${protoCanon} · 착수 전 원천 빈 칸 막음 ${startFail} · 원천 없음 알림 ${startOk} · 완료 전 판정 · 비교 ${doneFail} · 통과 · MR 표 ${doneOk} · 다시 뽑아도 판정 유지 ${kept} · 화면설계서 정본 ${sbCanon} · 둘 다 다름 묻기 ${both} · 답 전엔 체크리스트 안 만듦 ${bothWait} · 고른 정본 ${picked} · 없음 묻기 ${none} · 리뷰 블록 ${review} · 커밋 훅 ${hook} · 끄기 ${hookOff} · 픽스처 ${mock} · 없는 픽스처 ${mockErr} · 상시 규칙 ${rule2}`);
+    // AI 티: 커밋 훅이 바뀐 화면 파일의 AI 티를 알림 · 기획 repo 는 prototype/ 아래만 · 지시서 토큰 줄 · 끄기
+    fs.writeFileSync(path.join(app, 'src', 'Promo.tsx'), 'export const P = () => <div className="bg-gradient-to-r from-purple-500 to-blue-500 transition-all">새 기능 ✨</div>;\n');
+    const slopOut = sc('git -C repos/app commit -m x');
+    const slopHook = /바뀐 화면 파일에 AI 티 3개/.test(slopOut) && /Promo\.tsx:1/.test(slopOut);
+    fs.writeFileSync(path.join(docs, '30-screens', 'prototype', 'promo.html'), '<div class="font-black">시작하세요!</div>\n');
+    fs.writeFileSync(path.join(docs, '30-screens', 'notes.html'), '<div class="font-black">메모</div>\n');
+    const docsOut = sc(`git -C ${path.relative(ws, docs)} commit -m x`);
+    const slopDocs = /prototype\/promo\.html:1/.test(docsOut) && !/notes\.html/.test(docsOut);
+    const implNoTok = /디자인 토큰 파일이 없다/.test(S.reviewBlock(wsObj, ['SCR-ORD-01'], 'implement'));
+    fs.writeFileSync(path.join(docs, '30-screens', 'prototype', 'tokens.css'), ':root { --accent: #0a7; }\n');
+    const implBlock = S.reviewBlock(wsObj, ['SCR-ORD-01'], 'implement');
+    const implTok = /30-screens\/prototype\/tokens\.css` 의 색/.test(implBlock) && /kedovi screens slop --changed/.test(implBlock);
+    const w4 = JSON.parse(fs.readFileSync(wsFile, 'utf8')); w4.vars.screens = { ...(w4.vars.screens || {}), slopOnCommit: 'off' }; fs.writeFileSync(wsFile, JSON.stringify(w4, null, 2));
+    const slopOff = !/AI 티/.test(sc('git -C repos/app commit -m x'));
+    const U = require(path.join(ws, 'packs', 'screens', 'bin', 'ui-slop.js'));
+    const sample = ['<h1 className="font-extrabold">x</h1> {/* slop-ok */}', '{a !== b && <b>x</b>}', '<p className="mt-[16px] mt-[13px] uppercase tracking-widest">합계</p>', '<span>완료 ✅</span>'].join('\n');
+    const ids = U.scanText(sample, 'a.tsx').map((h) => `${h.line}:${h.id}`).join(',');
+    const scanOk = ids === '3:odd-spacing,3:shouty-label,4:emoji' && !U.scanText('<span>✅</span>', 'a.ts').length;
+    const rule15 = /AI 티 없는 화면/.test(agentsMd) && /15-ai-look/.test(agentsMd);
+    record('AI 티 없는 화면 (screens slop · 커밋 훅 · 토큰 지시서 · 상시 목록)', slopHook && slopDocs && implNoTok && implTok && slopOff && scanOk && rule15,
+      `코드 repo 알림 ${slopHook} · 기획 repo prototype 만 ${slopDocs} · 토큰 없음 안내 ${implNoTok} · 토큰 줄 ${implTok} · 끄기 ${slopOff} · 검사 ${scanOk} (${ids}) · 작업별 참고 목록 ${rule15}`);
   }
 
   // 화면 위치 설정 · 손 체크리스트 · 결정 없는 다름 · 보류 후속 · 착수 전 훅 · 구현 지시서 블록 · 배치 대조 · UI repo 규칙 표

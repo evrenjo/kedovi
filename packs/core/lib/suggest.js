@@ -29,6 +29,15 @@ function loadMap(dir = path.join(__dirname, '..')) {
   return JSON.parse(fs.readFileSync(path.join(dir, 'suggest-map.json'), 'utf8'));
 }
 
+/** 스킬이 이 PC · 워크스페이스에 깔려 있는가: Claude Code 플러그인(installed_plugins.json 의 <이름>@…) · 스킬 폴더(~/.claude · ~/.agents · ~/.codex, 워크스페이스 .claude · .agents) */
+function skillInstalled(name, root = process.cwd()) {
+  const home = process.env.KEDOVI_SKILL_HOME || os.homedir();
+  const dirs = [path.join(home, '.claude', 'skills'), path.join(home, '.agents', 'skills'), path.join(home, '.codex', 'skills'), path.join(root, '.claude', 'skills'), path.join(root, '.agents', 'skills')];
+  if (dirs.some((d) => fs.existsSync(path.join(d, name, 'SKILL.md')))) return true;
+  const plugins = readJson(path.join(home, '.claude', 'plugins', 'installed_plugins.json')).plugins || {};
+  return Object.keys(plugins).some((k) => k.split('@')[0] === name);
+}
+
 /** 상태 조건: 모두 맞아야 추천 (이미 쓰는 기능은 추천하지 않는다) */
 function whenOk(when, ctx) {
   if (!when) return true;
@@ -48,6 +57,7 @@ function whenOk(when, ctx) {
     try { const N = require('./notify'); const p = N.personal(root, ws); on = !!p.chat && p.level !== 'off'; } catch { /* 알림 모듈 없음 */ }
     if ((when.notify === 'off') === on) return false;
   }
+  for (const n of [].concat(when.skillMissing || [])) if (skillInstalled(n, root)) return false;
   if (when.localNot) for (const [k, v] of Object.entries(when.localNot)) if (get(local, k) === v) return false;
   return true;
 }
@@ -143,4 +153,4 @@ function line(e) {
   return `기능 추천 (지금 대화 · 작업에 맞을 때만. 답을 다 한 뒤 끝에 한 줄로 쓸지 묻는다. 맞지 않으면 무시하고 기록도 하지 않는다): ${e.say}: ${e.why} → \`${e.cmd}\` (${e.scope}). 사용자가 답하면 \`kedovi suggest set ${e.id} yes|no\` 로 기록한다 (모든 프로젝트에서 그만 묻기를 원하면 --all). yes 면 위 명령을 실행할지 확인하고 실행한다. 같은 대화에서 다시 꺼내지 않는다.`;
 }
 
-module.exports = { loadMap, whenOk, decisions, askedOf, askable, pick, markAsked, decide, reset, setOff, globallyOff, line, localFile, globalFile, PER_SESSION, GAP, ANYTIME_AFTER };
+module.exports = { skillInstalled, loadMap, whenOk, decisions, askedOf, askable, pick, markAsked, decide, reset, setOff, globallyOff, line, localFile, globalFile, PER_SESSION, GAP, ANYTIME_AFTER };

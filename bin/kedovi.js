@@ -62,6 +62,7 @@
  *   kedovi screens inventory <화면 ID> [--proto 파일|주소] [--force]   화면 정본 판정(프로토타입 · 화면설계서 · 둘 다 · 없음) + 정본 요소 체크리스트 handoffs/<나>/screens/<화면 ID>.md (영역 · 요소 · 상태 · 데이터 원천 · 판정, screens 팩)
  *   kedovi screens checklist <화면 ID> [--start] [--md]   체크리스트 점검: --start 는 착수 전(데이터 원천 빈 칸 · 원천 없음), 기본은 완료 전(판정 빈 칸 · 결정 없는 다름 · 후속 없는 보류 · 배치 차이 · 비교 미실행), --md 는 MR 본문 표
  *   kedovi screens review <화면 ID…> [--implement]   지시서에 넣을 화면 정본 대조 블록: 리뷰(정본 경로 · 체크리스트 · 비교 스크린샷 · 정본에 있는데 없는 요소 = 블로커) · --implement 구현(정본대로 · 못 하면 멈춤)
+ *   kedovi screens slop [경로…] [--changed] [--json]   AI 티 검사: 보라 그라데이션 · 번짐 그림자 · 이모지 아이콘 · transition-all · 일회성 간격 · 800~900 굵기 · 느낌표 문구 등을 파일:줄로 (경고만, 경로 없으면 지금 폴더, 언슬롭 스킬 설치 안내, screens 팩)
  *   kedovi screens locate [--dir <폴더,…>] [--prototype "<파일>#{id}"] [--scope <CSS>]   화면 폴더 · 프로토타입 위치 보기 · 정하기 (workspace.json vars.screens, 못 찾으면 후보를 알림)
  *   kedovi datamodel check [repo|폴더]   데이터 설계 검사: 참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조 (datamodel 팩)
  *   kedovi archrules spring|react|fastapi|nestjs|django [--repo R] [--dir 모듈 경로] [--dry-run] [--json]   구조 검사 템플릿을 repo 에 넣는다: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사 · NestJS dependency-cruiser 설정 · Django import-linter 계약과 web 배치 검사 (backend.layout = component-web 이면 web → feature → shared 방향까지). 구조 · 기준 패키지 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다
@@ -4085,7 +4086,7 @@ async function main() {
     case 'draft': return runWsTool('draft.js', rest.map((a, i) => (rest[i - 1] === '--file' ? path.resolve(a) : a)));
     case 'trace': return runWsTool('trace.js', rest, 'trace');
     case 'tidy': return runWsTool('tidy.js', rest);
-    case 'screens': return rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : ['inventory', 'checklist', 'review', 'locate'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
+    case 'screens': return rest[0] === 'slop' ? runWsTool('ui-slop.js', [...rest.slice(1).map((x) => (x.startsWith('-') ? x : path.resolve(x))), ...(rest.slice(1).some((x) => !x.startsWith('-')) ? [] : [process.cwd()])], 'screens') : rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : ['inventory', 'checklist', 'review', 'locate'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
     case 'datamodel': return runWsTool('check-datamodel.js', rest.filter((x) => x !== 'check'), 'datamodel');
     case 'archrules': return runWsTool('archrules.js', rest);
     case 'views': return runWsTool('check-views.js', rest, 'backend');

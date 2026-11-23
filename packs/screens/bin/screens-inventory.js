@@ -499,12 +499,21 @@ function reviewBlock(ws, ids, mode = 'review') {
         '- **정본을 먼저 열어 보고 그대로 만든다**: 영역 배치(어느 영역이 옆 · 아래인지) · 카드 머리 · 상태 칩과 색 · 막대 · 타일 · 간격 · 빈 값 · 오류 · 로딩 모양. 디자인 시스템 · 기존 공용 컴포넌트는 그 모양을 만드는 부품으로 쓰고, 기본 목록 · 표 · 기존 화면 모양으로 바꾸지 않는다.',
         '- **계약 · 데이터 원천 · 범위 때문에 정본대로 못 만들면 멈추고 알린다** (다른 점 · 이유 · 선택지). 스스로 다르게 만들거나 빼지 않는다. 사용자 결정이 나면 판정에 결정 ID 를 적는다.',
         `- 완료 전: 요소마다 판정 · \`kedovi screens compare ${id}\`(같은 폭 PC · 폰, 배치 대조) · \`kedovi screens checklist ${id}\` 통과. 보고에 \`--md\` 표를 싣는다.`);
+      const tk = tokensFile(ws);
+      lines.push(tk ? `- 디자인 토큰: \`${path.relative(ws.root, tk)}\` 의 색 · 간격 · 글꼴 · 모서리 · 움직임 값으로 구현 테마를 맞춘다. 디자인 시스템 기본값으로 되돌리지 않는다.` : '- 디자인 토큰 파일이 없다: 프로토타입의 색 · 간격 · 글꼴을 열어 보고 그 값으로 맞춘다.',
+        '- AI 티: 바꾼 화면 파일에 `kedovi screens slop --changed` 경고가 없게 한다 (보라 그라데이션 · 번짐 그림자 · 이모지 아이콘 · transition-all · 일회성 간격 등). 정본에 있는 것이면 그대로 두고 `slop-ok` 주석.');
     } else {
       lines.push('', '리뷰 기준 (화면):', '- **정본에 있는데 구현에 없는 요소는 블로커다.** 체크리스트에서 판정이 「구현」 인데 화면 · 코드에 없거나, 판정이 비었거나, 결정 ID 없는 「뺌」 이면 블로커로 적는다.', '- 「다름 (이유)」 는 이유가 데이터 모양 · API 로 맞는지 본다. 이유가 없거나, 이유가 계약 · 원천 · 범위인데 결정 ID 가 없으면 블로커.', '- 배치 대조에 남은 차이(정본에서 옆이던 영역이 아래로 가는 등)는 판정이 없으면 블로커.', '- 체크리스트에 없는데 정본에 보이는 요소(도구가 놓친 것)도 정본을 열어 확인한다.', '- 비교 스크린샷이 미실행이면 그 사실을 지적한다.');
     }
     out.push(lines.join('\n'));
   }
   return out.join('\n\n');
+}
+
+/** 프로토타입 토큰 파일 (<화면 폴더>/prototype/tokens.css): 구현 테마를 맞출 기준 값 */
+function tokensFile(ws) {
+  for (const d of C.screenDirs(ws)) { const f = path.join(d.dir, 'prototype', 'tokens.css'); if (fs.existsSync(f)) return f; }
+  return null;
 }
 
 // ── 명령 ──
@@ -673,4 +682,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch((e) => { console.error(`✖ ${e.message}`); process.exit(1); });
-module.exports = { verdictKind, locate, parseHtml, extract, canonOf, findStoryboard, screenIds, inventory, checklistPath, findChecklist, readChecklist, checkChecklist, verdictOk, recordCompare, reviewBlock, diffItems };
+module.exports = { tokensFile, verdictKind, locate, parseHtml, extract, canonOf, findStoryboard, screenIds, inventory, checklistPath, findChecklist, readChecklist, checkChecklist, verdictOk, recordCompare, reviewBlock, diffItems };

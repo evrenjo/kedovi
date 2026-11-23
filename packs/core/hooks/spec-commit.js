@@ -3,6 +3,7 @@
 /*
  * 계산은 docs-site.js trace --new (커밋 안 한 파일 + push 안 한 커밋의 진입 파일). 기획 repo 가 없거나 vars.docs.traceOnCommit 이 off 면 조용하다.
  * 화면 이름 대조: backend.layout = component-web 이고 vars.backend.viewsOnCommit 이 off 가 아니면, 화면 폴더(views · pages)가 바뀐 커밋에 kedovi views check 의 어긋남을 알린다 (기획 repo 없어도).
+ * AI 티: screens 팩이 켜져 있고 vars.screens.slopOnCommit 이 off 가 아니면, 바뀐 화면 파일(기획 repo 는 prototype/ 아래만)을 kedovi screens slop 으로 본다.
  * 화면 체크리스트: screens 팩이 켜져 있고 vars.screens.checklistOnCommit 이 off 가 아니면, 바뀐 파일 머리 30줄의 @spec 화면 ID 마다 handoffs/<사람>/screens/<화면 ID>.md 를 본다.
  * 명령 문자열에서 git commit 과 폴더(cd <폴더> && · git -C <폴더>)를 찾는다 (review-gate.js 와 같은 방식). 알아보지 못하면 조용히 통과한다.
  */
@@ -29,7 +30,10 @@ run(() => {
   if (cds.length) dir = path.resolve(dir, unquote(cds[cds.length - 1][1]));
   const c = m[1].match(/-C\s+("[^"]+"|'[^']+'|\S+)/);
   if (c) dir = path.resolve(dir, unquote(c[1]));
-  const repo = ws.repos.find((r) => r.kind === 'code' && (path.resolve(dir) + path.sep).startsWith(path.resolve(r.dir) + path.sep));
+  const inside = (r) => (path.resolve(dir) + path.sep).startsWith(path.resolve(r.dir) + path.sep);
+  const docsRepo = ws.repos.find((r) => r.kind === 'docs' && inside(r));
+  if (docsRepo) { const s = slopNote(ws, docsRepo, /(^|[\\/])prototype[\\/]/); if (s) note(s); return; }
+  const repo = ws.repos.find((r) => r.kind === 'code' && inside(r));
   if (!repo) return;
   const notes = [];
   if (hasDocs && String(((ws.vars || {}).docs || {}).traceOnCommit || 'warn') !== 'off') {
@@ -42,8 +46,24 @@ run(() => {
   if (screen) notes.push(screen);
   const views = viewsNote(ws, repo);
   if (views) notes.push(views);
+  const slop = slopNote(ws, repo);
+  if (slop) notes.push(slop);
   if (notes.length) note(notes.join('\n'));
 });
+
+/** 바뀐 화면 파일의 AI 티 (screens 팩 kedovi screens slop --changed). only = 이 경로 모양만 (기획 repo 는 prototype/ 아래) */
+function slopNote(ws, repo, only) {
+  if (!(ws.packs || []).includes('screens')) return '';
+  if (String(((ws.vars || {}).screens || {}).slopOnCommit || 'warn') === 'off') return '';
+  let U;
+  try { U = require(path.join(ws.root, 'packs', 'screens', 'bin', 'ui-slop.js')); } catch { return ''; }
+  const files = U.changedFiles(repo.dir).filter((f) => !only || only.test(path.relative(repo.dir, f))).slice(0, 300);
+  if (!files.length) return '';
+  const r = U.scan(files);
+  if (!r.hits.length) return '';
+  const where = [...new Set(r.hits.map((h) => `${path.relative(repo.dir, h.file)}:${h.line}`))];
+  return `⚠ 바뀐 화면 파일에 AI 티 ${r.hits.length}개: ${U.summary(r.hits)} (${where.slice(0, 6).join(', ')}${where.length > 6 ? ` 외 ${where.length - 6}곳` : ''}). 자세히: kedovi screens slop --changed. 정본 · 브랜드라서 일부러 쓴 줄은 slop-ok 주석. 화면 전체를 다듬을 일이면 프로토타입에서 (「AI 티 없는 화면」 규칙). 끄기: vars.screens.slopOnCommit off`;
+}
 
 /** component-web: 바뀐 파일이 화면 폴더(views)에 있고 프론트 · 백엔드 화면 이름이 어긋나면 알릴 말 (backend 팩 kedovi views check) */
 function viewsNote(ws, repo) {
