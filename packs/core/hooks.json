@@ -36,6 +36,12 @@
       "agents": "claude"
     },
     {
+      "matcher": "startup|resume|clear",
+      "script": "hooks/session-title.js",
+      "timeout": 5,
+      "agents": "claude"
+    },
+    {
       "matcher": "startup|resume",
       "script": "hooks/session-health.js",
       "timeout": 5,

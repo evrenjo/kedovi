@@ -1323,6 +1323,20 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   record('기능 추천 skillMissing (언슬롭)', before && folder && plugin && topic, `없음 → 추천 ${before} · 스킬 폴더 있음 → 안 함 ${folder} · 플러그인 있음 → 안 함 ${plugin} · 주제 ${topic}`);
 }
 
+// 세션 제목 (SessionStart sessionTitle): 기본 [yyyy.MM.dd] <폴더> · 이미 제목 있으면 그대로 · 틀 바꾸기 · off
+{
+  const dir = path.join(tmp, 'new');
+  const T = require(path.join(dir, 'packs', 'core', 'hooks', 'session-title.js'));
+  const st = (extra) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'hooks', 'session-title.js'), '--agent=claude'], { cwd: dir, encoding: 'utf8', input: JSON.stringify({ hook_event_name: 'SessionStart', source: 'startup', session_id: 'title-1', cwd: dir, ...extra }), env: { ...process.env, CLAUDE_PROJECT_DIR: dir } }).stdout.trim();
+  const got = (() => { try { return JSON.parse(st({})).hookSpecificOutput; } catch { return {}; } })();
+  const d = new Date(); const p2 = (n) => String(n).padStart(2, '0');
+  const def = got.hookEventName === 'SessionStart' && got.sessionTitle === `[${d.getFullYear()}.${p2(d.getMonth() + 1)}.${p2(d.getDate())}] new`;
+  const keep = st({ source: 'resume', session_title: '내 작업' }) === '';
+  const tpl = T.titleOf('{folder} ({date})', { folder: 'ws', now: new Date(2026, 0, 5) }) === 'ws (2026.01.05)' && T.titleOf('off', { folder: 'ws' }) === '' && T.titleOf(undefined, { folder: 'ws', now: new Date(2026, 10, 24) }) === '[2026.11.24] ws';
+  const wired = /packs\/core\/hooks\/session-title\.js/.test(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8'));
+  record('세션 제목 기본값 ([날짜] 폴더 · 붙인 제목 유지 · 틀 · off)', def && keep && tpl && wired, `기본 ${def} (${got.sessionTitle || '-'}) · 붙인 제목 그대로 ${keep} · 틀 · off ${tpl} · 설정 연결 ${wired}`);
+}
+
 // 화면 디자인 요청 훅 (screens 팩 ai-look): 방향 먼저 · 언슬롭 없으면 얻는 것과 함께 권함 · 한 세션 한 번 · 기능 추천과 안 겹침
 {
   const dir = path.join(tmp, 'new');
