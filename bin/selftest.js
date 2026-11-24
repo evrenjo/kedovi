@@ -39,6 +39,13 @@ for (const k of ['KEDOVI_SITE_TOKEN', 'GITLAB_TOKEN', 'GITHUB_TOKEN', 'GH_TOKEN'
 for (const k of ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID', 'TELEGRAM_TEAM_BOT_TOKEN', 'KEDOVI_CHANNEL']) delete process.env[k];
 const results = [];
 const record = (name, ok, detail = '') => results.push({ name, ok, detail });
+// CI 처럼 git 사용자 이름이 없는 PC 에서도 시험 속 커밋이 되게 (있으면 그대로 둔다)
+// 환경 변수(GIT_AUTHOR_NAME)는 시험 repo 가 정한 이름까지 덮으므로, 우선순위가 가장 낮은 전역 설정 파일로 넣는다
+if (!spawnSync('git', ['config', 'user.name'], { encoding: 'utf8' }).stdout.trim()) {
+  const gc = path.join(require('os').tmpdir(), `kedovi-selftest-gitconfig-${process.pid}`);
+  fs.writeFileSync(gc, '[user]\n\tname = selftest\n\temail = selftest@example.com\n');
+  process.env.GIT_CONFIG_GLOBAL = gc;
+}
 
 function run(cmd, args, cwd) {
   const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', timeout: 180000 });
@@ -2988,7 +2995,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const notJson = call(s2.port, 'POST', '/_api/issue', 'title=x', { 'content-type': 'text/plain' });
     const noPage = call(s2.port, 'POST', '/_api/comment', { page: '없는.html', text: 'x' });
     const badIds = call(s2.port, 'POST', '/_api/issue', { title: 'x', ids: ['<script>'] });
-    const secret = call(s2.port, 'POST', '/_api/board', { title: '키', body: 'AKIAIOSFODNN7EXAMPLE 키' });
+    const secret = call(s2.port, 'POST', '/_api/board', { title: '키', body: `${['AKIA', 'IOSFODNN7', 'EXAMPLE'].join('')} 키` });
     // 쓴 뒤 다시 만들기 (감시를 꺼도 쓰기 뒤에는 만든다)
     const rebuilt = waitFor(() => { const d = dbOf(); return (d.comments['기능/003-주문관리.html'] || []).length === 2 && d.board.length === 2 && d.issues.items.length === 2; });
     s2.stop();

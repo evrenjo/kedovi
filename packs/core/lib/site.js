@@ -124,7 +124,7 @@ function pagesUrl(root) {
 
 /** 워크스페이스용 Pages CI 틀: CI 가 워크스페이스의 킷으로 docs-site/ 를 빌드해 올린다 (생성물은 커밋하지 않는다) */
 const CI_FILES = { gitlab: '.gitlab-ci.yml', github: path.join('.github', 'workflows', 'pages.yml') };
-const CI_TEMPLATES = { gitlab: path.join(__dirname, '..', 'assets', 'ci', 'gitlab-pages.yml'), github: path.join(__dirname, '..', 'assets', 'ci', 'github-pages.yml') };
+const CI_TEMPLATES = { gitlab: path.join(__dirname, '..', 'assets', 'ci', 'pages-gitlab.yml'), github: path.join(__dirname, '..', 'assets', 'ci', 'pages-github.yml') };
 const CI_MARK = 'kedovi docs pages';
 
 /**

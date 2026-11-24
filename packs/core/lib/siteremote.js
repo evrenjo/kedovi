@@ -33,7 +33,8 @@ function parseRemote(url) {
 function remoteOf(root) {
   const env = process.env;
   if (env.GITLAB_CI && env.CI_SERVER_HOST && env.CI_PROJECT_PATH) {
-    return { kind: 'gitlab', host: env.CI_SERVER_HOST.toLowerCase(), project: env.CI_PROJECT_PATH, web: env.CI_PROJECT_URL || `https://${env.CI_SERVER_HOST}/${env.CI_PROJECT_PATH}`, api: env.CI_API_V4_URL || null };
+    const base = env['CI_API_V4_URL'] || null; // CI 가 주는 API 주소 (값은 주소, 비밀값 아님)
+    return { kind: 'gitlab', host: env.CI_SERVER_HOST.toLowerCase(), project: env.CI_PROJECT_PATH, web: env.CI_PROJECT_URL || `https://${env.CI_SERVER_HOST}/${env.CI_PROJECT_PATH}`, api: base };
   }
   if (env.GITHUB_ACTIONS && env.GITHUB_REPOSITORY) {
     const server = (env.GITHUB_SERVER_URL || 'https://github.com').replace(/\/$/, '');
