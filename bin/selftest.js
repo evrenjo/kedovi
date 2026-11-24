@@ -248,6 +248,32 @@ for (const c of cases) {
   record('kedovi list · remove <이름>', ok, ok ? '' : `${lastLine(listed.out)} | ${lastLine(removed.out)} | ${lastLine(after.out)} | gitignore 제거 ${giGone}`);
 }
 
+// 배포 판의 소개 최신화: CHANGELOG 맨 위 판에 「기능」 줄이 있으면, 앞 판(chore: <앞 판> 커밋) 뒤로 README.md 와
+// package.json 의 description · keywords 가 바뀌어야 한다 (공개판 README · npm 소개가 이것을 쓴다). 특징이 아닌 작은 기능뿐이면 그 판 절에 <!-- readme: skip -->.
+// 앞 판 커밋을 못 찾으면(얕은 clone · 공개판 CI) 건너뛴다
+{
+  const cl = fs.readFileSync(path.join(KIT, 'CHANGELOG.md'), 'utf8');
+  const secs = [...cl.matchAll(/^## (\d+\.\d+\.\d+)\s*\n([\s\S]*?)(?=^## |(?![\s\S]))/gm)];
+  const [top, prev] = secs;
+  const git = (...a) => spawnSync('git', ['-C', KIT, ...a], { encoding: 'utf8' });
+  const base = prev ? String(git('log', '-1', '--format=%H', '--fixed-strings', `--grep=chore: ${prev[1]}`).stdout || '').trim() : '';
+  const pkg = JSON.parse(fs.readFileSync(path.join(KIT, 'package.json'), 'utf8'));
+  const feature = !!top && /^\|\s*기능\s*\|/m.test(top[2]) && !/<!--\s*readme:\s*skip\s*-->/.test(top[2]);
+  let ok = true; let detail = '';
+  if (!top || pkg.version !== top[1]) { ok = false; detail = `CHANGELOG 맨 위 판(${top ? top[1] : '없음'})이 package.json 판(${pkg.version})과 다릅니다`; }
+  else if (!feature) detail = `${top[1]}: 기능 줄 없음 (검사 안 함)`;
+  else if (!base) detail = `${top[1]}: 앞 판 ${prev ? prev[1] : ''} 커밋을 못 찾아 건너뜀`;
+  else {
+    const readme = git('diff', '--quiet', base, '--', 'README.md').status === 1;
+    let old = {};
+    try { old = JSON.parse(git('show', `${base}:package.json`).stdout); } catch { /* 없음 */ }
+    const npmIntro = old.description !== pkg.description || JSON.stringify(old.keywords) !== JSON.stringify(pkg.keywords);
+    ok = readme && npmIntro;
+    detail = ok ? `${top[1]}: README · npm 소개 갱신됨` : `${top[1]} 에 기능이 있는데 ${prev[1]} 뒤로 ${[!readme && 'README 「주요 특징」', !npmIntro && 'package.json description · keywords (npm 소개)'].filter(Boolean).join(' · ')} 이 그대로입니다. 고치거나, 특징이 아닌 작은 기능뿐이면 그 판 절에 <!-- readme: skip -->`;
+  }
+  record('배포 판 소개 최신화 (README · npm 소개)', ok, detail);
+}
+
 // 3. 금지 문자열
 // 목록은 repo 에 두지 않는다 (목록 자체가 숨길 이름을 드러낸다): 환경변수 KEDOVI_BANNED(a|b) 또는 이 PC 의 ~/.config/kedovi/banned.txt (한 줄에 하나)
 const bannedSrc = process.env.KEDOVI_BANNED || (() => { try { return fs.readFileSync(path.join(REAL_CONFIG_DIR, 'banned.txt'), 'utf8'); } catch { return ''; } })();
