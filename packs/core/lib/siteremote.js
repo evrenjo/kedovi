@@ -32,11 +32,13 @@ function parseRemote(url) {
 /** 워크스페이스의 원격 정보 (CI 면 CI 변수로) */
 function remoteOf(root) {
   const env = process.env;
-  if (env.GITLAB_CI && env.CI_SERVER_HOST && env.CI_PROJECT_PATH) {
+  // CI 변수는 CI 가 받아 온 그 폴더(또는 그 안)일 때만 쓴다. 시험이 만든 임시 워크스페이스 등에는 붙이지 않는다
+  const inCi = (dir) => { if (!dir) return false; const a = path.resolve(dir) + path.sep; const b = path.resolve(root || '.') + path.sep; return b.startsWith(a); };
+  if (env.GITLAB_CI && env.CI_SERVER_HOST && env.CI_PROJECT_PATH && inCi(env.CI_PROJECT_DIR)) {
     const base = env['CI_API_V4_URL'] || null; // CI 가 주는 API 주소 (값은 주소, 비밀값 아님)
     return { kind: 'gitlab', host: env.CI_SERVER_HOST.toLowerCase(), project: env.CI_PROJECT_PATH, web: env.CI_PROJECT_URL || `https://${env.CI_SERVER_HOST}/${env.CI_PROJECT_PATH}`, api: base };
   }
-  if (env.GITHUB_ACTIONS && env.GITHUB_REPOSITORY) {
+  if (env.GITHUB_ACTIONS && env.GITHUB_REPOSITORY && inCi(env.GITHUB_WORKSPACE)) {
     const server = (env.GITHUB_SERVER_URL || 'https://github.com').replace(/\/$/, '');
     return { kind: 'github', host: new URL(server).host, project: env.GITHUB_REPOSITORY, web: `${server}/${env.GITHUB_REPOSITORY}`, api: env.GITHUB_API_URL || null };
   }
