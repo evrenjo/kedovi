@@ -53,7 +53,7 @@ run(() => {
     try { fs.writeFileSync(f, JSON.stringify(next)); } catch { /* 기록 실패 */ }
     if (!changed.length) return;
     const live = all.filter((u) => !u.endedAt).length;
-    context(`작업 리더 진행판 바뀐 것 (kedovi team board, 진행 중 ${live}개): ${changed.map((u) => B.line(u, mins)).join(' / ')}. 진행 현황 · 상태 줄의 예상 종료는 이것으로 적는다`);
+    context(`작업 리더 진행판 바뀐 것 (kedovi team board, 진행 중 ${live}개): ${changed.map((u) => B.line(u, mins)).join(' / ')}. 진행 현황 · 상태 줄의 예상 종료는 이 실측 범위를 그대로 적고 여유 시간을 따로 더하지 않는다`);
     return;
   }
   if (ev === 'SubagentStop' && input.agent_id) {
@@ -83,5 +83,5 @@ run(() => {
   if (now - st.last < mins * 60000) return;
   st.last = now; // 다음 알림은 한 주기 뒤
   save();
-  note(`단계 보고 시각입니다 (마지막 보고 뒤 ${mins}분 넘음, vars.team.leadReportMinutes). 지금 단계를 진행판에 적고(kedovi team step --unit <단위> --stage <단계> --done "<끝난 것>" --next "<다음>" --eta <HH:MM>) 메인에게 같은 한 줄을 메시지로 보낸다. 무거운 시험을 기다리면 kedovi heavy status 의 예상 시작 · 끝으로 예상 종료를 정한다`);
+  note(`단계 보고 시각입니다 (마지막 보고 뒤 ${mins}분 넘음, vars.team.leadReportMinutes). 지금 단계를 진행판에 적고(kedovi team step --unit <단위> --stage <단계> --left "<남은 단계>" --done "<끝난 것>" --next "<다음>") 출력의 예상 종료(실측)를 그대로 메인에게 한 줄 메시지로 보낸다. 감으로 늘리지 않는다 (기록 없는 단계만 --eta)`);
 }, { teammateEvents: ['PreToolUse'] });

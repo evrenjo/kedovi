@@ -101,7 +101,7 @@ try {
     lb('step', '--unit', '로그인', '--stage', '리뷰');
     lb('step', '--unit', '로그인', '--end', '완료', '--done', '리뷰 블로커 0');
     const b = lb('board');
-    assert.match(b, /\| 주문 API \| 구현 \| 분석 \| 시험 ∥ 리뷰 \| 15:30 \| 방금 \|/);
+    assert.match(b, /\| 주문 API \| 구현 \| 분석 \| 시험 ∥ 리뷰 \| 15:30 \(리더\) \| 방금 \|/);
     assert.match(b, /\| 로그인 \| 끝: 완료 \| 리뷰 블로커 0 \|/);
     const B = require(path.join(ws, 'packs', 'core', 'bin', 'lead-board.js'));
     assert.deepStrictEqual(B.units().filter((u) => !u.endedAt).map((u) => u.unit), ['주문 API']);

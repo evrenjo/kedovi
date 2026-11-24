@@ -1337,6 +1337,40 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   record('세션 제목 기본값 ([날짜] 폴더 · 붙인 제목 유지 · 틀 · off)', def && keep && tpl && wired, `기본 ${def} (${got.sessionTitle || '-'}) · 붙인 제목 그대로 ${keep} · 틀 · off ${tpl} · 설정 연결 ${wired}`);
 }
 
+// 진행판 예상 종료 = 실측 (단계 종류별 지난 시간 · 무거운 시험 기록 · 남은 단계 · 예상과 실제 비율)
+{
+  const dir = path.join(tmp, 'new');
+  const sdir = path.join(dir, '.agents', 'status');
+  fs.rmSync(sdir, { recursive: true, force: true });
+  fs.mkdirSync(sdir, { recursive: true });
+  const M = 60000;
+  fs.writeFileSync(path.join(sdir, '_stats.json'), JSON.stringify({ stages: { 구현: [20 * M, 30 * M, 40 * M], 리뷰: [6 * M, 7 * M, 8 * M] }, ratios: [] }));
+  fs.mkdirSync(path.join(dir, '.agents', 'heavy'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.agents', 'heavy', 'history.json'), JSON.stringify({ 'e2e-full': [{ ms: 24 * M, ok: true }, { ms: 26 * M, ok: true }, { ms: 99 * M, ok: false }] }));
+  const B = require(path.join(dir, 'packs', 'core', 'bin', 'lead-board.js'));
+  const now = Date.now();
+  const u = { unit: 'w', stage: '구현', stageAt: now - 10 * M, updatedAt: now, left: 'E2E 시험, 리뷰' };
+  const e = B.estimate(u, now);
+  const mid = e && Math.round((e.mid - now) / M);
+  const calc = !!e && mid === 20 + 26 + 7 && e.lo < e.mid && e.mid < e.hi && !e.unknown.length;
+  const kinds = B.stageKind('리뷰 2차') === '리뷰' && B.stageKind('E2E 시험') === 'E2E' && B.stageKind('verify areas') === '검증' && B.stageKind('빌드') === '빌드';
+  const unk = B.estimate({ ...u, left: '보안 점검' }, now);
+  const partial = !!unk && unk.unknown.includes('보안 점검') && /기록 없음: 보안 점검 · 리더 19:30/.test(B.etaText({ ...u, left: '보안 점검', eta: '19:30' }, now));
+  const none = B.etaText({ unit: 'x', stage: '알 수 없는 일', updatedAt: now, eta: '21:00' }, now) === '21:00 (리더)';
+  // step 이 단계 시간을 기록하고, 끝나면 예상과 실제 비율을 남긴다
+  const step = (...a) => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'lead-board.js'), 'step', ...a], { cwd: dir, encoding: 'utf8' });
+  const s1 = step('--unit', 'eta', '--stage', '구현', '--left', '리뷰');
+  const uf = path.join(sdir, 'eta.json');
+  const j = JSON.parse(fs.readFileSync(uf, 'utf8')); j.stageAt -= 15 * M; j.pred0 = { ...j.pred0, at: j.pred0.at - 15 * M, mid: j.pred0.at - 15 * M + 30 * M }; fs.writeFileSync(uf, JSON.stringify(j));
+  step('--unit', 'eta', '--stage', '리뷰 1차');
+  step('--unit', 'eta', '--end', '완료');
+  const st = JSON.parse(fs.readFileSync(path.join(sdir, '_stats.json'), 'utf8'));
+  const learned = /예상 종료 \d\d:\d\d~\d\d:\d\d \(실측\)/.test(s1.stdout) && st.stages.구현.length === 4 && Math.round(st.stages.구현[3] / M) === 15 && st.ratios.length === 1 && st.ratios[0] > 0.4 && st.ratios[0] < 0.6;
+  const notUnit = !B.units({ all: true }).some((x) => x.unit === undefined);
+  record('진행판 예상 종료 실측 (단계 종류 · 무거운 시험 기록 · 남은 단계 · 범위 · 비율 보정)', calc && kinds && partial && none && learned && notUnit,
+    `계산 ${calc} (${mid}분) · 단계 종류 ${kinds} · 기록 없는 단계는 리더 값 함께 ${partial} · 실측 없으면 리더 값 ${none} · 단계 시간 · 비율 기록 ${learned} · 통계 파일은 단위 아님 ${notUnit}`);
+}
+
 // 화면 디자인 요청 훅 (screens 팩 ai-look): 방향 먼저 · 언슬롭 없으면 얻는 것과 함께 권함 · 한 세션 한 번 · 기능 추천과 안 겹침
 {
   const dir = path.join(tmp, 'new');
@@ -1938,10 +1972,23 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const noneQuiet = !rl('Stop', 'req-1', { last_assistant_message: '네.' }).trim();
     // 작업 중 끼어 든 메시지도 Stop 때 적는다 (한 번만)
     const tr = path.join(tmp, 'req-transcript.jsonl');
-    fs.writeFileSync(tr, [{ type: 'user', message: { role: 'user', content: '배포 준비해 줘' } }, { type: 'attachment', attachment: { type: 'queued_command', prompt: '테스트 결과도 표로 보여 줘', delivery_id: 'd1' } }].map((x) => JSON.stringify(x)).join('\n'));
+    fs.writeFileSync(tr, [{ type: 'user', message: { role: 'user', content: '배포 준비해 줘' } }, { type: 'attachment', attachment: { type: 'queued_command', prompt: '테스트 결과도 표로 정리해 줘', delivery_id: 'd1' } }].map((x) => JSON.stringify(x)).join('\n'));
     const mid1 = rl('Stop', 'req-3', { transcript_path: tr, last_assistant_message: '했습니다.' });
     rl('Stop', 'req-3', { transcript_path: tr, last_assistant_message: '했습니다.', stop_hook_active: true });
     const midTurn = /"decision":"block"/.test(mid1) && rows().filter((r) => /테스트 결과도 표로/.test(r.text)).length === 1;
+    // 사람이 보낸 말이 아닌 것은 적지 않고, 질문은 물음으로 받아 답하면 닫는다. 질문 뒤 「그럼 고쳐줘」 는 그 질문을 이어 업무로
+    req('set', String(rows().find((r) => /테스트 결과도/.test(r.text)).no), '--status', '완료');
+    const n0 = rows().length;
+    const sysQuiet = !rl('UserPromptSubmit', 'req-5', { prompt: '<task-notification>\n<task-id>b1</task-id>\n<status>completed</status>' }).trim() && !rl('UserPromptSubmit', 'req-5', { prompt: 'Another Claude session sent a message: <agent-message from="a1">보고</agent-message>' }).trim() && !rl('UserPromptSubmit', 'req-5', { prompt: '배포 확인해 줘', origin: { kind: 'scheduled' } }).trim() && rows().length === n0;
+    const askOut = rl('UserPromptSubmit', 'req-5', { prompt: '릴리스 얼마나 했어?' });
+    const askRow = rows()[rows().length - 1];
+    const asked = /물음 #/.test(askOut) && askRow.status === '물음' && !/릴리스 얼마나/.test(req('table').stdout);
+    const askStop = rl('Stop', 'req-5', { last_assistant_message: '70% 했습니다.' });
+    const answered = !/"decision":"block"/.test(askStop) && rows().find((r) => r.no === askRow.no).status === '답함';
+    rl('UserPromptSubmit', 'req-5', { prompt: '그럼 고쳐줘' });
+    const fu = rows()[rows().length - 1];
+    const follow = fu.status === '접수' && /릴리스 얼마나 했어\? → 그럼 고쳐줘/.test(fu.text);
+    req('set', String(fu.no), '--status', '완료');
     // 수준: off 면 아무것도 적지 않는다
     spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'team-mode', 'enforce', 'req', 'off', '--team'], { cwd: dir, encoding: 'utf8' });
     const before = rows().length;
@@ -1949,8 +1996,8 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'team-mode', 'enforce', 'req', 'block', '--team'], { cwd: dir, encoding: 'utf8' });
     const st = JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8')).hooks || {};
     const wiredReq = ['UserPromptSubmit', 'Stop'].every((ev) => JSON.stringify(st[ev] || []).includes('request-ledger'));
-    record('요청 장부 (요청마다 기록 · 답변 끝 표 검사 · kedovi requests)', recorded && ackQuiet && attached && short && secret && subQuiet && notTopic && set && tableOk && blocked && withTable && loopSafe && cli && noneQuiet && midTurn && off && wiredReq,
-      `기록 ${recorded} · 맞장구 제외 ${ackQuiet} · 짧은 승인은 직전 요청에 ${attached} · 두 번째부터 한 줄 ${short} · 비밀값 가림 ${!!secret} · 서브에이전트 조용 ${subQuiet} · 진행 중 작업으로 안 봄 ${notTopic} · set ${set} · 표 ${tableOk} · 표 없으면 막음 ${blocked} · 표 있으면 통과 ${withTable} · 루프 방지 ${loopSafe} · kedovi requests ${cli} · 열린 요청 없으면 조용 ${noneQuiet} · 끼어 든 메시지 ${midTurn} · off ${off} · 훅 연결 ${wiredReq}`);
+    record('요청 장부 (요청마다 기록 · 답변 끝 표 검사 · kedovi requests · 알림 제외 · 물음)', recorded && ackQuiet && attached && short && secret && subQuiet && notTopic && set && tableOk && blocked && withTable && loopSafe && cli && noneQuiet && midTurn && sysQuiet && asked && answered && follow && off && wiredReq,
+      `기록 ${recorded} · 맞장구 제외 ${ackQuiet} · 짧은 승인은 직전 요청에 ${attached} · 두 번째부터 한 줄 ${short} · 비밀값 가림 ${!!secret} · 서브에이전트 조용 ${subQuiet} · 진행 중 작업으로 안 봄 ${notTopic} · set ${set} · 표 ${tableOk} · 표 없으면 막음 ${blocked} · 표 있으면 통과 ${withTable} · 루프 방지 ${loopSafe} · kedovi requests ${cli} · 열린 요청 없으면 조용 ${noneQuiet} · 끼어 든 메시지 ${midTurn} · 알림 · 에이전트 메시지 · 예약 제외 ${sysQuiet} · 질문은 물음 · 표 밖 ${asked} · 답하면 닫힘 ${answered} · 질문 뒤 지시는 이어서 업무 ${follow} · off ${off} · 훅 연결 ${wiredReq}`);
   }
   // 답변 첫 줄 시각 (UserPromptSubmit): 기본 켜짐 · 팀 값 · 이 PC 값이 먼저 · kedovi timestamp · Claude 에만
   {

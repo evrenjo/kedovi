@@ -344,7 +344,7 @@ flowchart TD
     Q -->|"응답 언어 · 대화 스타일 · 글 형식"| PRF["kedovi prefs language ko · en · style learn · normal · expert [--team]<br/>writing bullet · prose · writing-except 대상,… · none (개조식에서 뺄 글)<br/>값 team = 이 PC 값 지우기 · mermaid [install] · setup (화면: 응답 언어 · 대화 스타일 · 글 형식)<br/>→ .agents/local.json (팀은 workspace.json) → sync"]
     Q -->|"사람이 읽는 글 틀 · 검사"| DRF["kedovi draft template 형식 · check --file 파일 --type 형식<br/>작업 항목 · 결함 · MR · 완료 댓글 · 주간보고 · 보고 · 기획 문서<br/>빈칸 · 빠진 절 · 긴 글머리 · 이 PC 링크 → gitlab 도구 · gh · glab · 기획 repo 커밋이 막음"]
     Q -->|"검증 2단 · 무거운 시험"| VRF["kedovi verify areas --repo R --run (바뀐 파일 → 영역 시험, vars.verify.areaMap)<br/>kedovi verify full --repo R (전체 실제 스택 시험, 릴리스 직전 한 번 · 통과 커밋 기록)<br/>kedovi heavy run -- 명령 · heavy status (줄 · 부하 · 예상 시작 · 끝) · heavy set (코어당 부하 기준)<br/>→ .agents/verify · .agents/heavy · 릴리스 MR 때 기록이 낡았으면 경고"]
-    Q -->|"작업 리더 진행판"| LDB["kedovi team step --unit 단위 --stage 단계 (리더, 단계마다 · 15분마다)<br/>kedovi team board (단계 · 끝난 것 · 다음 · 예상 종료)<br/>→ .agents/status · 요청 시작 때 바뀐 단위만 훅이 메인에 넣음 · 끝난 리더 단위는 저절로 닫음"]
+    Q -->|"작업 리더 진행판"| LDB["kedovi team step --unit 단위 --stage 단계 (리더, 단계마다 · 15분마다)<br/>kedovi team board (단계 · 끝난 것 · 다음 · 예상 종료 = 실측 범위)<br/>--left 남은 단계 · 단계 종류별 실측 · 무거운 시험 기록 · 예상과 실제 비율 보정<br/>→ .agents/status · 요청 시작 때 바뀐 단위만 훅이 메인에 넣음 · 끝난 리더 단위는 저절로 닫음"]
     Q -->|"요청 장부"| REQ["요청 시작 훅이 요청마다 번호를 붙여 기록 (맞장구 빼고 · 끼어든 메시지 포함)<br/>kedovi requests set 번호 --status 진행 · 완료 --agent 이름 --result 결과<br/>→ handoffs/id/topics/요청-목록.md · 열린 요청은 답변 끝 표 (enforce req)"]
     Q -->|"답변 시각 표시"| TS["kedovi timestamp on · off · team [--team]<br/>답변 첫 줄에 요청 받은 시각 (기본 켜짐, Claude Code)<br/>→ .agents/local.json (팀은 workspace.json)"]
     Q -->|"진행 방식"| APR["kedovi approach sprint · full · issue (팀장)<br/>스프린트: 최소 기능부터, 스프린트마다 데모 · 회고 · 전체: 전체 설계 뒤 구축 · 이슈형: 단계 대신 이슈 보드<br/>→ sync · 기본 단계 그대로인 로드맵은 새 뼈대 (이슈형은 고친 로드맵 앞에도 이슈 보드)"]
@@ -410,7 +410,7 @@ flowchart TD
 | `kedovi verify` | 검증 2단: `areas --repo <이름> [--run]`(바뀐 파일 → 영역 시험, `vars.verify.areaMap`) · `full`(전체 실제 스택 시험을 무거운 시험 줄에서, 통과 커밋 기록. `vars.verify.fullSuite` = release 면 릴리스 직전 한 번) · `mark` · `status` |
 | `kedovi usage` | 주간 사용량 속도: 사용률 · 지금 시점 기준 · 단계 · 줄어든 상한. 빠르면 훅이 상한을 줄인다 (`kedovi team-mode enforce pace`) |
 | `kedovi heavy` | 무거운 시험 순번: `run [--name 이름] -- <명령>`(줄을 서고 차례에 돌림) · `status`(도는 것 · 기다리는 것 · 부하 · 예상 시작 · 끝, 같은 이름 최근 시간 기준) · `set --max-load 코어당 값`(기다리는 작업도 바로 따름) |
-| `kedovi team step` · `kedovi team board` | 작업 리더 진행판: 리더가 단계마다 · `vars.team.leadReportMinutes` 분마다 단계 · 끝난 것 · 다음 · 예상 종료를 적고, 메인 · 사용자가 표로 본다 (tmux 창 없이도). 팀원이 도는 채 끝내는 리더는 훅이 되돌린다 (`kedovi team-mode enforce hold`). 끝났거나 멈춘 단위는 저절로 닫는다 |
+| `kedovi team step` · `kedovi team board` | 작업 리더 진행판: 리더가 단계마다 · `vars.team.leadReportMinutes` 분마다 단계 · 끝난 것 · 다음 · 예상 종료를 적고, 메인 · 사용자가 표로 본다 (tmux 창 없이도). 팀원이 도는 채 끝내는 리더는 훅이 되돌린다 (`kedovi team-mode enforce hold`). 끝났거나 멈춘 단위는 저절로 닫는다. 예상 종료는 단계 종류별 실측 범위로 계산한다 (`--left` 남은 단계) |
 | `kedovi requests` | 요청 장부: `list` · `set <번호> --status … --agent … --result …` · `table`(답변 끝 표) · `add`. 요청 시작 훅이 요청마다 자동 기록하고, 열린 요청은 답변 끝 표로 보인다 (빠지면 되돌림, `kedovi team-mode enforce req`) |
 | `kedovi draft` | 사람이 읽는 글의 틀과 올리기 전 검사: `template <형식>`(작업 항목 · 결함 · MR · 완료 댓글 · 주간보고 · 보고 · 기획 문서) · `check --file <파일> --type <형식>`(빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것 · 소스 코드 표현). 수준은 `kedovi team-mode enforce draft` |
 | `kedovi timestamp` | 답변 첫 줄 시각 표시 (Claude Code, 기본 켜짐): 요청 받은 시각 yyyy-MM-dd HH:mm:ss. `on\|off` 이 PC · `team` 이 PC 값 지우기 · `--team` 팀 기본값(팀장). 인자 없이 = 지금 값 |
