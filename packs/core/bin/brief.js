@@ -19,6 +19,7 @@ try { TYPES = require(path.join(ROOT, 'bin', 'kit.js')).PROJECT_TYPES || {}; } c
 const out = [];
 const p = ws.project || {};
 out.push(`프로젝트: ${p.title || p.name || path.basename(ROOT)} · ${TYPES[p.type] || p.type || '유형 없음'} · repo: ${(ws.repos || []).map((r) => r.name).join(', ') || '없음'}`);
+try { const site = require('../lib/sitehost').siteLine(ROOT); if (site) out.push(site); } catch { /* 옛 워크스페이스 */ }
 const P = require('../lib/plan');
 const plan = P.read(ROOT);
 out.push(plan ? P.shortLine(plan, P.externalOf(ws), (ws.project || {}).type) : P.externalOf(ws) ? `일정 정본: ${P.externalOf(ws)}` : `로드맵 없음 (${P.FILE}). kedovi plan init 으로 만든다`);

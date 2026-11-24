@@ -223,7 +223,7 @@ function main() {
     fs.writeFileSync(file, `${P.template(type, layers, approach)}\n`);
     if (approach === 'issue') return console.log(`✔ ${P.FILE} 만듦 (이슈 보드, 상태: ${P.ISSUE_STATES.join(' · ')})`);
     const extra = want.filter((x) => P.STACK_STAGES.some((st) => st.name === x));
-    return console.log(`✔ ${P.FILE} 만듦 (${approach === 'sprint' ? '스프린트' : type} 기본 단계 ${want.length}개${extra.length ? `, 스택에 따라 ${extra.join(' · ')} 포함` : ''})`);
+    return console.log(`✔ ${P.FILE} 만듦 (${approach === 'sprint' ? '스프린트' : approach === 'feature' ? '기능 단위' : type} 기본 단계 ${want.length}개${extra.length ? `, 스택에 따라 ${extra.join(' · ')} 포함` : ''})`);
   }
   const plan = P.read(root);
   if (argv[0] === 'check') {

@@ -9,7 +9,8 @@
  *                                          · 소스 코드 표현(파일:줄 · 소스 파일명 · 함수 호출은 막고, 클래스 · 변수 이름 모양은 알림만)
  *                                          issue = 작업 항목 · 결함 중 맞는 쪽, comment · wiki = 필수 절 없이. repo 에 GitLab · GitHub 틀이 있으면 그 절이 먼저
  *   config --file F [--file G …]         환경 · 설정 파일 주석: 긴 줄 · 한 줄 여러 문장 · 가운데점 나열 · 작업 경위 · 값 뒤 주석 · 설명 없는 키(.env.example). 알림만, 값은 찍지 않는다
- *   staged <repo 폴더>                     커밋 훅용: 올리려는 md 의 더한 줄만 본다. 새 문서는 같은 폴더 _template.md 의 절까지. 코드 표현은 위키 repo 만 막고 기획 repo 는 알린다
+ *   staged <repo 폴더> [--only <폴더/>]    커밋 훅용: 올리려는 md 의 더한 줄만 본다. 새 문서는 같은 폴더 _template.md 의 절까지 (README 는 목록이라 절을 보지 않는다).
+ *                                          코드 표현은 위키 repo 만 막고 기획 repo 는 알린다. --only = 그 폴더 안 md 만 (워크스페이스 훅: --only docs-site/)
  * 수준 agents.enforce.draftCheck: block(기본) = 걸리면 exit 1 · warn = 알리고 통과 · off = 보지 않음 (kedovi team-mode enforce draft)
  */
 'use strict';
@@ -61,7 +62,8 @@ const SKIP = /(^|\/)(_template\.md|originals\/|md\/|docs-site\/|html\/|\.gitlab\
 
 /** 커밋 훅: 올리려는 md 파일의 더한 줄 (새 파일은 전부 + 같은 폴더 _template.md 의 절) */
 function cmdStaged() {
-  const dir = argv[1] ? path.resolve(argv[1]) : process.cwd();
+  const dir = argv[1] && !argv[1].startsWith('--') ? path.resolve(argv[1]) : process.cwd();
+  const only = opt('only') ? `${String(opt('only')).replace(/^\.?\/+|\/+$/g, '')}/` : null;
   const level = D.levelOf(ROOT);
   if (level === 'off') return 0;
   const git = (...a) => execFileSync('git', ['-C', dir, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 });
@@ -78,7 +80,8 @@ function cmdStaged() {
   let all = [];
   for (let i = 0; i + 1 < parts.length; i += 2) {
     const [st, f] = [parts[i], parts[i + 1]];
-    if (!/\.md$/i.test(f) || SKIP.test(f)) continue;
+    if (!/\.md$/i.test(f)) continue;
+    if (only ? !f.startsWith(only) || SKIP.test(f.slice(only.length)) : SKIP.test(f)) continue;
     let text;
     try { text = git('show', `:${f}`); } catch { continue; }
     let added = null;
@@ -94,9 +97,10 @@ function cmdStaged() {
       }
       if (!added.size) continue;
     } else {
-      // 새 문서: 같은 폴더의 틀이 있으면 그 절(자리표시자 없는 ## · ### 제목)
+      // 새 문서: 같은 폴더의 틀이 있으면 그 절(자리표시자 없는 ## · ### 제목). README 는 그 폴더의 목록이라 틀을 따르지 않는다
       const tpl = path.join(dir, path.dirname(f), '_template.md');
-      try {
+      if (/^readme\.md$/i.test(path.basename(f))) sections = null;
+      else try {
         sections = fs.readFileSync(tpl, 'utf8').split('\n').map((l) => /^#{2,3}\s+(.+)$/.exec(l.trim())).filter((m) => m && !/[<>]/.test(m[1])).map((m) => [m[1].trim()]);
       } catch { sections = null; }
     }

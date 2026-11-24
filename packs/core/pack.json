@@ -65,6 +65,10 @@
       "default": "warn",
       "desc": "코드 repo 에서 커밋하기 전에 새 진입 파일 중 기획 ID(@spec 주석)가 없는 것을 에이전트에게 알린다 (warn = 알리고 진행, off = 끔. 기획 repo 가 있을 때만, Claude Code)"
     },
+    "docs.featureDocsOnCommit": {
+      "default": "warn",
+      "desc": "기능 문서 갱신 알림: 워크스페이스 커밋에서 기능 문서의 단계가 바뀌면 설계 · 검증 절과 설계 문서를, 코드 repo 커밋이 기능 ID 를 건드리거나 MR · PR 을 머지하면 기능 문서의 단계를 맞추라고 에이전트에게 알린다 (warn = 알리고 진행, off = 끔. 워크스페이스 docs-site/ 가 있을 때만, Claude Code)"
+    },
     "docs.syncMode": {
       "default": "approve",
       "desc": "코드 · 화면이 기획 문서와 다르고 구현 쪽이 맞을 때: approve = 사용자 승인 뒤 같은 작업에서 정본 문서 한 곳을 고치고 결정 ID 를 단다 (기본), ask = 기획 repo 는 읽기 전용, 확인 요청 글만 (기획자가 따로 관리하는 팀)"

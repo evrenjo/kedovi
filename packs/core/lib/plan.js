@@ -16,7 +16,7 @@
  *   ## 개선 후보                          - 착수 전 개선 아이디어 한 줄씩 (착수하면 이슈 표로 옮긴다)
  * 스택에 따라 끼우는 단계: DB 계층이 있으면 「데이터 설계」, 화면 계층(웹 · 모바일 · 데스크톱 등)이 있으면 「화면설계」.
  *   (아키텍처·)설계 다음, 구현 앞. 데이터 설계 → 화면설계 순 (화면이 보여 줄 데이터 · 저장 구조가 먼저). 반복형은 단계를 늘리지 않고 첫 단계(분석 · 스프린트 계획) 체크 목록에.
- * 진행 방식(workspace.json project.approach): sprint(스프린트) 이면 반복형 「스프린트 계획 → 구현 → 데모 → 회고」, issue(이슈형)면 이슈 보드, full(전체)·없음이면 종류별 기본 단계.
+ * 진행 방식(workspace.json project.approach): feature(기능 단위)면 「설계 기준 → 기능 반복 → 오픈」(기능마다의 단계는 기능 문서 머리가 정본), sprint(스프린트) 이면 반복형 「스프린트 계획 → 구현 → 데모 → 회고」, issue(이슈형)면 이슈 보드, full(전체)·없음이면 종류별 기본 단계.
  */
 'use strict';
 const fs = require('fs');
@@ -36,13 +36,19 @@ const PRESETS = {
   sprint: { stages: ['스프린트 계획', '구현', '데모', '회고'], cycle: true, checksAt: '스프린트 계획', backlog: true },
   // 이슈형: 이슈마다 따로 운영에 반영되고 여러 이슈가 서로 다른 상태에 있다 → 단계 대신 이슈 보드
   issue: { stages: [], issue: true },
+  // 기능 단위: 설계 기준(요구사항 · 아키텍처 · 개발 표준)을 먼저 정하고, 기능마다 명세 → 설계 → AI 구현 → 검증 → 배포를 반복한다.
+  // 기능별 단계 · 마일스톤은 기능 문서 머리가 정본이라 로드맵에는 큰 단계만. 무엇을 만들지는 방향 인터뷰(kickoff)가 정하므로 아이디어 단계를 끼우지 않는다
+  feature: { stages: ['설계 기준', '기능 반복', '오픈'], feature: true, checksAt: '설계 기준' },
 };
+// 기능 하나가 거치는 단계 (기능 문서 머리의 「단계」 값)
+const FEATURE_STEPS = ['명세', '설계', '구현', '검증', '배포'];
 // 0.63 전 운영·고도화 기본 단계 (반복형). 이 단계 그대로인 로드맵은 진행 방식을 바꿀 때(kedovi approach · type)만 새 뼈대로 바꾼다
 const OLD_ENHANCEMENT = ['접수', '분석', '구현', '테스트', '배포'];
 /** 종류 · 진행 방식 → 기본 단계 묶음 */
 function presetOf(type, approach) {
   if (approach === 'issue') return PRESETS.issue;
   if (approach === 'sprint') return PRESETS.sprint;
+  if (approach === 'feature') return PRESETS.feature;
   return PRESETS[type] || PRESETS.new;
 }
 const ISSUE_STATES = ['접수', '분석', '수정', '검증', '운영 반영', '보류'];
@@ -52,7 +58,7 @@ const STALE_DAYS = 14;
 const STACK_STAGES = [{ name: '데이터 설계', when: 'db', skill: 'datamodel' }, { name: '화면설계', when: 'ui', skill: 'screens' }];
 // 신규 구축의 첫 단계: 무엇을 왜 만드는지 대화로 정하고 전체 그림 · MVP 범위를 잡는다 (idea 스킬). 건너뛰면 상태를 「✔ 건너뜀」
 const IDEA_STAGE = '아이디어 · 전체 그림';
-const STAGE_SKILLS = { ...Object.fromEntries(STACK_STAGES.map((x) => [x.name, x.skill])), [IDEA_STAGE]: 'idea', '아키텍처·설계': 'architecture' };
+const STAGE_SKILLS = { ...Object.fromEntries(STACK_STAGES.map((x) => [x.name, x.skill])), [IDEA_STAGE]: 'idea', '아키텍처·설계': 'architecture', '설계 기준': 'architecture' };
 const norm = (n) => String(n).replace(/\s+/g, '');
 const isIdea = (name) => norm(name) === norm(IDEA_STAGE); // 「아이디어·전체 그림」 처럼 띄어쓰기가 달라도
 /** 기본 단계 그대로인 로드맵에 붙이는 안내: 아이디어 단계 중이면 그 대화가 끝난 뒤에 묻는다 (첫 질문이 겹치지 않게) */
@@ -63,8 +69,8 @@ const UI_LAYERS = ['frontend', 'desktop', 'mobile', 'watch', 'tv'];
 /** 종류 · 스택(layers: { db, ui })에 맞는 단계 목록 */
 function stagesFor(type, layers = {}, approach) {
   const p = presetOf(type, approach);
-  const idea = type === 'new' && !p.issue ? [IDEA_STAGE] : []; // 신규 구축은 MVP · 워터폴 모두 아이디어부터
-  const extra = p.cycle ? [] : STACK_STAGES.filter((x) => layers[x.when]).map((x) => x.name);
+  const idea = type === 'new' && !p.issue && !p.feature ? [IDEA_STAGE] : []; // 신규 구축은 MVP · 워터폴 모두 아이디어부터
+  const extra = p.cycle || p.feature ? [] : STACK_STAGES.filter((x) => layers[x.when]).map((x) => x.name);
   const at = p.stages.findIndex((x) => x === '구현');
   if (!extra.length || at < 0) return [...idea, ...p.stages];
   return [...idea, ...p.stages.slice(0, at), ...extra, ...p.stages.slice(at)];
@@ -72,7 +78,7 @@ function stagesFor(type, layers = {}, approach) {
 
 /** 이미 만든 로드맵에 스택에 맞는 단계가 빠졌으면 경고 문장 (사람이 고친 PLAN.md 는 건드리지 않는다) */
 function missingStages(plan, layers = {}, type, approach) {
-  if (!plan || plan.issues || presetOf(type, approach).cycle || presetOf(type, approach).issue) return [];
+  if (!plan || plan.issues || presetOf(type, approach).cycle || presetOf(type, approach).issue || presetOf(type, approach).feature) return [];
   const have = new Set(plan.stages.map((s) => norm(s.name)));
   const miss = STACK_STAGES.filter((x) => layers[x.when] && !have.has(norm(x.name)));
   if (!miss.length) return [];
@@ -472,7 +478,13 @@ function template(type, layers = {}, approach) {
   const sp = p === PRESETS.sprint;
   // 반복형: 단계를 늘리지 않고 첫 단계(분석 · 스프린트 계획)에서 스키마 · 화면 변경 여부를 본다. 스프린트면 이번 스프린트 기능만
   const scope = sp ? '이번 스프린트 기능만. ' : '';
-  const checks = p.cycle ? [
+  const fe = !!p.feature;
+  const checks = fe ? [
+    '- [ ] 요구사항: 무엇을 누가 쓰는지와 첫 기능 목록 · 마일스톤을 정한다 (방향 인터뷰 `kickoff` 스킬. 기능마다 기능 문서 한 파일)',
+    '- [ ] 아키텍처: 서비스 · DB · 미들웨어 · 서버 구성을 `architecture` 스킬로 그린다',
+    '- [ ] 개발 표준: 스택 · 코드 관례 · 테스트 기준을 적는다',
+    ...STACK_STAGES.filter((x) => layers[x.when]).map((x) => `- [ ] ${x.when === 'db' ? '데이터' : '화면'} 설계 방식: 기능마다 \`${x.skill}\` 스킬로 그 기능 몫만 더한다`),
+  ] : p.cycle ? [
     ...(sp ? ['- [ ] 이번 스프린트의 목표(데모에서 보여 줄 한 줄)와 기능을 사용자와 정해 `## 이번 스프린트` 에 적는다 (첫 스프린트는 끝까지 동작하는 최소 기능 하나)'] : []),
     ...(sp && stages.includes(IDEA_STAGE) ? ['- [ ] (첫 스프린트) 시스템 구성 1차: MVP 를 돌릴 서비스 · DB · 미들웨어 · 서버 사양을 `architecture` 스킬로 기획 repo 의 시스템 구성도에 그린다'] : []),
     ...STACK_STAGES.filter((x) => layers[x.when]).map((x) => `- [ ] ${x.when === 'db' ? '스키마' : '화면'} 변경 여부 (${scope}있으면 \`${x.skill}\` 스킬로 ${x.when === 'db' ? '테이블 정의서' : '화면(프로토타입 · 화면 목록)'}${x.when === 'db' ? '를' : '을'} 고친다)`),
@@ -485,6 +497,10 @@ function template(type, layers = {}, approach) {
     '- 하위 작업은 그 단계를 시작할 때 `## <단계 이름>` 절에 쪼갠다. 영역이 있으면 표(첫 열 영역, 나머지 열 하위 작업), 없으면 체크 목록(`- [ ]`)',
     '- 단계·영역·하위 작업 수(분모)가 바뀌면 `## 분모 변경` 에 한 줄: `- YYYY-MM-DD · 무엇 n → m · 사유`',
     ...(stages.includes(IDEA_STAGE) ? [`- 「${IDEA_STAGE}」: 무엇을 왜 만드는지 사용자와 대화해 전체 그림과 첫 범위(MVP)를 정한다 (\`idea\` 스킬). 이미 정해져 있으면 상태를 \`✔ 건너뜀\` 으로 두고 넘어간다`] : []),
+    ...(fe ? [
+      `- 진행 방식 기능 단위: 「설계 기준」 을 끝낸 뒤 「기능 반복」 에서 기능 하나씩 ${FEATURE_STEPS.join(' → ')} 를 끝까지 한다. 기능마다의 단계 · 마일스톤은 그 기능 문서 머리가 정본이라 여기 적지 않는다`,
+      '- 모든 기능을 배포하고 운영에 넘기면 「오픈」 을 끝낸다. 운영 중 이슈는 이슈 처리 보드(`kedovi approach issue`)로 함께 다룰 수 있다',
+    ] : []),
     ...(sp ? [
       '- 진행 방식 스프린트: 이번 스프린트에 넣지 않는 기능은 `## 백로그` 에 한 줄씩 적고 만들지 않는다. 기간이 아니라 기능 단위다 (끝 날짜는 정하고 싶을 때만)',
       `- 데모: 실행 방법(명령 · 주소 · 화면)과 함께 돌아가는 결과를 보여 주고 사용자가 확인한다. 회고: \`## 지난 스프린트\` 에 \`- YYYY-MM-DD · S<번호> <목표> · 잘 된 것 · 바꿀 것\` 한 줄, 백로그에서 다음 스프린트 후보를 추천하고 단계 상태를 처음으로 되돌린다${stages.includes(IDEA_STAGE) ? ` (「${IDEA_STAGE}」 은 그대로)` : ''}`,
@@ -526,4 +542,4 @@ function issueSection() {
   return ['## 이슈', '', `상태: ${ISSUE_STATES.join(' · ')}`, '', '| 이슈 | 제목 | 상태 | 브랜치 | 시작 | 갱신 | 운영 반영 |', '|---|---|---|---|---|---|---|', ''].join('\n');
 }
 
-module.exports = { externalOf, NEXT_TYPES, nextTypeHint, presetHint, isIdea, IDEA_STAGE, OLD_ENHANCEMENT, ISSUE_STATES, issueSummary, issueTable, issueReport, issueTemplate, issueSection, latest, FILE, PRESETS, presetOf, STACK_STAGES, STAGE_SKILLS, UI_LAYERS, skillOf, stagesFor, missingStages, upgradePreset, STATE, LABEL, parse, read, current, doneCount, nextCell, nextLine, width, flow, detailTable, shortLine, toJson, template, bar };
+module.exports = { FEATURE_STEPS, externalOf, NEXT_TYPES, nextTypeHint, presetHint, isIdea, IDEA_STAGE, OLD_ENHANCEMENT, ISSUE_STATES, issueSummary, issueTable, issueReport, issueTemplate, issueSection, latest, FILE, PRESETS, presetOf, STACK_STAGES, STAGE_SKILLS, UI_LAYERS, skillOf, stagesFor, missingStages, upgradePreset, STATE, LABEL, parse, read, current, doneCount, nextCell, nextLine, width, flow, detailTable, shortLine, toJson, template, bar };

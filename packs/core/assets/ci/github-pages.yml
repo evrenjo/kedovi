@@ -1,0 +1,52 @@
+# kedovi docs pages: 워크스페이스 문서 사이트(docs-site/)를 GitHub Pages 로 올린다.
+# CI 가 워크스페이스에 커밋된 킷(packs/core)으로 빌드한다. 생성물(.agents/site/)은 커밋하지 않는다.
+# repos/ 아래 기획 repo 는 CI 에서 받지 않아 원격 주소가 있으면 링크 쪽만 들어간다.
+# 액션은 커밋 SHA 로 고정한다 (태그 바꿔치기 대비, 뒤 주석이 그 버전).
+# 한 번만: Settings > Pages > Build and deployment > Source 를 「GitHub Actions」 로.
+# 비공개 repo 는 유료 요금제여야 Pages 를 쓸 수 있다.
+# 이슈 · 댓글 · Discussions 가 바뀌어도 다시 만든다 (사이트의 이슈 · 일정 · 게시판 · 의견). 읽는 토큰은 워크플로 기본 토큰,
+# 다른 토큰을 쓰려면 저장소 비밀값 KEDOVI_SITE_TOKEN.
+name: pages
+on:
+  push:
+    branches: [main]
+    paths: ['docs-site/**', 'issues/**', 'packs/**', 'workspace.json']
+  issues:
+    types: [opened, edited, closed, reopened, labeled, unlabeled, assigned, unassigned, milestoned, demilestoned]
+  issue_comment:
+    types: [created, edited, deleted]
+  discussion:
+    types: [created, edited, deleted, category_changed]
+  discussion_comment:
+    types: [created, edited, deleted]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  issues: read
+  discussions: read
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - run: test -d docs-site || { echo "docs-site/ 가 없습니다. 워크스페이스 문서 원본을 커밋하세요"; exit 1; }
+      - run: node packs/core/bin/docs-site.js build --out _site --no-source
+        env:
+          KEDOVI_SITE_TOKEN: ${{ secrets.KEDOVI_SITE_TOKEN || github.token }}
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -167,8 +167,8 @@
     {
       "id": "approach",
       "topic": "스프린트|워터폴|이슈\\s*단위|진행\\s*방식|로드맵",
-      "say": "진행 방식 (스프린트 · 전체 · 이슈형)",
-      "cmd": "kedovi approach sprint|full|issue",
+      "say": "진행 방식 (기능 단위 · 스프린트 · 전체 · 이슈형)",
+      "cmd": "kedovi approach feature|sprint|full|issue",
       "scope": "팀 (팀장)",
       "weakOk": true
     },

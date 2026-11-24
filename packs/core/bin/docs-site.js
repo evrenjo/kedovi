@@ -1,10 +1,15 @@
 #!/usr/bin/env node
-// 문서 사이트: 기획 repo 의 md 를 같은 경로 구조의 HTML(docs-site/)로 만든다. 실행: kedovi docs <명령> 또는 node packs/core/bin/docs-site.js <명령>
+// 문서 사이트: 워크스페이스 docs-site/(사람 문서 원본)를 .agents/site/ 로, 옛 구조면 기획 repo 의 md 를 그 repo 의 docs-site/ 로 만든다. 실행: kedovi docs <명령> 또는 node packs/core/bin/docs-site.js <명령>
 /*
+ * 대상: 워크스페이스 루트에 docs-site/ 원본(생성기 표시 assets/site.json 이 없는 폴더)이 있으면 그것 하나 (연결한 기획 repo 는 같은 사이트의 repos/<이름>/, 기본 사본 · 코드 repo 는 뺌).
+ *   없으면 옛 구조: 기획 repo(kind: docs)마다. ai-docs/ 는 어느 쪽에도 넣지 않는다. 자리 · 주소 · 뒤에서 띄우기는 lib/site.js (siteInfo · ensureServer)
  * 명령
+ *   adopt <기획 repo> [--dry-run] [--force]      옛 기획 repo 폴더(00-overview · 20-features …)를 워크스페이스 docs-site/ 새 자리로 옮긴다 (원본 repo 는 그대로, 링크 고침, 손댄 문서와 겹치면 멈춤)
+ *   ai-docs [--quiet]                          AI 자료(ai-docs/) 규칙 어긋남 알림: 맨 위 파일 · README 목록에 없는 폴더 · 머리 줄(요약 · 날짜 · ID) 없는 파일
  *   build [repo|폴더] [--out docs-site] [--force] [--write-config]   만들기. --out 은 폴더 기준 상대 경로 또는 절대 경로. docs-site.json(원본 주소)은 이미 있거나 기획 repo · 워크스페이스 루트일 때만 만든다 (그 밖은 --write-config). repo 를 안 주면 workspace.json 의 기획 repo(kind: docs) 전부. 옛 출력 폴더 html/ 은 docs-site/ 로 한 번 옮긴다 (git mv)
  *   check [repo|폴더]                          md 와 docs-site/ 가 어긋났는지 (어긋나면 exit 1). 정의 없는 ID 는 ⚠ 만
- *   serve [repo|폴더] [--port 8000] [--open]     docs-site/ 를 이 PC 에서 웹 주소로 보기 (Ctrl+C 로 끝). file:// 로도 열리지만 쪽 이동이 새로고침이 되고 전체 인쇄가 안 된다
+ *   serve [repo|폴더] [--port 8000] [--open] [--no-watch]  docs-site/ 를 이 PC 에서 웹 주소로 보기 (Ctrl+C 로 끝). file:// 로도 열리지만 쪽 이동이 새로고침이 되고 전체 인쇄가 안 된다.
+ *                                              워크스페이스 사이트면 쓰기 길(/_api/whoami · comment · board · issue, lib/siteserver.js)과 docs-site/ · issues/ 감시(바뀌면 다시 만들기, --no-watch 로 끔)
  *   pages [on|off] [repo|폴더]                 Pages 로 올리기 켜고 끄기 · 상태. on = 원격(GitLab · GitHub)에 맞는 CI 파일을 두고 docs-site/ 를 커밋 대상으로, off = .gitignore 에 /docs-site/
  *   hook <repo 폴더>                           기획 repo 의 pre-commit 이 부른다 (kedovi docs build 로 만든 적이 없으면 아무것도 안 한다)
  *   show <ID> [--in <파일 조각>] [--all]         그 ID 의 정의 부분만 출력 (문서를 통째로 읽지 않는다). --all = 정의가 여럿이면 모두
@@ -33,10 +38,13 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { build, globRe, wanted } = require('../lib/mdsite');
+const { build, globRe, wanted, pageOf } = require('../lib/mdsite');
 const DR = require('../lib/docsref');
 const MC = require('../lib/mermaid-check');
 const WRL = require('../lib/writes');
+const S = require('../lib/site');
+const SD = require('../lib/sitedb');
+const SR = require('../lib/siteremote');
 
 const PACKS = path.resolve(__dirname, '..', '..');
 const argv = process.argv.slice(2);
@@ -59,30 +67,56 @@ function outArg(dir) {
   const rel = path.relative(dir, abs);
   return rel && !rel.startsWith('..') && !path.isAbsolute(rel) ? rel.split(path.sep).join('/') : abs;
 }
-const outLabel = (t, out) => (path.isAbsolute(out) ? out : `${t.name}/${out}`);
+const outLabel = (t, out) => {
+  if (t.kind === 'site') { const r = path.relative(t.base, out); return r && !r.startsWith('..') && !path.isAbsolute(r) ? r.split(path.sep).join('/') : out; }
+  return path.isAbsolute(out) ? out : `${t.name}/${out}`;
+};
+/** 이 대상의 출력 폴더: 워크스페이스 사이트는 .agents/site/ (--out 은 워크스페이스 기준), 기획 repo 는 repo 안 docs-site/ (옛 html/ 이 있으면 그것) */
+const outFor = (t) => (t.kind === 'site' ? (opt('out') ? path.resolve(t.base, opt('out')) : t.out) : outOf(t.dir));
 
 function loadWs() {
   // 이 도구가 놓인 워크스페이스 (기획 repo 의 pre-commit 처럼 다른 폴더에서 불려도 같은 변수를 쓴다)
   try { return require('../lib/workspace').load(path.resolve(PACKS, '..')); } catch { return null; }
 }
 
-/** 대상 repo 폴더들. 인자가 폴더면 그 폴더, 이름이면 그 repo, 없으면 기획 repo 전부 */
+/**
+ * 워크스페이스 사이트 대상: 루트 docs-site/ 가 원본(생성기 표시가 없는 폴더)이면 { kind: 'site', dir: 원본, base: 루트, out: .agents/site }.
+ * 연결한 기획 repo 는 같은 사이트의 repos/<이름>/ 로 들어간다 (scope)
+ */
+function siteTarget(ws) {
+  if (!ws || !ws.root || !S.isSource(path.join(ws.root, S.SRC_DIR))) return null;
+  return { name: S.SRC_DIR, dir: path.join(ws.root, S.SRC_DIR), kind: 'site', base: ws.root, out: path.join(ws.root, S.OUT_DIR) };
+}
+const realOf = (x) => { try { return fs.realpathSync(x); } catch { return path.resolve(x); } };
+
+/** 대상 폴더들. 인자가 폴더면 그 폴더(워크스페이스 루트 · docs-site/ 면 워크스페이스 사이트), 이름이면 그 repo, 없으면 워크스페이스 사이트(원본 docs-site/ 가 있을 때) 또는 기획 repo 전부 */
 function targets(ws, arg) {
   const repos = ws ? ws.repos : [];
+  const site = siteTarget(ws);
   if (arg && fs.existsSync(arg) && fs.statSync(arg).isDirectory()) {
+    if (site && (realOf(arg) === realOf(site.base) || realOf(arg) === realOf(site.dir))) return [site];
     // 워크스페이스의 repo 폴더면 그 이름으로 (안내 명령에 쓴다)
-    const real = (x) => { try { return fs.realpathSync(x); } catch { return path.resolve(x); } };
+    const real = realOf;
     const r = repos.find((x) => real(x.dir) === real(arg));
     return [{ name: r ? r.name : path.basename(path.resolve(arg)), dir: path.resolve(arg), kind: r ? r.kind : undefined }];
   }
   if (arg) {
+    if (site && arg === S.SRC_DIR) return [site];
     const r = repos.find((x) => x.name === arg);
     if (!r) throw new Error(`repo '${arg}' 가 없습니다 (workspace.json repos 이름 또는 폴더 경로)`);
     return [r];
   }
+  if (site) return [site];
   const docs = repos.filter((r) => r.kind === 'docs');
-  if (!docs.length) throw new Error('기획 repo(kind: docs)가 없습니다. kedovi docs build <repo 이름|폴더>');
+  if (!docs.length) throw new Error('문서 원본이 없습니다: 워크스페이스 docs-site/ 도 기획 repo(kind: docs)도 없습니다. kedovi docs build <repo 이름|폴더>');
   return docs;
+}
+
+/** ID 찾기 · 추적이 읽는 문서 원본: 워크스페이스 docs-site/ + 기획 repo 전부 (사이트 대상과 달리 기획 repo 도 따로 본다) */
+function docSources(ws) {
+  const list = S.docSources(ws);
+  if (!list.length) throw new Error('문서 원본이 없습니다: 워크스페이스 docs-site/ 도 기획 repo(kind: docs)도 없습니다');
+  return list;
 }
 
 /** SVG 를 사이트에 넣으면 안 되는가: 문자 참조(&#106; · &lt;)를 풀고 주소 안 탭 · 줄바꿈을 지운 뒤 스크립트 · on… 속성 · javascript: · iframe(srcdoc) · 끼워 넣기 · 사용자 엔티티 · XSLT 를 찾는다 */
@@ -129,6 +163,8 @@ function siteAssets(dir) {
   const vd = path.join(SITE_DIR, 'vendor');
   const ix = JSON.parse(fs.readFileSync(path.join(vd, 'index.json'), 'utf8'));
   a['assets/vendor.js'] = Buffer.from(`/* 생성물: kedovi docs build. 외부 라이브러리 (라이선스: vendor-LICENSES.txt) ${ix.packages.map((p) => `${p.name}@${p.version}`).join(' · ')} */\n${ix.files.map((f) => fs.readFileSync(path.join(vd, f), 'utf8')).join('')}`);
+  // 그 화면에서만 읽는 라이브러리 (간트: frappe-gantt). vendor.js 에 잇지 않는다
+  for (const f of ix.lazy || []) a[`assets/vendor/${f}`] = fs.readFileSync(path.join(vd, f));
   a['assets/vendor-LICENSES.txt'] = Buffer.from(ix.packages.map((p) => `== ${p.name} ${p.version} (${p.license}) ${p.home}\n\n${fs.readFileSync(path.join(vd, `${p.name}-LICENSE.txt`), 'utf8').trim()}\n`).join('\n'));
   for (const [to, name] of Object.entries(EXTRA)) {
     const f = dir && path.join(dir, name);
@@ -205,7 +241,7 @@ function prefixesOf(ws) {
 const CONFIG = 'docs-site.json';
 /** docs-site.json 을 알아서 만들어도 되는 곳: 파일이 이미 있거나, 기획 repo(kind: docs)거나, 워크스페이스 루트 */
 function configHome(t) {
-  if (fs.existsSync(path.join(t.dir, CONFIG)) || t.kind === 'docs') return true;
+  if (fs.existsSync(path.join(t.dir, CONFIG)) || t.kind === 'docs' || t.kind === 'site') return true;
   const real = (x) => { try { return fs.realpathSync(x); } catch { return path.resolve(x); } };
   return real(t.dir) === real(path.resolve(PACKS, '..')) && fs.existsSync(path.join(t.dir, 'workspace.json'));
 }
@@ -313,6 +349,7 @@ function cmdPages(ws) {
   const mode = ['on', 'off'].includes(argv[1]) ? argv[1] : null;
   const arg = mode ? argv[2] : argv[1];
   for (const t of targets(ws, arg && !arg.startsWith('--') ? arg : null)) {
+    if (t.kind === 'site') { sitePages(t, mode); continue; }
     migrate(t);
     if (!mode) {
       const st = pagesState(t.dir);
@@ -341,6 +378,35 @@ function cmdPages(ws) {
     if (host === 'github') console.log('  한 번만: GitHub 의 Settings > Pages > Source 를 「GitHub Actions」 로 (비공개 repo 는 유료 요금제)');
     else console.log('  GitLab 서버에 Pages 기능과 러너가 있어야 한다 (Pages 는 서버 관리자가 켠다)');
   }
+}
+
+/**
+ * 워크스페이스 사이트의 Pages: CI 가 워크스페이스의 킷으로 docs-site/ 를 빌드해 올린다 (생성물 .agents/site/ 는 커밋하지 않는다).
+ * on = 원격에 맞는 CI 파일(lib/site.js installCi), off = 우리 CI 파일을 지운다 (남의 파일 · 손으로 붙인 작업은 그대로 두고 알린다)
+ */
+function sitePages(t, mode) {
+  const label = `워크스페이스 사이트(${S.SRC_DIR}/)`;
+  if (!mode) {
+    const st = S.ciState(t.base);
+    console.log(`${st.on ? '●' : '○'} ${label}: Pages ${st.on ? '켜짐' : '꺼짐'} · 원격 ${st.host ? HOST_NAME[st.host] : '없음'}${st.ci.length ? ` · CI ${st.ci.map((h) => S.CI_FILES[h]).join(' · ')}` : ''}${S.pagesUrl(t.base) ? ` · ${S.pagesUrl(t.base)}` : ''}. ${st.on ? '끄기: kedovi docs pages off' : '켜기: kedovi docs pages on'}`);
+    return;
+  }
+  if (mode === 'off') {
+    const done = [];
+    for (const h of ['gitlab', 'github']) {
+      const f = path.join(t.base, S.CI_FILES[h]);
+      if (!fs.existsSync(f)) continue;
+      if (fs.readFileSync(f, 'utf8').includes(S.CI_MARK)) { fs.rmSync(f); done.push(`${S.CI_FILES[h]} 지움`); } else done.push(`${S.CI_FILES[h]} 는 손으로 만든 파일이라 그대로 (pages 작업을 직접 뺀다)`);
+    }
+    console.log(`○ ${label}: Pages 끔.${done.length ? ` ${done.join(' · ')}` : ' CI 파일이 없습니다'}. 같이 커밋한다`);
+    return;
+  }
+  const res = S.installCi(t.base);
+  const host = S.hostOf(t.base);
+  console.log(`● ${label}: Pages 켬 (${host ? HOST_NAME[host] : '원격 없음: GitLab · GitHub 둘 다 둠'}). ${res.map((r) => `${r.file} ${r.status}${r.hint ? ` (${r.hint})` : ''}`).join(' · ')}`);
+  console.log('  다음: CI 파일을 커밋 · push 하면 CI 가 docs-site/ 를 빌드해 올린다 (생성물은 커밋하지 않는다)');
+  if (host === 'github') console.log('  한 번만: GitHub 의 Settings > Pages > Source 를 「GitHub Actions」 로 (비공개 repo 는 유료 요금제)');
+  else console.log('  GitLab 서버에 Pages 기능과 러너가 있어야 한다 (Pages 는 서버 관리자가 켠다)');
 }
 
 /** 옛 출력 폴더 html/ → docs-site/ (한 번). git 이 아는 파일이면 git mv. 우리 CI 파일 · .gitignore 의 경로도 바꾼다 */
@@ -378,6 +444,7 @@ const oldRefs = (text) => text.split('\n').map((l, i) => (new RegExp(OLD_REF.sou
 // 포함 범위: 「폴더/**」 는 그 폴더 전체, 그 밖에는 문서 메뉴와 같은 glob
 const globHit = (g, rel) => { const s = String(g).replace(/^\.?\//, ''); return s.endsWith('/**') ? rel === s.slice(0, -3) || rel.startsWith(s.slice(0, -2)) : globRe(s).test(rel); };
 const REPO_MODE = { legacy: 'off' }; // 종류별 기본 (없으면 copy)
+const SITE_MODE = { docs: 'copy' };  // 워크스페이스 사이트(docs-site/ 원본)의 종류별 기본 (없으면 off: 코드 repo 의 md 는 넣지 않는다)
 
 /**
  * 포함 범위 → { keep(rel, isDir), srcOf(md) | null, extra: { 경로: 내용 }, plan: [{ name, kind, mode, why }] }
@@ -386,22 +453,29 @@ const REPO_MODE = { legacy: 'off' }; // 종류별 기본 (없으면 copy)
 function scope(t, ws, config) {
   const inc = [].concat(config.include || []);
   const exc = [].concat(config.exclude || []);
-  const real = (x) => { try { return fs.realpathSync(x); } catch { return path.resolve(x); } };
-  const isRoot = !!(ws && ws.root && real(ws.root) === real(t.dir));
+  const real = realOf;
+  const isSite = t.kind === 'site';
+  const isRoot = isSite || !!(ws && ws.root && real(ws.root) === real(t.dir));
   const plan = [];
   const extra = {};
   const repoOf = new Map();
+  const copies = []; // 워크스페이스 사이트: 사본으로 넣을 repo [{ rel, dir }] (원본 폴더 밖이라 따로 읽는다)
   if (isRoot) {
     const rc = config.repos || {};
     for (const r of ws.repos || []) {
       const rel = ['repos', ...(r.group ? [r.group] : []), r.name].join('/'); // lib/workspace.js repoRel
-      if (!fs.existsSync(path.join(t.dir, rel))) continue;
+      const here = fs.existsSync(isSite ? r.dir : path.join(t.dir, rel));
       const o = rc[r.name] != null ? rc[r.name] : rc[r.kind];
-      const mode = String((o && typeof o === 'object' ? o.mode : o) || REPO_MODE[r.kind] || 'copy');
-      const why = rc[r.name] != null ? '이름' : rc[r.kind] != null ? `종류 ${r.kind}` : `기본(${r.kind})`;
-      const blob = sourceOf(r.dir, r.url);
+      let mode = String((o && typeof o === 'object' ? o.mode : o) || (isSite ? SITE_MODE[r.kind] || 'off' : REPO_MODE[r.kind] || 'copy'));
+      const remote = r.url || r.remote;
+      // 워크스페이스 사이트: 받지 않은 repo(CI 등)는 원격 주소가 있으면 링크 쪽만
+      if (!here && !(isSite && mode !== 'off' && ((o && typeof o === 'object' && o.url) || webOf(remote)))) continue;
+      if (!here) mode = 'link';
+      const why = rc[r.name] != null ? '이름' : rc[r.kind] != null ? `종류 ${r.kind}` : here ? `기본(${r.kind})` : '받지 않음';
+      const blob = sourceOf(here ? r.dir : t.dir, remote);
       plan.push({ name: r.name, kind: r.kind, mode, why });
       repoOf.set(rel, { mode, blob });
+      if (isSite && mode === 'copy') copies.push({ rel, dir: r.dir });
       if (mode === 'link') {
         const url = (o && typeof o === 'object' && o.url) || (blob ? blob.replace(/\/(-\/)?blob\/[^/]+$/, '') : '');
         extra[`${rel}/README.md`] = `# ${r.name}\n\n이 repo(${r.kind})의 문서는 따로 본다. 이 사이트에는 사본을 넣지 않는다.\n\n${url ? `- 문서 · 원본: [${url}](${url})\n` : '- 원격 주소가 없습니다 (workspace.json repos[].url 또는 docs-site.json repos 의 url)\n'}`;
@@ -424,7 +498,18 @@ function scope(t, ws, config) {
     if (m && m[1]) { const r = repoOf.get(m[0]); return r.mode === 'copy' && r.blob ? `${r.blob}/${enc(m[1])}` : null; }
     return rootSrc ? `${rootSrc}/${enc(md)}` : null;
   } : null;
-  return { keep, srcOf, extra, plan };
+  return { keep, srcOf, extra, plan, copies };
+}
+
+/** 워크스페이스 사이트에 사본으로 넣는 repo 의 파일 { repos/<이름>/경로: 내용 } (그 repo 의 생성물 docs-site/ · html/ 은 뺀다) */
+function readCopies(sc) {
+  const out = {};
+  for (const c of sc.copies || []) {
+    // 그 repo 맨 위의 에이전트 지침(AGENTS.md 등)은 사람 문서가 아니다
+    const files = readTree(c.dir, null, (x, isDir) => !(isDir && /^(docs-site|html)$/.test(x)) && !(!isDir && /^(AGENTS|CLAUDE)(\.override|\.local)?\.md$/.test(x)) && sc.keep(`${c.rel}/${x}`, isDir));
+    for (const [k, v] of Object.entries(files)) out[`${c.rel}/${k}`] = v;
+  }
+  return out;
 }
 
 /**
@@ -506,10 +591,34 @@ function writePages(t, ws, files, outDir, config, live) {
   return { md, raw, linkable, group: { group: '저장 데이터', icon: '▤', files: [`${WD}/README.md`, `${WD}/*.md`], collapsed: true } };
 }
 
-function generate(t, ws, out, live = false) {
+/** 지난번에 만든 빌드 DB (없으면 {}) */
+function prevDb(outDir) {
+  try { return JSON.parse(fs.readFileSync(path.join(outDir, 'assets', 'site-db.json'), 'utf8')); } catch { return {}; }
+}
+const REMOTE_CACHE = path.join('.agents', 'site.remote.json');
+/**
+ * 워크스페이스 사이트의 원격 읽기 (live = build: 원격에서 읽고 .agents/site.remote.json 에 남긴다, 아니면 check: 남긴 것).
+ * 실패해도 빌드는 계속한다 (그 칸만 빈 값). 반환 { remote, line } (line = 알릴 한 줄 | '')
+ */
+async function siteRemote(t, live) {
+  if (t.kind !== 'site') return { remote: null, line: '' };
+  const cache = path.join(t.base, REMOTE_CACHE);
+  if (!live) { try { return { remote: JSON.parse(fs.readFileSync(cache, 'utf8')), line: '' }; } catch { return { remote: null, line: '' }; } }
+  let remote = null;
+  try { remote = await SR.read(t.base, { pagesUrl: S.pagesUrl(t.base) }); } catch (e) { remote = null; }
+  try { if (remote) { fs.mkdirSync(path.dirname(cache), { recursive: true }); fs.writeFileSync(cache, `${JSON.stringify(remote, null, 1)}\n`); } else fs.rmSync(cache, { force: true }); } catch { /* 남기지 못해도 빌드는 한다 */ }
+  const name = remote ? HOST_NAME[remote.kind] : '';
+  let line = '';
+  if (remote && remote.ok) line = `원격 ${name}: 이슈 ${remote.issues.length} · 작업 항목 ${remote.workItems.length} · 마일스톤 ${remote.milestones.length} · 게시판 ${remote.board.length} · 의견 ${Object.values(remote.comments).reduce((n, l) => n + l.length, 0)}`;
+  else if (remote && remote.error === '인증 없음') line = `원격 ${name}: 이 PC 인증이 없어 이슈 · 일정 · 의견을 읽지 않았습니다 (${remote.kind === 'github' ? 'gh auth login 또는 kedovi secret set GITHUB_TOKEN' : 'glab auth login 또는 kedovi secret set GITLAB_TOKEN'}, CI 는 변수 KEDOVI_SITE_TOKEN)`;
+  else if (remote && !/꺼짐/.test(remote.error || '')) line = `⚠ 원격 ${name} 을 읽지 못해 이슈 · 일정 · 의견 칸을 비웠습니다: ${remote.error}`;
+  return { remote, line };
+}
+
+function generate(t, ws, out, live = false, extra = {}) {
   const config = readConfig(t.dir);
   const sc = scope(t, ws, config);
-  const real = { ...readTree(t.dir, out, sc.keep), ...sc.extra };
+  const real = { ...readTree(t.dir, out, sc.keep), ...readCopies(sc), ...sc.extra };
   const wp = writePages(t, ws, real, path.resolve(t.dir, out), config, live);
   const files = wp ? { ...real, ...wp.md } : real;
   const cfg = wp && Array.isArray(config.groups) && config.groups.length && !config.groups.some((g) => (g.files || []).some((x) => String(x).startsWith(`${WD}/`))) ? { ...config, groups: [...config.groups, wp.group] } : config;
@@ -518,6 +627,19 @@ function generate(t, ws, out, live = false) {
   if (wp) Object.assign(res.pages, wp.raw);
   res.writes = wp ? { pages: Object.keys(wp.md).length - 1, reports: Object.keys(wp.raw).filter((p) => p.endsWith('index.json')).length } : null;
   res.plan = sc.plan;
+  // 워크스페이스 사이트: 화면이 읽는 빌드 DB 판 2 (lib/sitedb.js) + 자료실 파일 · API 명세 사본
+  if (t.kind === 'site') {
+    const outDir = path.resolve(t.dir, out);
+    const prev = prevDb(outDir);
+    const library = SD.libraryFiles(t.dir, SD.personMap(ws || {}));
+    for (const f of library) if (!f.big && !(f.path in res.pages)) res.pages[f.path] = fs.readFileSync(f.abs);
+    res.bigFiles = library.filter((f) => f.big).map((f) => f.path);
+    // API 명세: build 때만 코드 repo 에서 새로 읽고, check 는 사이트에 넣은 사본으로 (코드 repo 가 바뀌어도 어긋남으로 치지 않는다)
+    const apis = live ? SD.findApis(ws || {}) : (prev.apis || []).map((a) => { try { return { ...a, data: fs.readFileSync(path.join(outDir, a.file)) }; } catch { return null; } }).filter(Boolean);
+    for (const a of apis) res.pages[a.file] = a.data;
+    const db = SD.build({ ws: ws || {}, src: t.dir, title: titleOf(t.dir, ws, t.name), files: real, docs: res.docs, index: res.index, pageOf, remote: extra.remote || null, apis, library, config, builtAt: live ? new Date().toISOString() : (prev.builtAt || null) });
+    res.pages['assets/site-db.json'] = `${JSON.stringify(db, null, 1)}\n`;
+  }
   const moved = movedPages(path.resolve(t.dir, out), res.pages);
   res.moved = moved;
   const list = Object.keys(res.pages).sort();
@@ -560,6 +682,12 @@ function diff(outDir, pages) {
   for (const [p, c] of Object.entries(pages)) {
     const f = path.join(outDir, p);
     if (!fs.existsSync(f)) { changed.push(`+ ${p}`); continue; }
+    if (p === 'assets/site-db.json') { // 만든 때 · git 에서 읽은 때와 사람은 빼고 비교 (커밋만 해도 바뀐다)
+      let a = null;
+      try { a = JSON.stringify(SD.stable(JSON.parse(fs.readFileSync(f, 'utf8')))) === JSON.stringify(SD.stable(JSON.parse(c))); } catch { a = false; }
+      if (!a) changed.push(`~ ${p}`);
+      continue;
+    }
     if (!same(fs.readFileSync(f, Buffer.isBuffer(c) ? null : 'utf8'), c)) changed.push(`~ ${p}`);
   }
   for (const p of oldFiles(outDir)) if (!(p in pages)) changed.push(`- ${p}`);
@@ -610,7 +738,7 @@ function healthLines(t, ws, res) {
 /** show: ID 의 정의 부분만 */
 function cmdShow(ws, id) {
   if (!id) throw new Error('사용법: kedovi docs show <ID> [--in <파일 조각>] [--all]');
-  const defs = DR.show(targets(ws, null), id, opt('in'));
+  const defs = DR.show(docSources(ws), id, opt('in'));
   if (!defs.length) {
     console.log(`정의를 못 찾았습니다: ${id} (제목 · 표 첫 칸 · **${id}** 문단 · 화면설계서 장). 쓰는 곳: kedovi docs refs ${id}`);
     process.exitCode = 1;
@@ -629,7 +757,8 @@ function cmdShow(ws, id) {
 /** refs: ID 가 나오는 곳 */
 function cmdRefs(ws, id) {
   if (!id) throw new Error('사용법: kedovi docs refs <ID> [--docs]');
-  const repos = ((ws && ws.repos) || []).filter((r) => (has('docs') ? r.kind === 'docs' : r.kind !== 'legacy'));
+  const site = S.docSources(ws).filter((x) => x.site); // 워크스페이스 docs-site/ 도 기획 문서로 본다
+  const repos = [...site, ...((ws && ws.repos) || []).filter((r) => (has('docs') ? r.kind === 'docs' : r.kind !== 'legacy'))];
   const hits = DR.refs(repos.length ? repos : targets(ws, null).map((t) => ({ ...t, kind: 'docs' })), id);
   if (!hits.length) { console.log(`${id}: 나오는 곳 없음 (${repos.map((r) => r.name).join(', ') || '기획 repo'})`); return; }
   const files = new Map();
@@ -710,7 +839,7 @@ function cmdTrace(ws) {
   const ids = [...new Set([...traceIds(ws), ...(configured ? [] : acPre)])];
   if (!ids.length) throw new Error('대조할 ID 머리말이 없습니다. kedovi docs trace --ids FN 또는 workspace.json 의 vars.docs.traceIds (예: "FN")');
   const code = ((ws && ws.repos) || []).filter((r) => (r.kind || 'code') === 'code');
-  const hasDocs = ((ws && ws.repos) || []).some((r) => r.kind === 'docs');
+  const hasDocs = S.docSources(ws).length > 0; // 워크스페이스 docs-site/ 또는 기획 repo
   if (has('new') && (!code.length || !hasDocs)) return console.log(`✔ ${!code.length ? '코드 repo' : '기획 repo'}가 없어 기획 ID 를 대조하지 않습니다`); // 커밋 전 확인이 기획 없는 워크스페이스를 막지 않게
   if (!code.length) throw new Error('코드 repo(kind: code)가 없습니다');
   if (has('new')) { // 새 진입 파일에 기획 ID 가 있나 (커밋 전 확인)
@@ -724,7 +853,7 @@ function cmdTrace(ws) {
     if (has('strict')) process.exitCode = 1;
     return;
   }
-  const docs = targets(ws, null); // --new 는 기획 repo 를 읽지 않는다 (기획 repo 가 없어도 된다)
+  const docs = docSources(ws); // --new 는 기획 문서를 읽지 않는다 (없어도 된다)
   const res = DR.trace(docs, code, ids);
   const all = has('all');
   // 코드 · 테스트 나눠 세기: 수용 기준(AC-)은 테스트에 있어야 한다
@@ -793,8 +922,8 @@ function sizeLines(res, out) {
 
 async function cmdBuild(ws) {
   for (const t of targets(ws, argv[1] && !argv[1].startsWith('--') ? argv[1] : null)) {
-    migrate(t);
-    const out = outArg(t.dir) || OUT;
+    if (t.kind !== 'site') migrate(t);
+    const out = outFor(t);
     const outDir = path.resolve(t.dir, out);
     if (fs.existsSync(outDir) && fs.readdirSync(outDir).length && !ours(outDir) && !has('force')) {
       throw new Error(`${outLabel(t, out)}/ 에 다른 생성기가 만든 파일이 있습니다. 덮지 않습니다 (다른 폴더: --out <폴더>, 덮기: --force)`);
@@ -803,13 +932,15 @@ async function cmdBuild(ws) {
     // 파일이 이미 있거나 기획 repo · 워크스페이스 루트일 때만 쓴다. 일반 제품 repo 의 docs/ 등에는 --write-config 로 요청할 때만
     const config = readConfig(t.dir);
     if (!config.source && !has('no-source')) {
-      const src = sourceOf(t.dir);
+      const blob = sourceOf(t.kind === 'site' ? t.base : t.dir);
+      const src = blob && t.kind === 'site' ? `${blob}/${S.SRC_DIR}` : blob; // 워크스페이스 사이트의 원본은 워크스페이스 repo 의 docs-site/ 아래
       if (src && (configHome(t) || has('write-config'))) {
         fs.writeFileSync(path.join(t.dir, CONFIG), `${JSON.stringify({ ...config, source: src }, null, 2)}\n`);
         console.log(`  ${CONFIG} 에 원본 주소를 적었습니다: ${src} (같이 커밋한다)`);
       } else if (src) console.log(`  원본 보기 주소를 사이트에 넣으려면: --write-config (${t.name}/${CONFIG} 를 만든다)`);
     }
-    const res = generate(t, ws, out, true);
+    const rem = await siteRemote(t, true);
+    const res = generate(t, ws, out, true, { remote: rem.remote });
     if ((res.collisions || []).length) {
       // 대소문자만 다른 출력 경로는 나중에 쓴 쪽이 이겨 쪽이 사라진다: 쓰지 않고 멈춘다
       for (const c of res.collisions) console.log(`✖ ${t.name}: 대소문자를 구분하지 않는 PC 에서 같은 파일이 되는 경로: ${c}. 한쪽 이름을 바꾼다`);
@@ -840,24 +971,37 @@ async function cmdBuild(ws) {
     for (const l of unlistedLines(res)) console.log(`  ${l}`);
     for (const l of warnLines(res)) console.log(`  ${l}`);
     for (const l of healthLines(t, ws, res)) console.log(`  ${l}`);
-    for (const l of sizeLines(res, out)) console.log(`  ${l}`);
-    console.log(`  ${pagesHint(t.dir, out)}`);
+    for (const l of sizeLines(res, outLabel(t, out))) console.log(`  ${l}`);
+    if (t.kind === 'site') for (const l of S.aiDocsIssues(t.base)) console.log(`  ⚠ AI 자료: ${l}`);
+    if (rem.line) console.log(`  ${rem.line}`);
+    if ((res.bigFiles || []).length) console.log(`  ⚠ 자료실 파일이 커서(${Math.round(SD.MAX_FILE / 1048576)}MB 넘음) 사이트에 넣지 않았습니다: ${res.bigFiles.slice(0, 5).join(' · ')}`);
+    console.log(`  ${t.kind === 'site' ? sitePagesHint(t) : pagesHint(t.dir, out)}`);
   }
+}
+
+/** 워크스페이스 사이트의 Pages 한 줄 (CI 가 빌드한다: 생성물은 커밋하지 않는다) */
+function sitePagesHint(t) {
+  const st = S.ciState(t.base);
+  const view = 'kedovi docs serve';
+  if (!st.host) return `Pages: 원격이 없습니다. 이 PC 에서 보기: ${view}`;
+  if (st.on) return `Pages 켜짐 (${HOST_NAME[st.host]}): docs-site/ 를 커밋 · push 하면 CI 가 빌드해 올린다. 이 PC 에서 보기: ${view}`;
+  return `Pages 꺼짐 (${HOST_NAME[st.host]}): 이 PC 에서 보기: ${view}. 올리려면: kedovi docs pages on`;
 }
 
 async function cmdCheck(ws, dirArg, quietIfNone) {
   let bad = 0;
   for (const t of targets(ws, dirArg)) {
-    const out = outOf(t.dir);
+    const out = outFor(t);
     const outDir = path.resolve(t.dir, out);
+    if (t.kind === 'site' && !quietIfNone) for (const l of S.aiDocsIssues(t.base)) console.log(`  ⚠ AI 자료: ${l}`);
     if (!ours(outDir)) { if (!quietIfNone) console.log(`- ${t.name}: 문서 사이트를 만든 적 없음 (kedovi docs build)`); continue; }
-    const res = generate(t, ws, out);
+    const res = generate(t, ws, out, false, { remote: (await siteRemote(t, false)).remote });
     const changed = diff(outDir, res.pages);
     if (changed.length) {
       bad++;
-      console.log(`✖ ${t.name}: md 와 ${out}/ 가 어긋났습니다 (${changed.length}개). 다시 만든다: kedovi docs build ${t.name}`);
+      console.log(`✖ ${t.name}: md 와 ${outLabel(t, out)}/ 가 어긋났습니다 (${changed.length}개). 다시 만든다: kedovi docs build${t.kind === 'site' ? '' : ` ${t.name}`}`);
       for (const c of changed.slice(0, 8)) console.log(`  ${c}`);
-    } else if (!quietIfNone) console.log(`✔ ${t.name}: ${out}/ 가 md 와 같음`);
+    } else if (!quietIfNone) console.log(`✔ ${t.name}: ${outLabel(t, out)}/ 가 md 와 같음`);
     const mm = await mermaidLines(res);
     if (mm.length) { bad++; console.log(`✖ ${t.name}: mermaid 그림 ${mm.length}개가 문법 오류입니다 (사이트에는 원문과 오류 문구로 보입니다)`); }
     for (const l of mm) console.log(`  ${l}`);
@@ -873,14 +1017,28 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 function cmdServe(ws) {
   const arg = argv[1] && !argv[1].startsWith('--') ? argv[1] : null;
   const [t] = targets(ws, arg);
-  const dir = path.join(t.dir, outOf(t.dir));
-  if (!ours(dir)) throw new Error(`${t.name}: 문서 사이트를 만든 적 없음 (kedovi docs build ${t.name})`);
+  const dir = path.resolve(t.dir, outFor(t));
+  const bg = has('background'); // lib/site.js ensureServer 가 뒤에서 띄울 때: 워크스페이스마다 같은 포트 · 상태 파일 · 출력 없음
+  if (!ours(dir)) throw new Error(`${t.name}: 문서 사이트를 만든 적 없음 (kedovi docs build${t.kind === 'site' ? '' : ` ${t.name}`})`);
+  // 워크스페이스 사이트: 이미 떠 있으면 그 주소 (kedovi start 가 띄운 것)
+  if (t.kind === 'site' && !opt('port')) {
+    const cur = S.serving(t.base);
+    if (cur) { if (!bg) console.log(`● 이미 떠 있습니다: ${cur.url} (끄기: kedovi docs serve --stop)`); return; }
+  }
   const http = require('http');
+  // 워크스페이스 사이트: 쓰기 길(/_api/: 의견 · 게시판 · 이슈 · whoami)과 docs-site/ · issues/ 감시 → 다시 만들기 (lib/siteserver.js)
+  let apiHandler = null;
+  if (t.kind === 'site') {
+    const SV = require('../lib/siteserver');
+    const rb = SV.rebuilder({ root: t.base, src: t.dir, tool: __filename, watch: !has('no-watch'), log: (m) => { if (!bg) console.log(`  ${new Date().toTimeString().slice(0, 8)} ${m}`); } });
+    apiHandler = SV.api({ root: t.base, src: t.dir, outDir: dir, port: () => port, rebuild: rb.rebuild });
+  }
   const server = http.createServer((req, res) => {
     let rel;
     try { rel = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { res.writeHead(400); res.end(); return; }
     // 이 PC 의 주소로 온 요청만 (다른 사이트가 DNS 를 127.0.0.1 로 돌려 읽는 것을 막는다). NUL 이 든 경로는 파일 읽기가 예외로 죽는다
     if (!/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(req.headers.host || '') || rel.includes('\0')) { res.writeHead(400); res.end(); return; }
+    if (apiHandler && apiHandler(req, res)) return;
     let f = path.join(dir, path.normalize(rel).replace(/^([/\\])+/, ''));
     if (f !== dir && !f.startsWith(dir + path.sep)) { res.writeHead(403); res.end(); return; }
     if (fs.existsSync(f) && fs.statSync(f).isDirectory()) f = path.join(f, 'index.html');
@@ -890,21 +1048,182 @@ function cmdServe(ws) {
       res.end(data);
     });
   });
-  let port = Number(opt('port')) || 8000;
+  const first = Number(opt('port')) || (t.kind === 'site' ? S.basePort(t.base) : 8000);
+  let port = first;
   server.on('error', (e) => {
-    if (e.code === 'EADDRINUSE' && !opt('port') && port < 8100) { port++; server.listen(port, '127.0.0.1'); return; }
+    if (e.code === 'EADDRINUSE' && !opt('port') && port < first + 100) { port++; server.listen(port, '127.0.0.1'); return; }
     console.error(`✖ ${e.message}`);
     process.exitCode = 1;
   });
   server.on('listening', () => {
-    const url = `http://127.0.0.1:${port}/`;
-    console.log(`● ${t.name}: ${url} (${path.relative(process.cwd(), dir).startsWith('..') ? dir : path.relative(process.cwd(), dir) || dir}, 이 PC 에서만. 끝내기: Ctrl+C). 고친 뒤에는 kedovi docs build 하고 새로고침`);
+    const url = `http://localhost:${port}/`;
+    if (t.kind === 'site') { // 떠 있는 서버 기록 (kedovi start · 다음 serve 가 다시 쓴다). 끝날 때 지운다
+      const st = path.join(t.base, S.SERVE_STATE);
+      try { fs.mkdirSync(path.dirname(st), { recursive: true }); fs.writeFileSync(st, `${JSON.stringify({ pid: process.pid, port, dir })}\n`); } catch { /* 기록 못 해도 서버는 돈다 */ }
+      const clear = () => { try { const cur = JSON.parse(fs.readFileSync(st, 'utf8')); if (cur.pid === process.pid) fs.rmSync(st, { force: true }); } catch { /* 없음 */ } };
+      process.on('exit', clear);
+      for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => process.exit(0));
+    }
+    if (bg) return;
+    console.log(`● ${t.name}: ${url} (${path.relative(process.cwd(), dir).startsWith('..') ? dir : path.relative(process.cwd(), dir) || dir}, 이 PC 에서만. 끝내기: Ctrl+C). ${t.kind === 'site' ? (has('no-watch') ? '고친 뒤에는 kedovi docs build 하고 새로고침. 의견 · 게시판 · 이슈 쓰기 됨' : 'docs-site/ · issues/ 를 고치면 저절로 다시 만든다. 의견 · 게시판 · 이슈 쓰기 됨') : '고친 뒤에는 kedovi docs build 하고 새로고침'}`);
     if (has('open')) {
       const opener = process.platform === 'darwin' ? ['open', [url]] : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]] : ['xdg-open', [url]];
       require('child_process').spawn(opener[0], opener[1], { stdio: 'ignore', detached: true }).unref();
     }
   });
   server.listen(port, '127.0.0.1');
+}
+
+/** ai-docs: AI 자료 규칙 어긋남 (알림만, 늘 exit 0). --quiet = 없으면 아무것도 찍지 않는다 (워크스페이스 커밋 훅) */
+function cmdAiDocs(ws) {
+  const root = (ws && ws.root) || process.cwd();
+  const list = S.aiDocsIssues(root);
+  if (!list.length) { if (!has('quiet')) console.log(`✔ ${S.AI_DIR}/ 규칙에 맞음 (성격별 폴더 · README 목록 · 파일 머리 줄)`); return; }
+  for (const l of list) console.log(`⚠ AI 자료: ${l}`);
+  console.log(`  규칙: ${S.AI_DIR}/README.md (커밋은 막지 않는다)`);
+}
+
+// ───────── adopt: 옛 기획 repo → 워크스페이스 docs-site/ ─────────
+
+/** 옛 기획 repo 폴더 → 새 자리 (앞에서부터 처음 맞는 것). 끝이 / 면 폴더 통째 */
+const ADOPT_MAP = [
+  ['00-overview/overview.md', '개요.md'],
+  ['00-overview/', '개요/'],
+  ['10-system/architecture.md', '설계/아키텍처.md'],
+  ['10-system/', '설계/아키텍처/'],
+  ['20-features/requirements.md', '설계/요구사항.md'],
+  ['20-features/', '기능/'],
+  ['25-policies/', '설계/정책/'],
+  ['30-screens/', '화면/'],
+  ['40-data/', '데이터/'],
+  ['45-api/', '설계/API/'],
+  ['90-decisions/', '설계/결정/'],
+  ['md/README.md', '자료실/변환-안내.md'],
+  ['md/', '자료실/'],
+  ['originals/', '자료실/원본/'],
+  ['README.md', '자료실/기획-repo-안내.md'],
+];
+// 옮기지 않는 것: git · CI · 생성물(docs-site/ · html/) · 에이전트 지침 · 사이트 설정(워크스페이스 docs-site.json 을 쓴다)
+const ADOPT_SKIP = /^(\.git|\.github|\.gitlab|node_modules|docs-site|html)(\/|$)|^(AGENTS\.md|CLAUDE\.md|AGENTS\.override\.md|CLAUDE\.local\.md|docs-site\.json|docs-site\.extra\.(css|js)|\.?gitignore|\.gitattributes|\.gitlab-ci\.yml)$|(^|\/)\.DS_Store$/;
+const SKELETON = path.join(PACKS, 'core', 'assets', 'workspace', S.SRC_DIR);
+
+/** 옛 경로 → 새 경로 (맞는 규칙이 없으면 자료실/ 아래 같은 경로) */
+function adoptPath(rel) {
+  for (const [from, to] of ADOPT_MAP) {
+    if (from.endsWith('/') ? rel.startsWith(from) : rel === from) return from.endsWith('/') ? to + rel.slice(from.length) : to;
+  }
+  return `자료실/${rel}`;
+}
+/** 옛 폴더 경로(끝 /) → 새 폴더 경로 */
+function adoptDir(rel) {
+  const d = rel.replace(/\/?$/, '/');
+  for (const [from, to] of ADOPT_MAP) if (from.endsWith('/') && (d === from || d.startsWith(from))) return to + d.slice(from.length);
+  return d === '/' ? '' : `자료실/${d}`;
+}
+
+/** md 안 상대 링크를 새 자리 기준으로 고친다 (옛 repo 안을 가리키는 링크만) */
+function relinkMd(text, oldRel, newRel) {
+  const posix = path.posix;
+  return text.replace(/(\]\()([^)\s]+)((?:\s+"[^"]*")?\))/g, (m, a, href, b) => {
+    if (/^([a-z][a-z0-9+.-]*:|#|\/)/i.test(href)) return m;
+    const [p0, hash = ''] = href.split(/(?=#)/);
+    let target;
+    try { target = posix.normalize(posix.join(posix.dirname(oldRel), decodeURI(p0))); } catch { return m; }
+    if (target.startsWith('..')) return m;
+    const isDir = /\/$/.test(p0) || target === '.';
+    const mapped = isDir ? adoptDir(target === '.' ? '' : target) : adoptPath(target);
+    let rel = posix.relative(posix.dirname(newRel), mapped.replace(/\/$/, '') || '.');
+    if (!rel) rel = '.';
+    if (isDir && !rel.endsWith('/')) rel += '/';
+    return `${a}${rel}${hash}${b}`;
+  });
+}
+
+/** 지금 대상 파일이 손대지 않은 뼈대인가 (킷 뼈대와 같다) */
+function untouchedSkeleton(rel, abs) {
+  try { return fs.readFileSync(path.join(SKELETON, rel), 'utf8') === fs.readFileSync(abs, 'utf8'); } catch { return false; }
+}
+
+/** kedovi docs adopt <repo> [--dry-run] [--force] */
+function cmdAdopt(ws) {
+  const name = argv[1] && !argv[1].startsWith('--') ? argv[1] : null;
+  if (!name || !ws) throw new Error('사용법: kedovi docs adopt <기획 repo 이름|폴더> [--dry-run] [--force]');
+  const repo = (ws.repos || []).find((r) => r.name === name) || (fs.existsSync(name) && fs.statSync(name).isDirectory() ? { name: path.basename(path.resolve(name)), dir: path.resolve(name), kind: 'docs' } : null);
+  if (!repo) throw new Error(`repo '${name}' 가 없습니다 (workspace.json repos 이름 또는 폴더 경로)`);
+  if (!fs.existsSync(repo.dir)) throw new Error(`${repo.name}: 폴더가 없습니다 (${repo.dir}). kedovi install 로 받은 뒤 다시`);
+  const dst = path.join(ws.root, S.SRC_DIR);
+  if (fs.existsSync(path.join(dst, MANIFEST))) throw new Error(`${S.SRC_DIR}/ 가 옛 루트 사이트의 생성물입니다. 지우고(rm -r ${S.SRC_DIR}) 다시`);
+  // 옮길 파일 목록
+  const moves = [];
+  (function walk(rel) {
+    for (const e of fs.readdirSync(path.join(repo.dir, rel), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (ADOPT_SKIP.test(r) || /^\./.test(e.name) && e.isDirectory()) continue;
+      if (e.isDirectory()) { walk(r); continue; }
+      if (!e.isFile()) continue;
+      moves.push({ from: r, to: adoptPath(r) });
+    }
+  })('');
+  for (const m of moves) {
+    const abs = path.join(dst, m.to);
+    if (!fs.existsSync(abs)) { m.how = '새로'; continue; }
+    const fromBuf = fs.readFileSync(path.join(repo.dir, m.from));
+    const next = /\.md$/i.test(m.from) ? Buffer.from(relinkMd(fromBuf.toString('utf8'), m.from, m.to)) : fromBuf;
+    if (Buffer.compare(next, fs.readFileSync(abs)) === 0) m.how = '같음';
+    else if (/(^|\/)_template\.[a-z]+$/.test(m.to)) m.how = '건너뜀(워크스페이스 틀)';
+    else if (untouchedSkeleton(m.to, abs)) m.how = '뼈대 바꿈';
+    else m.how = has('force') ? '덮음' : '충돌';
+  }
+  // 표: 폴더 단위로 묶어 보인다
+  const groups = new Map();
+  for (const m of moves) {
+    const top = m.from.includes('/') ? `${m.from.split('/')[0]}/` : m.from;
+    const g = groups.get(top) || { to: top.endsWith('/') ? adoptDir(top) : adoptPath(top), n: 0, hows: new Map() };
+    g.n++; g.hows.set(m.how, (g.hows.get(m.how) || 0) + 1);
+    groups.set(top, g);
+  }
+  console.log(`${repo.name} → ${S.SRC_DIR}/ (파일 ${moves.length}개${has('dry-run') ? ', 미리보기' : ''})`);
+  console.log('| 옛 자리 | 새 자리 | 파일 | 처리 |');
+  console.log('|---|---|---|---|');
+  for (const [from, g] of groups) console.log(`| ${from} | ${g.to || '(맨 위)'} | ${g.n} | ${[...g.hows].map(([k, n]) => `${k} ${n}`).join(' · ')} |`);
+  const conflicts = moves.filter((m) => m.how === '충돌');
+  if (conflicts.length) {
+    console.log(`✖ 이미 고친 문서와 겹치는 파일 ${conflicts.length}개 (덮으려면 --force, 원본 repo 는 그대로 남는다):`);
+    for (const m of conflicts.slice(0, 20)) console.log(`  ${m.from} → ${m.to}`);
+  }
+  if (has('dry-run')) { console.log('적용: kedovi docs adopt ' + repo.name + (conflicts.length ? ' --force' : '')); if (conflicts.length) process.exitCode = 1; return; }
+  if (conflicts.length) { process.exitCode = 1; return; }
+  let n = 0;
+  for (const m of moves) {
+    if (m.how === '같음' || m.how.startsWith('건너뜀')) continue;
+    const abs = path.join(dst, m.to);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    const buf = fs.readFileSync(path.join(repo.dir, m.from));
+    fs.writeFileSync(abs, /\.md$/i.test(m.from) ? relinkMd(buf.toString('utf8'), m.from, m.to) : buf);
+    n++;
+  }
+  // 뼈대에서 빠진 파일(개발표준 · 자료실 · 사이트 설정 등)은 채운다. 있는 파일은 덮지 않는다
+  const filled = [];
+  (function walk(rel) {
+    let ents = [];
+    try { ents = fs.readdirSync(path.join(SKELETON, rel), { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) { walk(r); continue; }
+      const abs = path.join(dst, r);
+      if (fs.existsSync(abs)) continue;
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.copyFileSync(path.join(SKELETON, r), abs);
+      filled.push(r);
+    }
+  })('');
+  console.log(`✔ ${n}개 옮김${filled.length ? ` · 뼈대 ${filled.length}개 채움` : ''}. 원본 repo(${repo.name})는 그대로 둔다`);
+  const sdir = ws.vars && ws.vars.screens && ws.vars.screens.dir;
+  if (sdir && !String(sdir).split(',').map((x) => x.trim()).includes('화면')) console.log(`  ⚠ workspace.json vars.screens.dir 이 "${sdir}" 입니다. 화면 폴더가 docs-site/화면 으로 옮겨졌다: kedovi screens locate --dir 화면`);
+  console.log('  다음:');
+  console.log('    1. kedovi docs build 로 사이트를 만들어 확인 (.agents/site/)');
+  console.log(`    2. 기획 repo 연결 끊기: kedovi repo remove ${repo.name} (폴더는 그대로, 지우려면 --delete)`);
+  console.log(`    3. git add ${S.SRC_DIR} && git commit -m "docs: 기획 repo ${repo.name} 를 ${S.SRC_DIR}/ 로 옮김"`);
 }
 
 async function main() {
@@ -918,8 +1237,11 @@ async function main() {
     if (cmd === 'refs') return cmdRefs(ws, argv[1]);
     if (cmd === 'trace') return cmdTrace(ws);
     if (cmd === 'pages') return cmdPages(ws);
+    if (cmd === 'serve' && has('stop')) { const root = (ws && ws.root) || process.cwd(); console.log(S.stopServer(root) ? '○ 문서 사이트 서버를 껐습니다' : '- 떠 있는 문서 사이트 서버가 없습니다'); return; }
     if (cmd === 'serve') return cmdServe(ws);
-    console.log('사용법: kedovi docs build [repo|폴더] [--out docs-site] [--force] [--write-config] · pages [on|off] [repo|폴더] · check [repo|폴더] · serve [repo|폴더] [--port 8000] [--open] · show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs] · trace [--ids FN] [--all] [--strict] [--md] [--new]');
+    if (cmd === 'adopt') return cmdAdopt(ws);
+    if (cmd === 'ai-docs') return cmdAiDocs(ws);
+    console.log('사용법: kedovi docs build [repo|폴더] [--out 폴더] [--force] [--write-config] · pages [on|off] [repo|폴더] · check [repo|폴더] · serve [repo|폴더] [--port 8000] [--open] [--no-watch] [--stop] · adopt <기획 repo> [--dry-run] [--force] · ai-docs · show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs] · trace [--ids FN] [--all] [--strict] [--md] [--new]');
     process.exitCode = cmd ? 1 : 0;
   } catch (e) {
     console.error(`✖ ${e.message}`);
@@ -928,4 +1250,4 @@ async function main() {
 }
 
 if (require.main === module) main();
-module.exports = { generate, ignoredLines, configHome, diff, assets, siteAssets, mermaidAssets, EXTRA, MANIFEST, OUT, OLD_OUT, pagesState, ciLine, oldRefs };
+module.exports = { targets, siteTarget, adoptPath, relinkMd, generate, ignoredLines, configHome, diff, assets, siteAssets, mermaidAssets, EXTRA, MANIFEST, OUT, OLD_OUT, pagesState, ciLine, oldRefs };

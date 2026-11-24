@@ -59,7 +59,13 @@ function whenOk(when, ctx) {
   }
   for (const n of [].concat(when.skillMissing || [])) if (skillInstalled(n, root)) return false;
   if (when.localNot) for (const [k, v] of Object.entries(when.localNot)) if (get(local, k) === v) return false;
+  if (when.noRemote && hasOrigin(root)) return false;
   return true;
+}
+
+/** 워크스페이스 repo 에 origin 원격이 있는가 (.git/config 를 읽는다. 못 읽으면 있다고 본다: 추천하지 않게) */
+function hasOrigin(root = process.cwd()) {
+  try { return /\[remote "origin"\]/.test(fs.readFileSync(path.join(root, '.git', 'config'), 'utf8')); } catch { return true; }
 }
 
 /** 결정 { id: { v: 'yes'|'no', at, all? } } (이 워크스페이스가 모든 프로젝트 결정보다 먼저) */

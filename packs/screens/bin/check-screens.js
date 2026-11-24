@@ -82,8 +82,8 @@ function main() {
   let targets;
   if (arg && fs.existsSync(arg)) targets = [{ name: path.basename(path.resolve(arg)), dir: path.resolve(arg) }];
   else if (arg) targets = ((ws && ws.repos) || []).filter((r) => r.name === arg);
-  else targets = ((ws && ws.repos) || []).filter((r) => r.kind === 'docs');
-  if (!targets.length) { console.error(`✖ 대상 repo 가 없습니다${arg ? ` (${arg})` : ' (기획 repo kind: docs)'}`); process.exitCode = 1; return; }
+  else { try { targets = require(path.join(PACKS, 'core', 'bin', 'docs-site.js')).targets(ws, null); } catch { targets = []; } } // 워크스페이스 docs-site/ (연결한 기획 repo 포함) 또는 기획 repo 전부
+  if (!targets.length) { console.error(`✖ 대상이 없습니다${arg ? ` (${arg})` : ' (워크스페이스 docs-site/ 또는 기획 repo kind: docs)'}`); process.exitCode = 1; return; }
   const fnPrefixes = String(((ws && ws.vars && ws.vars.screens) || {}).functionIds || '').split(',').map((x) => x.trim()).filter(Boolean);
   let bad = 0;
   for (const t of targets) {

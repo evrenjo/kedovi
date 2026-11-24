@@ -21,6 +21,11 @@
     },
     {
       "matcher": "startup",
+      "script": "hooks/kickoff-brief.js",
+      "timeout": 5
+    },
+    {
+      "matcher": "startup",
       "script": "hooks/model-profile.js",
       "timeout": 5
     },
@@ -273,6 +278,12 @@
       "matcher": "Bash",
       "script": "hooks/spec-commit.js",
       "timeout": 30,
+      "agents": "claude"
+    },
+    {
+      "matcher": "Bash",
+      "script": "hooks/feature-docs.js",
+      "timeout": 10,
       "agents": "claude"
     },
     {

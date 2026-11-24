@@ -7,6 +7,10 @@
   "minisearch.js",
   "perfect-freehand.js"
  ],
+ "lazy": [
+  "frappe-gantt.js",
+  "frappe-gantt.css"
+ ],
  "packages": [
   {
    "name": "preact",
@@ -31,6 +35,12 @@
    "version": "1.2.3",
    "license": "MIT",
    "home": "https://github.com/steveruizok/perfect-freehand"
+  },
+  {
+   "name": "frappe-gantt",
+   "version": "1.2.2",
+   "license": "MIT",
+   "home": "https://github.com/frappe/gantt"
   }
  ]
 }

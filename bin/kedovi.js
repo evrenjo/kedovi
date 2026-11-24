@@ -2,7 +2,10 @@
 /**
  * kedovi — AI 협업 워크스페이스 명령 (전역 설치: npm i -g kedovi)
  *
- *   kedovi init [프로젝트명]    선택 화면으로 새 워크스페이스를 만든다 (clone 한 repo 안이면 그 자리에, 아니면 ./<이름> 에)
+ *   kedovi init [프로젝트명]    선택 화면으로 새 워크스페이스를 만든다 (프로젝트명 · repo 등록 · 스택 · AI 설정 → 첫 커밋, 원격 없음. clone 한 repo 안이면 그 자리에, 아니면 ./<이름> 에)
+ *   kedovi remote add <주소> [--yes] [--no-push]   워크스페이스 repo 에 원격(origin)을 붙이고 push -u (GitLab · GitHub 판별, 공개 repo 면 확인). 팀원은 그 뒤 clone. 문서 사이트 Pages CI · Pages 주소 · 원격 이슈 웹훅까지
+ *   kedovi remote setup                          문서 사이트 원격 연결만 다시 (Pages CI · Pages 주소 · GitLab 웹훅: 토큰이 있으면 API 로, 없으면 손으로 하는 법)
+ *   kedovi kickoff [done]       방향 인터뷰 상태 보기 · 끝냄 표시 (첫 kedovi start 에서 팀장이 kickoff 스킬로 무엇 · 누가 · 유형 · 첫 기능 · 개발 표준을 정한다)
  *   kedovi init-docs [폴더]     기획자 repo 뼈대를 만든다
  *   kedovi install              repos/ clone + git 훅 + 생성 + 이 워크스페이스의 메인 에이전트 선택
  *   kedovi start [--claude|--codex] [--no-brief] [--no-channel] [--pixel-agents] [-- 에이전트 인자]   설정한 에이전트로 작업 시작. 첫 메시지로 브리핑(마지막 핸드오프 · 미완 작업 · TODO · 공지)
@@ -49,11 +52,13 @@
  *   kedovi tips   출력이 많아 읽기 힘들 때 쓰는 Claude Code 화면 기능 (/tui fullscreen · /focus · Ctrl+O). kedovi start 가 이 PC 에서 처음 한 번 보여 준다
  *   kedovi agents watch [--once] [--all] [--json] [--tmux]   에이전트 진행 보기 (Claude Code): 메인이 부른 작업 리더 · 역할 에이전트 · 그 아래 팀원이 지금 무엇을 하는지 나무 모양으로 (이름 없는 서브에이전트도). 읽기만
  *   kedovi worktree add|merge|remove <repo> <단위> · list · clean   작업 폴더(worktree): 같은 repo 를 여러 작업 리더가 동시에 고칠 때 리더마다 .worktrees/<repo>/<단위> (merge = 본 작업 트리에 커밋하지 않은 변경으로 옮김, clean = 끝난 작업 폴더 정리 · 킷 밖에 만든 것은 .worktrees/ 로)
- *   kedovi docs build [repo|폴더] [--out docs-site] [--force] [--no-source] [--write-config] · check [repo|폴더]   문서 사이트: 기획 repo 의 md · 화면설계서 장 → docs-site/ (가이드와 같은 화면 틀 · 근거 색인 ids.json · 묶음은 docs-site.json) · 어긋남 검사 · 문서 점검 경고
+ *   kedovi docs build [repo|폴더] [--out 폴더] [--force] [--no-source] [--write-config] · check [repo|폴더]   문서 사이트: 워크스페이스 docs-site/(사람 문서 원본, 연결한 기획 repo 포함) → .agents/site/ (커밋 안 함), 옛 구조면 기획 repo 의 md → 그 repo 의 docs-site/ (근거 색인 ids.json · 묶음은 docs-site.json) · 어긋남 검사 · 문서 점검 경고
+ *   kedovi docs adopt <기획 repo> [--dry-run] [--force]   옛 기획 repo(00-overview · 20-features …)를 워크스페이스 docs-site/ 새 자리(개요 · 설계 · 기능 · 화면 · 데이터 · 자료실)로 옮긴다: 미리보기 표 · 링크 고침 · 원본 repo 는 그대로
+ *   kedovi docs ai-docs   AI 자료(ai-docs/) 규칙 어긋남 알림: 맨 위 파일 · README 목록에 없는 폴더 · 머리 줄(한 줄 요약 · 날짜 · 관련 ID) 없는 파일
  *   kedovi docs show <ID> [--in <파일 조각>] [--all] · refs <ID> [--docs]   기획 문서를 ID 단위로: 정의 부분만 출력 · 그 ID 가 나오는 곳(기획 · 코드 · 이슈 repo, 파일:줄)
  *   kedovi docs trace [--ids FN] [--all] [--strict] [--md] [--new]   기획 ID 와 코드의 @spec 주석 대조: 코드에 없는 ID · 테스트에 없는 수용 기준 · 기획에 정의 없는 ID. --md 추적표 · --new 새 진입 파일 중 ID 없는 것 (커밋 전)
- *   kedovi docs pages [on|off] [repo|폴더]   문서 사이트를 Pages 로 올리기 켜고 끄기 · 상태 (원격에 맞는 CI 파일 · .gitignore 의 /docs-site/)
- *   kedovi docs serve [repo|폴더] [--port 8000] [--open]   docs-site/ 를 이 PC 에서 웹 주소로 보기 (전체 인쇄 · 새로고침 없는 이동까지. Ctrl+C 로 끝)
+ *   kedovi docs pages [on|off] [repo|폴더]   문서 사이트를 Pages 로 올리기 켜고 끄기 · 상태 (워크스페이스 사이트 = CI 가 빌드하는 CI 파일, 옛 기획 repo = CI 파일 · .gitignore 의 /docs-site/)
+ *   kedovi docs serve [repo|폴더] [--port 8000] [--open] · serve --stop   문서 사이트를 이 PC 에서 웹 주소(http://localhost)로 보기 (전체 인쇄 · 새로고침 없는 이동까지. Ctrl+C 로 끝, 뒤에서 띄운 서버는 --stop)
  *   kedovi delegate list · status [<id>] · watch [<id>]   다른 도구에 맡긴 작업(위임: Claude Code ↔ Codex 리뷰 등): 목록 · 지금 진행 현황 · 상대 에이전트가 읽고 실행하는 것을 줄마다 보기 (id 를 빼면 마지막 실행 중 작업)
  *   kedovi debate list · watch [<id>] [--once] · status [<id>] · models [--task code|design|docs]   토론 모드(여러 모델이 따로 보고 서로 반박): 목록 · 모델별 주장 · 판정을 실시간으로 보기(--once = 지금까지만, 채팅용) · 지금 회차와 모델별 상태 · 이 PC 에서 쓸 수 있는 모델과 패널 예시. 시작은 채팅에서 "토론해줘" (debate 스킬)
  *   kedovi board [--no-open] [--no-fetch]   워크스페이스 현황판: 로드맵 · 팀원별 마지막 핸드오프 · 미완 작업 · 공지 + 기록 쪽 (.agents/board/, 이 PC 만 · 보기 전용)
@@ -97,7 +102,7 @@
  *   kedovi draft list · template <형식> · check --file F [--type 형식] [--repo R] · config --file F   사람이 읽는 글의 틀과 올리기 전 검사, 환경 · 설정 파일 주석 검사: 형식 task(작업 항목) · bug(결함) · mr · done(완료 댓글) · weekly(주간보고) · report(보고 · 위키) · plan(기획 문서). 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것
  *   kedovi timestamp [on|off|team] [--team]   답변 첫 줄에 요청 받은 시각(yyyy-MM-dd HH:mm:ss) 표시 (Claude Code, 기본 켜짐). 이 PC 값이 팀 값보다 먼저, team = 이 PC 값 지우기. 인자 없이 = 지금 값
  *   kedovi type [유형] [--approach a] [--code 이름,…]   유형 바꾸기: 분석·설계 → 구축 · 고도화 등. 유형 팩 · 현행 repo 중 고칠 것(개발 repo 로) · 진행 방식 · 로드맵 새 뼈대 (팀장)
- *   kedovi approach [sprint|full|issue]   진행 방식: MVP · 스프린트(최소 기능부터, 스프린트마다 데모하며 하나씩) · 워터폴 · 전체(전체 설계 뒤 구축) · 이슈형(운영 · 유지보수, 이슈 보드). 바꾸면 로드맵도 맞춘다 (팀장)
+ *   kedovi approach [feature|sprint|full|issue]   진행 방식: 기능 단위(기본: 설계 기준 뒤 기능마다 명세 → 설계 → AI 구현 → 검증 → 배포) · MVP · 스프린트(최소 기능부터, 스프린트마다 데모하며 하나씩) · 워터폴 · 전체(전체 설계 뒤 구축) · 이슈형(운영 · 유지보수, 이슈 보드). 바꾸면 로드맵도 맞춘다 (팀장)
  *   kedovi team-mode [auto|fixed] · prefer <역할> <claude|codex>:<모델>|- · [--team]   팀 구성: 자동(리더가 작업마다 역할·모델, 요금제 여유도 반영) · 고정(프로필대로), 역할별 선호 모델. --team 은 팀 기본값(팀장)
  *   kedovi review status · mark [--repo R] [--by "<누가>"] · skip --reason "<사유>" [--repo R]   리뷰 확인(commit · push 전에 리뷰를 거쳤나): 대상 repo 마다 리뷰 안 된 줄 수 · 지금 상태를 리뷰했다고 기록 · 한 번 생략(사용자 승인 뒤). 켜기는 team-mode enforce review
  *   kedovi team-mode enforce review off|warn|block [--repos a,b|*] [--min-lines N] [--paths p1,p2] [--team]   commit · push 전 리뷰 확인 (기본 꺼짐. Claude Code). 대상 · 기준 줄 수 · 경로는 팀 값(--team)
@@ -941,11 +946,9 @@ function dropLocalPicks(root, what) {
   writeLocal(root, { agents: local.agents });
 }
 
-/** 만든 뒤의 질문 수 (진행 표시용): 스택 확인 · 규칙 확인 · 쓰는 AI · 모델 프로필 · 메인 모델 · 실행 인자 · 커밋·push, 원격이 없으면 주소 질문 하나 더 */
-function postSteps(dir) {
-  let remote = '';
-  try { remote = spawnSync('git', ['-C', dir, 'remote'], { encoding: 'utf8' }).stdout.trim(); } catch { /* 폴더 없음 */ }
-  return 7 + (remote ? 0 : 1);
+/** 만든 뒤의 질문 수 (진행 표시용): 스택 확인 · 쓰는 AI · 모델 프로필 · 메인 모델 · 실행 인자 */
+function postSteps() {
+  return 5;
 }
 
 async function chooseAgent(root, { force, askArgs = true, profileScope = 'local', progress } = {}) {
@@ -1061,33 +1064,6 @@ function parseRepoList(text, kind, root, taken) {
 }
 
 
-// 유형별로 묻는 repo 가 다르다 — code/legacy 가 null 이면 묻지 않는다
-const TYPE_FLOW = {
-  new: { hint: '새 시스템을 처음 만든다',
-    guide: ['근거: 기획 문서',
-      '넣는 것: 개발 repo (없으면 이름만, 새로 만듦) · 기획 repo · 이슈 repo',
-      'AI 가 하는 일: 기획 문서를 근거로 설계·구현. 요구사항 ID 를 작업 기록·커밋에 남긴다'],
-    code: { message: '프로젝트 repository 주소', hint: '에이전트가 고칠 소스코드 repo 입니다. 원격 없이 로컬에만 있으면 기존 로컬 폴더, 아직 없으면 새로 만들기 (repos/<이름> 에 git init).', required: false, allowNew: true }, docs: '기획 문서 repo', legacy: null },
-  modernization: { hint: '옛 시스템(AS-IS)을 새로 만든다',
-    guide: ['근거: 기획 문서 + AS-IS 소스',
-      '넣는 것: 새 개발 repo · AS-IS 소스 (읽기 전용, 필수) · 기획 repo',
-      'AI 가 하는 일: AS-IS 를 분석해 TO-BE 로 옮긴다. 현행 동작의 근거를 AS-IS 파일:라인으로 단다'],
-    code: { message: '프로젝트 repository 주소', hint: '새로 만들 TO-BE 소스코드 repo 입니다. 원격 없이 로컬에만 있으면 기존 로컬 폴더, 아직 없으면 새로 만들기 (repos/<이름> 에 git init).', required: false, allowNew: true }, docs: '기획 문서 repo',
-    legacy: { message: '레거시(AS-IS) repository 주소', hint: '읽기 전용 근거로 쓰는 AS-IS 소스입니다. 1개 이상 필요합니다.', required: true } },
-  enhancement: { hint: '운영 중인 시스템을 고치고 늘린다 (고도화 · 유지보수)',
-    guide: ['근거: 운영 중인 코드 + 개선 요구사항 · 이슈 티켓',
-      '넣는 것: 운영 중인 개발 repo (필수) · 이슈·티켓 repo · 개선 요구사항 문서 repo',
-      'AI 가 하는 일: 기존 관례를 먼저 찾아 따르고, 티켓 단위로 영향 범위를 적은 뒤 고친다'],
-    code: { message: '프로젝트 repository 주소', hint: '운영 중인 기존 시스템의 소스코드 repo 입니다. 원격 없이 로컬에만 있으면 기존 로컬 폴더. 1개 이상 필요합니다.', required: true }, docs: '개선 요구사항·업무 문서 repo', legacy: null },
-  consulting: { hint: '구축 전에 현행을 분석하고 설계 문서를 만든다 (ISP · ISMP · 제안)',
-    guide: ['근거: 현행 자료 · 인터뷰. 결과물은 문서이고 코드는 고치지 않는다',
-      '넣는 것: 산출물(문서) repo (kedovi init-docs 로 뼈대) · 현행 소스 (선택, 읽기 전용)',
-      'AI 가 하는 일: 근거 달린 현행 분석 · 요구사항 정의서 (ID · 수용 기준) · 목표 모델 · 이행 계획',
-      '다음: 이 산출물 repo 를 구축 워크스페이스의 기획 repo 로 등록하면 요구사항 ID 가 그대로 이어진다'],
-    code: null, docs: '산출물(문서) repo',
-    legacy: { message: '현행 시스템 repository 주소', hint: '분석할 현행 소스입니다(읽기 전용).', required: false } },
-};
-
 /** 한 줄 가로 선택 — [추가] [확정] 같은 짧은 선택 */
 async function chooseInline({ message, hint, options, initialValue }) {
   const { SelectPrompt } = require('@clack/core');
@@ -1174,82 +1150,72 @@ async function askRepo({ message, hint, allowNew, taken = [], skippable = false,
   }
 }
 
+const repoNameOf = (v) => path.basename(String(v).replace(NEW_PREFIX, '').replace(/\/+$/, '')).replace(/\.git$/, '');
+const repoLabelOf = (v) => `${repoNameOf(v)}${String(v).startsWith(NEW_PREFIX) ? '(새로 만듦)' : methodOf(v) === 'link' ? '(로컬 폴더)' : ''}`;
+/** init 에서 고르는 repo 종류 (이슈 repo 는 옛 워크스페이스에서만 쓴다: init 에서는 묻지 않는다) */
+const INIT_KINDS = {
+  code: { label: '코드', hint: '에이전트가 고칠 소스 repo. 아직 없으면 새로 만들기 (repos/<이름> 에 git init)', allowNew: true },
+  legacy: { label: '참고 자료 (레거시)', hint: '읽기 전용 근거로 보는 옛 소스 · 자료 repo' },
+  docs: { label: '기존 기획 repo 연결', hint: '이미 쓰던 기획 문서 repo 를 그대로 잇는다 (문서 사이트에 함께 나온다)' },
+};
+/** 등록 목록 안내: 「코드 a, b(새로 만듦) · 참고 c」 */
+const KIND_SHORT = { code: '코드', legacy: '참고', docs: '기획' };
+function listHint(order) {
+  const by = {};
+  for (const o of order) (by[o.kind] = by[o.kind] || []).push(repoLabelOf(o.v));
+  return `등록: ${Object.entries(by).map(([k, vs]) => `${KIND_SHORT[k] || k} ${vs.join(', ')}`).join(' · ')}`;
+}
+
 /**
- * repo 를 하나씩 받는다 — 방식 → 값 → [추가][확정] → 추가면 다음. 선택 항목은 첫 방식 선택에 "없음" 이 있다.
- * Esc: 값 입력이면 방식 선택으로, 방식 선택이면 직전 [추가][확정] 으로(처음이면 이전 질문 = BACK).
+ * repo 를 하나씩 등록한다 — 종류 → 방식 → 값 → [추가][확정] (기본 「추가」: 「확정」 을 직접 골라야 끝난다). 처음 종류 선택에 「없음」 (repo 없이 시작).
+ * Esc: 값 입력이면 방식 선택으로, 방식 선택이면 종류 선택으로, 종류 선택이면 직전 [추가][확정] 으로(처음이면 이전 질문 = BACK). [추가][확정] 에서 Esc 면 마지막 등록을 지우고 종류 선택으로.
+ * order: [{ kind, v }] (a.code · a.legacy · a.docs 와 함께 고친다)
  */
-async function collectAddresses({ message, hint, required, allowNew = false, initial = [], others = [] }) {
-  const list = [...initial];
-  let asking = list.length === 0;
-  let draft = '';
+async function collectRepos(a) {
+  const order = a.order;
+  let asking = order.length === 0;
+  let lastKind = order.length ? order[order.length - 1].kind : 'code';
   for (;;) {
     if (asking) {
-      const last = list.length ? list[list.length - 1] : draft;
-      const v = await askRepo({
-        message: list.length ? `${message} (${list.length + 1}번째)` : message,
-        hint: list.length ? listHint(list) : hint,
-        allowNew, taken: [...list, ...others], skippable: !required && !list.length, method: last ? methodOf(last) : undefined, draft,
+      const kind = await chooseInline({
+        message: order.length ? `repo 등록 (${order.length + 1}번째): 종류` : 'repo 등록: 종류',
+        hint: order.length ? listHint(order) : '이 프로젝트에서 쓸 repo 를 하나씩 등록합니다. 아직 없으면 「없음」 (나중에 kedovi repo add).',
+        options: [...Object.entries(INIT_KINDS).map(([value, k]) => ({ value, label: k.label })), ...(order.length ? [] : [{ value: 'none', label: '없음' }])],
+        initialValue: lastKind,
       });
-      draft = '';
-      if (v === BACK) { if (!list.length) return BACK; asking = false; continue; }
+      if (kind === BACK) { if (!order.length) return BACK; asking = false; continue; }
+      if (clack().isCancel(kind)) return kind;
+      if (kind === 'none') return order;
+      const k = INIT_KINDS[kind];
+      const v = await askRepo({ message: `${k.label} repo`, hint: k.hint, allowNew: !!k.allowNew, taken: order.map((o) => o.v) });
+      if (v === BACK) continue; // 종류 선택으로
       if (clack().isCancel(v)) return v;
-      if (v === SKIP) return list;
-      list.push(v);
+      order.push({ kind, v });
+      a[kind].push(v);
+      lastKind = kind;
     }
-    // 가져온 것만 있으면 「그대로 확정」 이 기본: 같은 repo 를 다시 넣지 않게 (넣어도 주소 · 이름이 같으면 막는다)
-    const onlyGot = list.every((v) => IMPORTED.has(v));
     const next = await chooseInline({
-      message, hint: onlyGot ? `${listHint(list)}. 분석·설계 워크스페이스에서 가져왔습니다. 다른 repo 가 더 있을 때만 추가` : listHint(list),
-      options: [{ value: 'add', label: onlyGot ? '추가 등록' : '추가' }, { value: 'done', label: onlyGot ? '확정 (가져온 그대로)' : '확정' }], initialValue: 'done',
+      message: 'repo 등록', hint: `${listHint(order)}. 다 넣었으면 「확정」`,
+      options: [{ value: 'add', label: '추가' }, { value: 'done', label: '확정' }], initialValue: 'add',
     });
-    if (next === BACK) { draft = list.pop(); asking = true; continue; } // 마지막 값을 고쳐 쓰게
+    if (next === BACK) { // 마지막 등록을 지우고 다시 고른다
+      const last = order.pop();
+      a[last.kind] = a[last.kind].filter((x) => x !== last.v);
+      lastKind = last.kind;
+      asking = true;
+      continue;
+    }
     if (clack().isCancel(next)) return next;
-    if (next === 'done') return list;
+    if (next === 'done') return order;
     asking = true;
   }
 }
-const repoNameOf = (v) => path.basename(String(v).replace(NEW_PREFIX, '').replace(/\/+$/, '')).replace(/\.git$/, '');
-const repoLabelOf = (v) => `${repoNameOf(v)}${String(v).startsWith(NEW_PREFIX) ? '(새로 만듦)' : methodOf(v) === 'link' ? '(로컬 폴더)' : ''}`;
-/** 분석·설계 워크스페이스에서 가져온 값 (takeFrom). 목록 안내에서 새로 넣은 것과 나눠 보인다 */
-const IMPORTED = new Set();
-/** 목록 안내: 「가져옴 n개: … · 새로 등록: …」 (가져온 것이 많으면 앞 5개만) */
-function listHint(list) {
-  const got = list.filter((v) => IMPORTED.has(v)).map(repoNameOf);
-  const mine = list.filter((v) => !IMPORTED.has(v)).map(repoLabelOf);
-  if (!got.length) return `등록: ${mine.join(', ')}`;
-  return [`가져옴 ${got.length}개: ${got.slice(0, 5).join(', ')}${got.length > 5 ? ' …' : ''}`, ...(mine.length ? [`새로 등록: ${mine.join(', ')}`] : [])].join(' · ');
-}
-
-/** 분석·설계 워크스페이스의 repo 를 init 목록에 채운다: 기획 · 이슈(· 레거시 질문이 있는 유형은 현행). 원격이 있으면 주소, 없으면 그 폴더 경로(링크) */
-function takeFrom(a, fl) {
-  let ws;
-  try { ws = kit.loadWorkspace(a.from); } catch { return; }
-  const put = (list, v) => { if (v && !list.includes(v)) list.push(v); if (v) IMPORTED.add(v); };
-  const left = [];
-  const missing = [];
-  const linked = [];
-  for (const r of ws.repos || []) {
-    const local = path.join(a.from, kit.repoRel(r));
-    const v = r.remote || (fs.existsSync(local) ? fs.realpathSync(local) : null);
-    if (!v) { missing.push(r.name); continue; }
-    if (!r.remote && (r.kind === 'docs' || r.kind === 'issues' || (r.kind === 'legacy' && fl.legacy) || (r.kind === 'code' && fl.code))) linked.push(r.name);
-    if (r.kind === 'docs') put(a.docs, v);
-    else if (r.kind === 'issues') put(a.issues, v);
-    else if (r.kind === 'legacy' && fl.legacy) put(a.legacy, v);
-    else if (r.kind === 'code' && fl.code) put(a.code, v);
-    else left.push(r.name);
-  }
-  p.log.info([`${(ws.project || {}).title || path.basename(a.from)} 에서 가져옴: 기획 ${a.docs.length} · 이슈 ${a.issues.length}${fl.legacy ? ` · 현행 ${a.legacy.length}` : ''}`,
-    ...(left.length ? [`현행 repo ${left.length}개 (${left.slice(0, 5).join(', ')}${left.length > 5 ? ' …' : ''}): 고칠 repo 는 프로젝트 repository 에 넣습니다`] : []),
-    ...(missing.length ? [`원격도 받은 폴더도 없어 건너뜀: ${missing.join(', ')}`] : []),
-    ...(linked.length ? [`원격 없는 repo ${linked.join(', ')} 는 링크로 함께 씁니다: 두 워크스페이스가 같은 파일을 고친다. 문서 사이트 · 커밋 훅은 ${path.basename(a.from)} 쪽 것을 쓴다 (따로 쓰려면 원격을 만들어 clone 으로)`] : [])].join('\n'));
-}
 
 async function cmdInit(argv) {
-  if (!process.stdin.isTTY) fail('대화형 화면은 터미널에서만 됩니다. 스크립트에서는 node <킷>/bin/kit.js init <폴더> --type … 를 쓰세요');
+  if (!process.stdin.isTTY) fail('대화형 화면은 터미널에서만 됩니다. 스크립트에서는 node <킷>/bin/kit.js init <폴더> 를 쓰세요');
   clack();
   p.intro(' kedovi init ');
-  p.log.info('순서: 프로젝트명 → 시작 유형 → repo 주소 (유형에 따라 2~3개) → 확인 → 생성 → 스택 확인 → 규칙 확인 → 쓰는 AI → 모델 프로필 → 실행 인자 → 워크스페이스 repo 원격 · 커밋·push. Esc 는 이전 질문');
+  p.log.info('순서: 프로젝트명 → repo 등록 (종류: 코드 · 참고 자료 · 기존 기획 repo, 여러 개) → 확인 → 생성 → 스택 확인 → 쓰는 AI · 모델 → 첫 커밋. 프로젝트 유형 · 진행 방식은 첫 kedovi start 의 방향 인터뷰에서 정합니다. Esc 는 이전 질문');
   const cwd = process.cwd();
   // 워크스페이스 안에서 또 만들지 않는다: 유형 · 진행 방식이 바뀌면 같은 워크스페이스에서 바꾼다
   const inside = kit.findRoot();
@@ -1261,10 +1227,7 @@ async function cmdInit(argv) {
   if (given && !/^[a-z][a-z0-9-]*$/.test(given)) fail(`프로젝트명은 영문 소문자·숫자·'-' 로 쓰고 문자로 시작합니다: ${given}`);
   const here = ['empty', 'fresh-repo'].includes(kit.folderState(cwd)) && path.basename(cwd) !== '' ? cwd : null;
   const targetOf = (name) => (here && (kit.folderState(cwd) === 'fresh-repo' || path.basename(cwd) === name) ? cwd : path.resolve(cwd, name));
-  const a = { title: given, type: undefined, approach: undefined, from: '', code: [], docs: [], issues: [], legacy: [], hosts: {}, pages: false, grouping: undefined };
-  const flow = () => TYPE_FLOW[a.type || 'new'];
-  // 다른 목록에 이미 넣은 값 (같은 repo 를 두 종류로 넣지 않게)
-  const othersOf = (kind) => ['code', 'docs', 'issues', 'legacy'].filter((k) => k !== kind).flatMap((k) => a[k]);
+  const a = { title: given, order: [], code: [], docs: [], issues: [], legacy: [], hosts: {}, grouping: undefined };
 
   // 단계 — when 이 거짓이면 건너뛴다 (앞으로·뒤로 모두). Esc 는 이전 단계, 첫 단계에서 Esc 는 취소
   const steps = [
@@ -1281,50 +1244,7 @@ async function cmdInit(argv) {
         return undefined;
       },
     }), set: (v) => { a.title = v; p.log.info(`워크스페이스 폴더: ${targetOf(v)}${kit.folderState(targetOf(v)) === 'fresh-repo' ? ' (clone 한 repo 에 만든다)' : ''}`); } },
-    { run: async () => choose({
-      message: '시작 유형', hint: '프로젝트 성격에 맞게 고르세요. 유형에 따라 에이전트가 삼는 근거와 규칙이 달라집니다.',
-      initialValue: a.type,
-      options: Object.keys(TYPE_FLOW).map((k) => ({ value: k, label: kit.PROJECT_TYPES[k], hint: TYPE_FLOW[k].hint, detail: TYPE_FLOW[k].guide })),
-    }), set: (v) => { a.type = v; } },
-    // 신규 구축: 아이디어 · 전체 그림 다음에 MVP 부터 하나씩(스프린트)인지, 전체 설계 뒤 구축(워터폴)인지
-    { when: () => a.type === 'new', run: async () => choose({
-      message: '개발 방식', hint: '두 방식 모두 아이디어 · 전체 그림(무엇을 왜 만드는지 대화)부터 시작합니다. 나중에 kedovi approach 로 바꿉니다.',
-      initialValue: ['sprint', 'full'].includes(a.approach) ? a.approach : kit.TYPE_RULES.new.approach, // 운영·고도화에서 고른 이슈형이 남아 있으면 기본값
-      options: [{ value: 'sprint', label: 'MVP · 스프린트 (권장)', hint: '끝까지 동작하는 최소 기능부터, 스프린트마다 데모하며 하나씩 붙인다' },
-        { value: 'full', label: '워터폴 · 전체', hint: '요구사항 → 설계 → 구현 → 테스트 → 배포를 한 번에' }],
-    }), set: (v) => { a.approach = v; } },
-    // 운영·고도화: 이슈마다 운영 반영(운영 · 유지보수)인지, 기능 묶음을 오픈까지 진행(고도화)인지 → 로드맵 모양이 다르다
-    { when: () => a.type === 'enhancement', run: async () => choose({
-      message: '진행 방식', hint: '운영 · 유지보수는 이슈마다 운영에 반영하므로 이슈형, 기능 묶음을 요구사항부터 오픈까지 진행하는 고도화는 스프린트 또는 전체입니다. 나중에 kedovi approach 로 바꿉니다.',
-      initialValue: a.approach || kit.TYPE_RULES.enhancement.approach,
-      options: [{ value: 'issue', label: '이슈형 (운영 · 유지보수)', hint: '단계 대신 이슈 보드: 이슈마다 접수 · 분석 · 수정 · 검증 · 운영 반영' },
-        { value: 'sprint', label: 'MVP · 스프린트 (고도화)', hint: '기능 단위로 데모하며 하나씩' },
-        { value: 'full', label: '워터폴 · 전체 (고도화)', hint: '요구사항 → 설계 → 구현 → 테스트 → 오픈' }],
-    }), set: (v) => { a.approach = v; } },
-    // 분석·설계 워크스페이스에서 이어 만들기: 그 기획 · 이슈 repo 를 그대로 가져온다 (현행 repo 는 목록만)
-    { when: () => a.type !== 'consulting', run: async () => yesNo({
-      message: '분석·설계 워크스페이스에서 이어 만들까요?', hint: '같은 팀이 이어 가면 새로 만들지 말고 그 워크스페이스에서 kedovi type <유형> 으로 바꾸는 것이 낫습니다 (repo · 기록이 한곳). 팀 · 계약을 나눠야 할 때만 예: 그 기획 · 이슈 repo 를 가져오고 요구사항 ID 가 이어집니다.', initialValue: !!a.from,
-    }), set: (v) => { a.from = v === true ? a.from || ' ' : ''; } },
-    { when: () => a.type !== 'consulting' && !!a.from, run: async () => input({
-      message: '분석·설계 워크스페이스 폴더', placeholder: '예: ~/projects/shop-isp', initialValue: a.from.trim(),
-      validate: (x) => { const d = path.resolve(expandHome(String(x || '').trim())); return x && kit.folderState(d) === 'workspace' ? undefined : `워크스페이스 폴더가 아닙니다 (workspace.json 이 없음): ${x || ''}`; },
-    }), set: (v) => { a.from = path.resolve(expandHome(String(v).trim())); takeFrom(a, flow()); } },
-    { when: () => !!flow().code, run: async () => collectAddresses({
-      message: flow().code.message, hint: flow().code.hint, required: flow().code.required, allowNew: !!flow().code.allowNew, initial: a.code, others: othersOf('code'),
-    }), set: (v) => { a.code = v; } },
-    { run: async () => collectAddresses({
-      message: '기획 repository 주소', hint: '요구사항의 근거가 되는 문서 repo 입니다. 분석 워크스페이스의 산출물 repo 가 로컬에만 있으면 기존 로컬 폴더 (뼈대는 kedovi init-docs).', required: false, allowNew: true, initial: a.docs, others: othersOf('docs'),
-    }), set: (v) => { a.docs = v; } },
-    { when: () => a.docs.length > 0, run: async () => yesNo({
-      message: '기획 문서 사이트를 Pages 로 올릴까요?', hint: '기획 repo 의 docs-site/ 를 GitLab · GitHub Pages 로 공개합니다. 서버에 Pages · 러너가 있어야 합니다 (GitHub 비공개 repo 는 유료). 나중에 kedovi docs pages on | off 로 바꿀 수 있습니다.',
-      initialValue: a.pages,
-    }), set: (v) => { a.pages = v === true; } },
-    { run: async () => collectAddresses({
-      message: '이슈 repository 주소', hint: '이슈·확인 요청·테스트 결과 문서를 쓰는 repo 입니다.', required: false, allowNew: true, initial: a.issues, others: othersOf('issues'),
-    }), set: (v) => { a.issues = v; } },
-    { when: () => !!flow().legacy, run: async () => collectAddresses({
-      message: flow().legacy.message, hint: flow().legacy.hint, required: flow().legacy.required, initial: a.legacy, others: othersOf('legacy'),
-    }), set: (v) => { a.legacy = v; } },
+    { run: async () => collectRepos(a), set: () => {} },
     { when: () => unknownHosts().length > 0, run: async () => {
       for (const h of unknownHosts()) {
         const v = await choose({
@@ -1364,15 +1284,14 @@ async function cmdInit(argv) {
     if (isRemote(v)) return kit.inferHost(v) || a.hosts[hostName(v)] || null;
     return kit.hostOf(cwd, { path: path.resolve(v) }) || null; // 로컬 폴더·bare repo 는 그 origin
   };
-  const unknownHosts = () => [...new Set([...a.code, ...a.issues].filter((v) => isRemote(v) && !kit.inferHost(v)).map(hostName).filter(Boolean))];
+  const unknownHosts = () => [...new Set(a.code.filter((v) => isRemote(v) && !kit.inferHost(v)).map(hostName).filter(Boolean))];
   const repos = () => {
     const taken = [];
     const withHost = (list, kind) => parseRepoList(list, kind, root(), taken).map((r, i) => {
-      if (kind === 'code' || kind === 'issues') { const h = hostFor(list[i]); if (h) r.host = h; }
+      if (kind === 'code') { const h = hostFor(list[i]); if (h) r.host = h; }
       return r;
     });
-    const list = [...(flow().code ? withHost(a.code, 'code') : []), ...withHost(a.docs, 'docs'), ...withHost(a.issues, 'issues'),
-      ...(flow().legacy ? withHost(a.legacy, 'legacy') : [])];
+    const list = [...withHost(a.code, 'code'), ...withHost(a.docs, 'docs'), ...withHost(a.legacy, 'legacy')];
     const pick = a.grouping && a.grouping !== 'none' ? (groupChoices(list) || {})[a.grouping] : null;
     if (pick) for (const r of list) if (pick[r.name]) r.group = pick[r.name];
     return list;
@@ -1384,15 +1303,13 @@ async function cmdInit(argv) {
     return c.remote || c.name ? c : null;
   };
   const summary = () => {
-    const typePack = kit.TYPE_RULES[a.type].pack;
     const rs = repos();
     return [
       `폴더   ${root()}`,
-      `유형   ${kit.PROJECT_TYPES[a.type]}${['enhancement', 'new'].includes(a.type) && a.approach ? ` · 진행 방식 ${kit.APPROACHES[a.approach].split(' (')[0]}` : ''}`,
-      ...(a.from ? [`이어 받음 ${a.from}`] : []),
-      `규칙   core${typePack ? `, ${typePack} (유형)` : ''} + repo 마다 스택·협업 도구 규칙`,
-      ...(rs.length ? rs.map((r) => `${kit.repoRel(r).padEnd(23)} ${padTo(kit.REPO_KINDS[r.kind], 14)} ${padTo(r.host ? kit.HOSTS[r.host] : '', 7)} ← ${r.remote || r.path || '새로 만듦 (원격 없음, git init)'}`) : ['repo   (없음: 나중에 workspace.json 에 추가)']),
-      ...(a.docs.length ? [`Pages  ${a.pages ? '켬: 기획 repo 에 원격에 맞는 CI 파일을 두고 docs-site/ 를 커밋한다' : '끔 (나중에 kedovi docs pages on)'}`] : []),
+      `진행   ${kit.APPROACHES.feature.split(' (')[0]} (유형 · 진행 방식은 첫 kedovi start 의 방향 인터뷰에서 정한다)`,
+      '규칙   core + repo 마다 스택·협업 도구 규칙',
+      ...(rs.length ? rs.map((r) => `${kit.repoRel(r).padEnd(23)} ${padTo(kit.REPO_KINDS[r.kind], 14)} ${padTo(r.host ? kit.HOSTS[r.host] : '', 7)} ← ${r.remote || r.path || '새로 만듦 (원격 없음, git init)'}`) : ['repo   (없음: 나중에 kedovi repo add)']),
+      '원격   없음: 첫 커밋까지만 한다. 올리기: kedovi remote add <주소>',
       '스택은 repo 를 받은 뒤 감지한다. 역할·브랜치는 workspace.json 에서 고친다',
     ];
   };
@@ -1402,7 +1319,7 @@ async function cmdInit(argv) {
   while (k < steps.length) {
     if (!runnable(k)) { k++; continue; }
     const order = steps.map((s, i) => i).filter(runnable);
-    PROGRESS = `${order.indexOf(k) + 1}/${order.length + postSteps(targetOf(a.title || given))}`;
+    PROGRESS = `${order.indexOf(k) + 1}/${order.length + postSteps()}`;
     const v = await steps[k].run();
     if (v === BACK) {
       let prev = k - 1;
@@ -1425,16 +1342,10 @@ async function cmdInit(argv) {
   const orig = { log: console.log, warn: console.warn, error: console.error };
   console.log = console.warn = console.error = (...x) => log.push(x.join(' '));
   let res;
-  try { res = kit.initWorkspace({ dir, name: a.title, title: a.title, type: a.type, approach: ['enhancement', 'new'].includes(a.type) ? a.approach : undefined, packs: [], repos: rs, out: (l) => process.stdout.write(`${l}\n`) }); }
+  try { res = kit.initWorkspace({ dir, name: a.title, title: a.title, packs: [], repos: rs, out: (l) => process.stdout.write(`${l}\n`) }); }
   finally { Object.assign(console, orig); }
   remember(dir);
   p.log.success(res.ok ? '생성 완료' : '생성은 했지만 확인할 것이 있습니다');
-  if (res.approach) p.log.info(`진행 방식: ${kit.APPROACHES[res.approach]}. 바꾸기: kedovi approach ${Object.keys(kit.APPROACHES).filter((k) => k !== res.approach).join(' | ')}`);
-  if (a.pages) {
-    const tool = path.join(dir, 'packs', 'core', 'bin', 'docs-site.js');
-    const r = fs.existsSync(tool) ? spawnSync(process.execPath, [tool, 'pages', 'on'], { cwd: dir, encoding: 'utf8' }) : null;
-    if (r) p.log.info(`Pages\n${(r.stdout + r.stderr).trim()}\n기획 repo 의 바뀐 파일(CI · .gitignore)은 그 repo 에서 커밋 · push 한다`);
-  }
   p.log.message(log.filter((l) => l.trim() && !l.includes('스택 감지')).join('\n'));
   // clone 은 인증을 묻지 않게 막고 돌린다 (진행 표시 뒤에서 멈추지 않게). 직접 git clone 하면 되는 repo 가 여기서 빠질 수 있어,
   // 받지 못한 repo 를 바로 보이고 인증을 물을 수 있는 git clone 으로 다시 받을지 묻는다 (스택 확인 전에)
@@ -1454,70 +1365,15 @@ async function cmdInit(argv) {
       runWorkspaceKit(dir, ['sync', '--quiet']); // 받은 repo 의 스택 감지 · 훅
     }
   }
-  abortNote = `워크스페이스는 만들어졌습니다 (${dir}). 스택은 감지 결과대로 저장돼 있으니 kedovi detect 로 고치고, 에이전트는 kedovi agent 로 고르세요`;
-  // 만든 뒤의 질문(스택 → 규칙 확인 → 에이전트)도 Esc 로 이전 화면에 돌아간다. 첫 화면에서 Esc 는 취소 (워크스페이스는 남는다)
+  abortNote = `워크스페이스는 만들어졌습니다 (${dir}). 스택은 감지 결과대로 저장돼 있으니 kedovi detect 로 고치고, 에이전트는 kedovi agent 로 고르세요. 첫 커밋: git add -A && git commit -m "chore: init workspace"`;
+  // 만든 뒤의 질문(스택 → 쓰는 AI · 모델)도 Esc 로 이전 화면에 돌아간다. 첫 화면에서 Esc 는 취소 (워크스페이스는 남는다)
   const preCount = steps.filter((s, i) => runnable(i)).length;
-  const total = preCount + postSteps(dir);
-  const remoteOf = () => spawnSync('git', ['-C', dir, 'remote'], { encoding: 'utf8' }).stdout.trim();
-  let pushed = false;
-  // n = 만든 뒤 몇 번째 질문인지 (쓰는 AI · 프로필 · 메인 모델 · 인자는 chooseAgent 안에서 3 · 4 · 5 · 6)
-  // 워크스페이스 repo 는 작업 기록(handoffs/) · workspace.json 이 올라가므로 비공개여야 한다. 공개 repo 면 한 번 더 묻는다 (기본 아니오)
-  const checkedPublic = new Set();
-  const privateOk = async (url, onNo = '아니오면 주소를 다시 묻습니다.') => {
-    checkedPublic.add(url);
-    const pub = require(path.join(KIT_ROOT, 'packs', 'core', 'lib', 'visibility.js')).isPublic(url);
-    if (pub === null) { p.log.warn('이 repo 가 공개인지 확인하지 못했습니다 (주소 · 네트워크). 공개 repo 면 작업 기록이 누구에게나 보이니 비공개인지 직접 확인하세요'); return true; }
-    if (!pub) { p.log.info('비공개 repo 입니다 (로그인 없이 받을 수 없음)'); return true; }
-    return yesNo({ message: '공개 repo 입니다. 그래도 워크스페이스 repo 로 쓸까요?', hint: `작업 기록(handoffs/: 명령 결과 · 로그 · 경로) · workspace.json(repo 주소 · 설정)이 누구에게나 보입니다. 비공개로 바꾼 뒤 다시 넣는 것을 권합니다. ${onNo}`, initialValue: false });
-  };
+  const total = preCount + postSteps();
+  // n = 만든 뒤 몇 번째 질문인지 (쓰는 AI · 프로필 · 메인 모델 · 인자는 chooseAgent 안에서 2 · 3 · 4 · 5)
   const after = [
     { n: 1, run: () => reviewStacks(dir, { force: true }) },
-    { n: 2, run: async () => { // 규칙 확인 (선택) — 킷이 넣은 규칙 중 우리 팀에 안 맞는 것을 끈다. 나중에 kedovi rules
-      for (;;) {
-        const look = await yesNo({ message: '킷이 넣은 규칙을 지금 확인할까요?', hint: '팀에 맞지 않는 규칙을 끌 수 있습니다. 나중에 kedovi rules 로도 됩니다.', initialValue: false });
-        if (look === BACK || clack().isCancel(look)) return BACK;
-        if (look !== true) return true;
-        if ((await chooseRules(dir)) !== BACK) return true; // 규칙 화면에서 Esc 면 이 질문으로
-      }
-    } },
-    // 쓰는 AI · 팀 기본 프로필 · 메인 모델 · 이 PC 의 실행 인자 (3 · 4 · 5 · 6). 만든 사람이 바로 kedovi start 하므로 인자도 여기서 받는다
-    { n: 3, run: () => chooseAgent(dir, { force: true, askArgs: true, profileScope: 'team', progress: { at: preCount + 3, total } }) },
-    // 워크스페이스 repo 원격 — 여기까지 해야 팀원이 clone 할 수 있다
-    ...(remoteOf() ? [] : [{ n: 7, run: async () => {
-      let u;
-      for (;;) {
-        const url = await input({ message: '워크스페이스 repository 주소', hint: 'GitLab·GitHub 에 만든 빈 비공개 repo 주소 (작업 기록 handoffs/ · workspace.json 이 올라간다). 없으면 Enter (나중에 git remote add origin <주소>)', validate: (x) => (!x || kit.isGitUrl(String(x).trim()) ? undefined : 'git 주소 형식 (https://… 또는 git@…)') });
-        if (url === BACK || clack().isCancel(url)) return BACK;
-        u = String(url || '').trim();
-        if (!u) break;
-        const ok = await privateOk(u);
-        if (ok === BACK || clack().isCancel(ok)) return BACK;
-        if (ok) break;
-      }
-      if (u && !remoteOf()) { const r = spawnSync('git', ['-C', dir, 'remote', 'add', 'origin', u], { encoding: 'utf8' }); if (r.status !== 0) p.log.warn(`원격을 못 붙였습니다: ${(r.stderr || '').trim()}`); }
-      return true;
-    } }]),
-    { n: remoteOf() ? 7 : 8, run: async () => {
-      if (!remoteOf()) return true;
-      // 이미 원격이 있던 경우(clone 한 repo 에 만들었을 때)도 공개 repo 인지 본다. 주소 질문에서 확인한 주소면 다시 묻지 않는다
-      const origin = spawnSync('git', ['-C', dir, 'remote', 'get-url', 'origin'], { encoding: 'utf8' }).stdout.trim();
-      if (origin && !checkedPublic.has(origin)) {
-        const ok = await privateOk(origin, '아니오면 push 하지 않습니다.');
-        if (ok === BACK || clack().isCancel(ok)) return BACK;
-        if (!ok) { p.log.info('push 하지 않았습니다. repo 를 비공개로 바꾼 뒤 git push -u origin HEAD'); return true; }
-      }
-      const yes = await yesNo({ message: '지금 커밋·push 할까요?', hint: 'chore: init workspace 로 커밋하고 origin 에 push 합니다. 팀원은 그 뒤 clone 할 수 있습니다.' });
-      if (yes === BACK || clack().isCancel(yes)) return BACK;
-      if (yes !== true) return true;
-      const g = (...x) => spawnSync('git', ['-C', dir, ...x], { encoding: 'utf8' });
-      g('add', '-A');
-      const c = g('commit', '-q', '-m', 'chore: init workspace');
-      if (c.status !== 0 && !/nothing to commit/.test(`${c.stdout}${c.stderr}`)) { p.log.warn(`커밋하지 못했습니다: ${(c.stderr || c.stdout).trim().split('\n').slice(-3).join(' ')}`); return true; }
-      const ps = g('push', '-u', 'origin', 'HEAD');
-      if (ps.status !== 0) p.log.warn(`push 하지 못했습니다: ${(ps.stderr || '').trim().split('\n').slice(-2).join(' ')}. 나중에 git push -u origin HEAD`);
-      else { pushed = true; p.log.success('커밋 · push 완료'); }
-      return true;
-    } },
+    // 쓰는 AI · 팀 기본 프로필 · 메인 모델 · 이 PC 의 실행 인자. 만든 사람이 바로 kedovi start 하므로 인자도 여기서 받는다
+    { n: 2, run: () => chooseAgent(dir, { force: true, askArgs: true, profileScope: 'team', progress: { at: preCount + 2, total } }) },
   ];
   for (let i = 0; i < after.length;) {
     PROGRESS = `${preCount + after[i].n}/${total}`;
@@ -1536,16 +1392,17 @@ async function cmdInit(argv) {
     const raw = JSON.parse(read(wsFile));
     if (!(raw.team && ((raw.team.admins || []).length || (raw.team.leads || []).length))) { const acct = detectAccount(dir); raw.team = { ...(raw.team || {}), leads: [acct ? { username: acct.username } : { username: leadId, source: 'git' }] }; if (acct) { writeLocal(dir, { me: { ...acct, checked: new Date().toISOString().slice(0, 10) } }); fs.writeFileSync(path.join(dir, 'handoffs', leadId, '.account'), `${acct.username}\n`); } fs.writeFileSync(wsFile, JSON.stringify(raw, null, 2) + '\n'); }
   }
+  // 첫 커밋 (원격 없음). 질문으로 바뀐 스택 · 에이전트 설정 · 팀장 기록까지 함께
+  runWorkspaceKit(dir, ['sync', '--quiet']);
+  const committed = kit.initialCommit(dir);
+  if (committed.ok) p.log.success('첫 커밋: chore: init workspace (원격 없음)');
+  else p.log.warn(`첫 커밋을 하지 못했습니다: ${committed.reason}`);
   // repo 별 상태: clone 실패 · 빠진 repo 는 질문 화면들 뒤로 밀려 안 보이므로 끝에 다시 보인다 (다시 받기 = kedovi install, sync 는 받지 않는다)
   const repoNote = repoStatus(dir, res.repos || []);
   if (repoNote) p.note(repoNote.text, repoNote.title);
   const rel = path.relative(process.cwd(), dir);
-  const hasRemote = remoteOf();
-  p.note(pushed
-    ? '팀원: 이 repo 를 clone 한 뒤 kedovi install · kedovi start'
-    : hasRemote
-      ? `아직 push 하지 않았습니다. 준비되면:\ngit add -A && git commit -m "chore: init workspace" && git push -u origin HEAD\n→ 팀원은 clone 한 뒤 kedovi install · kedovi start`
-      : `원격이 없습니다. GitLab·GitHub 에 빈 repo 를 만든 뒤:\ngit remote add origin <주소> && git add -A && git commit -m "chore: init workspace" && git push -u origin HEAD`, '공유하기');
+  p.note(['첫 kedovi start 에서 방향 인터뷰(무엇 · 누가 · 유형 · 첫 기능 목록 · 개발 표준)를 하나씩 묻고 문서 초안을 만듭니다.',
+    '팀과 나누려면 GitLab · GitHub 에 빈 비공개 repo 를 만든 뒤: kedovi remote add <주소>  (origin 추가 · push)'].join('\n'), '다음');
   p.outro(`다음: ${rel ? `cd ${rel} && ` : ''}kedovi start`);
 }
 
@@ -1770,14 +1627,38 @@ async function ensureAccount(root, { refresh = false, ask = process.stdin.isTTY 
   let me = found ? { ...found, checked: today } : null;
   // 화면 없는 실행(에이전트 등)은 물을 수 없으니 이유를 한 줄 알린다
   if (!me && !ask) clack().log.warn(`저장소 계정을 읽지 못했습니다: ${why.join(' · ') || '이유 모름'}. 터미널에서 kedovi team whoami --refresh 를 직접 실행하면 입력해 적을 수 있습니다`);
+  // 원격이 없거나(새 워크스페이스) 읽지 못하면 아이디 · 이름을 직접 받는다
   if (!me && ask) {
-    clack().log.info('워크스페이스 원격에서 저장소 계정을 읽지 못했습니다. 팀장 · 담당 repo 판정에 쓰니 직접 적어 주세요 (나중에 다시 확인: kedovi team whoami --refresh)');
-    const v = await clack().text({ message: '저장소 계정 username', placeholder: '예: hong01' });
-    if (!clack().isCancel(v) && String(v || '').trim()) me = { username: String(v).trim(), host: '', source: 'input', checked: today };
+    clack().log.info('git · GitLab 에서 쓰는 아이디와 같게 적으면 커밋 · 이슈 · 담당 repo 추적이 쉽습니다');
+    const id = await clack().text({ message: '아이디', placeholder: '예: hong01', initialValue: memberId(root).match(/^[\w.-]+$/) ? memberId(root) : '',
+      validate: (x) => (!String(x || '').trim() || /^[\w.-]+$/.test(String(x).trim()) ? undefined : '영문 · 숫자 · . _ - 만 씁니다') });
+    if (!clack().isCancel(id) && String(id || '').trim()) {
+      const name = await clack().text({ message: '이름', placeholder: '예: 홍길동 (팀 현황 · 문서에 보이는 이름)' });
+      me = { username: String(id).trim(), ...(!clack().isCancel(name) && String(name || '').trim() ? { name: String(name).trim() } : {}), host: '', source: 'input', checked: today };
+    }
   }
   if (!me) { if (ask) writeLocal(root, { me: { source: 'none', checked: today } }); return null; } // 물을 수 없던 실행(화면 없음)은 기록하지 않는다
   writeLocal(root, { me });
+  if (me.source === 'input') adoptInitLead(root, me);
   return me;
+}
+
+/**
+ * 원격이 없는 새 워크스페이스에서 init 이 git user.name 으로 적어 둔 팀장(source: git)이 이 PC 사람이면, 직접 적은 아이디 · 이름으로 바꾼다.
+ * 원격이 있으면 남이 이름만 바꿔 자리를 가져갈 수 있으니 바꾸지 않는다 (adoptAccount 가 명령을 알린다)
+ */
+function adoptInitLead(root, me) {
+  try {
+    if ((spawnSync('git', ['-C', root, 'remote'], { encoding: 'utf8' }).stdout || '').trim()) return;
+    const file = path.join(root, 'workspace.json');
+    const raw = JSON.parse(read(file));
+    const leads = (raw.team || {}).leads || [];
+    const gitName = memberId(root);
+    const i = leads.findIndex((x) => typeof x === 'object' && x.source === 'git' && x.username === gitName);
+    if (i < 0 || leads.length !== 1) return;
+    leads[i] = { username: me.username, ...(me.name ? { nickname: me.name } : {}) };
+    fs.writeFileSync(file, `${JSON.stringify(raw, null, 2)}\n`);
+  } catch { /* 편의 */ }
 }
 
 /**
@@ -2697,6 +2578,166 @@ async function cmdAi(argv = []) {
 
 /** 팀 구성 옵션 — 모드 · 역할별 선호 모델. 팀(workspace.json agents, --team) · 이 PC(.agents/local.json agents). 요금제는 kedovi ai (plan) */
 /** 진행 방식 (workspace.json project.approach): 스프린트 · 전체 · 이슈형. 바꾸면 sync 하고, 로드맵이 기본 단계 그대로면 새 뼈대로 (이슈형이면 고친 로드맵에도 이슈 보드를 끼운다) */
+// ───────────────────────── remote · kickoff ─────────────────────────
+
+/**
+ * 원격을 붙인 뒤 차례로 도는 일 — 각 항목은 ctx({ root, url, host, pushed, yes, tty }) → 안내 줄 목록. 실패해도 다음 항목은 돈다.
+ * 새 일(Pages CI · 이슈 웹훅 설정 등)은 이 목록에 항목을 더한다
+ */
+const REMOTE_AFTER = [
+  // 팀원이 받는 법
+  (c) => (c.pushed ? [`팀원: git clone ${c.url} → kedovi install → kedovi start`] : [`push 하면 팀원이 받을 수 있습니다: git push -u origin HEAD (그 뒤 팀원은 git clone ${c.url} → kedovi install)`]),
+  // 이 PC 사용자를 원격 계정으로 다시 확인 (직접 적은 아이디를 쓰고 있었으면)
+  (c) => {
+    const me = readLocal(c.root).me || {};
+    if (me.username && me.source !== 'input' && me.source !== 'none') return [];
+    return c.host === 'other' ? [] : [`저장소 계정 확인: kedovi team whoami --refresh (원격이 생겨 ${HOST_LABEL[c.host]} 계정을 읽을 수 있습니다)`];
+  },
+  // 문서 사이트: Pages CI · Pages 주소 · 원격 이슈가 바뀌면 다시 만들기 (kedovi remote setup 으로 다시 돌릴 수 있다)
+  (c) => siteRemoteSetup(c),
+];
+
+/** 워크스페이스의 킷 도구 (그 워크스페이스 판), 없으면 이 킷 */
+const wsLib = (root, rel) => { const f = path.join(root, 'packs', 'core', 'lib', rel); return require(fs.existsSync(f) ? f : path.join(KIT_ROOT, 'packs', 'core', 'lib', rel)); };
+
+/**
+ * 원격을 붙인 뒤 문서 사이트 연결: Pages CI 파일(lib/site.js installCi) · workspace.json project.pagesUrl(GitHub 은 주소를 안다) ·
+ * GitLab 이면 파이프라인 트리거 + 웹훅(토큰이 있으면 API, 없으면 손으로 하는 법), GitHub 이면 pages.yml 이 이슈 · Discussions 이벤트로도 돈다.
+ * CI 빌드가 원격 이슈를 읽는 토큰(KEDOVI_SITE_TOKEN) 안내. 토큰 값은 찍지 않는다. 반환 [안내 줄]
+ */
+async function siteRemoteSetup(c) {
+  const S = wsLib(c.root, 'site.js');
+  if (S.siteInfo(c.root).layout !== 'workspace') return [];
+  const SR = wsLib(c.root, 'siteremote.js');
+  const lines = [];
+  const known = c.host === 'gitlab' || c.host === 'github';
+  const hosts = known ? [c.host] : ['gitlab', 'github'];
+  const ci = hosts.flatMap((h) => S.installCi(c.root, { host: h }));
+  const made = ci.filter((r) => r.status === '만듦').map((r) => r.file);
+  lines.push(`문서 사이트 Pages CI: ${ci.map((r) => `${r.file} ${r.status}${r.hint ? ` (${r.hint})` : ''}`).join(' · ')}`);
+  if (made.length) lines.push(`  올리기: git add ${made.join(' ')} && git commit -m "ci: 문서 사이트 Pages" && git push`);
+  // Pages 주소
+  const wsFile = path.join(c.root, 'workspace.json');
+  const w = JSON.parse(read(wsFile));
+  const cur = (w.project || {}).pagesUrl;
+  let url = cur || null;
+  if (!url && c.host === 'github') url = S.pagesUrl(c.root);
+  if (!url && c.host === 'gitlab') url = await SR.gitlabPagesUrl(c.root);
+  if (url && url !== cur) {
+    w.project = { ...(w.project || {}), pagesUrl: url };
+    fs.writeFileSync(wsFile, `${JSON.stringify(w, null, 2)}\n`);
+    runWorkspaceKit(c.root, ['sync', '--quiet']);
+    lines.push(`Pages 주소: ${url} (workspace.json project.pagesUrl 에 적음, 같이 커밋한다)`);
+  } else if (url) lines.push(`Pages 주소: ${url}`);
+  else lines.push('Pages 주소: 첫 배포 뒤 GitLab 의 배포 › Pages 화면에서 확인해 workspace.json 의 project.pagesUrl 에 적는다 (kedovi start 브리핑 · 사이트가 쓴다)');
+  // 원격 이슈 · 의견이 바뀌면 다시 만들기
+  if (c.host === 'gitlab') {
+    const branch = (spawnSync('git', ['-C', c.root, 'rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' }).stdout || '').trim().replace(/^HEAD$/, '') || 'main';
+    lines.push(...await SR.setupGitlab(c.root, { branch }));
+  } else if (!known) {
+    lines.push('GitLab 이면 이슈 · 의견이 바뀔 때 사이트를 다시 만들기 (한 번만, 프로젝트 관리자):',
+      '  1. 설정 › CI/CD › 파이프라인 트리거 토큰에서 토큰을 만든다 (설명: kedovi docs pages)',
+      '  2. 설정 › 웹훅에 주소 https://<GitLab>/api/v4/projects/<프로젝트 ID>/ref/<기본 브랜치>/trigger/pipeline?token=<1의 토큰>, 이벤트: 이슈 · 댓글 · 작업 항목',
+      '  원격이 GitLab 이고 토큰(권한 api)이 있으면 kedovi remote setup 이 대신 만든다');
+  }
+  if (hosts.includes('github')) lines.push('GitHub: .github/workflows/pages.yml 이 이슈 · 댓글 · Discussions 이벤트에도 돌아 사이트를 다시 만든다 (워크플로 기본 토큰으로 읽는다. 다른 토큰을 쓰려면 저장소 비밀값 KEDOVI_SITE_TOKEN)');
+  if (hosts.includes('gitlab')) lines.push('CI 빌드가 이슈 · 일정 · 의견을 읽게: GitLab 설정 › CI/CD › 변수에 KEDOVI_SITE_TOKEN (권한 read_api 토큰, Masked). 없으면 사이트는 파일 내용만');
+  return lines;
+}
+const HOST_LABEL = { gitlab: 'GitLab', github: 'GitHub', other: '기타' };
+
+/** 원격 주소 → gitlab | github | other (모르는 호스트는 other) */
+const remoteHostOf = (url) => kit.inferHost(url) || 'other';
+
+async function cmdRemote(argv) {
+  const root = locateWorkspace();
+  const pos = argv.filter((x) => !x.startsWith('--'));
+  const has = (k) => argv.includes(`--${k}`);
+  const g = (...x) => spawnSync('git', ['-C', root, ...x], { encoding: 'utf8' });
+  const current = (g('remote', 'get-url', 'origin').stdout || '').trim();
+  if (!pos.length) {
+    console.log(current ? `origin: ${current} (${HOST_LABEL[remoteHostOf(current)]})` : '원격 없음. 붙이기: kedovi remote add <주소>');
+    return;
+  }
+  if (pos[0] === 'setup') { // 문서 사이트 연결만 다시 (Pages CI · Pages 주소 · GitLab 웹훅)
+    if (!current) fail('원격이 없습니다. 먼저: kedovi remote add <주소>');
+    const lines = await siteRemoteSetup({ root, url: current, host: remoteHostOf(current), pushed: false, yes: has('yes'), tty: process.stdin.isTTY && process.stdout.isTTY });
+    console.log(lines.length ? lines.join('\n') : '워크스페이스 문서 사이트(docs-site/)가 없어 할 일이 없습니다');
+    return;
+  }
+  if (pos[0] !== 'add' || !pos[1]) fail('사용법: kedovi remote add <주소> [--yes] [--no-push] · kedovi remote setup');
+  const url = pos[1].trim();
+  const localRepo = !/^(https?:\/\/|git@|ssh:\/\/|git:\/\/)/.test(url) && fs.existsSync(path.resolve(expandHome(url))); // 이 PC 의 bare repo 등
+  if (!kit.isGitUrl(url) && !localRepo) fail(`git 주소가 아닙니다: ${url} (https://… · git@… · ssh://…)`);
+  if (/^-/.test(url)) fail(`주소는 - 로 시작할 수 없습니다: ${url}`);
+  const tty = process.stdin.isTTY && process.stdout.isTTY;
+  const yes = has('yes');
+  if (current && current !== url) fail(`이미 origin 이 있습니다: ${current}. 바꾸려면 git remote set-url origin <주소> 를 직접 실행하세요`);
+  const host = remoteHostOf(url);
+  // 워크스페이스 repo 에는 작업 기록(handoffs/) · workspace.json 이 올라간다: 공개 repo 면 확인한다 (로컬 폴더는 보지 않는다)
+  if (!localRepo) {
+    const pub = require(path.join(KIT_ROOT, 'packs', 'core', 'lib', 'visibility.js')).isPublic(url);
+    if (pub === true) {
+      const warn = '공개 repo 입니다. 작업 기록(handoffs/: 명령 결과 · 로그 · 경로) · workspace.json(repo 주소 · 설정)이 누구에게나 보입니다';
+      if (tty && !yes) {
+        clack();
+        const ok = await yesNo({ message: '공개 repo 입니다. 그래도 워크스페이스 repo 로 쓸까요?', hint: `${warn}. 비공개로 바꾼 뒤 다시 하는 것을 권합니다.`, initialValue: false });
+        if (ok !== true) { console.log('원격을 붙이지 않았습니다'); return; }
+      } else if (!yes) fail(`${warn}. 그래도 쓰려면 --yes`);
+      else console.warn(`⚠ ${warn}`);
+    } else if (pub === null) console.warn('⚠ 이 repo 가 공개인지 확인하지 못했습니다 (주소 · 네트워크). 공개 repo 면 작업 기록이 누구에게나 보이니 비공개인지 직접 확인하세요');
+  }
+  if (!current) {
+    const r = g('remote', 'add', 'origin', localRepo ? path.resolve(expandHome(url)) : url);
+    if (r.status !== 0) fail(`원격을 붙이지 못했습니다: ${(r.stderr || '').trim()}`);
+  }
+  console.log(`✔ origin: ${url} (${HOST_LABEL[host]})`);
+  // 커밋이 하나도 없으면 첫 커밋부터 (init 이 못 한 경우)
+  if (g('rev-parse', '--verify', '-q', 'HEAD').status !== 0) {
+    const c = kit.initialCommit(root);
+    if (!c.ok) fail(`첫 커밋을 하지 못했습니다: ${c.reason}`);
+  }
+  let pushed = false;
+  let push = !has('no-push');
+  if (push && tty && !yes) {
+    clack();
+    const ok = await yesNo({ message: '지금 push 할까요?', hint: 'git push -u origin HEAD 로 커밋을 올립니다. 팀원은 그 뒤 clone 할 수 있습니다.' });
+    push = ok === true;
+  }
+  if (push) {
+    const ps = spawnSync('git', ['-C', root, 'push', '-u', 'origin', 'HEAD'], { encoding: 'utf8', stdio: tty ? ['inherit', 'pipe', 'pipe'] : 'pipe' });
+    if (ps.status === 0) { pushed = true; console.log('✔ push 완료 (git push -u origin HEAD)'); }
+    else console.warn(`⚠ push 하지 못했습니다: ${(ps.stderr || '').trim().split('\n').slice(-2).join(' ')}. 주소 · 권한을 확인한 뒤 git push -u origin HEAD`);
+  }
+  const ctx = { root, url, host, pushed, yes, tty };
+  const lines = [];
+  for (const step of REMOTE_AFTER) { try { lines.push(...((await step(ctx)) || [])); } catch (e) { lines.push(`⚠ ${e.message}`); } }
+  if (lines.length) console.log(`다음:\n${lines.map((l) => `  ${l}`).join('\n')}`);
+}
+
+/** 방향 인터뷰 상태 · 끝냄 표시 (workspace.json project.onboarded). again 이면 다시 하게 false 로 */
+function cmdKickoff(argv) {
+  const root = locateWorkspace();
+  const wsFile = path.join(root, 'workspace.json');
+  const w = JSON.parse(read(wsFile));
+  const cur = (w.project || {}).onboarded;
+  const sub = argv[0];
+  if (!sub) {
+    console.log(cur === false
+      ? '방향 인터뷰 전입니다. 팀장이 kedovi start 하면 에이전트가 kickoff 스킬로 시작합니다 (채팅: 「방향 인터뷰」). 끝나면 kedovi kickoff done'
+      : '방향 인터뷰를 마쳤습니다 (다시 하려면 kedovi kickoff again)');
+    return;
+  }
+  if (!['done', 'again'].includes(sub)) fail('사용법: kedovi kickoff [done|again]');
+  requireAdmin(root, '방향 인터뷰 상태 변경');
+  w.project = { ...(w.project || {}), onboarded: sub === 'done' };
+  fs.writeFileSync(wsFile, `${JSON.stringify(w, null, 2)}\n`);
+  if (!runWorkspaceKit(root, ['sync', '--quiet'])) process.exit(1);
+  console.log(sub === 'done'
+    ? '✔ 방향 인터뷰를 마쳤습니다 (workspace.json project.onboarded: true). commit · push 하면 팀에 적용됩니다'
+    : '✔ 다음 kedovi start 에서 방향 인터뷰를 다시 합니다 (팀장 세션)');
+}
+
 function cmdApproach(argv) {
   const root = locateWorkspace();
   const wsFile = path.join(root, 'workspace.json');
@@ -2734,7 +2775,7 @@ async function cmdType(argv) {
   if (!want) {
     console.log(`유형: ${kit.PROJECT_TYPES[cur] || cur || '정하지 않음'}`);
     for (const [k, v] of Object.entries(kit.PROJECT_TYPES)) console.log(`  kedovi type ${k.padEnd(14)} ${v}`);
-    console.log('  옵션: --approach sprint|full|issue · --code <현행 repo 이름,…> (개발 repo 로 바꿀 것)');
+    console.log('  옵션: --approach feature|sprint|full|issue · --code <현행 repo 이름,…> (개발 repo 로 바꿀 것)');
     return;
   }
   if (!kit.PROJECT_TYPES[want]) fail(`사용법: kedovi type [${Object.keys(kit.PROJECT_TYPES).join('|')}] [--approach ${Object.keys(kit.APPROACHES).join('|')}] [--code <이름,…>]`);
@@ -3360,6 +3401,9 @@ async function cmdStart(argv) {
     if (missing.length) console.warn(`⚠ repos/ 에 없는 repo: ${missing.join(', ')}. kedovi install`);
     if (waiting.length) console.warn(`… 아직 원격이 없는 repo: ${waiting.join(', ')}. 만든 사람이 push 하면 git pull → kedovi install`);
   } catch { /* workspace.json 문제는 에이전트 훅이 알린다 */ }
+  // 문서 사이트: 만든 사이트가 있으면 이 PC 에서 백그라운드로 띄운다 (이미 떠 있으면 그대로). 주소는 세션 브리핑 첫 줄 근처에 나온다
+  const site = await startSite(root);
+  if (site) console.log(`… 문서 사이트: ${site}`);
 
   // 메인 모델 = 프로필·팀·개인 설정을 합친 값. 전역 설정(ANTHROPIC_MODEL 등)이 워크스페이스 설정보다 앞서므로 항상 넘긴다
   // run = 연결 방식(kedovi ai)을 반영한 값: 게이트웨이면 게이트웨이 모델 이름, GPT 메인(게이트웨이 + Claude Code)도 여기서
@@ -3467,6 +3511,18 @@ function startPixelAgents(root, agent) {
  * 세션 첫 메시지. 브리핑 본문은 세션 시작 훅(packs/core/hooks/session-brief.js)이 컨텍스트로 넘기므로 "세션 브리핑" 한 줄만 보낸다 (전문을 첫 메시지로 넣으면 화면에 그대로 찍힌다).
  * 훅이 없는 옛 워크스페이스(upgrade 전)는 브리핑 도구 출력에 지시를 붙여 전문을 보낸다. 도구가 없거나 실패하면 빈 문자열
  */
+/** 문서 사이트 서버를 띄우고 주소 한 줄을 돌려준다 (사이트가 없거나 실패하면 ''). 워크스페이스의 팩 도구가 있으면 그것, 없으면 설치한 킷의 것 */
+async function startSite(root) {
+  try {
+    const lib = [path.join(root, 'packs', 'core', 'lib', 'sitehost.js'), path.join(KIT_ROOT, 'packs', 'core', 'lib', 'sitehost.js')].find((f) => fs.existsSync(f));
+    if (!lib) return '';
+    const S = require(lib);
+    await S.ensureServer(root);
+    const u = S.siteUrl(root);
+    return u ? [u.local, u.pages && `Pages ${u.pages}`].filter(Boolean).join(' · ') : '';
+  } catch { return ''; }
+}
+
 function briefPrompt(root) {
   if (fs.existsSync(path.join(root, 'packs', 'core', 'hooks', 'session-brief.js'))) return '세션 브리핑';
   const tool = [path.join(root, 'packs', 'core', 'bin', 'brief.js'), path.join(KIT_ROOT, 'packs', 'core', 'bin', 'brief.js')].find((f) => fs.existsSync(f));
@@ -3816,7 +3872,8 @@ function upgradeSummary(root, from) {
   const st = spawnSync('git', ['-C', root, '-c', 'core.quotepath=false', 'status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' }).stdout || '';
   const rows = st.split('\n').filter((l) => l.length > 3);
   // 생성 사이트(kedovi docs build 의 docs-site/)를 아직 커밋한 적이 없으면 git add -A 에 섞이지 않게 따로 안내한다
-  const site = rows.filter((l) => /^(docs-site|html)\//.test(l.slice(3)));
+  const outDir = ['docs-site', 'html'].find((d) => fs.existsSync(path.join(root, d, 'assets', 'site.json'))); // 워크스페이스 docs-site/ 원본은 생성물이 아니다
+  const site = outDir ? rows.filter((l) => l.slice(3).startsWith(`${outDir}/`)) : [];
   const newSite = site.length > 0 && site.every((l) => l.startsWith('??'));
   const files = rows.filter((l) => !(newSite && site.includes(l))).map((l) => l.slice(3));
   if (newSite) console.log(`\n 생성 사이트 docs-site/ ${site.length}개는 아직 커밋한 적이 없습니다. Pages 로 올릴 때만 커밋한다 (켜기: kedovi docs pages on, 안 올리면: kedovi docs pages off)`);
@@ -3833,7 +3890,7 @@ function upgradeSummary(root, from) {
 
 /** 도움말 분류: [제목, 한 줄 설명, 명령(첫 낱말 · 「team-mode enforce」 처럼 두 낱말)]. 도움말 머리의 명령은 모두 어딘가에 들어가야 한다 (npm test) */
 const HELP_GROUPS = [
-  ['시작 · 설치', '워크스페이스 만들기 · 받기 · 작업 시작 · 킷 새 버전', ['init', 'init-docs', 'install', 'start', 'upgrade', 'list', 'remove', 'help']],
+  ['시작 · 설치', '워크스페이스 만들기 · 받기 · 작업 시작 · 킷 새 버전', ['init', 'init-docs', 'install', 'remote', 'kickoff', 'start', 'upgrade', 'list', 'remove', 'help']],
   ['AI · 모델', '연결 방식 · 메인 에이전트 · 모델 프로필 · 응답 언어 · 대화 스타일 · 기능 추천', ['agent', 'ai', 'models', 'prefs', 'timestamp', 'suggest']],
   ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'views', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
@@ -3947,7 +4004,7 @@ async function cmdHelp(rest) {
 }
 
 /** 상태를 바꾸는 명령: 모르는 옵션이면 실행하지 않는다 (오타 · 다른 명령의 옵션으로 엉뚱하게 돌지 않게) */
-const KNOWN_OPTS = { upgrade: ['--add', '--all', '--scan', '--yes', '--allow-downgrade'], reset: ['--yes', '--all'], install: [], setup: [] };
+const KNOWN_OPTS = { remote: ['--yes', '--no-push'], upgrade: ['--add', '--all', '--scan', '--yes', '--allow-downgrade'], reset: ['--yes', '--all'], install: [], setup: [] };
 
 /** Node 버전과 상관없는 kedovi 명령 (고정 위치 실행 파일 + PATH). 처음 한 번만 알린다 */
 function ensureGlobalShim() {
@@ -4095,6 +4152,8 @@ async function main() {
     case 'extremes': return runWsTool('extremes.js', rest.map((a, i) => (rest[i - 1] === '--out' || (i === 1 && ['check', 'fixture'].includes(rest[0])) ? path.resolve(a) : a)), 'backend');
     case 'team-mode': return cmdTeamMode(rest);
     case 'approach': return cmdApproach(rest);
+    case 'remote': return cmdRemote(rest);
+    case 'kickoff': return cmdKickoff(rest);
     case 'type': return cmdType(rest);
     case 'tips': return screenTip(true);
     case 'suggest': return runWsTool('suggest.js', rest);
@@ -4131,4 +4190,5 @@ async function main() {
   }
 }
 
-main().catch((e) => fail(e.stack || e.message));
+if (require.main === module) main().catch((e) => fail(e.stack || e.message));
+module.exports = { ensureAccount }; // 시험용 (npm test)

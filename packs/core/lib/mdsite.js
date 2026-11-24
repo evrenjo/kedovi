@@ -20,7 +20,7 @@ const V = require('./vendor/markdown-it');
 const ID_SRC = '[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\\d+';
 const ID_FULL = new RegExp(`^${ID_SRC}$`);
 const ID_IN_TEXT = new RegExp(`(?<![\\w-])(${ID_SRC})(?![\\w-])`, 'g');
-const SKIP_DIRS = new Set(['docs-site', 'html', 'originals', 'node_modules', '.git', '.github', '.gitlab']);
+const SKIP_DIRS = new Set(['docs-site', 'html', 'originals', 'ai-docs', 'node_modules', '.git', '.github', '.gitlab']); // ai-docs = AI 자료 (사람 문서 사이트에 넣지 않는다)
 const SKIP_ROOT_FILES = new Set(['AGENTS.md', 'CLAUDE.md', 'AGENTS.override.md', 'CLAUDE.local.md']);
 const IMG_EXT = /\.(png|jpe?g|gif|svg|webp)$/i;
 const SHEET_RE = /<section\b[^>]*\bclass="[^"]*\bsheet\b/;
@@ -494,7 +494,11 @@ function build(input, opts = {}) {
   }
   const flat = [];
   for (const g of groups) for (const d of g.docs) { d.groupName = g.group; flat.push(d); }
-  const env0 = { docs, where, mdPages, opts, prefixRe, warnings, files, titleWords, docNames, groups, flat, splitPages, spa: new Set(), texts: [] };
+  const virt = cfg.project ? VIRTUAL.map((v) => (v.view === 'dashboard' && docs.some((d) => d.page === 'index.html') ? { ...v, page: '_/dashboard.html' } : v)) : [];
+  const navG = navData(groups, virt);
+  const firstLeaf = (items) => { for (const x of items) { if (x.hide) continue; if (x.items) { const f = firstLeaf(x.items); if (f) return f; } else return x.p; } return null; };
+  const tabs = navG.map((g) => ({ t: g.group, p: firstLeaf(g.items) })).filter((x) => x.p);
+  const env0 = { tabs, home: virt.length ? virt[0].page : 'index.html', docs, where, mdPages, opts, prefixRe, warnings, files, titleWords, docNames, groups, flat, splitPages, spa: new Set(), texts: [] };
   for (const d of docs) {
     if (d.kind === 'sheets') { pages[d.page] = sheetPage(d, opts.sheetTheme); continue; }
     pages[d.page] = mdPage(d, env0);
@@ -507,6 +511,16 @@ function build(input, opts = {}) {
     if (!pages[page]) pages[page] = folderPage(dir, page, docs, env0);
   }
   for (const g of groups) for (const d of g.docs) if (d.kind === 'overview' && !pages[d.page]) pages[d.page] = folderPage(d.md.replace(/\/$/, '') || '.', d.page, docs, env0);
+  // 프로젝트 사이트: 가상 화면 틀 (대시보드는 첫 화면 index.html, 그 자리에 md 문서가 있으면 _/dashboard.html)
+  if (virt.length) {
+    const extra = {
+      erds: erds.map((e) => ({ p: e.page, t: e.title })),
+      sheets: groups.flatMap((g) => g.sheets || []).map((sh) => ({ p: sh.page, t: sh.title, ids: sh.sheetIds })),
+    };
+    for (const v of virt) {
+      pages[v.page] = layout({ page: v.page, kind: 'virtual', view: v.view, title: v.t, crumb: v.tab, body: `<noscript><p>이 화면은 브라우저 스크립트로 그립니다.</p></noscript>`, toc: [], extra: ['erd', 'storyboard', 'screen'].includes(v.view) ? extra : null }, env0);
+    }
+  }
   // 전체 인쇄: 쪽마다 넣지 않고, 이 쪽이 메뉴 순서대로 모든 문서를 불러와 한 번에 인쇄한다 (site.js)
   const autoPrint = ((opts.config || {}).printAll || {}).autoPrint !== false;
   pages[PRINT_PAGE] = layout({ page: PRINT_PAGE, kind: 'print', autoPrint, title: '전체 문서 인쇄', crumb: '인쇄', body: `<div id="print-all"${autoPrint ? '' : ' data-auto="0"'}><p class="print-status">문서를 불러오는 중…</p></div>`, toc: [] }, env0);
@@ -526,7 +540,7 @@ function build(input, opts = {}) {
   // 왼쪽 메뉴: 쪽마다 넣지 않고 한 파일 (문서가 많아도 쪽 크기가 그대로). 주소는 사이트 맨 위 기준, site.js 가 그 쪽 기준으로 바꾸고 지금 문서를 표시한다
   // pages = 앱이 새로고침 없이 옮겨 다니는 쪽 (문서 · 폴더 · 전체 인쇄). 화면설계서 · ERD 뷰어는 따로 연다
   // v = 나중에 읽는 파일의 버전 (맨 끝에서 채운다)
-  pages['assets/nav.js'] = `window.DS_NAV = ${JSON.stringify({ key: cfg.title || opts.title || '문서', groups: navData(groups), pages: [...env0.spa].sort(), v: {} }).replace(/</g, '\\u003c')};\n`;
+  pages['assets/nav.js'] = `window.DS_NAV = ${JSON.stringify({ key: cfg.title || opts.title || '문서', groups: navG, ...(virt.length ? { project: true, home: virt[0].page, me: virt.filter((v) => v.tab === '나').map((v) => ({ p: v.page, t: v.t, v: v.view, sec: v.sec || '' })) } : {}), pages: [...env0.spa].sort(), v: {} }).replace(/</g, '\\u003c')};\n`;
   // 본문 검색 색인: 절(## · ###)마다 글자. 처음 검색할 때만 읽는다
   pages['assets/search-text.js'] = `/* 생성물: kedovi docs build. 본문 검색 색인 */\nwindow.DS_TEXT = ${JSON.stringify(env0.texts).replace(/</g, '\\u003c')};\n`;
   pages['assets/search.js'] = searchJs({
@@ -539,7 +553,7 @@ function build(input, opts = {}) {
   for (const [p, c] of Object.entries({ ...(opts.assets || {}), ...(erds.length ? (opts.erd.assets || {}) : {}), ...(mermaid ? (opts.mermaid || {}) : {}) })) pages[p] = c;
   versionAssets(pages);
   return {
-    pages, index, warnings: [...new Set(warnings)].sort(), collisions: collisionsOf(pages, mdPages), docs: docs.map(({ md, page, title, status, kind }) => ({ md, page, title, status, kind })),
+    pages, index, warnings: [...new Set(warnings)].sort(), collisions: collisionsOf(pages, mdPages), docs: docs.map(({ md, page, title, status, kind, groupName }) => ({ md, page, title, status, kind, group: groupName || '' })),
     erds: erds.map((e) => ({ dir: e.dir, page: e.page, title: e.title, model: e.model })),
     // docs-site.json groups 어느 묶음에도 맞지 않아 메뉴 「기타」 로 간 문서
     unlisted: [...new Set(groups.filter((g) => g.rest).flatMap((g) => g.docs.map((d) => d.origin || d.md)))],
@@ -553,7 +567,7 @@ function build(input, opts = {}) {
 function versionAssets(pages) {
   const crypto = require('crypto');
   const hash = (p) => crypto.createHash('sha1').update(pages[p]).digest('hex').slice(0, 8);
-  const late = ['assets/search-text.js', 'assets/mermaid/mermaid.min.js'].filter((p) => pages[p] != null);
+  const late = ['assets/search-text.js', 'assets/mermaid/mermaid.min.js', 'assets/vendor/frappe-gantt.js', 'assets/vendor/frappe-gantt.css'].filter((p) => pages[p] != null);
   if (pages['assets/nav.js']) pages['assets/nav.js'] = String(pages['assets/nav.js']).replace('"v":{}', `"v":${JSON.stringify(Object.fromEntries(late.map((p) => [p, hash(p)])))}`);
   const ver = new Map();
   const vOf = (p) => { if (!ver.has(p)) ver.set(p, hash(p)); return ver.get(p); };
@@ -597,6 +611,47 @@ function commonWords(titles) {
 }
 
 /**
+ * 프로젝트 사이트(docs-site.json "project": true)의 가상 화면: 문서가 아니라 빌드 DB(assets/site-db.json)로 앱이 그리는 쪽.
+ * 쪽 파일은 빈 틀(쪽 정보 view)만 만들고 주소 뒤 ?id= 로 대상을 고른다 (_/table.html?id=orders). tab = 상단 탭(docs-site.json 묶음 이름),
+ * at: 'head' = 탭 메뉴 맨 위, sec = 메뉴 안 소제목, hidden = 메뉴에 안 보이는 하위 화면(탭 표시용). tab '나' 는 상단 탭이 아니라 머리 줄 이름 단추
+ */
+const VIRTUAL = [
+  { view: 'dashboard', page: 'index.html', t: '대시보드', tab: '개요', at: 'head' },
+  { view: 'progress', page: '_/progress.html', t: '진행 현황', tab: '개요' },
+  { view: 'recent', page: '_/recent.html', t: '최근 바뀐 문서', tab: '개요' },
+  { view: 'team', page: '_/team.html', t: '팀 · 설정', tab: '개요' },
+  { view: 'erd', page: '_/erd.html', t: 'ERD 보기', tab: '설계', sec: '보기' },
+  { view: 'table', page: '_/table.html', t: '테이블', tab: '설계', hidden: true },
+  { view: 'storyboard', page: '_/storyboard.html', t: '화면설계서 보기', tab: '설계', sec: '보기' },
+  { view: 'screen', page: '_/screen.html', t: '화면 상세', tab: '설계', hidden: true },
+  { view: 'api', page: '_/api.html', t: 'API', tab: '설계', sec: '보기' },
+  { view: 'all-fn', page: '_/all/fn.html', t: '기능 명세 전체', tab: '설계', sec: '모아보기' },
+  { view: 'all-api', page: '_/all/api.html', t: 'API 전체', tab: '설계', sec: '모아보기' },
+  { view: 'all-screen', page: '_/all/screen.html', t: '화면 전체', tab: '설계', sec: '모아보기' },
+  { view: 'tests', page: '_/tests.html', t: '시나리오', tab: '테스트' },
+  { view: 'trace', page: '_/trace.html', t: '추적표', tab: '테스트' },
+  { view: 'gantt', page: '_/gantt.html', t: '간트', tab: '일정' },
+  { view: 'milestones', page: '_/milestones.html', t: '마일스톤', tab: '일정' },
+  { view: 'workitems', page: '_/workitems.html', t: '작업 항목', tab: '일정' },
+  { view: 'issues', page: '_/issues.html', t: '열린 이슈', tab: '이슈' },
+  { view: 'issues-board', page: '_/issues/board.html', t: '처리 보드', tab: '이슈' },
+  { view: 'issues-setup', page: '_/issues/setup.html', t: '연계 설정', tab: '이슈' },
+  { view: 'files', page: '_/files.html', t: '참고 문서', tab: '자료실', at: 'head' },
+  { view: 'board', page: '_/board.html', t: '게시판', tab: '자료실', at: 'head' },
+  { view: 'post', page: '_/board/post.html', t: '게시판 글', tab: '자료실', hidden: true },
+  { view: 'write', page: '_/board/new.html', t: '글쓰기', tab: '자료실', hidden: true },
+  { view: 'me', page: '_/me.html', t: '프로필', tab: '나' },
+  { view: 'me-work', page: '_/me/work.html', t: '내 일', tab: '나' },
+  { view: 'me-mentions', page: '_/me/mentions.html', t: '나를 부른 의견', tab: '나' },
+  { view: 'me-comments', page: '_/me/comments.html', t: '내가 쓴 의견', tab: '나' },
+  { view: 'me-saved', page: '_/me/saved.html', t: '즐겨찾기 · 최근 본', tab: '나', sec: '모아 둔 것' },
+  { view: 'me-views', page: '_/me/views.html', t: '저장한 보기', tab: '나', sec: '모아 둔 것' },
+  { view: 'me-memos', page: '_/me/memos.html', t: '내 메모', tab: '나', sec: '모아 둔 것' },
+  { view: 'me-settings', page: '_/me/settings.html', t: '알림 · 보기 설정', tab: '나', sec: '설정' },
+];
+const VTABS = ['개요', '설계', '기능', '테스트', '일정', '이슈', '자료실'];
+
+/**
  * 왼쪽 메뉴 묶음 [{ group, icon, docs }].
  * 설정(docs-site.json groups: [{ group, icon, files: [glob], split }])이 있으면 그 순서대로, 맞지 않는 문서는 「기타」.
  * 없으면 기본: 폴더마다 한 묶음(이름 = 그 폴더 README 제목 · 문서 제목들의 공통 낱말 · 폴더 이름, 루트는 「시작」).
@@ -613,7 +668,9 @@ function navGroups(docs, config) {
       const ds = [];
       for (const re of res) for (const d of listed.filter((x) => !used.has(x) && re.test(x.origin || x.md)).sort(order)) { used.add(d); ds.push(d); }
       return { group: g.group || `묶음 ${i + 1}`, icon: g.icon || ICONS[i % ICONS.length], docs: ds, collapsed: !!g.collapsed, tree: !!g.tree };
-    }).filter((g) => g.docs.length);
+    }).filter((g) => g.docs.length || (config.project && VTABS.includes(g.group)));
+    // 프로젝트 사이트: 가상 화면이 있는 상단 탭은 설정에 없어도 둔다 (일정 · 이슈 등 문서 없는 탭)
+    if (config.project) for (const t of VTABS) if (!out.some((g) => g.group === t)) out.push({ group: t, icon: '', docs: [], collapsed: false, tree: false });
     const rest = listed.filter((d) => !used.has(d)).sort(order);
     if (rest.length) out.push({ group: '기타', icon: '…', docs: rest, rest: true });
     return out;
@@ -667,7 +724,7 @@ function navGroups(docs, config) {
  *   tree: true       묶음 안 문서를 폴더대로 접히는 트리로 (issues/2024/… → 2024 ▸ …)
  * [{ k, group, icon, open, acts: [{ p, h, label }], items: [{ p, t } | { k, dir, items }] }]
  */
-function navData(groups) {
+function navData(groups, virt) {
   const item = (d) => ({ p: d.page, t: d.navTitle || d.title });
   // 묶음 제목 옆 바로 가기: 하나면 그 뷰어로, 여럿이면 개요 쪽의 그 블록으로
   const act = (list, hash, label) => {
@@ -688,16 +745,24 @@ function navData(groups) {
     const draw = (node, key) => [...node.docs.map(item), ...[...node.kids].map(([seg, kid]) => ({ k: `${key}/${seg}`, dir: seg.replace(/^\d+[-_]/, '') || seg, items: draw(kid, `${key}/${seg}`) }))];
     return draw(root, g.group);
   };
-  return groups.map((g) => ({
-    k: g.group, group: g.group, icon: g.icon, open: !g.collapsed,
-    acts: [act(g.sheets, 'sheet-docs', '설계서 보기'), act(g.erds, 'erd-docs', 'ERD 보기')].filter(Boolean),
-    items: g.tree ? tree(g) : g.docs.map(item),
-  }));
+  return groups.map((g) => {
+    const docsItems = g.tree ? tree(g) : g.docs.map(item);
+    const vs = (virt || []).filter((v) => v.tab === g.group);
+    const vi = (v) => ({ p: v.page, t: v.t, v: v.view, ...(v.hidden ? { hide: 1 } : {}) });
+    const head = vs.filter((v) => v.at === 'head').map(vi);
+    const tail = vs.filter((v) => !v.at && !v.sec).map(vi);
+    const secs = [...new Set(vs.filter((v) => v.sec).map((v) => v.sec))].map((sec) => ({ k: `${g.group}/${sec}`, sec, items: vs.filter((v) => v.sec === sec).map(vi) }));
+    return {
+      k: g.group, group: g.group, icon: g.icon, open: !g.collapsed,
+      acts: [act(g.sheets, 'sheet-docs', '설계서 보기'), act(g.erds, 'erd-docs', 'ERD 보기')].filter(Boolean),
+      items: [...head, ...docsItems, ...tail, ...secs],
+    };
+  });
 }
 
 /** 메뉴 자료 → HTML (앱의 메뉴와 같은 틀. 점검 · 시험용) */
 function navHtml(data) {
-  const items = (list) => list.map((x) => (x.items
+  const items = (list) => list.filter((x) => !x.hide).map((x) => (x.sec ? `<div class="nav-sec" data-k="${esc(x.k)}">${esc(x.sec)}</div>${items(x.items)}` : x.items
     ? `<details class="nav-dir" data-k="${esc(x.k)}"><summary>${esc(x.dir)}</summary>${items(x.items)}</details>`
     : `<a class="nav-link" href="${esc(x.p)}" data-p="${esc(x.p)}">${esc(x.t)}</a>`)).join('');
   const act = (a) => `<a class="nav-act" href="${esc(a.p)}${a.h ? `#${a.h}` : ''}" data-p="${esc(a.p)}" data-h="${a.h}" title="${a.label}" aria-label="${a.label}">▶</a>`;
@@ -717,8 +782,10 @@ const ICON_PATHS = {
   ink: '<path d="M13 21h8"/><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
   print: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
   theme: '<circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
 };
-const svgIcon = (k) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[k]}</svg>`;
+const svgIcon = (k) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[k]}</svg>`;
 
 /** 쪽 하나: 가이드와 같은 틀. a = { page, title, crumb, h1Html, lead, src, body, toc: [{ lvl, sid, text }] } */
 const PRINT_PAGE = 'print-all.html';
@@ -742,8 +809,11 @@ function layout(a, env) {
     page: a.page, kind: a.kind || 'doc', title: a.title, head: title, crumb: a.crumb || '', status: a.status || '', h1: a.h1Html || esc(a.title), lead: a.lead || '',
     src: src ? { href: src, name: path.basename(a.srcName || '') } : null, toc: a.toc || [], prev: i < 0 ? null : near(flat[i - 1]), next: i < 0 ? null : near(flat[i + 1]),
     ...(a.kind === 'print' ? { autoPrint: a.autoPrint !== false } : {}),
+    ...(a.view ? { view: a.view } : {}), ...(a.extra ? a.extra : {}),
   };
-  const site0 = { title: site, logo, version: cfg.version || '', ink: cfg.ink !== false };
+  const site0 = { title: site, logo, version: cfg.version || '', ink: cfg.ink !== false, ...(cfg.project ? { project: true } : {}) };
+  const tabOf = (env.tabs || []).find((t) => t.t === a.crumb || t.t === (flat[i] || {}).groupName);
+  const tabsHtml = (env.tabs || []).map((t) => `<a class="tab${t === tabOf ? ' on' : ''}" href="${esc(relLink(a.page, t.p))}"${t === tabOf ? ' aria-current="true"' : ''}>${esc(t.t)}</a>`).join('');
   return `<!doctype html>
 <html lang="ko" data-theme="light">
 <head>
@@ -758,9 +828,9 @@ function layout(a, env) {
 <body data-root="${r}">
 <div id="ds-app">
 <header>
-  <div class="left"><button class="menu-btn" id="menu" type="button" aria-label="메뉴" aria-expanded="false" aria-controls="side-nav">☰</button><a class="brand" href="${r}index.html"><span class="logo">${esc(logo)}</span>${esc(site)}</a></div>
-  <div class="search"><input id="q" placeholder="검색 (제목 · 본문 · ID)" autocomplete="off"><kbd>⌘K</kbd><div class="results" id="results"></div></div>
-  <div class="tools"><span>${esc(cfg.version || '')}</span>${cfg.ink === false ? '' : `<button id="ink" type="button" title="펜 필기 (끝내기: Esc)" aria-label="펜 필기" aria-pressed="false">${svgIcon('ink')}</button>`}<button id="print" type="button" title="인쇄 (이 문서 · 전체 문서)" aria-label="인쇄" aria-haspopup="true">${svgIcon('print')}</button><button id="theme" type="button" title="테마" aria-label="테마">${svgIcon('theme')}</button></div>
+  <div class="left"><button class="menu-btn" id="menu" type="button" aria-label="메뉴" aria-expanded="false" aria-controls="side-nav">${svgIcon('menu')}</button><a class="brand" href="${r}${esc(env.home || 'index.html')}"><span class="logo">${esc(logo)}</span>${esc(site)}</a></div>
+  <nav class="tabs" aria-label="상단 메뉴">${tabsHtml}</nav>
+  <div class="tools">${cfg.version ? `<span>${esc(cfg.version)}</span>` : ""}<button id="search-btn" class="search-btn" type="button" title="검색 (⌘K)" aria-label="검색">${svgIcon('search')}<kbd>⌘K</kbd></button>${cfg.ink === false ? '' : `<button id="ink" type="button" title="펜 필기 (끝내기: Esc)" aria-label="펜 필기" aria-pressed="false">${svgIcon('ink')}</button>`}<button id="print" type="button" title="인쇄 (이 문서 · 전체 문서)" aria-label="인쇄" aria-haspopup="true">${svgIcon('print')}</button><button id="theme" type="button" title="테마" aria-label="테마">${svgIcon('theme')}</button></div>
 </header>
 <div class="layout">
   <nav class="side" id="side-nav" data-page="${esc(a.page)}"><noscript><a class="nav-link" href="${r}index.html">문서 목록</a></noscript></nav><div class="nav-backdrop" id="nav-backdrop"></div>

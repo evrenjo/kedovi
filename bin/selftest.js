@@ -34,6 +34,8 @@ process.env.KEDOVI_TELEGRAM_API = 'http://127.0.0.1:9';
 process.env.KEDOVI_USAGE_FILE = path.join(os.tmpdir(), `kedovi-selftest-usage-${process.pid}.json`); // 이 PC 의 실제 주간 사용량이 상한 시험에 끼지 않게
 process.env.KEDOVI_LOGIN_PLANS = 'none'; // 상한(작업 리더)이 이 PC 의 Claude 요금제에 따라 달라지지 않게
 process.env.KEDOVI_IDLE_SECONDS = '100000'; // PC 앞이면 알림을 건너뛰므로, 테스트는 자리에 없는 것으로
+process.env.KEDOVI_SITE_REMOTE = 'off'; // 문서 사이트 빌드가 원격(GitLab · GitHub)을 읽지 않게. 원격 시험은 fixture(KEDOVI_SITE_REMOTE_FIXTURE)로
+for (const k of ['KEDOVI_SITE_TOKEN', 'GITLAB_TOKEN', 'GITHUB_TOKEN', 'GH_TOKEN', 'KEDOVI_SITE_REMOTE_FIXTURE', 'KEDOVI_SITE_REMOTE_LOG']) delete process.env[k];
 for (const k of ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID', 'TELEGRAM_TEAM_BOT_TOKEN', 'KEDOVI_CHANNEL']) delete process.env[k];
 const results = [];
 const record = (name, ok, detail = '') => results.push({ name, ok, detail });
@@ -577,13 +579,17 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   e['비밀값 의심 줄 (값은 안 찍음)'] = !!sc && sc.secrets.length === 1 && sc.secrets[0].line === 3 && !/Zx9!secretvalue/.test(scanOut.stdout + text) && /비밀값 의심 줄 1곳/.test(text);
   // 기획 repo 없음 경고: 신규는 알리고, docsRepo: false 나 운영·고도화 유형이면 조용
   const syncOut = () => { const r = spawnSync(process.execPath, ['bin/kit.js', 'sync'], { cwd: dw, encoding: 'utf8' }); return r.stdout + r.stderr; };
+  const quietWithSite = !/기획 repo\(kind: "docs"\)가 없습니다/.test(syncOut()); // 워크스페이스 docs-site/ 원본이 있으면 조용
+  const siteDir = path.join(dw, 'docs-site');
+  if (fs.existsSync(siteDir)) fs.renameSync(siteDir, `${siteDir}.off`); // 옛 워크스페이스처럼
   const warned = /기획 repo\(kind: "docs"\)가 없습니다/.test(syncOut());
   const setWs = (f) => { const w = JSON.parse(wsRaw); f(w); fs.writeFileSync(wsFile, JSON.stringify(w, null, 2)); };
   setWs((w) => { w.docsRepo = false; });
   const off = !/기획 repo\(kind: "docs"\)가 없습니다/.test(syncOut());
   const kitLib = require('./kit.js');
   const typed = (type) => { const w = JSON.parse(wsRaw); w.project = { ...(w.project || {}), type }; fs.writeFileSync(wsFile, JSON.stringify(w, null, 2)); const o = syncOut(); return /기획 repo\(kind: "docs"\)가 없습니다/.test(o); };
-  e['기획 repo 경고 (알림 · 끄기 · 운영·고도화)'] = warned && off && !!kitLib && !typed('enhancement');
+  e['기획 repo 경고 (알림 · 끄기 · 운영·고도화 · docs-site 있으면 조용)'] = warned && off && !!kitLib && !typed('enhancement') && quietWithSite;
+  if (fs.existsSync(`${siteDir}.off`)) fs.renameSync(`${siteDir}.off`, siteDir);
   fs.writeFileSync(wsFile, wsRaw);
   record('보완 (결정 질문 막기 · 기존 폴더 훑기 · 기획 repo 경고)', Object.values(e).every(Boolean), Object.entries(e).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
@@ -2293,11 +2299,15 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     fs.writeFileSync(path.join(dir, 'docs', 'grp-ref.md'), '# 참조\n\n- `repos/client/grp-web/src/App.tsx`\n');
     const dead = require(path.join(dir, 'packs', 'core', 'bin', 'check-refs.js')).findDeadRefs(dir).map((d) => d.ref);
     const refs = !dead.includes('repos/client/grp-web/src/App.tsx');
-    // 문서 사이트(루트): 그룹 repo 도 repo 로 본다 (사본 · 원본 단추)
+    // 문서 사이트(워크스페이스 docs-site/ 원본 → .agents/site/): 그룹 repo 도 repo 로 본다 (코드 repo 는 기본 뺌, 설정으로 사본 · 원본 단추)
     fs.writeFileSync(path.join(dir, 'repos', 'server', 'grp-api', 'README.md'), '# grp api\n');
+    const cfgFile = path.join(dir, 'docs-site', 'docs-site.json');
+    const cfgBefore = fs.readFileSync(cfgFile, 'utf8');
+    fs.writeFileSync(cfgFile, JSON.stringify({ ...JSON.parse(cfgBefore), repos: { code: 'copy' } }, null, 2));
     const site = spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'docs-site.js'), 'build', dir], { cwd: dir, encoding: 'utf8' });
-    const siteOk = /grp-api 사본/.test(site.stdout) && fs.existsSync(path.join(dir, 'docs-site', 'repos', 'server', 'grp-api', 'index.html'));
-    fs.rmSync(path.join(dir, 'docs-site'), { recursive: true, force: true });
+    const siteOk = /grp-api 사본/.test(site.stdout) && fs.existsSync(path.join(dir, '.agents', 'site', 'repos', 'server', 'grp-api', 'index.html'));
+    fs.writeFileSync(cfgFile, cfgBefore);
+    fs.rmSync(path.join(dir, '.agents', 'site'), { recursive: true, force: true });
     // 옮기기: 폴더 · workspace.json · 문서 경로, 옛 위치가 남으면 doctor 가 알림
     fs.writeFileSync(path.join(dir, 'docs', 'grp-ref.md'), '# 참조\n\n- `repos/server/grp-api/README.md`\n- repos/server/grp-api2 그대로\n');
     spawnSync('git', ['-C', dir, 'add', 'docs/grp-ref.md'], { encoding: 'utf8' });
@@ -2542,7 +2552,10 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const stages = () => P.parse(fs.readFileSync(file, 'utf8')).stages.map((x) => x.name).join('|');
   const agents = () => fs.readFileSync(path.join(dir, 'AGENTS.md'), 'utf8');
   const setAp = (v) => { const w = JSON.parse(fs.readFileSync(wsFile, 'utf8')); if (v) w.project.approach = v; else delete w.project.approach; fs.writeFileSync(wsFile, JSON.stringify(w, null, 2)); return run(process.execPath, ['bin/kit.js', 'sync'], dir); };
-  const inc = JSON.parse(fs.readFileSync(wsFile, 'utf8')).project.approach === 'sprint' && /\*\*진행 방식: MVP · 스프린트/.test(agents()) && /「백로그」/.test(agents()) && stages() === [P.IDEA_STAGE, ...P.PRESETS.sprint.stages].join('|'); // 신규는 아이디어 · 전체 그림부터
+  // 새 워크스페이스 기본 = 기능 단위 (설계 기준 → 기능 반복 → 오픈, 아이디어 단계 없음: 방향 인터뷰가 대신한다)
+  const feat = JSON.parse(fs.readFileSync(wsFile, 'utf8')).project.approach === 'feature' && /\*\*진행 방식: 기능 단위/.test(agents()) && stages() === P.PRESETS.feature.stages.join('|');
+  setAp('sprint'); kitLib.ensurePlan(dir); // 기본 단계 그대로면 진행 방식에 맞게 새 뼈대
+  const inc = feat && /\*\*진행 방식: MVP · 스프린트/.test(agents()) && /「백로그」/.test(agents()) && stages() === [P.IDEA_STAGE, ...P.PRESETS.sprint.stages].join('|'); // 스프린트는 아이디어 · 전체 그림부터
   const full = /\*\*진행 방식: 워터폴 · 전체/.test(fs.readFileSync(path.join(tmp, 'plan-ws', 'AGENTS.md'), 'utf8'));
   // 스프린트 끝 날짜가 지났는데 데모 전이면 kedovi plan check 가 ⚠
   const keep = fs.readFileSync(file, 'utf8');
@@ -2563,7 +2576,68 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   // 옛 워크스페이스: 그 사이 유형 기본값이 된 팩은 upgrade 가 알린다 (신규 유형인데 screens · datamodel 이 없으면)
   const offPacks = kitLib.missingTypePacks({ project: { type: 'new' }, packs: ['core', 'project'] }, KIT).join(',');
   const noneOff = kitLib.missingTypePacks(JSON.parse(fs.readFileSync(wsFile, 'utf8')), KIT).length === 0;
-  record('진행 방식 (스프린트 · 전체 · 로드맵 · 옛 워크스페이스)', inc && overdue && full && switched && kept && old && bad && offPacks === 'screens,datamodel' && noneOff, `신규 = 스프린트 · 안내 · 반복 단계 ${inc} · 끝 날짜 지남 ⚠ ${overdue} · 분석·설계 = 전체 ${full} · 바꾸면 로드맵 새 뼈대 ${switched} · 끝낸 단계 있으면 그대로 ${kept} · 없으면 안내 없음 ${old} · 잘못된 값 막음 ${bad} · 꺼진 기본 팩 알림 ${offPacks} · 새 워크스페이스는 없음 ${noneOff}`);
+  record('진행 방식 (기능 단위 · 스프린트 · 전체 · 로드맵 · 옛 워크스페이스)', inc && overdue && full && switched && kept && old && bad && offPacks === 'screens,datamodel' && noneOff, `신규 = 기능 단위 ${feat} → 스프린트 · 안내 · 반복 단계 ${inc} · 끝 날짜 지남 ⚠ ${overdue} · 분석·설계 = 전체 ${full} · 바꾸면 로드맵 새 뼈대 ${switched} · 끝낸 단계 있으면 그대로 ${kept} · 없으면 안내 없음 ${old} · 잘못된 값 막음 ${bad} · 꺼진 기본 팩 알림 ${offPacks} · 새 워크스페이스는 없음 ${noneOff}`);
+}
+
+// 첫 시작 흐름 — init 은 첫 커밋까지(원격 없음 · 방향 인터뷰 전 · 기능 단위), kedovi remote add 는 origin · push (로컬 bare repo),
+// 방향 인터뷰 훅은 onboarded false 인 팀장에게만, 저장한 계정은 다시 묻지 않는다, 문서 사이트 서버는 사이트가 있을 때만 띄우고 다시 쓴다
+{
+  const dir = path.join(tmp, 'kickoff-ws');
+  const made = run(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dir, '--name', 'kickoff'], tmp);
+  const g = (...a) => spawnSync('git', ['-C', dir, ...a], { encoding: 'utf8' });
+  const wsFile = path.join(dir, 'workspace.json');
+  const proj = () => JSON.parse(fs.readFileSync(wsFile, 'utf8')).project;
+  const log = (g('log', '--format=%s').stdout || '').trim();
+  const init = made.ok && log === 'chore: init workspace' && !(g('remote').stdout || '').trim() && !(g('status', '--porcelain').stdout || '').trim()
+    && proj().onboarded === false && proj().approach === 'feature' && proj().type === 'new';
+  // 원격: 로컬 bare repo 에 push. 다른 주소로 다시 붙이면 거부
+  const bare = path.join(tmp, 'kickoff-remote.git');
+  spawnSync('git', ['init', '-q', '--bare', bare]);
+  const aik = (args, input = '') => spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), ...args], { cwd: dir, encoding: 'utf8', input, env: { ...process.env, CLAUDE_PROJECT_DIR: undefined } });
+  const ra = aik(['remote', 'add', bare]);
+  const pushed = (spawnSync('git', ['--git-dir', bare, 'log', '--format=%s'], { encoding: 'utf8' }).stdout || '').trim() === 'chore: init workspace';
+  // 원격을 붙이면 문서 사이트 Pages CI(GitLab · GitHub 둘 다: 주소로 모를 때)와 원격 이슈 웹훅 · CI 토큰 안내 (토큰 값은 없다)
+  const siteCi = fs.existsSync(path.join(dir, '.gitlab-ci.yml')) && fs.existsSync(path.join(dir, '.github', 'workflows', 'pages.yml')) && /문서 사이트 Pages CI/.test(ra.stdout) && /파이프라인 트리거 토큰/.test(ra.stdout) && /KEDOVI_SITE_TOKEN/.test(ra.stdout);
+  const remote = ra.status === 0 && pushed && siteCi && (g('remote', 'get-url', 'origin').stdout || '').trim() === bare && /팀원: git clone/.test(ra.stdout)
+    && aik(['remote', 'add', path.join(tmp, 'other.git')]).status !== 0 && aik(['remote', 'add', bare, '--bogus']).status !== 0;
+  // 방향 인터뷰 훅: 팀장이 없으면(누구나 팀장) 알림 · 다른 사람이 팀장이면 조용 · 끝냄 뒤 조용 · 필드 없는 옛 워크스페이스 조용
+  const hook = () => spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'hooks', 'kickoff-brief.js')], { cwd: dir, encoding: 'utf8', input: '{}', env: { ...process.env, CLAUDE_PROJECT_DIR: dir } });
+  const setWs = (fn) => { const w = JSON.parse(fs.readFileSync(wsFile, 'utf8')); fn(w); fs.writeFileSync(wsFile, `${JSON.stringify(w, null, 2)}\n`); };
+  const h1 = hook();
+  const fires = h1.status === 0 && /kickoff 스킬/.test(h1.stdout) && h1.stdout.trim().split('\n').length === 1;
+  setWs((w) => { w.team = { leads: [{ username: 'someone-else' }] }; });
+  const notLead = !hook().stdout.trim();
+  setWs((w) => { delete w.team; });
+  const done = aik(['kickoff', 'done']).status === 0 && proj().onboarded === true && !hook().stdout.trim();
+  setWs((w) => { delete w.project.onboarded; });
+  const old = !hook().stdout.trim() && /마쳤습니다/.test(aik(['kickoff']).stdout);
+  // 저장한 계정은 다시 묻지 않는다 (화면이 있어도). 저장이 없고 화면도 없으면 기록하지 않는다
+  const acct = (local) => {
+    fs.mkdirSync(path.join(dir, '.agents'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.agents', 'local.json'), JSON.stringify(local));
+    const js = `require(${JSON.stringify(path.join(KIT, 'bin', 'kedovi.js'))}).ensureAccount(${JSON.stringify(dir)}, { ask: ${local.me ? 'true' : 'false'} }).then((m) => { process.stdout.write(JSON.stringify(m || null)); process.exit(0); })`;
+    const r = spawnSync(process.execPath, ['-e', js], { cwd: dir, encoding: 'utf8', timeout: 20000, input: '' });
+    let me = null;
+    try { me = JSON.parse(r.stdout); } catch { /* 실패로 남는다 */ }
+    return { me, local: JSON.parse(fs.readFileSync(path.join(dir, '.agents', 'local.json'), 'utf8')) };
+  };
+  const saved = acct({ me: { username: 'hong01', name: '홍길동', source: 'input', checked: '2026-01-01' } });
+  const noAsk = acct({});
+  const account = !!saved.me && saved.me.username === 'hong01' && saved.me.name === '홍길동' && !noAsk.me && !noAsk.local.me;
+  // 문서 사이트: 없으면 아무것도 안 함, 있으면 띄우고 같은 서버를 다시 쓴다, 브리핑에 주소 한 줄
+  const S = require(path.join(dir, 'packs', 'core', 'lib', 'sitehost.js'));
+  const siteJs = `const S = require(${JSON.stringify(path.join(dir, 'packs', 'core', 'lib', 'sitehost.js'))}); S.ensureServer(${JSON.stringify(dir)}).then((s) => { process.stdout.write(JSON.stringify(s)); process.exit(0); })`;
+  // 사이트 원본(docs-site/)이 없으면 아무것도 안 함 → 원본이 있으면(새 워크스페이스 기본) 처음 한 번 빌드하고 띄움
+  fs.renameSync(path.join(dir, 'docs-site'), path.join(dir, 'docs-site.off'));
+  const none = spawnSync(process.execPath, ['-e', siteJs], { encoding: 'utf8', timeout: 20000 }).stdout.trim() === 'null' && !S.siteLine(dir);
+  fs.renameSync(path.join(dir, 'docs-site.off'), path.join(dir, 'docs-site'));
+  let s1 = null; let s2 = null;
+  try { s1 = JSON.parse(spawnSync(process.execPath, ['-e', siteJs], { encoding: 'utf8', timeout: 120000 }).stdout); s2 = JSON.parse(spawnSync(process.execPath, ['-e', siteJs], { encoding: 'utf8', timeout: 20000 }).stdout); } catch { /* 실패로 남는다 */ }
+  const brief = spawnSync(process.execPath, ['-e', `process.stdout.write(require(${JSON.stringify(path.join(dir, 'packs', 'core', 'bin', 'brief.js'))}).briefText())`], { cwd: dir, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: dir } }).stdout;
+  const site = none && !!s1 && !!s2 && s1.pid === s2.pid && fs.existsSync(path.join(dir, '.agents', 'site', 'index.html')) && new RegExp(`문서 사이트: http://localhost:${s1.port}/`).test(brief);
+  if (s1) { try { process.kill(s1.pid); } catch { /* 이미 끝남 */ } }
+  record('첫 시작 (init 첫 커밋 · remote add · 방향 인터뷰 훅 · 계정 · 문서 사이트)', init && remote && fires && notLead && done && old && account && site,
+    `init 커밋 · 원격 없음 · 인터뷰 전 · 기능 단위 ${init} · remote add(push · 다른 주소 거부 · 모르는 옵션) ${remote}${ra.status ? ` (${ra.stderr.trim()})` : ''} · 훅 팀장 ${fires} · 팀장 아님 조용 ${notLead} · 끝냄 ${done} · 옛 워크스페이스 ${old} · 저장한 계정 그대로 ${account} · 사이트 서버 재사용 · 브리핑 ${site}`);
 }
 
 // K-4 이슈형 · 유형 바꾸기 — 운영·고도화 + 이슈형 = 이슈 보드 로드맵 · AGENTS.md 안내, 고친 단계형 로드맵을 이슈형으로 바꾸면 앞에 보드(전 로드맵은 아래),
@@ -2697,6 +2771,301 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const stale = models.writeDocs(undefined, { dryRun: true }).filter((r) => r.changed || r.missing.length).map((r) => r.file);
   record('모델 카탈로그 · 추천 표 (bin/models.js)', !errors.length && !stale.length,
     [...errors.slice(0, 4), ...(stale.length ? [`표가 다름: ${stale.join(', ')} — node bin/models.js doc`] : []), ...warnings.map((w) => `⚠ ${w}`)].join(' | ') || '오류 없음');
+}
+
+// 워크스페이스 문서 구조: docs-site/(사람 문서 원본) · ai-docs/ · issues/ 뼈대 · .agents/site/ 로 빌드(ai-docs 제외 · 빌드 DB) · 옛 기획 repo 구조 그대로 · adopt · upgrade · 커밋 훅 · Pages CI 틀
+{
+  const ws = path.join(tmp, 'doc-layout');
+  run(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', ws, '--type', 'new'], tmp);
+  const has = (f) => fs.existsSync(path.join(ws, f));
+  const got = [];
+  const skeleton = ['docs-site/개요.md', 'docs-site/설계/요구사항.md', 'docs-site/설계/아키텍처.md', 'docs-site/설계/개발표준.md', 'docs-site/설계/결정/README.md', 'docs-site/기능/README.md', 'docs-site/기능/_template.md', 'docs-site/화면/README.md', 'docs-site/데이터/README.md', 'docs-site/자료실/README.md', 'docs-site/자료실/회의록/README.md', 'ai-docs/README.md', 'issues/README.md'].every(has);
+  const gi = fs.readFileSync(path.join(ws, '.gitignore'), 'utf8').split('\n').map((l) => l.trim());
+  const ignoreOk = gi.includes('.agents/site/') && gi.includes('.agents/site.serve.json');
+  const noDocsWarn = !/기획 repo\(kind: "docs"\)가 없습니다/.test(run(process.execPath, ['bin/kit.js', 'check'], ws).out);
+  got.push(`뼈대 ${skeleton}`, `gitignore ${ignoreOk}`, `기획 repo 경고 없음 ${noDocsWarn}`);
+  // 빌드: .agents/site/ · ai-docs 제외 · 기능 머리 줄이 빌드 DB 에
+  fs.writeFileSync(path.join(ws, 'docs-site', '기능', '001-주문.md'), '# 001 주문\n\n> 번호: 001 · 이름: 주문 · 마일스톤: M1 · 단계: 설계\n\n## 명세\n\n| ID | 기능 | 근거 |\n|---|---|---|\n| FN-001-1 | 주문을 넣는다 | 없음 |\n');
+  fs.mkdirSync(path.join(ws, 'ai-docs', '조사'), { recursive: true });
+  fs.writeFileSync(path.join(ws, 'ai-docs', '조사', 'a.md'), '# 비밀메모단어\n');
+  const ds = (...a) => spawnSync(process.execPath, [path.join(ws, 'packs', 'core', 'bin', 'docs-site.js'), ...a], { cwd: ws, encoding: 'utf8' });
+  const b = ds('build');
+  const out = path.join(ws, '.agents', 'site');
+  let db = {};
+  try { db = JSON.parse(fs.readFileSync(path.join(out, 'assets', 'site-db.json'), 'utf8')); } catch { /* 없음 */ }
+  const siteFiles = fs.existsSync(out) ? walk(out, () => true) : [];
+  const built = b.status === 0 && fs.existsSync(path.join(out, '개요.html')) && fs.existsSync(path.join(out, '기능', '001-주문.html')) && !fs.existsSync(path.join(ws, 'docs-site', 'assets'));
+  const noAi = !siteFiles.some((f) => /ai-docs/.test(f) || /비밀메모단어/.test(fs.readFileSync(f, 'utf8')));
+  const f1 = (db.features || []).find((f) => f.no === '001');
+  const dbOk = db.version === 2 && !!f1 && f1.milestone === 'M1' && f1.stage === '설계' && f1.fn.some((x) => x.id === 'FN-001-1') && (db.milestones || []).map((m) => m.name).join() === 'M1';
+  const aiWarn = /README\.md 목록에 없는 폴더 1개[\s\S]*머리에 한 줄 요약/.test(b.stdout) && /조사\//.test(ds('ai-docs').stdout);
+  const checked = ds('check').status === 0;
+  const showOk = /FN-001-1/.test(ds('show', 'FN-001-1').stdout);
+  got.push(`.agents/site 빌드 ${built}`, `ai-docs 제외 ${noAi}`, `빌드 DB ${dbOk}`, `ai-docs 알림 ${aiWarn}`, `check ${checked}`, `show ${showOk}`);
+  // Pages CI 틀 (원격 없음 = 둘 다): 워크스페이스 킷으로 빌드
+  const pg = ds('pages', 'on');
+  const ciOk = pg.status === 0 && /docs-site\.js build --out public/.test(fs.readFileSync(path.join(ws, '.gitlab-ci.yml'), 'utf8')) && /--out _site/.test(fs.readFileSync(path.join(ws, '.github', 'workflows', 'pages.yml'), 'utf8'));
+  const offOk = ds('pages', 'off').status === 0 && !has('.gitlab-ci.yml') && !has('.github/workflows/pages.yml');
+  got.push(`Pages CI ${ciOk}`, `끄기 ${offOk}`);
+  // 커밋 훅: 뼈대 첫 커밋은 통과 (README 는 같은 폴더 틀의 절을 따지지 않는다), 빈칸 있는 새 문서는 막음
+  spawnSync('git', ['-C', ws, 'add', '-A'], { encoding: 'utf8' });
+  spawnSync('git', ['-C', ws, 'rm', '-q', '--cached', 'docs-site/기능/001-주문.md'], { encoding: 'utf8' }); // 뼈대만
+  const draft = (cwd) => spawnSync(process.execPath, [path.join(ws, 'packs', 'core', 'bin', 'draft.js'), 'staged', cwd, '--only', 'docs-site/'], { cwd, encoding: 'utf8' });
+  const firstOk = draft(ws).status === 0;
+  fs.writeFileSync(path.join(ws, 'docs-site', '기능', '002-결제.md'), '# 002 결제\n\n> 번호: 002 · 이름: 결제 · 마일스톤: M1 · 단계: 명세\n\n<여기에 쓴다>\n');
+  spawnSync('git', ['-C', ws, 'add', 'docs-site'], { encoding: 'utf8' });
+  const blocked = draft(ws).status !== 0;
+  spawnSync('git', ['-C', ws, 'rm', '-q', '--cached', 'docs-site/기능/002-결제.md'], { encoding: 'utf8' });
+  fs.rmSync(path.join(ws, 'docs-site', '기능', '002-결제.md'));
+  const hookText = fs.readFileSync(path.join(ws, '.githooks', 'pre-commit'), 'utf8');
+  const hookOk = /draft\.js" staged "\$ROOT" --only docs-site\//.test(hookText) && /docs-site\.js" ai-docs --quiet/.test(hookText);
+  got.push(`뼈대 커밋 통과 ${firstOk}`, `빈칸 막음 ${blocked}`, `워크스페이스 훅 ${hookOk}`);
+  // adopt: 옛 기획 repo → docs-site/ (미리보기 표 · 링크 고침 · 손대지 않은 뼈대는 바꿈 · 손댄 문서는 충돌)
+  const plans = path.join(ws, 'repos', 'plans');
+  fs.cpSync(path.join(KIT, 'templates', 'docs-repo'), plans, { recursive: true });
+  fs.writeFileSync(path.join(plans, '20-features', 'order.md'), '# 주문 기능\n\n## FN-ORD-001 주문\n\n[구성](../10-system/architecture.md) · [결정](../90-decisions/)\n');
+  fs.writeFileSync(path.join(plans, '10-system', 'architecture.md'), '# 시스템 구성\n\n구성도\n'); // kedovi init-docs 가 넣는 양식 자리
+  const wsFile = path.join(ws, 'workspace.json');
+  const w = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+  w.repos.push({ name: 'plans', kind: 'docs', local: true });
+  fs.writeFileSync(wsFile, JSON.stringify(w, null, 2));
+  const both = ds('build');
+  const oneSite = both.status === 0 && fs.existsSync(path.join(out, 'repos', 'plans', '20-features', 'order.html')) && !fs.existsSync(path.join(out, 'repos', 'plans', 'AGENTS.html'));
+  const dry = ds('adopt', 'plans', '--dry-run');
+  const dryOk = dry.status === 0 && /\| 20-features\/ \| 기능\/ \|/.test(dry.stdout) && /\| 90-decisions\/ \| 설계\/결정\/ \|/.test(dry.stdout) && !has('docs-site/기능/order.md');
+  fs.appendFileSync(path.join(ws, 'docs-site', '설계', '아키텍처.md'), '\n팀이 고친 줄\n');
+  const conflict = ds('adopt', 'plans');
+  const stopped = conflict.status !== 0 && /겹치는 파일 1개[^\n]*\n\s+10-system\/architecture\.md → 설계\/아키텍처\.md/.test(conflict.stdout) && !has('docs-site/기능/order.md');
+  const ad = ds('adopt', 'plans', '--force');
+  const moved = ad.status === 0 && fs.readFileSync(path.join(ws, 'docs-site', '기능', 'order.md'), 'utf8').includes('[구성](../설계/아키텍처.md) · [결정](../설계/결정/)')
+    && has('docs-site/설계/요구사항.md') && /요구 목록/.test(fs.readFileSync(path.join(ws, 'docs-site', '설계', '요구사항.md'), 'utf8')) && has('repos/plans/20-features/order.md') && /kedovi repo remove plans/.test(ad.stdout);
+  got.push(`기획 repo 도 한 사이트 ${oneSite}`, `adopt 미리보기 ${dryOk}`, `손댄 문서 충돌 ${stopped}`, `adopt ${moved}`);
+  // 옛 구조: docs-site/ 원본이 없고 기획 repo 가 있으면 그 repo 의 docs-site/ 로 (지금처럼)
+  fs.rmSync(path.join(ws, 'docs-site'), { recursive: true, force: true });
+  const old = ds('build');
+  const oldOk = old.status === 0 && fs.existsSync(path.join(plans, 'docs-site', 'assets', 'site.json')) && /plans\/docs-site\//.test(old.stdout);
+  // upgrade: 기획 repo 가 있으면 ai-docs · issues README 만 만들고 docs-site/ 는 만들지 않고 adopt 안내
+  fs.rmSync(path.join(ws, 'ai-docs'), { recursive: true, force: true });
+  fs.rmSync(path.join(ws, 'issues'), { recursive: true, force: true });
+  const up = run(process.execPath, ['bin/kit.js', 'upgrade', '--from', KIT], ws);
+  const upOk = up.ok && has('ai-docs/README.md') && has('issues/README.md') && !has('docs-site') && /kedovi docs adopt plans --dry-run/.test(up.out);
+  // 기획 repo 가 없으면 뼈대도 만든다 (있는 파일은 덮지 않음)
+  const w2 = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+  w2.repos = w2.repos.filter((r) => r.name !== 'plans');
+  fs.writeFileSync(wsFile, JSON.stringify(w2, null, 2));
+  fs.writeFileSync(path.join(ws, 'issues', 'README.md'), '# 우리 이슈\n');
+  const up2 = run(process.execPath, ['bin/kit.js', 'upgrade', '--from', KIT], ws);
+  const up2Ok = up2.ok && has('docs-site/기능/_template.md') && fs.readFileSync(path.join(ws, 'issues', 'README.md'), 'utf8') === '# 우리 이슈\n';
+  got.push(`옛 기획 repo 구조 그대로 ${oldOk}`, `upgrade 기획 repo 있음 ${upOk}`, `upgrade 기획 repo 없음 ${up2Ok}`);
+  record('워크스페이스 문서 구조 (docs-site · ai-docs · issues · .agents/site · adopt · upgrade)', skeleton && ignoreOk && noDocsWarn && built && noAi && dbOk && aiWarn && checked && showOk && ciOk && offOk && firstOk && blocked && hookOk && oneSite && dryOk && stopped && moved && oldOk && upOk && up2Ok, got.join(' · '));
+}
+
+// 문서 사이트 DB 판 2 (기능 · 관계 · 바뀜 · 팀 허용 목록 · 이슈 · 게시판 · 의견 · 자료실 · API 명세) · 원격 읽기 · 쓰기(fixture, 네트워크 없음) ·
+// 로컬 서버 쓰기 길(의견 · 게시판 · 이슈 → 파일 + 커밋, 다른 주소 · JSON 아닌 요청 거부) · 기능 문서 갱신 알림 훅 · 옛 메뉴 뼈대 upgrade
+{
+  const ws = path.join(tmp, 'site-db-two');
+  run(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', ws, '--type', 'new'], tmp);
+  const W = (rel, text) => { const f = path.join(ws, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); };
+  const g = (...a) => spawnSync('git', ['-C', ws, ...a], { encoding: 'utf8' });
+  const commit = (msg) => { g('add', '-A'); return g('-c', 'core.hooksPath=/dev/null', 'commit', '-qm', msg); };
+  g('config', 'user.name', 'kim'); g('config', 'user.email', 'kim@example.com');
+  const wsFile = path.join(ws, 'workspace.json');
+  const w = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+  w.project = { ...w.project, title: '주문 관리', onboarded: true };
+  w.team = { leads: [{ username: 'hong', nickname: '홍길동' }], members: [{ username: 'kim', nickname: '김민수', repos: ['order-api'] }] };
+  w.repos = [...(w.repos || []), { name: 'order-api', kind: 'code', local: true, stacks: ['spring-boot'], url: 'https://gitlab.internal-host.example/shop/order-api.git' }];
+  fs.writeFileSync(wsFile, JSON.stringify(w, null, 2));
+  run(process.execPath, ['bin/kit.js', 'sync', '--quiet'], ws);
+  // 이 PC 설정(게이트웨이 키 모양 값)은 사이트에 나오면 안 된다
+  W('.agents/local.json', JSON.stringify({ me: { username: 'kim', name: '김민수', source: 'input' }, agents: { access: { gateway: { url: 'https://gw.secret-host.example', keyEnv: 'GW_KEY' } } } }));
+  W('repos/order-api/src/main/resources/openapi.json', JSON.stringify({ openapi: '3.0.0', info: { title: '주문 관리 API', version: '1' }, paths: {} }));
+  W('docs-site/개요.md', '# 프로젝트 개요\n\n판매자가 주문을 접수하고 취소하는 관리 화면.\n');
+  W('docs-site/설계/요구사항.md', '# 요구사항\n\n| ID | 요구 | 출처 | 기능 | 상태 |\n|---|---|---|---|---|\n| REQ-008 | 출고 전 주문은 판매자가 취소할 수 있다 | 회의록 | FN-024 | 확정 |\n');
+  W('docs-site/설계/결정/DEC-005-취소사유.md', '# DEC-005 취소 사유는 고정 목록\n\n> 상태: 결정 · 결정자: 팀장\n\n## 결정\n\n고정 목록으로 받는다.\n\n## 영향받는 문서\n\nFN-024\n');
+  W('docs-site/데이터/주문.md', '# 주문 데이터\n\n### shop.orders\n\n| 컬럼 | 타입 | 설명 |\n|---|---|---|\n| id | bigint | 주문 번호 |\n');
+  W('docs-site/기능/003-주문관리.md', '# 003 주문 관리\n\n> 번호: 003 · 이름: 주문 관리 · 마일스톤: 1차 오픈 · 단계: 구현\n\n## 명세\n\n### 기능 목록\n\n| ID | 기능 | 근거 |\n|---|---|---|\n| FN-020 | 주문 목록 | 없음 |\n| FN-024 | 출고 전 주문 취소 | REQ-008 |\n\n### 수용 기준\n\n| ID | 조건 | 결과 |\n|---|---|---|\n| AC-024-1 | 출고된 주문이면 | 취소 버튼이 없다 |\n\n## 설계\n\n### API\n\n| ID | 메서드 · 경로 | 하는 일 |\n|---|---|---|\n| API-ORD-01 | GET /orders | 목록 (FN-020) |\n| API-ORD-05 | POST /orders/{id}/cancel | 취소 (FN-024) |\n\n### 데이터\n\n| 테이블 | 쓰는 컬럼 · 조건 |\n|---|---|\n| shop.orders | status |\n\n## 검증\n\n| 수용 기준 | 테스트 | 결과 |\n|---|---|---|\n| AC-024-1 | 취소 버튼 | 실패 |\n');
+  W('docs-site/자료실/택배사 연동 가이드.pdf', '%PDF-1.4 견본\n');
+  W('docs-site/자료실/게시판/2026-11-21-오픈-일정.md', '# 오픈 일정\n\n> 작성: hong · 날짜: 2026-11-21T10:00:00+09:00 · 공지\n\n12/12 오픈.\n');
+  W('docs-site/.comments/기능__003-주문관리.json', JSON.stringify({ page: '기능/003-주문관리.html', items: [{ id: 'c1', who: 'hong', at: '2026-11-24T15:30:00+09:00', quote: '취소', text: '@kim 사유는 필수?' }] }));
+  W('issues/001-취소-사유-추가.md', '# 001 취소 사유 추가\n\n> 상태: 열림 · 종류: 요청 · 담당: kim · 관련: FN-024\n\n고정 목록에 넣는다.\n');
+  commit('docs: 견본');
+  fs.appendFileSync(path.join(ws, 'docs-site', '기능', '003-주문관리.md'), '\n> 참고: API-ORD-05 사유 필수\n');
+  commit('docs: 주문 취소 사유 필수');
+  const env0 = { ...process.env, CLAUDE_PROJECT_DIR: undefined };
+  const ds = (args, env = env0) => spawnSync(process.execPath, [path.join(ws, 'packs', 'core', 'bin', 'docs-site.js'), ...args], { cwd: ws, encoding: 'utf8', env });
+  const out = path.join(ws, '.agents', 'site');
+  const dbOf = () => { try { return JSON.parse(fs.readFileSync(path.join(out, 'assets', 'site-db.json'), 'utf8')); } catch { return {}; } };
+  const b = ds(['build']);
+  const db = dbOf();
+  const got = [];
+  const f3 = (db.features || []).find((f) => f.no === '003') || {};
+  const featOk = b.status === 0 && db.version === 2 && f3.stage === '구현' && f3.milestone === '1차 오픈' && (f3.fn || []).map((x) => x.id).join() === 'FN-020,FN-024'
+    && (f3.ac || [])[0] && f3.ac[0].result === '실패' && f3.api.join() === 'API-ORD-01,API-ORD-05' && f3.tables.includes('shop.orders');
+  const rel = (db.relations || {})['FN-024'] || {};
+  const relOk = rel.req && rel.req.includes('REQ-008') && rel.dec.includes('DEC-005') && rel.api.join() === 'API-ORD-05' && rel.ac.join() === 'AC-024-1' && rel.issues.includes('ISSUE-001');
+  const idsOk = (db.ids || {}).orders && db.ids.orders.kind === 'TABLE' && db.ids['REQ-008'].page === '설계/요구사항.html' && db.ids['FN-024'].title === '출고 전 주문 취소';
+  const docsOk = (db.docs || []).some((d) => d.page === '데이터/주문.html' && d.group === '설계' && d.updatedBy === 'kim') && (db.docs || []).some((d) => d.page === '기능/003-주문관리.html' && d.group === '기능');
+  const chOk = (db.changes || [])[0] && db.changes[0].summary === 'docs: 주문 취소 사유 필수' && db.changes[0].ids.includes('API-ORD-05') && db.changes[0].by === 'kim';
+  const ms = (db.milestones || [])[0] || {};
+  const msOk = ms.name === '1차 오픈' && ms.source === 'local' && ms.progress.total === 1;
+  got.push(`기능 ${featOk}`, `관계 ${relOk}`, `ID 색인 ${idsOk}`, `문서 묶음 · 고친 사람 ${docsOk}`, `최근 바뀜 ${chOk}`, `마일스톤 ${msOk}`);
+  // 팀 · 설정: 허용 목록만 (키 이름 · 값에 토큰 · 호스트 · 게이트웨이 · 이 PC 설정이 없다)
+  const team = JSON.stringify(db.team || {});
+  const keys = [];
+  (function walkKeys(o) { if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) { keys.push(k); walkKeys(v); } })(db.team || {});
+  const allowed = new Set(['members', 'id', 'name', 'role', 'repos', 'ai', 'tool', 'mainModel', 'roles', 'model', 'desc', 'teamMode', 'enforce', 'level', 'kit', 'version', 'packs', 'kind', 'stack', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29']);
+  const whole = JSON.stringify(db);
+  const teamOk = keys.every((k) => allowed.has(k)) && db.team.members.map((m) => `${m.id}:${m.role}`).join() === 'hong:팀장,kim:팀원' && db.team.repos[0].stack === 'spring-boot'
+    && !/secret-host|internal-host|GW_KEY|token/i.test(whole) && !require(path.join(KIT, 'bin', 'kit.js')).secretHits(whole).length;
+  const libOk = (db.files || []).some((f) => f.name === '택배사 연동 가이드.pdf' && f.kind === 'pdf' && f.by === 'kim') && fs.existsSync(path.join(out, '자료실', '택배사 연동 가이드.pdf'));
+  const apiOk = (db.apis || []).length === 1 && db.apis[0].title === '주문 관리 API' && fs.existsSync(path.join(out, db.apis[0].file));
+  const localOk = db.issues.source === 'local' && db.issues.items[0].id === 'ISSUE-001' && db.issues.items[0].assignee === 'kim' && db.board[0].pinned === true && db.board[0].author === 'hong'
+    && (db.comments['기능/003-주문관리.html'] || [])[0].quote === '취소' && db.remote.kind === null && !fs.existsSync(path.join(out, '자료실', '게시판'));
+  got.push(`팀 허용 목록 ${teamOk}`, `자료실 파일 ${libOk}`, `API 명세 ${apiOk}`, `로컬 이슈 · 게시판 · 의견 ${localOk}`);
+  // check: 커밋만 바뀌면(때 · 사람) 어긋남이 아니다
+  W('docs-site/자료실/메모.txt', 'x'); commit('docs: 메모');
+  fs.rmSync(path.join(ws, 'docs-site', '자료실', '메모.txt')); commit('docs: 메모 지움');
+  const checkOk = ds(['check']).status === 0;
+  got.push(`check (때 · 사람 빼고 비교) ${checkOk}`);
+  // 원격 읽기 (GitLab, fixture): 이슈 · 작업 항목 · 마일스톤 · 게시판 · 의견(첫 줄 인용) · 의견 이슈 주소
+  const web = 'https://gitlab.example.com/shop/order-ws';
+  const fx = path.join(tmp, 'site-remote-fixture.json');
+  fs.writeFileSync(fx, JSON.stringify({
+    'GET /projects/shop/order-ws/issues': [
+      { iid: 41, title: '취소 사유 추가', description: 'FN-024', state: 'opened', labels: ['요청', '분석'], assignee: { username: 'kim' }, milestone: { title: '1차 오픈' }, created_at: '2026-11-22T09:00:00+09:00', updated_at: '2026-11-24T09:00:00+09:00', web_url: `${web}/-/issues/41`, issue_type: 'issue' },
+      { iid: 52, title: '취소 API', description: 'API-ORD-05', state: 'opened', labels: [], assignee: { username: 'kim' }, due_date: '2026-11-27', web_url: `${web}/-/work_items/52`, issue_type: 'task' },
+      { iid: 60, title: '공지 글', description: '본문', state: 'opened', labels: ['게시판', '공지'], author: { username: 'hong' }, created_at: '2026-11-21T10:00:00+09:00', web_url: `${web}/-/issues/60` },
+      { iid: 70, title: '의견: 003', description: '<!-- kedovi-page: 기능/003-주문관리.html -->\n의견', state: 'opened', labels: ['의견'], web_url: `${web}/-/issues/70` },
+    ],
+    'GET /projects/shop/order-ws/issues/70/notes': [{ id: 101, body: '> 「GET /orders」\n\n@kim 정렬은?', author: { username: 'lee' }, created_at: '2026-11-24T16:00:00+09:00', system: false }, { id: 102, body: 'label', system: true }],
+    'GET /projects/shop/order-ws/milestones': [{ title: '1차 오픈', start_date: '2026-11-03', due_date: '2026-12-12', web_url: `${web}/-/milestones/1` }],
+    'POST /projects/shop/order-ws/issues/70/notes': { id: 103 },
+  }));
+  const rlog = path.join(tmp, 'site-remote-log.jsonl');
+  g('remote', 'add', 'origin', 'https://gitlab.example.com/shop/order-ws.git');
+  const envR = { ...env0, KEDOVI_SITE_REMOTE: '', KEDOVI_SITE_REMOTE_FIXTURE: fx, KEDOVI_SITE_REMOTE_LOG: rlog, GITLAB_TOKEN: 'fixture-token' };
+  const rb = ds(['build'], envR);
+  const r2 = dbOf();
+  const remoteOk = rb.status === 0 && /원격 GitLab: 이슈 1 · 작업 항목 1 · 마일스톤 1 · 게시판 1 · 의견 1/.test(rb.stdout) && r2.issues.source === 'gitlab' && r2.issues.items[0].id === '#41' && r2.issues.items[0].stage === '분석'
+    && r2.workItems[0].feature === '003' && r2.workItems[0].due === '2026-11-27' && r2.milestones[0].start === '2026-11-03' && r2.milestones[0].source === 'gitlab'
+    && r2.board.some((x) => x.id === '#60' && x.pinned) && r2.comments['기능/003-주문관리.html'].some((c) => c.quote === 'GET /orders' && c.text === '@kim 정렬은?' && c.who === 'lee')
+    && r2.remote.kind === 'gitlab' && r2.remote.commentIssues['기능/003-주문관리.html'] === `${web}/-/issues/70` && r2.relations['FN-024'].issues.includes('#41') && !/fixture-token/.test(JSON.stringify(r2));
+  const recheck = ds(['check'], { ...env0 }).status === 0; // check 는 원격을 다시 읽지 않고 지난 빌드의 원격 내용으로
+  got.push(`원격 읽기 ${remoteOk}`, `원격 뒤 check ${recheck}`);
+  // 로컬 서버: 빈 포트에서 띄워 쓰기 길을 부른다
+  // 요청 하나마다 node 하나 (시험 전체가 동기라서)
+  const REQ_JS = "const o=JSON.parse(process.argv[1]);const d=o.body==null?null:Buffer.from(typeof o.body==='string'?o.body:JSON.stringify(o.body));const r=require('http').request({host:'127.0.0.1',port:o.port,method:o.method,path:encodeURI(o.p),headers:Object.assign({host:'localhost:'+o.port},d?{'content-type':'application/json','content-length':d.length}:{},o.headers||{})},(res)=>{let t='';res.on('data',(c)=>{t+=c});res.on('end',()=>{let j=null;try{j=JSON.parse(t)}catch(e){}process.stdout.write(JSON.stringify({status:res.statusCode,json:j}))})});r.on('error',()=>process.stdout.write('{\"status\":0}'));if(d)r.write(d);r.end();";
+  const call = (port, method, p, body = null, headers = {}) => { try { return JSON.parse(spawnSync(process.execPath, ['-e', REQ_JS, JSON.stringify({ port, method, p, body, headers })], { encoding: 'utf8', timeout: 30000 }).stdout || '{}'); } catch { return { status: 0, json: null }; } };
+  const nap = () => spawnSync(process.execPath, ['-e', 'setTimeout(()=>{},100)']);
+  const freePort = () => Number(spawnSync(process.execPath, ['-e', "const s=require('net').createServer();s.listen(0,'127.0.0.1',()=>{process.stdout.write(String(s.address().port));s.close()})"], { encoding: 'utf8' }).stdout);
+  const serve = (env) => {
+    const port = freePort();
+    const child = require('child_process').spawn(process.execPath, [path.join(ws, 'packs', 'core', 'bin', 'docs-site.js'), 'serve', '--port', String(port), '--no-watch'], { cwd: ws, env, stdio: 'ignore' });
+    for (let i = 0; i < 50 && call(port, 'GET', '/_api/whoami').status !== 200; i++) nap();
+    return { port, stop: () => child.kill() };
+  };
+  const waitFor = (pred) => { for (let i = 0; i < 150; i++) { if (pred()) return true; nap(); } return false; };
+  {
+    // 원격 있음 + 인증(fixture): 의견은 원격 「의견」 이슈의 댓글로
+    const s1 = serve(envR);
+    const who1 = call(s1.port, 'GET', '/_api/whoami');
+    const rc = call(s1.port, 'POST', '/_api/comment', { page: '기능/003-주문관리.html', quote: 'GET /orders', text: '정렬 기본값은 최신순' });
+    s1.stop();
+    const posted = fs.existsSync(rlog) ? fs.readFileSync(rlog, 'utf8') : '';
+    const remoteWrite = who1.json && who1.json.where === 'remote' && who1.json.remote.kind === 'gitlab' && rc.json && rc.json.ok && rc.json.where === 'remote'
+      && /"path":"\/projects\/shop\/order-ws\/issues\/70\/notes"/.test(posted) && /「GET \/orders」/.test(posted) && !/fixture-token/.test(posted);
+    got.push(`원격 쓰기(의견 → 댓글) ${remoteWrite}`);
+    // 원격 없음: 파일 + 그 파일만 커밋, 다시 만들기
+    g('remote', 'remove', 'origin');
+    const before = (g('log', '--format=%s').stdout || '').trim().split('\n').length;
+    const s2 = serve(env0);
+    const who = call(s2.port, 'GET', '/_api/whoami');
+    const c = call(s2.port, 'POST', '/_api/comment', { page: '기능/003-주문관리.html', quote: '취소', text: '네 필수입니다' });
+    const bd = call(s2.port, 'POST', '/_api/board', { title: '2차 일정', body: '12/26 정산 오픈', pinned: false });
+    const is = call(s2.port, 'POST', '/_api/issue', { title: '목록이 느림', body: '500건 넘으면 느림', ids: ['FN-020'] });
+    const foreign = call(s2.port, 'POST', '/_api/issue', { title: 'x' }, { origin: 'http://evil.example' });
+    const crossSite = call(s2.port, 'POST', '/_api/issue', { title: 'x' }, { 'sec-fetch-site': 'cross-site' });
+    const notJson = call(s2.port, 'POST', '/_api/issue', 'title=x', { 'content-type': 'text/plain' });
+    const noPage = call(s2.port, 'POST', '/_api/comment', { page: '없는.html', text: 'x' });
+    const badIds = call(s2.port, 'POST', '/_api/issue', { title: 'x', ids: ['<script>'] });
+    const secret = call(s2.port, 'POST', '/_api/board', { title: '키', body: 'AKIAIOSFODNN7EXAMPLE 키' });
+    // 쓴 뒤 다시 만들기 (감시를 꺼도 쓰기 뒤에는 만든다)
+    const rebuilt = waitFor(() => { const d = dbOf(); return (d.comments['기능/003-주문관리.html'] || []).length === 2 && d.board.length === 2 && d.issues.items.length === 2; });
+    s2.stop();
+    const subjects = (g('log', '--format=%s').stdout || '').trim().split('\n');
+    const status = (g('-c', 'core.quotePath=false', 'status', '--porcelain').stdout || '').trim(); // 쓴 파일은 모두 커밋됨 (원격 빌드가 채운 docs-site.json source 는 그대로 둔다)
+    const localWrite = who.json && who.json.me && who.json.me.id === 'kim' && who.json.where === 'local' && who.json.remote === null
+      && c.json && c.json.ok && c.json.where === 'local' && c.json.committed && bd.json && bd.json.committed && is.json && is.json.id === 'ISSUE-002' && is.json.committed
+      && fs.existsSync(path.join(ws, 'issues', '002-목록이-느림.md')) && /관련: FN-020/.test(fs.readFileSync(path.join(ws, 'issues', '002-목록이-느림.md'), 'utf8'))
+      && subjects.length === before + 3 && subjects[0].startsWith('docs: 이슈 ISSUE-002') && subjects[2] === 'docs: 의견 (기능/003-주문관리.html)' && !/\.comments|게시판|issues\//.test(status);
+    const guarded = foreign.status === 403 && crossSite.status === 403 && notJson.status === 415 && noPage.status === 400 && badIds.status === 400 && secret.status === 400;
+    got.push(`로컬 쓰기(파일 + 커밋) ${localWrite}`, `다른 주소 · JSON 아님 · 없는 쪽 · 비밀값 거부 ${guarded}`, `쓴 뒤 다시 만듦 ${rebuilt}`);
+    // GitHub (fixture): 이슈(PR 빼고) · 마일스톤 · 의견 이슈 댓글 · Discussions 공지
+    const gfx = path.join(tmp, 'site-remote-github.json');
+    fs.writeFileSync(gfx, JSON.stringify({
+      'GET /repos/acme/order-ws/issues': [
+        { number: 5, title: '목록 오류', body: 'FN-020 에서', state: 'open', labels: [{ name: '결함' }], assignee: { login: 'lee' }, milestone: { title: '1차 오픈' }, html_url: 'https://github.com/acme/order-ws/issues/5' },
+        { number: 6, title: 'PR', pull_request: {}, state: 'open', labels: [] },
+        { number: 7, title: '의견: 003', body: '<!-- kedovi-page: 기능/003-주문관리.html -->', state: 'open', labels: [{ name: '의견' }], html_url: 'https://github.com/acme/order-ws/issues/7' },
+      ],
+      'GET /repos/acme/order-ws/issues/7/comments': [{ id: 9, body: '좋아요', user: { login: 'park' }, created_at: '2026-11-24T10:00:00Z', html_url: 'https://github.com/acme/order-ws/issues/7#issuecomment-9' }],
+      'GET /repos/acme/order-ws/milestones': [{ title: '1차 오픈', due_on: '2026-12-12T00:00:00Z', html_url: 'https://github.com/acme/order-ws/milestone/1' }],
+      'POST /graphql': { data: { repository: { hasDiscussionsEnabled: true, discussions: { nodes: [{ number: 3, title: '오픈 공지', body: '12/12', url: 'https://github.com/acme/order-ws/discussions/3', createdAt: '2026-11-20T00:00:00Z', author: { login: 'hong' }, category: { name: '공지' }, comments: { nodes: [] } }] } } } },
+    }));
+    g('remote', 'add', 'origin', 'https://github.com/acme/order-ws.git');
+    const gb = ds(['build'], { ...envR, KEDOVI_SITE_REMOTE_FIXTURE: gfx, GITLAB_TOKEN: undefined, GITHUB_TOKEN: 'fixture-token' });
+    const gd = dbOf();
+    const githubOk = gb.status === 0 && gd.issues.source === 'github' && gd.issues.items.filter((x) => x.url).map((x) => x.id).join() === '#5' && gd.issues.items[0].ids.includes('FN-020')
+      && gd.milestones.some((m) => m.name === '1차 오픈' && m.due === '2026-12-12' && m.source === 'github') && gd.comments['기능/003-주문관리.html'].some((x) => x.who === 'park')
+      && gd.board.some((x) => x.id === 'D3' && x.pinned) && gd.remote.kind === 'github';
+    g('remote', 'remove', 'origin');
+    got.push(`GitHub 읽기 ${githubOk}`);
+    record('문서 사이트 DB 판 2 · 원격 읽기 · 로컬 서버 쓰기 (fixture, 네트워크 없음)', featOk && relOk && idsOk && docsOk && chOk && msOk && teamOk && libOk && apiOk && localOk && checkOk && remoteOk && recheck && remoteWrite && localWrite && guarded && rebuilt && githubOk, got.join(' · '));
+  }
+  // 기능 문서 갱신 알림 (막지 않음): 워크스페이스 커밋의 단계 변경 · 코드 repo 커밋의 기능 ID · 머지 명령, 끄기
+  {
+    const hook = (command, cwd = ws) => spawnSync(process.execPath, [path.join(ws, 'packs', 'core', 'hooks', 'feature-docs.js'), '--agent=claude'], { cwd, encoding: 'utf8', input: JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command }, cwd }), env: { ...process.env, CLAUDE_PROJECT_DIR: ws } }).stdout.trim();
+    const f = path.join(ws, 'docs-site', '기능', '003-주문관리.md');
+    fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('단계: 구현', '단계: 검증'));
+    g('add', f);
+    const h1 = hook('git commit -m "docs: 003 검증"');
+    const stageNote = /기능 단계가 바뀐다: 기능\/003-주문관리\.md 구현 → 검증/.test(h1) && !/permissionDecision/.test(h1);
+    g('reset', '-q');
+    const api = path.join(ws, 'repos', 'order-api');
+    spawnSync('git', ['init', '-q', api]);
+    fs.writeFileSync(path.join(api, 'Cancel.java'), '// @spec FN-024 API-ORD-05\nclass Cancel {}\n');
+    spawnSync('git', ['-C', api, 'add', '.']);
+    const h2 = hook('git -C repos/order-api commit -m "feat: 취소"');
+    const codeNote = /003 주문 관리\(FN-024 · API-ORD-05/.test(h2);
+    const h3 = hook('glab mr merge 12 --yes');
+    const mergeNote = /이 머지로 끝난 기능/.test(h3);
+    const quiet = hook('git -C repos/order-api status') === '' && hook('ls') === '';
+    const wo = JSON.parse(fs.readFileSync(wsFile, 'utf8')); wo.vars = wo.vars || {}; wo.vars.docs = { ...(wo.vars.docs || {}), featureDocsOnCommit: 'off' }; fs.writeFileSync(wsFile, JSON.stringify(wo, null, 2));
+    const off = hook('git -C repos/order-api commit -m "feat: 취소"') === '';
+    record('기능 문서 갱신 알림 훅 (feature-docs.js, 막지 않음)', stageNote && codeNote && mergeNote && quiet && off, `단계 변경 ${stageNote} · 코드 커밋 기능 ID ${codeNote} · 머지 ${mergeNote} · 다른 명령 조용 ${quiet} · 끄기 ${off}`);
+  }
+  // upgrade: 손대지 않은 옛 메뉴 뼈대만 새 7개 탭으로 (build 가 채운 source 는 옮기고, 고친 메뉴는 그대로)
+  {
+    const cfg = path.join(ws, 'docs-site', 'docs-site.json');
+    const old = { groups: [
+      { group: '개요', icon: '◆', files: ['개요.md', '개요/*.md'] },
+      { group: '설계', icon: '⬡', files: ['설계/요구사항.md', '설계/아키텍처.md', '설계/개발표준.md', '설계/*.md', '설계/결정/README.md', '설계/**'] },
+      { group: '기능', icon: '☰', files: ['기능/README.md', '기능/*.md', '기능/**'] },
+      { group: '화면', icon: '▦', files: ['화면/README.md', '화면/**'] },
+      { group: '데이터', icon: '▤', files: ['데이터/README.md', '데이터/**'] },
+      { group: '자료실', icon: '▧', files: ['자료실/README.md', '자료실/**'], collapsed: true },
+      { group: '기획 repo', icon: '…', files: ['repos/**'], collapsed: true, tree: true },
+    ], exclude: ['화면/prototype/**'] };
+    fs.writeFileSync(cfg, JSON.stringify({ ...old, source: 'https://example.com/ws/-/blob/main/docs-site' }, null, 2));
+    run(process.execPath, ['bin/kit.js', 'upgrade', '--from', KIT], ws);
+    const nw = JSON.parse(fs.readFileSync(cfg, 'utf8'));
+    const moved = nw.project === true && nw.groups.map((x) => x.group).join() === '개요,설계,기능,테스트,일정,이슈,자료실' && nw.source === 'https://example.com/ws/-/blob/main/docs-site';
+    const edited = { ...old, groups: [...old.groups, { group: '우리 묶음', files: ['우리/**'] }] };
+    fs.writeFileSync(cfg, JSON.stringify(edited, null, 2));
+    run(process.execPath, ['bin/kit.js', 'upgrade', '--from', KIT], ws);
+    const kept = JSON.parse(fs.readFileSync(cfg, 'utf8')).groups.length === 8;
+    record('문서 사이트 메뉴 뼈대 upgrade (손대지 않은 옛 뼈대만 7개 탭으로)', moved && kept, `옛 뼈대 바꿈 · source 옮김 ${moved} · 고친 메뉴 그대로 ${kept}`);
+  }
 }
 
 // 변경 기록 — 지금 버전 항목이 CHANGELOG.md 에 있어야 한다 (kedovi upgrade 가 버전 사이 항목을 보여 준다). 패키지에 들어가야 다른 PC 에도 보인다
@@ -2899,7 +3268,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const both = i2.status === 3 && /\| 화면설계서 \| 상세 \| 환불 \| 버튼 \|/.test(i2.stdout) && /진행하지 말고/.test(i2.stdout);
     const bothWait = !fs.existsSync(S.checklistPath(wsObj, 'SCR-ORD-02'));
     const i9 = inv('inventory', 'SCR-ORD-09');
-    const none = i9.status === 3 && /\(권장\) 프로토타입 · 화면설계를 먼저/.test(i9.stdout) && /찾은 곳: plans\/30-screens/.test(i9.stdout.replace(/repos\//g, ''));
+    const none = i9.status === 3 && /\(권장\) 프로토타입 · 화면설계를 먼저/.test(i9.stdout) && /찾은 곳: .*plans\/30-screens/.test(i9.stdout.replace(/repos\//g, ''));
     // 리뷰 지시서 블록 · 지시서 알림
     const block = R.screenBlock(ws, R.screenGapIds(ws, '검사: npm test 통과\nSCR-ORD-01 리뷰'));
     const review = /## 화면 정본 대조: SCR-ORD-01/.test(block) && /정본에 있는데 구현에 없는 요소는 블로커다/.test(block) && /판정 없음 0개/.test(block) && /SCR-ORD-03/.test(R.prototypeGap(ws, 'SCR-ORD-03 리뷰')) && !R.prototypeGap(ws, `SCR-ORD-01 리뷰\n${block}`);

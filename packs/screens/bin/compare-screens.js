@@ -22,7 +22,9 @@ const { execFileSync, execSync } = require('child_process');
 const { pathToFileURL } = require('url');
 
 const PACKS = path.resolve(__dirname, '..', '..');
-const SCREEN_DIRS = ['30-screens', '02-screens'];
+const SCREEN_DIRS = ['화면', '30-screens', '02-screens']; // 화면 = 워크스페이스 docs-site/화면, 나머지는 옛 기획 repo
+/** 기획 문서 원본: 워크스페이스 docs-site/ (있으면) + 기획 repo(kind: docs) (core lib/site.js docSources) */
+const docRoots = (ws) => require(path.join(PACKS, 'core', 'lib', 'site.js')).docSources(ws);
 
 function parseArgs(argv) {
   const out = { _: [] };
@@ -41,7 +43,7 @@ const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const idRe = (id) => new RegExp(`(?<![\\w-])${escRe(id)}(?![\\w-])`);
 
 const svars = (ws) => (ws.vars && ws.vars.screens) || {};
-/** 기획 repo 안 화면 폴더 이름: vars.screens.dir(쉼표로 여럿) → 기본 30-screens · 02-screens */
+/** 기획 문서 안 화면 폴더 이름: vars.screens.dir(쉼표로 여럿) → 기본 화면 · 30-screens · 02-screens */
 function screenDirNames(ws) {
   const v = String(svars(ws).dir || '').split(',').map((x) => x.trim().replace(/^\.\/|\/+$/g, '')).filter(Boolean);
   return v.length ? v : SCREEN_DIRS;
@@ -50,7 +52,7 @@ function screenDirNames(ws) {
 /** 기획 repo 들의 화면 폴더 [{ repo, dir }] */
 function screenDirs(ws) {
   const out = [];
-  for (const r of (ws.repos || []).filter((x) => x.kind === 'docs')) {
+  for (const r of docRoots(ws)) {
     for (const d of screenDirNames(ws)) if (fs.existsSync(path.join(r.dir, d))) out.push({ repo: r, dir: path.join(r.dir, d) });
   }
   return out;
@@ -59,7 +61,7 @@ function screenDirs(ws) {
 /** 기획 repo 에서 화면 폴더 · 프로토타입 후보 찾기 (kedovi screens locate · 못 찾았을 때 안내): { dirs: [폴더], prototypes: [index.html 등] } (기획 repo 기준 경로) */
 function locateCandidates(ws) {
   const dirs = new Set(); const protos = new Set();
-  for (const r of (ws.repos || []).filter((x) => x.kind === 'docs' && fs.existsSync(x.dir))) {
+  for (const r of docRoots(ws).filter((x) => fs.existsSync(x.dir))) {
     for (const f of walk(r.dir, 5)) {
       const rel = path.relative(r.dir, f).split(path.sep).join('/');
       if (/(^|\/)docs-site\//.test(rel) && !/(^|\/)prototype\//.test(rel)) continue; // 생성된 문서 사이트는 프로토타입만 본다
@@ -162,7 +164,7 @@ function findPrototype(ws, id, a) {
     if (files.length === 1) return { url: pathToFileURL(files[0]).href, from: files[0], how: '파일 이름' };
     if (files.length > 1) throw new Error(`이름에 ${id} 가 든 프로토타입이 여럿입니다: ${files.map((f) => path.relative(ws.root, f)).join(', ')}. --proto 로 고른다`);
   }
-  const docs = (ws.repos || []).filter((x) => x.kind === 'docs');
+  const docs = docRoots(ws);
   const tpl = String(svars(ws).prototype || '').trim();
   if (tpl) {
     const target = tpl.replace(/\{id\}/g, id);
@@ -458,4 +460,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch((e) => { console.error(`✖ ${e.message}`); process.exit(2); });
-module.exports = { compareLayout, relation, layoutSummary, collectRegions, screenDirNames, screenDirs, locateCandidates, sourceHits, toUrl, walk, idRe, listedPrototype, cellTarget, findPrototype, findImpl, specFiles, loadMock, loadPlaywright, parseArgs };
+module.exports = { docRoots, compareLayout, relation, layoutSummary, collectRegions, screenDirNames, screenDirs, locateCandidates, sourceHits, toUrl, walk, idRe, listedPrototype, cellTarget, findPrototype, findImpl, specFiles, loadMock, loadPlaywright, parseArgs };

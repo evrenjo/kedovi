@@ -159,8 +159,15 @@ function extract(tree, { areaMarkers = false } = {}) {
 // ── 정본 찾기 ──
 function screenDirs(ws) {
   const out = [];
-  for (const r of (ws.repos || []).filter((x) => x.kind === 'docs')) for (const d of C.screenDirNames(ws)) out.push({ repo: r, dir: path.join(r.dir, d), exists: fs.existsSync(path.join(r.dir, d)) });
+  for (const r of C.docRoots(ws)) for (const d of C.screenDirNames(ws)) out.push({ repo: r, dir: path.join(r.dir, d), exists: fs.existsSync(path.join(r.dir, d)) });
   return out;
+}
+
+/** 찾아본 화면 폴더: 있는 것만 (하나도 없으면 찾아본 자리 전부에 「(없음)」) */
+function searchedDirs(ws) {
+  const all = screenDirs(ws);
+  const found = all.filter((d) => d.exists);
+  return (found.length ? found : all).map((d) => `${path.relative(ws.root, d.dir)}${d.exists ? '' : ' (없음)'}`);
 }
 
 /** 화면설계서 장: 화면 폴더(prototype/ 밖)의 .html 중 <section … id="<화면 ID>"> 가 든 파일 */
@@ -219,7 +226,7 @@ function canonOf(ws, id, a = {}) {
   if (!prototype && /칸 「/.test(protoError)) throw new Error(protoError);
   const storyboard = findStoryboard(ws, id);
   const verdict = prototype && storyboard ? 'both' : prototype ? 'prototype' : storyboard ? 'storyboard' : 'none';
-  return { id, prototype, storyboard, verdict, searched: screenDirs(ws).map((d) => `${path.relative(ws.root, d.dir)}${d.exists ? '' : ' (없음)'}`) };
+  return { id, prototype, storyboard, verdict, searched: searchedDirs(ws) };
 }
 
 // ── 정본에서 요소 뽑기 ──

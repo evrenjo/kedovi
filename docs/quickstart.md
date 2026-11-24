@@ -18,7 +18,7 @@ Claude·GPT 를 모두 구독하거나 AI 게이트웨이를 쓰면 역할마다
 
 ## 2. 유형별 진행 예시
 
-프로젝트 성격에 맞는 유형을 펼쳐 위에서부터 따라 하면 워크스페이스 구성부터 첫 작업까지 끝난다. 유형에 따라 init 이 묻는 repo 와 에이전트가 따르는 규칙·스킬이 다르다.
+프로젝트 성격에 맞는 유형을 펼쳐 위에서부터 따라 하면 워크스페이스 구성부터 첫 작업까지 끝난다. `kedovi init` 은 유형을 묻지 않는다: 프로젝트명과 repo 만 받고, 유형은 첫 `kedovi start` 의 방향 인터뷰에서 답한다. 유형에 따라 에이전트가 따르는 규칙·스킬이 다르다.
 
 | 유형 | 이럴 때 | 에이전트의 근거 |
 |---|---|---|
@@ -34,31 +34,30 @@ Claude·GPT 를 모두 구독하거나 AI 게이트웨이를 쓰면 역할마다
 
 | repo | 없으면 |
 |---|---|
-| 워크스페이스 repo (예: `order`) | GitLab·GitHub 에 빈 repo 를 만든다 |
+| 워크스페이스 repo (예: `order`) | 지금은 없어도 된다. 팀과 나눌 때 GitLab·GitHub 에 빈 비공개 repo 를 만들고 `kedovi remote add <주소>` |
 | 코드 repo (예: `order-api` · `order-web`) | 만들지 않아도 된다. init 에서 이름만 입력하면 새로 만든다 |
-| 기획 repo | `kedovi init-docs plan` 으로 뼈대(개요 · 시스템 구성 · 기능 · 화면 · 데이터 · API · 결정)를 만들어 push 한다. 나중에 해도 된다 |
+| 기획 문서 | 따로 repo 를 만들지 않아도 된다. 방향 인터뷰가 워크스페이스 `docs-site/` 에 개요 · 설계 · 기능 문서 초안을 만든다. 이미 쓰던 기획 repo 가 있으면 init 에서 「기존 기획 repo 연결」 |
 
 **② 워크스페이스 만들기**
 
 ```bash
-git clone <워크스페이스 repo 주소> && cd order
-kedovi init
+kedovi init order
 ```
 
 | 질문 | 답 |
 |---|---|
 | 프로젝트명 | `order` |
-| 시작 유형 | 신규 구축 |
-| 프로젝트 repository 주소 | 저장소가 있으면 주소, 없으면 이름만 (`order-api`). [추가] 로 여러 개 |
-| 기획 repository 주소 | 기획 repo 주소 (없으면 Enter) |
-| 이슈 repository 주소 | 있으면 주소 (없으면 Enter) |
+| repo 등록: 종류 | 코드 → 저장소가 있으면 clone(주소), 없으면 새로 만들기(이름만, `order-api`). 「추가」 로 여러 개, 다 넣었으면 「확정」 |
 | repos/order-api 스택 | 새 repo 는 코드가 없어 감지되지 않는다. 서버·클라이언트 → 프레임워크 → DB 를 직접 고른다 (그래야 그 기술 규칙이 붙는다) |
 | 쓰는 AI · 팀 기본 모델 프로필 | 구독한 것(Claude 만 · GPT 만 · Claude + GPT), AI 게이트웨이면 "AI 게이트웨이". 프로필은 추천대로 |
+
+init 은 첫 커밋(`chore: init workspace`)까지 한다. 원격은 붙이지 않는다.
 
 **③ 팀에 올리기**
 
 ```bash
-git add -A && git commit -m "chore: init workspace" && git push
+cd order
+kedovi remote add <워크스페이스 repo 주소>      # origin 추가 · push (공개 repo 면 확인)
 # 이름만 입력해 새로 만든 코드 repo 는 원격을 만든 뒤
 git -C repos/order-api remote add origin <order-api 주소> && git -C repos/order-api push -u origin HEAD
 kedovi sync      # workspace.json 에 원격 주소를 기록한다 → commit · push
@@ -72,8 +71,9 @@ kedovi sync      # workspace.json 에 원격 주소를 기록한다 → commit �
 kedovi start
 ```
 
-1. 신규 구축이면 첫 단계 「아이디어 · 전체 그림」 에서 무엇을 왜 만드는지 AI 와 대화해 기능 지도와 MVP 범위를 정한다 (`idea` 스킬, 정해져 있으면 건너뛴다).
-1. 기획자가 기획 repo 에 요구 목록 · 기능 문서를 쓴다 (`20-features`, Word·Excel 원본은 `originals`, md 사본은 `md`).
+1. 처음 시작하면 **방향 인터뷰**를 한다 (`kickoff` 스킬, 한 번에 한 질문): 무엇 · 누가 쓰나 → 유형(신규 구축이면 「새로 만든다」) → 기존 자료 → 첫 기능 목록 · 마일스톤 → 개발 표준 → 규칙. 결과는 `docs-site/` 의 개요 · 설계 · 기능 문서 초안이고, 끝나면 `kedovi kickoff done`.
+1. 처음 계정을 물으면 git · GitLab 에서 쓰는 아이디와 이름을 적는다 (원격이 없으면 묻는다).
+1. 기능 문서(`docs-site/기능/`)를 다듬고 기능 하나씩 명세 → 설계 → AI 구현 → 검증 → 배포로 진행한다 (진행 방식 기능 단위).
 2. 에이전트에게 요구사항 ID 로 시킨다: "REQ-ORD-001 주문 목록 화면 만들어줘".
 3. 에이전트가 영향 범위 · 할 일 · 검증 계획을 먼저 보이고, 필요하면 역할 에이전트(분석 · 설계 · 구현 · 테스트 · 리뷰)를 불러 진행한다.
 4. "리뷰" 로 변경을 검토받고, 하루 끝에 "핸드오프".
@@ -87,26 +87,23 @@ kedovi start
 
 | repo | 없으면 |
 |---|---|
-| 워크스페이스 repo | GitLab·GitHub 에 빈 repo |
+| 워크스페이스 repo | 팀과 나눌 때 빈 비공개 repo (`kedovi remote add`) |
 | 레거시(AS-IS) 소스 | **필수.** git 주소나 이 PC 의 폴더. 에이전트는 읽기만 한다 |
 | TO-BE 코드 repo | init 에서 이름만 입력하면 새로 만든다 |
-| 기획 repo | `kedovi init-docs plan` (나중에 해도 된다) |
+| 기존 기획 repo | 있으면 init 에서 연결 (없으면 방향 인터뷰가 `docs-site/` 에 초안) |
 
 **② 워크스페이스 만들기**
 
 ```bash
-git clone <워크스페이스 repo 주소> && cd next-order
-kedovi init
+kedovi init next-order
 ```
 
 | 질문 | 답 |
 |---|---|
-| 시작 유형 | 차세대 |
-| 프로젝트 repository 주소 | TO-BE repo 주소 또는 이름만 |
-| 기획 repository 주소 · 이슈 repository 주소 | 있으면 주소 (없으면 Enter) |
-| 레거시(AS-IS) repository 주소 | AS-IS 소스 주소 또는 폴더. 1개 이상 |
+| repo 등록: 종류 | 코드 → TO-BE repo 주소 또는 이름만 · 「추가」 → 참고 자료 (레거시) → AS-IS 소스 주소 또는 폴더 · (있으면) 기존 기획 repo 연결 → 「확정」 |
 | repos/<TO-BE> 스택 | 새 repo 면 직접 고른다 (레거시 repo 는 스택을 묻지 않는다) |
 | 쓰는 AI · 프로필 | 추천대로 |
+| (첫 kedovi start) 방향 인터뷰의 유형 | 옛 시스템을 옮긴다 → `kedovi type modernization --approach feature` |
 
 올리기와 팀원 합류는 신규 구축과 같다.
 
@@ -128,21 +125,19 @@ kedovi init
 
 | repo | 없으면 |
 |---|---|
-| 워크스페이스 repo | GitLab·GitHub 에 빈 repo |
+| 워크스페이스 repo | 팀과 나눌 때 빈 비공개 repo (`kedovi remote add`) |
 | 운영 코드 repo | **필수.** 지금 운영 중인 소스 저장소 주소 |
 | 개선 요구사항 · 업무 문서 repo | 있으면 (없으면 건너뛴다) |
-| 이슈 repo | 티켓 처리 결과 문서를 남길 곳 (선택) |
+| 이미 쓰는 이슈 repo | init 에서는 묻지 않는다. 필요하면 `kedovi repo add <주소> --kind issues` |
 
 **② 워크스페이스 만들기**
 
 | 질문 | 답 |
 |---|---|
-| 시작 유형 | 운영·고도화 (SM 포함) |
-| 프로젝트 repository 주소 | 운영 코드 repo 주소. 1개 이상 |
-| 기획 repository 주소 | 개선 요구사항 · 업무 문서 repo (없으면 Enter) |
-| 이슈 repository 주소 | 있으면 주소 |
+| repo 등록: 종류 | 코드 → 운영 코드 repo 주소 · (있으면) 기존 기획 repo 연결 → 개선 요구사항 · 업무 문서 repo → 「확정」 |
 | repos/<이름> 스택 | 기존 코드라 자동 감지된다. 맞으면 [맞음] |
 | 쓰는 AI · 프로필 | 추천대로 |
+| (첫 kedovi start) 방향 인터뷰의 유형 | 운영 중인 서비스를 고친다 → `kedovi type enhancement --approach feature` (이슈마다 운영 반영이 주된 일이면 `--approach issue`) |
 
 올리기와 팀원 합류는 신규 구축과 같다 (새로 만드는 repo 가 없어 ③ 의 원격 등록은 필요 없다).
 
@@ -166,7 +161,7 @@ kedovi init
 
 | repo | 없으면 |
 |---|---|
-| 워크스페이스 repo | GitLab·GitHub 에 빈 repo |
+| 워크스페이스 repo | 팀과 나눌 때 빈 비공개 repo (`kedovi remote add`) |
 | 산출물(문서) repo | `kedovi init-docs deliverables` 로 뼈대를 만들어 push (나중에 해도 된다) |
 | 현행 시스템 소스 | 있으면 주소나 폴더 (읽기 전용 분석용, 선택) |
 
@@ -176,11 +171,9 @@ kedovi init
 
 | 질문 | 답 |
 |---|---|
-| 시작 유형 | 분석·설계 (ISP·ISMP) |
-| 기획 repository 주소 | 산출물 repo 주소 |
-| 이슈 repository 주소 | 있으면 주소 |
-| 현행 시스템 repository 주소 | 현행 소스 (없으면 Enter) |
+| repo 등록: 종류 | 기존 기획 repo 연결 → 산출물 repo 주소 · (있으면) 참고 자료 (레거시) → 현행 소스 → 「확정」 |
 | 쓰는 AI · 프로필 | 추천대로 |
+| (첫 kedovi start) 방향 인터뷰의 유형 | 구축 전 분석만 → `kedovi type consulting` |
 
 **③ 첫 작업**
 
@@ -193,24 +186,21 @@ kedovi init
 
 ## 3. 팀 리더: 워크스페이스 생성 (프로젝트당 1번)
 
-1. GitLab·GitHub 그룹에 빈 repo 를 만든다 (예: `order`). 이름은 자유다. 같은 그룹의 개발 repo(`order-api` 등)와 구분만 되면 된다.
-2. 받아서 만든다.
+1. 상위 폴더에서 만든다 (입력한 이름으로 폴더를 만든다).
 
 ```bash
-git clone <워크스페이스 repo 주소>
-cd order
-kedovi init
+kedovi init order
 ```
 
-3. 화면에서 차례로 고른다: 프로젝트명 → 시작 유형 → 개발 repo 주소(아직 없으면 이름만 입력하면 새로 만든다) → 기획·이슈 repo → 스택 확인 → 쓰는 AI → 팀 모델 프로필 → 실행 인자 → 워크스페이스 repo 원격 · 커밋·push.
-4. 팀에 올린다.
+2. 화면에서 차례로 고른다: 프로젝트명 → repo 등록(종류: 코드 · 참고 자료 (레거시) · 기존 기획 repo 연결, 「추가」 로 여러 개 · 「확정」 으로 끝) → 확인 → 스택 확인 → 쓰는 AI → 팀 모델 프로필 → 실행 인자. 끝나면 첫 커밋(`chore: init workspace`)까지 한다. 원격은 붙이지 않는다.
+3. 첫 `kedovi start` 에서 방향 인터뷰(무엇 · 누가 · 유형 · 첫 기능 · 개발 표준 · 규칙)를 한다.
+4. 팀과 나눌 때: GitLab·GitHub 그룹에 빈 비공개 repo 를 만들고 (예: `order`)
 
 ```bash
-git add -A && git commit -m "chore: init workspace" && git push
+kedovi remote add <워크스페이스 repo 주소>
 ```
 
-- 기존 README·LICENSE 는 그대로 두고, `.gitignore` 는 필요한 줄만 덧붙인다.
-- 폴더 없이 상위 폴더에서 `kedovi init` 해도 된다 (입력한 이름으로 폴더를 만들고, 원격은 나중에 붙인다).
+- 막 clone 한 빈 repo 안에서 `kedovi init` 해도 된다. 기존 README·LICENSE 는 그대로 두고, `.gitignore` 는 필요한 줄만 덧붙인다 (원격이 이미 있으니 `git push -u origin HEAD` 만).
 
 5. (선택) 팀 명단: `kedovi team add 이개발 박개발` → commit · push.
 

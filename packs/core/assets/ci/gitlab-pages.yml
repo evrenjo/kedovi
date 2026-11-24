@@ -1,0 +1,26 @@
+# kedovi docs pages: 워크스페이스 문서 사이트(docs-site/)를 GitLab Pages 로 올린다.
+# CI 가 워크스페이스에 커밋된 킷(packs/core)으로 빌드한다. 생성물(.agents/site/)은 커밋하지 않는다.
+# 기본 브랜치에 push 할 때 · 파이프라인 트리거(이슈 웹훅) · 예약 · 직접 실행 때 돈다.
+# repos/ 아래 기획 repo 는 CI 에서 받지 않아 원격 주소가 있으면 링크 쪽만 들어간다.
+# 이슈 · 일정 · 게시판 · 의견을 읽으려면 설정 > CI/CD > 변수에 KEDOVI_SITE_TOKEN (권한 read_api, Masked). 없으면 파일 내용만.
+# GitLab 서버에 Pages 기능과 러너가 있어야 한다 (Pages 는 서버 관리자가 켠다). 끄기: 이 작업을 지운다.
+pages:
+  stage: deploy
+  image: node:24-alpine
+  variables:
+    GIT_DEPTH: "0"
+  script:
+    - apk add --no-cache git >/dev/null 2>&1 || true
+    - test -d docs-site || { echo "docs-site/ 가 없습니다. 워크스페이스 문서 원본을 커밋하세요"; exit 1; }
+    - node packs/core/bin/docs-site.js build --out public --no-source
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_PIPELINE_SOURCE =~ /^(trigger|pipeline|schedule|web|api)$/
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - docs-site/**/*
+        - issues/**/*
+        - packs/**/*
+        - workspace.json

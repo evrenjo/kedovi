@@ -4,9 +4,10 @@
  *
  * 임시 폴더에 킷 가이드와 시험 기획 repo(화면설계서 · 데이터 설계 포함) 사이트를 만들고, 이 PC 의 Chrome 을 화면 없이 띄워 본다.
  * 브라우저: 설치된 Google Chrome (channel chrome). 다른 Chromium 은 KEDOVI_CHROME=<실행 파일 경로>.
- * 보는 것: 새로고침 없는 이동 · 뒤로 가기 · 같은 쪽 다시 누름 · 본문 검색 · 그림 · 확대 · 테마 · 목차 · 전체 인쇄 · 좁은 화면 서랍 ·
+ * 보는 것: 새로고침 없는 이동 · 상단 탭 · 뒤로 가기 · 같은 쪽 다시 누름 · 검색 창 · 그림 · 확대 · 테마 · 목차 · 전체 인쇄 · 좁은 화면 서랍 ·
  *          file:// · 필기(마우스 · 손가락 · 두 손가락 이동 · 펜 · 지우개 끌기 · 쪽마다 저장) · 근거 패널(iframe) ·
  *          ERD 뷰어(영역 개요 · 표 · 상세 · 검색 · 확대 · 스키마 · 내보내기) · 화면설계서 뷰어(썸네일 · 넘기기 · 내부 정보 · 근거 패널 · 발표) ·
+ *          프로젝트 사이트(빌드 DB 시험 재료 bin/fixtures): 대시보드 · 탭별 메뉴 · 기능 머리 · 바뀐 문서 · 관계 서랍 · 의견 서랍 · 글자 골라 의견 · 멘션 · 나 · 가상 화면 전부 ·
  *          쓰기 보고서 화면(표본으로 열기 · 테이블 고르기 · 행 수 · 더 보기 · 검색 · 시험 고르기 · 주소 유지 · 위험 표시 · 데이터 없음)
  */
 'use strict';
@@ -63,7 +64,8 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
   const guide = path.join(tmp, 'guide');
   write(guide, require('./docs').site().pages);
   const plans = fixture(tmp);
-  const G = await serve(guide), F = await serve(plans);
+  const proj = require('./fixtures/project-site').build(path.join(tmp, 'project'), 'site');
+  const G = await serve(guide), F = await serve(plans), PJ = await serve(proj);
   const browser = await chromium.launch(process.env.KEDOVI_CHROME ? { executablePath: process.env.KEDOVI_CHROME } : { channel: 'chrome' }).catch((e) => {
     console.error(`✖ Chrome 을 띄우지 못했습니다 (${e.message.split('\n')[0]}). Google Chrome 을 설치하거나 KEDOVI_CHROME=<Chromium 경로>`);
     process.exit(1);
@@ -91,12 +93,25 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     ok(s.mark === 1, '쪽을 새로 읽었다'); ok(s.on === '빠른 시작', `메뉴 표시 ${s.on}`); ok(/빠른 시작/.test(s.h1), `제목 ${s.h1}`);
     return s.path;
   });
+  await check('상단 탭 = 묶음 · 왼쪽 메뉴 = 지금 탭', async () => {
+    const tabs = await p.evaluate(() => [...document.querySelectorAll('header .tab')].map((a) => a.textContent));
+    const groups = JSON.parse(fs.readFileSync(path.join(KIT, 'docs-site.json'), 'utf8')).groups.map((g) => g.group);
+    ok(JSON.stringify(tabs) === JSON.stringify(groups), `탭 ${tabs} ≠ 묶음 ${groups}`);
+    ok(await p.evaluate(() => (document.querySelector('header .tab.on') || {}).textContent) === '시작', '시작 탭 선택 표시');
+    ok(!(await p.$('header .search input')), '머리 줄 가운데 검색칸이 남음');
+    await p.click('header .tab:has-text("쓰는 법")'); await p.waitForFunction(() => /workflow/.test(location.pathname));
+    const r = await p.evaluate(() => [document.querySelector('header .tab.on').textContent, [...document.querySelectorAll('nav.side .nav-link')].some((a) => a.textContent === '명령'), [...document.querySelectorAll('nav.side .nav-link')].some((a) => a.textContent === '빠른 시작'), window.__mark]);
+    ok(r[0] === '쓰는 법' && r[1] && !r[2] && r[3] === 1, JSON.stringify(r));
+    await p.goBack(); await p.waitForFunction(() => /quickstart/.test(location.pathname));
+    return tabs.join(' · ');
+  });
   await check('뒤로 가기', async () => {
     await p.goBack(); await p.waitForFunction(() => /index\.html$/.test(location.pathname));
     const s = await st(); ok(s.mark === 1 && s.on === '소개', JSON.stringify(s));
   });
   await check('긴 쪽 → 짧은 쪽: 아래에 빈 공간이 남지 않음', async () => {
     await p.goto(`${G.url}docs/docs-site.html`); await p.waitForTimeout(300);
+    await p.click('header .tab:has-text("설정")'); await p.waitForFunction(() => !/docs-site\.html/.test(location.pathname));
     await p.click('nav.side a.nav-link:has-text("예산")'); await p.waitForFunction(() => /budget/.test(location.pathname)); await p.waitForTimeout(300);
     // 쪽 높이 = 창 높이와 (본문 끝 + 이전/다음) 중 큰 쪽. 필기 층이 옛 쪽 높이를 끌고 오면 훨씬 길어진다
     const r = await p.evaluate(() => [document.documentElement.scrollHeight, document.querySelector('main').getBoundingClientRect().bottom + scrollY, innerHeight]);
@@ -108,17 +123,27 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     await p.click('nav.side a.nav-link:has-text("소개")'); await p.waitForTimeout(300);
     ok((await st()).mark === 1, '다시 읽었다');
   });
-  await check('본문 검색', async () => {
+  await check('검색 창 (돋보기 · ⌘K · 본문)', async () => {
     await p.evaluate(() => window.scrollTo(0, 600)); await p.waitForTimeout(100);
     const y0 = await p.evaluate(() => scrollY);
-    await p.click('#q'); await p.keyboard.type('프로필'); await p.keyboard.press('Backspace'); await p.keyboard.type('필');
+    await p.keyboard.press('Meta+k'); await p.waitForSelector('.sp-veil #q');
+    ok(await p.evaluate(() => document.activeElement && document.activeElement.id === 'q'), '⌘K 로 열면 입력칸에 커서');
+    await p.keyboard.press('Escape'); await p.waitForFunction(() => !document.querySelector('.sp-veil'));
+    await p.click('#search-btn'); await p.waitForSelector('.sp-veil #q');
+    await p.keyboard.type('프로필'); await p.keyboard.press('Backspace'); await p.keyboard.type('필');
     ok(await p.evaluate(() => scrollY) === y0, `글자를 칠 때 화면이 움직임 (${y0} → ${await p.evaluate(() => scrollY)})`);
     await p.waitForFunction(() => [...document.querySelectorAll('#results .kind')].some((k) => k.textContent === '본문'));
     const n = await p.evaluate(() => [...document.querySelectorAll('#results .kind')].filter((k) => k.textContent === '본문').length);
+    const crumb = await p.evaluate(() => (document.querySelector('#results .sp-item .c') || {}).textContent || '');
+    ok(/›/.test(crumb), `결과 위치 줄 ${crumb}`);
+    await p.click('.chips .chip:has-text("본문")'); await p.waitForTimeout(100);
+    ok(await p.evaluate(() => [...document.querySelectorAll('#results .kind')].every((k) => k.textContent === '본문')), '종류 칩 거르기');
     await p.keyboard.press('Escape');
+    ok(!(await p.$('.sp-veil')), 'Esc 로 안 닫힘');
     return `본문 결과 ${n}`;
   });
   await check('그림 · 확대 · 테마', async () => {
+    await p.click('header .tab:has-text("쓰는 법")'); await p.waitForFunction(() => /workflow/.test(location.pathname));
     await p.click('nav.side a.nav-link:has-text("1. 전체 그림")');
     await p.waitForFunction(() => document.querySelector('pre.mermaid svg'), null, { timeout: 15000 });
     ok((await st()).mark === 1, '쪽을 새로 읽었다');
@@ -149,7 +174,7 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     const line = async (y) => { await p.mouse.move(600, y); await p.mouse.down(); for (let i = 1; i <= 15; i++) await p.mouse.move(600 + i * 12, y + Math.sin(i / 2) * 8); await p.mouse.up(); };
     await line(400); await line(500);
     ok(await p.evaluate(() => document.querySelectorAll('.ink-layer path').length) === 2, '획 2개가 아님');
-    await p.click('nav.side a.nav-link:has-text("빠른 시작")'); await p.waitForFunction(() => /quickstart/.test(location.pathname));
+    await p.click('nav.side a.nav-link:has-text("명령")'); await p.waitForFunction(() => /commands/.test(location.pathname));
     ok(await p.evaluate(() => document.documentElement.classList.contains('ink-on') && document.querySelectorAll('.ink-layer path').length === 0), '다른 쪽에 획이 보이거나 필기가 꺼짐');
     await p.goBack(); await p.waitForFunction(() => /docs-site\.html/.test(location.pathname));
     await p.waitForTimeout(200);
@@ -194,7 +219,7 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     await m.goto(`${G.url}index.html`); await m.waitForSelector('#menu');
     await m.click('#menu');
     await m.waitForFunction(() => document.body.classList.contains('nav-open'), null, { timeout: 3000 }).catch(() => {});
-    ok(await m.evaluate(() => document.body.classList.contains('nav-open') && !!document.querySelector('nav.side .search input')), '서랍 · 검색창');
+    ok(await m.evaluate(() => document.body.classList.contains('nav-open') && document.querySelectorAll('nav.side .nav-tabs .nav-tab').length > 1 && !document.querySelector('header .tabs')), '서랍 · 서랍 안 탭 목록');
     const top = await m.evaluate(() => [document.querySelector('#menu').getBoundingClientRect().top, document.querySelector('#theme').getBoundingClientRect().top]);
     ok(Math.abs(top[0] - top[1]) < 8, `머리 줄 단추가 두 줄 (${top})`);
     await m.click('nav.side a.nav-link:has-text("빠른 시작")'); await m.waitForFunction(() => /quickstart/.test(location.pathname));
@@ -216,7 +241,7 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     ok(r.every(Boolean), JSON.stringify(r));
   });
   await check('ERD 뷰어 (영역 개요 · 표 · 상세 · 검색 · 확대 · 스키마 · 내보내기)', async () => {
-    await p.goto(`${F.url}index.html`); await p.waitForSelector('.nav-act');
+    await p.goto(`${F.url}06-data/shop.html`); await p.waitForSelector('.nav-act');
     await p.click('.nav-act[title="ERD 보기"]'); await p.waitForFunction(() => /erd\.html/.test(location.pathname));
     await p.waitForSelector('html.erd-ready', { timeout: 20000 });
     ok(await p.evaluate(() => document.querySelectorAll('#vp .card').length) > 0, '영역 개요 카드가 없음');
@@ -356,9 +381,146 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     ok(/보고서 데이터가 없습니다/.test(await p.textContent('.empty h3')), '데이터 없음 안내');
     return `${big} ${want(big)}행 · 첫 화면 ${ms}ms · 위험 칸 ${risky}`;
   });
+
+  /* ── 프로젝트 사이트 (docs-site.json "project": true + 빌드 DB) ── */
+  const NS = 'kedovi-site:주문 관리:';
+  const pj = await page();
+  await pj.context().addInitScript((ns) => { if (!sessionStorage.getItem('t-init')) { sessionStorage.setItem('t-init', '1'); localStorage.setItem(ns + 'last', JSON.stringify('2026-11-20T00:00:00+09:00')); localStorage.setItem(ns + 'me', JSON.stringify('kim')); } }, NS);
+  await check('킷 문서 사이트에는 나 · 멘션 · 의견이 없음', async () => {
+    await p.goto(`${G.url}index.html`);
+    ok(!(await p.$('#me-btn')) && !(await p.$('#inbox-btn')) && !(await p.$('.cmt-btn')), '프로젝트 전용 단추가 보임');
+  });
+  await check('프로젝트: 대시보드 (빌드 DB)', async () => {
+    await pj.goto(`${PJ.url}index.html`); await pj.waitForSelector('.dash .stat');
+    const r = await pj.evaluate(() => ({ tabs: [...document.querySelectorAll('header .tab')].map((a) => a.textContent), stats: document.querySelectorAll('.dash .stat').length, feats: document.querySelectorAll('.dash .board .feat').length, gos: document.querySelectorAll('.dash .go').length, rowLinks: document.querySelectorAll('.dash .dl > a:not(.go)').length, cur: (document.querySelector('header .tab.on') || {}).textContent }));
+    ok(r.tabs.join() === '개요,설계,기능,테스트,일정,이슈,자료실', `탭 ${r.tabs}`);
+    ok(r.stats === 4 && r.feats === 4 && r.gos > 8 && r.rowLinks === 0 && r.cur === '개요', JSON.stringify(r));
+    return `기능 ${r.feats} · 바로가기 ${r.gos}`;
+  });
+  await check('프로젝트: 기능 탭 (마일스톤 묶음 · 단계 줄 · 마일스톤 칩 · 절 이동)', async () => {
+    await pj.click('header .tab:has-text("기능")'); await pj.waitForSelector('nav.side .nav-ms');
+    const side = await pj.evaluate(() => ({ ms: [...document.querySelectorAll('nav.side .nav-ms span')].map((x) => x.textContent), go: document.querySelectorAll('nav.side .nav-ms .go').length, feats: document.querySelectorAll('nav.side .nav-link.feat').length }));
+    ok(side.ms.join() === '1차 오픈,2차 · 정산' && side.go === 2 && side.feats === 4, JSON.stringify(side));
+    await pj.click('nav.side .nav-link.feat:has-text("주문 관리")'); await pj.waitForSelector('.feat-head');
+    const h = await pj.evaluate(() => ({ cur: (document.querySelector('.feat-head .step.cur') || {}).textContent, ms: (document.querySelector('.feat-head .mschip') || {}).textContent, secs: [...document.querySelectorAll('.feat-head .subtabs a')].map((a) => a.textContent) }));
+    ok(h.cur === '구현' && /1차 오픈 · 12월 12일/.test(h.ms) && h.secs.join() === '명세,설계,검증', JSON.stringify(h));
+  });
+  await check('프로젝트: 지난 방문 이후 바뀐 문서 · 바뀐 줄 · 확인함', async () => {
+    await pj.waitForSelector('tr.ds-chg', { timeout: 5000 }).catch(() => {});
+    const a = await pj.evaluate(() => [!!document.querySelector('.chgbar'), document.querySelectorAll('tr.ds-chg').length, !!document.querySelector('nav.side .nav-link.on .newb')]);
+    ok(a[0] && a[1] >= 1 && a[2], `띠 · 바뀐 줄 · 새로 ${a}`);
+    await pj.click('.chgbar button'); await pj.waitForTimeout(150);
+    const b = await pj.evaluate(() => [!!document.querySelector('.chgbar'), document.querySelectorAll('tr.ds-chg').length, !!document.querySelector('nav.side .nav-link.on .newb')]);
+    ok(!b[0] && b[1] === 0 && !b[2], `확인함 뒤 ${b}`);
+    return `바뀐 줄 ${a[1]}`;
+  });
+  await check('프로젝트: ID 칩 → 관계 서랍', async () => {
+    await pj.click('button.ds-def:has-text("FN-024")'); await pj.waitForSelector('.drawer .rel-chain');
+    const t = await pj.evaluate(() => document.querySelector('.drawer').textContent);
+    ok(/REQ-008/.test(t) && /API-ORD-05/.test(t) && /orders/.test(t) && /#41/.test(t), t.slice(0, 200));
+    await pj.keyboard.press('Escape'); await pj.waitForTimeout(100);
+    ok(!(await pj.$('.drawer')), 'Esc 로 안 닫힘');
+  });
+  await check('프로젝트: 의견 서랍 · 밑줄 · @멘션 입력', async () => {
+    ok(await pj.evaluate(() => document.querySelector('.cmt-btn').textContent.trim()) === '2', '의견 수');
+    ok(await pj.evaluate(() => !!document.querySelector('.ds-body mark.cmark')), '의견 있는 글자 밑줄');
+    await pj.click('.cmt-btn'); await pj.waitForSelector('.drawer .cm');
+    ok(await pj.evaluate(() => document.querySelectorAll('.drawer .cm').length) === 2, '의견 2개');
+    await pj.click('.drawer textarea'); await pj.keyboard.type('확인 부탁 @l');
+    await pj.waitForSelector('.drawer .atlist .at-opt');
+    ok(await pj.evaluate(() => [...document.querySelectorAll('.atlist .at-opt b')].map((b) => b.textContent).join()) === '@lee', '멘션 목록 거르기');
+    await pj.keyboard.press('Enter');
+    ok(/@lee $/.test(await pj.evaluate(() => document.querySelector('.drawer textarea').value)), '멘션 넣기');
+    ok(/GitLab 에서 쓰기/.test(await pj.evaluate(() => document.querySelector('.drawer .cbox .abtn.pri').textContent)), '토큰 없는 정적 사이트 = 원격 화면으로');
+    await pj.click('.drawer .rel-x');
+  });
+  await check('프로젝트: 글자를 골라 「의견 달기」', async () => {
+    await pj.evaluate(() => {
+      const td = [...document.querySelectorAll('.ds-body td')].find((x) => /송장 번호 입력/.test(x.textContent));
+      const r = document.createRange(); r.selectNodeContents(td); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      td.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    });
+    await pj.waitForSelector('.selbtn'); await pj.click('.selbtn');
+    await pj.waitForSelector('.drawer .cbox .cq');
+    ok(/송장 번호 입력/.test(await pj.evaluate(() => document.querySelector('.drawer .cbox .cq').textContent)), '고른 글자가 인용으로');
+    await pj.click('.drawer .rel-x');
+  });
+  await check('프로젝트: 멘션 알림함', async () => {
+    ok(await pj.evaluate(() => (document.querySelector('#inbox-n') || {}).textContent) === '2', '안 읽은 멘션 수');
+    await pj.click('#inbox-btn'); await pj.waitForSelector('.inbox .ib-i');
+    ok(await pj.evaluate(() => document.querySelectorAll('.inbox .ib-i.new').length) === 2, '알림함 목록');
+    await pj.click('.inbox .lbtn:has-text("모두 읽음")'); await pj.waitForTimeout(100);
+    ok(!(await pj.$('#inbox-n')), '모두 읽음 뒤에도 수가 남음');
+    await pj.keyboard.press('Escape');
+  });
+  await check('프로젝트: 검색 창 (종류 칩 · 탭 › 기능 › 문서)', async () => {
+    await pj.click('#search-btn'); await pj.waitForSelector('.sp-veil #q');
+    await pj.keyboard.type('FN-024'); await pj.waitForTimeout(150);
+    const r = await pj.evaluate(() => { const it = document.querySelector('#results .sp-item'); return { id: it && it.querySelector('.idc') && it.querySelector('.idc').textContent, c: it && it.querySelector('.c').textContent, chips: [...document.querySelectorAll('.chips .chip')].map((c) => c.textContent) }; });
+    ok(r.id === 'FN-024' && /^명세기능 › 003 주문 관리 › 명세$/.test(r.c) && r.chips.includes('API') && r.chips.includes('이슈'), JSON.stringify(r));
+    await pj.keyboard.press('Enter'); await pj.waitForFunction(() => /003/.test(decodeURIComponent(location.pathname)) && location.hash === '#FN-024');
+  });
+  await check('프로젝트: 나 공간 · 즐겨찾기 · 메모', async () => {
+    await pj.click('.star-btn'); await pj.click('.memo-btn'); await pj.fill('.memo textarea', '취소 사유 목록 다시 보기'); await pj.click('.memo .abtn.pri');
+    await pj.click('#me-btn'); await pj.waitForFunction(() => /_\/me\.html/.test(location.pathname));
+    ok(await pj.evaluate(() => (document.querySelector('#me-btn') || {}).getAttribute('aria-current') === 'true' && !document.querySelector('header .tab.on') && /kim/.test(document.querySelector('.prof h1').textContent)), '나 표시');
+    const me = await pj.evaluate(() => window.DS_NAV.me.map((x) => x.p));
+    const out = [];
+    for (const u of me) {
+      await pj.goto(`${PJ.url}${u}`); await pj.waitForSelector('.view h1');
+      const bad = await pj.evaluate(() => /이 판의 사이트에 없습니다|읽지 못했습니다/.test(document.querySelector('main').textContent));
+      ok(!bad, `${u} 가 안 그려짐`);
+      out.push(await pj.evaluate(() => document.querySelector('.view h1').textContent));
+    }
+    await pj.goto(`${PJ.url}_/me/saved.html`); await pj.waitForSelector('.view h1');
+    ok(/003 주문 관리/.test(await pj.evaluate(() => document.querySelector('.dcard').textContent)), '즐겨찾기에 없음');
+    await pj.goto(`${PJ.url}_/me/memos.html`); await pj.waitForSelector('.view h1');
+    ok(/취소 사유 목록 다시 보기/.test(await pj.evaluate(() => document.querySelector('main').textContent)), '메모가 없음');
+    await pj.goto(`${PJ.url}_/me/settings.html`); await pj.waitForSelector('.kv.conn');
+    ok(/정적 사이트/.test(await pj.evaluate(() => document.querySelector('.kv.conn').textContent)), '연결 상태');
+    return out.join(' · ');
+  });
+  await check('프로젝트: 가상 화면 전부 (빈 상태 포함) · 간트 · API', async () => {
+    const pages = await pj.evaluate(() => { const o = []; const w = (xs) => xs.forEach((x) => { if (x.items) w(x.items); else if (x.v) o.push(x.p); }); window.DS_NAV.groups.forEach((g) => w(g.items)); return o; });
+    for (const u of pages) {
+      await pj.goto(`${PJ.url}${u}`); await pj.waitForSelector('.view h1');
+      ok(!(await pj.evaluate(() => /이 판의 사이트에 없습니다|읽지 못했습니다/.test(document.querySelector('main').textContent))), `${u} 가 안 그려짐`);
+    }
+    await pj.goto(`${PJ.url}_/gantt.html`); await pj.waitForSelector('.gantt-box svg .bar-wrapper', { timeout: 15000 });
+    await pj.goto(`${PJ.url}_/api.html`); await pj.waitForSelector('.vframe.api iframe');
+    await pj.goto(`${PJ.url}_/table.html?id=orders`); await pj.waitForSelector('.tbl-sec table');
+    await pj.goto(`${PJ.url}_/board/post.html?id=${encodeURIComponent('#60')}`); await pj.waitForSelector('.post-body');
+    return `${pages.length}쪽`;
+  });
+  await check('프로젝트: 빈 DB 상태 화면 (흔적 없이)', async () => {
+    const empty = { version: 2, layout: 'workspace', title: '빈 프로젝트', project: { title: '빈 프로젝트' }, stages: ['명세', '설계', '구현', '검증', '배포'], features: [], milestones: [], docs: [], ids: {}, relations: {}, changes: [], team: { members: [] }, issues: { items: [] }, workItems: [], board: [], files: [], comments: {}, remote: { kind: null }, apis: [] };
+    const e = await page();
+    await e.route('**/assets/site-db.json*', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(empty) }));
+    for (const u of ['index.html', '_/gantt.html', '_/issues.html', '_/board.html', '_/api.html', '_/team.html']) {
+      await e.goto(`${PJ.url}${u}`); await e.waitForSelector('.view h1');
+      const t = await e.evaluate(() => document.querySelector('main').textContent);
+      ok(!/undefined|null|NaN|숨김|숨겼|뺐/.test(t), `${u}: ${t.slice(0, 120)}`);
+      ok(await e.evaluate(() => document.querySelectorAll('.kempty, .vnote').length) > 0, `${u} 빈 상태 화면 없음`);
+    }
+    await e.close();
+  });
+  await check('프로젝트: 로컬 서버 쓰기 경로 (/_api/whoami · /_api/comment)', async () => {
+    const l = await page();
+    let sent = null;
+    await l.route('**/_api/whoami', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, me: { id: 'lee', name: '이서연' }, remote: null, canWrite: true, where: 'local' }) }));
+    await l.route('**/_api/comment', (r) => { sent = JSON.parse(r.request().postData()); r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, where: 'local' }) }); });
+    await l.goto(`${PJ.url}${encodeURI('기능/003-주문관리.html')}`); await l.waitForSelector('.cmt-btn');
+    await l.waitForFunction(() => /lee/.test(document.querySelector('#me-btn').textContent));
+    await l.click('.cmt-btn'); await l.waitForSelector('.drawer textarea');
+    await l.fill('.drawer textarea', '@kim 확인했습니다');
+    await l.click('.drawer .cbox .abtn.pri'); await l.waitForSelector('.drawer .cm.pend');
+    ok(sent && sent.page === '기능/003-주문관리.html' && sent.text === '@kim 확인했습니다', JSON.stringify(sent));
+    ok(await l.evaluate(() => document.querySelector('.cmt-btn').textContent.trim()) === '3', '보낸 의견이 수에 안 더해짐');
+    await l.close();
+  });
   await check('스크립트 오류 없음', async () => { ok(!errors.length, errors.slice(0, 3).join(' | ')); });
 
-  await browser.close(); G.close(); F.close();
+  await browser.close(); G.close(); F.close(); PJ.close();
   fs.rmSync(tmp, { recursive: true, force: true });
   const bad = results.filter((r) => !r[0]).length;
   console.log(bad ? `\n✖ ${bad}개 실패 (${results.length}개 중)` : `\n✔ 전부 통과 (${results.length}개)`);

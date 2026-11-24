@@ -6,15 +6,15 @@
 <meta name="generator" content="kedovi docs">
 <title>7. 매일 (kedovi start) · kedovi 문서</title>
 <script>try { var t = localStorage.getItem('kedovi-docs-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
-<link rel="stylesheet" href="../assets/site.css?v=428a6722">
+<link rel="stylesheet" href="../assets/site.css?v=4b8dd854">
 <link rel="icon" href="data:,">
 </head>
 <body data-root="../">
 <div id="ds-app">
 <header>
-  <div class="left"><button class="menu-btn" id="menu" type="button" aria-label="메뉴" aria-expanded="false" aria-controls="side-nav">☰</button><a class="brand" href="../index.html"><span class="logo">ai</span>kedovi 문서</a></div>
-  <div class="search"><input id="q" placeholder="검색 (제목 · 본문 · ID)" autocomplete="off"><kbd>⌘K</kbd><div class="results" id="results"></div></div>
-  <div class="tools"><span>v0.108.2</span><button id="ink" type="button" title="펜 필기 (끝내기: Esc)" aria-label="펜 필기" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 21h8"/><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg></button><button id="print" type="button" title="인쇄 (이 문서 · 전체 문서)" aria-label="인쇄" aria-haspopup="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg></button><button id="theme" type="button" title="테마" aria-label="테마"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg></button></div>
+  <div class="left"><button class="menu-btn" id="menu" type="button" aria-label="메뉴" aria-expanded="false" aria-controls="side-nav"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button><a class="brand" href="../index.html"><span class="logo">ai</span>kedovi 문서</a></div>
+  <nav class="tabs" aria-label="상단 메뉴"><a class="tab" href="../index.html">시작</a><a class="tab on" href="workflow.html" aria-current="true">쓰는 법</a><a class="tab" href="workspace.html">설정 · 참고</a><a class="tab" href="packs.html">팩</a><a class="tab" href="kit-dev.html">킷 개발</a></nav>
+  <div class="tools"><span>v0.109.0</span><button id="search-btn" class="search-btn" type="button" title="검색 (⌘K)" aria-label="검색"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><kbd>⌘K</kbd></button><button id="ink" type="button" title="펜 필기 (끝내기: Esc)" aria-label="펜 필기" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 21h8"/><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg></button><button id="print" type="button" title="인쇄 (이 문서 · 전체 문서)" aria-label="인쇄" aria-haspopup="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg></button><button id="theme" type="button" title="테마" aria-label="테마"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg></button></div>
 </header>
 <div class="layout">
   <nav class="side" id="side-nav" data-page="docs/workflow--7-매일-kedovi-start.html"><noscript><a class="nav-link" href="../index.html">문서 목록</a></noscript></nav><div class="nav-backdrop" id="nav-backdrop"></div>
@@ -24,24 +24,36 @@
 
 <p>시작하면 브리핑이 나온다: 프로젝트 · 로드맵(완료 n/N · 지금 단계 · 다음 한 줄 + 단계 흐름도 + 지금 단계 표) · 참고 자료 상태(기획·레거시·이슈 repo 가 비어 있는지) · 공지(워크스페이스 루트 <code>NOTICE.md</code>, 있을 때) · 마지막 핸드오프 · 미완 작업(진행 중 작업의 완료 조건) · 내 TODO(사용자가 등록한 것). 처음이면 시작 안내. <code>--no-brief</code> 나 <code>.agents/local.json</code> 의 <code>brief: false</code> 로 끈다 (훅도 조용해진다).</p>
 <blockquote><p class="q-src">참고: 본문은 세션 시작 훅이 컨텍스트로 넘기고 첫 메시지는 &quot;세션 브리핑&quot; 한 줄이라 화면에 전문이 찍히지 않는다.</p></blockquote>
+<p><strong>문서 사이트</strong>: 만든 문서 사이트가 있으면 <code>kedovi start</code> 가 이 PC 에서 백그라운드로 띄우고(이미 떠 있으면 그대로) 브리핑에 <code>문서 사이트: http://localhost:&lt;포트&gt;/</code> 한 줄을 넣는다 (Pages 주소를 알면 함께). 사이트가 없으면 아무 말도 하지 않는다. 서버 상태는 <code>.agents/status/site-server.json</code>.</p>
+<p><strong>첫 시작의 계정</strong>: 팀이 있는 워크스페이스는 이 PC 사용자를 한 번 확인한다. 원격에서 저장소 계정을 읽으면 그대로 쓰고, 못 읽으면(원격이 없는 새 워크스페이스 포함) 「아이디」 와 「이름」 을 묻는다 (git · GitLab 에서 쓰는 아이디와 같게 적으면 커밋 · 이슈 · 담당 repo 추적이 쉽다). <code>.agents/local.json</code> 의 <code>me</code> 에 저장하고 다시 묻지 않는다. 원격이 없고 init 이 git user.name 으로 적은 팀장이 이 사람이면 그 자리를 적은 아이디 · 이름으로 바꾼다.</p>
+<p><strong>방향 인터뷰</strong> (<code>kickoff</code> 스킬): 새 워크스페이스(<code>workspace.json</code> 의 <code>project.onboarded</code> 가 <code>false</code>)에서 팀장이 처음 시작하면 세션 시작 훅이 인터뷰를 먼저 하라고 넣는다. 한 번에 한 질문(주제 n/6): 무엇 · 누가 쓰나 → 유형(새로 · 운영 중 · 이전 → <code>kedovi type</code>) → 기존 자료 위치 → 첫 기능 목록 · 마일스톤 → 개발 표준 · 스택 → 규칙 켜고 끄기(<code>kedovi rules</code>). 결과는 <code>docs-site/개요.md</code> · <code>docs-site/설계/</code> 의 요구사항 · 아키텍처 · 개발표준 초안 · <code>docs-site/기능/NNN-이름.md</code> (머리에 번호 · 이름 · 마일스톤 · 단계). 사이트를 다시 만들고 <code>kedovi kickoff done</code> 으로 끝낸다. 필드가 없는 옛 워크스페이스는 인터뷰를 하지 않는다 (하려면 <code>kedovi kickoff again</code>).</p>
 <p>지난 대화를 이어서 하려면 <code>kedovi start -c</code>(마지막 대화) · <code>kedovi start -r &lt;세션 ID&gt;</code>(<code>/exit</code> 때 나온 ID) · <code>kedovi start -r</code>(목록에서 고르기). 브리핑은 넣지 않고 모델 · 텔레그램 채널은 그대로 적용한다. Codex 는 <code>codex resume --last</code> · <code>resume &lt;ID&gt;</code> 로 바꿔 넘긴다. <code>kedovi start --pixel-agents</code> 는 이 PC 에 설치된 <a href="https://github.com/pablodelucca/pixel-agents">Pixel Agents</a>(<code>npm i -g pixel-agents</code>)를 워크스페이스에서 띄우고 브라우저로 연다. 메인 에이전트 · 팀원 · 서브에이전트가 사무실 캐릭터로 움직인다(Claude Code 만). 세션이 끝나면 서버도 끈다. 설치돼 있지 않으면 알리고 화면 없이 시작한다. 처음 열 때 그 화면이 <code>~/.claude/settings.json</code> 에 훅을 넣을지 묻는다.</p>
 <div class="diagram"><div class="diagram-tools"><button class="mm-zoom" type="button" title="크게 보기">확대</button><button class="mm-open" type="button" title="새 창에서 보기">새 창</button></div><pre class="mermaid">flowchart TD
     S([&quot;kedovi start [--claude | --codex] [-c | -r ID] [--pixel-agents] [-- 인자]&quot;]) --&gt; W[&quot;워크스페이스 찾기&lt;br/&gt;(위 폴더 → 바로 아래 폴더)&quot;]
-    W --&gt; RS{&quot;명단 제한이 켜져 있고&lt;br/&gt;내 id 가 명단에 없나&quot;}
+    W --&gt; AC{&quot;이 PC 사용자를 저장했나 (팀이 있을 때)&quot;}
+    AC --&gt;|&quot;아니오 · 원격에서 읽음&quot;| RS
+    AC --&gt;|&quot;아니오 · 못 읽음 (원격 없음 포함)&quot;| AI[&quot;아이디 · 이름 입력&lt;br/&gt;→ .agents/local.json me&quot;]
+    AI --&gt; RS
+    AC --&gt;|&quot;예&quot;| RS
+    RS{&quot;명단 제한이 켜져 있고&lt;br/&gt;내 id 가 명단에 없나&quot;}
     RS --&gt;|&quot;예&quot;| RX([&quot;멈춤. 리더에게 kedovi team add 요청&quot;])
     RS --&gt;|&quot;아니오&quot;| A{&quot;시작 도구가 정해졌나&quot;}
     A --&gt;|&quot;아니오&quot;| AG[&quot;AI 연결 방식 (5절)&quot;]
     A --&gt;|&quot;예 · --claude/--codex 로 이번만 지정&quot;| V
     AG --&gt; V[&quot;새 버전이 나왔으면 npm i -g 안내 (하루 한 번 확인)&lt;br/&gt;설치본이 워크스페이스보다 새로우면 「킷 새 버전을 지금 올릴까요」 (권장: 올리고 시작)&lt;br/&gt;팀장 아님 · 받지 않은 커밋 · 커밋 안 한 변경이면 알리기만&lt;br/&gt;repos/ 에 없는 repo 가 있으면 kedovi install 안내&quot;]
     V --&gt; M[&quot;메인 모델·추론 강도 = 프로필·팀·개인 + 연결 방식&lt;br/&gt;Claude --model · --effort, Codex -m · -c model_reasoning_effort 로 넘김 (Codex 는 웹 검색 --search 도 기본)&lt;br/&gt;게이트웨이면 게이트웨이 모델 이름으로. Claude Code 에 게이트웨이 설정이 없으면 저장한 주소·키 환경변수로 연결&quot;]
-    M --&gt; PX{&quot;--pixel-agents 인가&quot;}
+    M --&gt; SITE[&quot;문서 사이트가 있으면 백그라운드로 띄움 (재사용)&lt;br/&gt;→ 브리핑에 http://localhost:&amp;lt;포트&amp;gt;/&quot;]
+    SITE --&gt; PX{&quot;--pixel-agents 인가&quot;}
     PX --&gt;|&quot;예 · pixel-agents 설치됨&quot;| PXO[&quot;Pixel Agents 서버를 띄우고 브라우저로 열기&lt;br/&gt;(세션이 끝나면 함께 끔)&quot;]
     PX --&gt;|&quot;예 · 설치 안 됨&quot;| PXW[&quot;npm i -g pixel-agents 안내&quot;]
     PX --&gt;|&quot;아니오&quot;| RUN
     PXO --&gt; RUN
     PXW --&gt; RUN[&quot;에이전트 실행&quot;]
     RUN --&gt; SS[&quot;세션 시작 훅: repo 갱신 확인 · 생성물 동기화 확인 · 내 마지막 핸드오프 한 줄&quot;]
-    SS --&gt; WORK[&quot;작업: 규칙(AGENTS.md) · 스킬 · 역할 에이전트&lt;br/&gt;(AI 가 필요할 때 스스로 부르고 정리. 한 요청 상한을 넘으면 훅이 막는다)&quot;]
+    SS --&gt; KO{&quot;방향 인터뷰 전이고 팀장인가&lt;br/&gt;(project.onboarded false)&quot;}
+    KO --&gt;|&quot;예&quot;| KI[&quot;kickoff 스킬: 주제 n/6 한 질문씩&lt;br/&gt;→ docs-site 초안 · kedovi type · rules · 사이트 빌드 → kedovi kickoff done&quot;]
+    KO --&gt;|&quot;아니오&quot;| WORK
+    KI --&gt; WORK[&quot;작업: 규칙(AGENTS.md) · 스킬 · 역할 에이전트&lt;br/&gt;(AI 가 필요할 때 스스로 부르고 정리. 한 요청 상한을 넘으면 훅이 막는다)&quot;]
     WORK --&gt;|&quot;독립 단위 2개 이상&quot;| TIER[&quot;메인 → 작업 리더(단위마다) → 팀원&lt;br/&gt;같은 repo 면 kedovi worktree add · merge&lt;br/&gt;진행 보기 kedovi agents watch&quot;]
     WORK --&gt; STOP[&quot;세션 끝 훅: 인계(handoffs/) 점검 · 끝나지 않은 위임 작업 알림&quot;]</pre></div>
 </div>
@@ -50,10 +62,10 @@
   <aside class="toc"><div class="toc-title">이 페이지</div><div id="toc"><div class="empty">7. 매일 (kedovi start)</div></div></aside>
 </div>
 </div>
-<script type="application/json" id="ds-page">{"page":"docs/workflow--7-매일-kedovi-start.html","kind":"doc","title":"7. 매일 (kedovi start)","head":"7. 매일 (kedovi start) · kedovi 문서","crumb":"쓰는 법","status":"","h1":"7. 매일 (\u003ccode>kedovi start\u003c/code>)","lead":"","src":{"href":"https://github.com/evrenjo/kedovi/blob/main/docs/workflow.md","name":"workflow.md"},"toc":[],"prev":{"p":"docs/workflow--6-팀원-kedovi-install.html","t":"6. 팀원 (kedovi install)","g":"쓰는 법"},"next":{"p":"docs/workflow--8-바꿀-때.html","t":"8. 바꿀 때","g":"쓰는 법"},"site":{"title":"kedovi 문서","logo":"ai","version":"v0.108.2","ink":true}}</script>
-<script src="../assets/search.js?v=fc0d9fa5"></script>
-<script src="../assets/nav.js?v=62e57f34"></script>
-<script src="../assets/vendor.js?v=93f62565"></script>
-<script src="../assets/site.js?v=d425b1d1"></script>
+<script type="application/json" id="ds-page">{"page":"docs/workflow--7-매일-kedovi-start.html","kind":"doc","title":"7. 매일 (kedovi start)","head":"7. 매일 (kedovi start) · kedovi 문서","crumb":"쓰는 법","status":"","h1":"7. 매일 (\u003ccode>kedovi start\u003c/code>)","lead":"","src":{"href":"https://github.com/evrenjo/kedovi/blob/main/docs/workflow.md","name":"workflow.md"},"toc":[],"prev":{"p":"docs/workflow--6-팀원-kedovi-install.html","t":"6. 팀원 (kedovi install)","g":"쓰는 법"},"next":{"p":"docs/workflow--8-바꿀-때.html","t":"8. 바꿀 때","g":"쓰는 법"},"site":{"title":"kedovi 문서","logo":"ai","version":"v0.109.0","ink":true}}</script>
+<script src="../assets/search.js?v=f5dacbe9"></script>
+<script src="../assets/nav.js?v=a5270214"></script>
+<script src="../assets/vendor.js?v=93bbd73f"></script>
+<script src="../assets/site.js?v=0765867d"></script>
 </body>
 </html>

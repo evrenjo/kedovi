@@ -40,6 +40,7 @@ function site() {
   const config = { ...JSON.parse(fs.readFileSync(path.join(KIT, 'docs-site.json'), 'utf8')), version: `v${pkg.version}` };
   const repoFile = repoFileOf(pkg);
   const assets = DS.siteAssets();
+  for (const k of Object.keys(assets)) if (k.startsWith('assets/vendor/')) delete assets[k];   // 간트 등 프로젝트 사이트 화면 전용 (킷 문서에는 없다)
   const files = sources();
   const res = build(files, { config, title: config.title, assets, mermaid: DS.mermaidAssets(), srcOf: repoFile, fileUrl: repoFile });
   res.files = files;

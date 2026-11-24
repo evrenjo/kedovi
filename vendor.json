@@ -1,5 +1,5 @@
 {
-  "note": "문서 사이트 · 생성기에 넣는 외부 라이브러리 (킷 개발용). 고친 뒤 npm run vendor. 버전은 나온 지 2주 넘은 것으로 고정하고, packages 는 integrity(npm view <이름>@<버전> dist.integrity)도 적는다 (받은 tgz 를 이 값과 대조). packages = 브라우저용 파일을 그대로, bundles = 생성기(Node)용으로 esbuild 가 파일 하나로 묶는다 (함께 묶이는 의존 버전은 vendor-lock.json)",
+  "note": "문서 사이트 · 생성기에 넣는 외부 라이브러리 (킷 개발용). 고친 뒤 npm run vendor. 버전은 나온 지 2주 넘은 것으로 고정하고, packages 는 integrity(npm view <이름>@<버전> dist.integrity)도 적는다 (받은 tgz 를 이 값과 대조). packages = 브라우저용 파일을 그대로, lazy = vendor.js 에 잇지 않고 assets/vendor/ 에 따로 두어 그 화면에서만 읽는다 (간트), bundles = 생성기(Node)용으로 esbuild 가 파일 하나로 묶는다 (함께 묶이는 의존 버전은 vendor-lock.json)",
   "registry": "https://registry.npmjs.org/",
   "out": "packs/core/assets/docs-site/vendor",
   "packages": [
@@ -44,6 +44,18 @@
         "dist/cjs/index.js": "perfect-freehand.js"
       },
       "global": "PerfectFreehand"
+    },
+    {
+      "name": "frappe-gantt",
+      "version": "1.2.2",
+      "integrity": "sha512-1+uPNRa92LBIeKiZCVhJMiGIifJk5ONaoerXI8eBREXWRZGGoTJR5ATpMpsnAQcyBA6Gnq5wIht4eL+e4eHMBA==",
+      "license": "MIT",
+      "home": "https://github.com/frappe/gantt",
+      "files": {
+        "dist/frappe-gantt.umd.js": "frappe-gantt.js",
+        "dist/frappe-gantt.css": "frappe-gantt.css"
+      },
+      "lazy": true
     }
   ],
   "bundles": [

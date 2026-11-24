@@ -57,7 +57,7 @@ try {
     want[`${pkg.name}-LICENSE.txt`] = fs.readFileSync(path.join(root, lic), 'utf8');
   }
   // 이어 붙일 순서 · 버전 (생성기가 읽는다. 워크스페이스에는 vendor.json 이 없다)
-  want['index.json'] = `${JSON.stringify({ note: 'npm run vendor 가 만든다', files: conf.packages.flatMap((p) => Object.values(p.files)), packages: conf.packages.map(({ name, version, license, home }) => ({ name, version, license, home })) }, null, 1)}\n`;
+  want['index.json'] = `${JSON.stringify({ note: 'npm run vendor 가 만든다', files: conf.packages.filter((p) => !p.lazy).flatMap((p) => Object.values(p.files)), lazy: conf.packages.filter((p) => p.lazy).flatMap((p) => Object.values(p.files)), packages: conf.packages.map(({ name, version, license, home }) => ({ name, version, license, home })) }, null, 1)}\n`;
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

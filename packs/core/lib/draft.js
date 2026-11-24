@@ -86,7 +86,7 @@ const FORMATS = {
     label: '기획 문서',
     target: 'plan',
     sections: null,
-    template: ['기획 문서 틀은 기획 repo 의 각 폴더 _template.md 다 (기능 20-features/_template.md · 결정 90-decisions/_template.md).', '새 문서는 그 틀을 복사해 쓰고, 커밋할 때 틀의 절이 모두 있는지 기획 repo 커밋 훅이 본다.'],
+    template: ['기획 문서 틀은 각 폴더의 _template.md 다 (워크스페이스 docs-site/기능/_template.md · docs-site/설계/결정/_template.md, 옛 기획 repo 는 20-features · 90-decisions).', '새 문서는 그 틀을 복사해 쓰고, 커밋할 때 틀의 절이 모두 있는지 커밋 훅이 본다.'],
   },
 };
 

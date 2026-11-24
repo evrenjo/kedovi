@@ -11,6 +11,10 @@
 ├── .agents/local.md · local.json   개인 지침 · 시작 도구 · AI 연결 방식 (git 제외)
 ├── handoffs/{id}/             개발자별 인계
 ├── handoffs/PLAN.md           로드맵 (팀 공용, kedovi plan)
+├── docs-site/                 사람 문서 원본: 개요 · 설계 · 기능 · 화면 · 데이터 · 자료실
+├── ai-docs/                   AI 참고 자료 (성격별 폴더, 사이트에 안 올림)
+├── issues/                    이슈 관리 위치 · 원격 없을 때 이슈 파일
+├── .agents/site/              문서 사이트 HTML (kedovi docs build, git 제외)
 └── repos/                     (git 제외, install 이 clone)
     ├── backend/ web/ …        kind: code    에이전트가 고친다
     ├── plan/                  kind: docs    요구사항 근거, 읽기 전용

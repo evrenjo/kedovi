@@ -1,6 +1,6 @@
 ---
 name: kedovi
-description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 kedovi 명령으로 처리한다 (비밀값(토큰) 확인 · 옮기기 · 텔레그램 알림 · 팀 공지 · 모델·프로필·AI 연결 방식(구독·게이트웨이)·시작 도구·규칙 켜고 끄기·팀 명단·설정 수정 권한·repo 추가·스택 감지·진단·팀 현황·킷 업그레이드 · 팩 켜기 · 진행 방식(스프린트 · 전체 · 이슈형) · 유형 바꾸기 · 로드맵 보기 · 문서 사이트 · 기획 문서 ID 찾기 · 화면설계 · 데이터 설계 검사). "모델 바꿔줘", "리뷰는 GPT 로", "이제 Claude 만 써", "게이트웨이 모델 다시 받아", "이 규칙 꺼줘", "repo 추가해줘", "팀원 추가", "설정 잠가줘", "킷 업데이트", "텔레그램 알림 켜줘", "팀 방에 공지해줘", "스프린트로 바꿔줘", "로드맵 보여줘", "FN-001 어디서 써?", "GitLab 토큰 확인해줘", "토큰 옮겨줘" 같은 요청에 쓴다.
+description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 kedovi 명령으로 처리한다 (비밀값(토큰) 확인 · 옮기기 · 텔레그램 알림 · 팀 공지 · 모델·프로필·AI 연결 방식(구독·게이트웨이)·시작 도구·규칙 켜고 끄기·팀 명단·설정 수정 권한·repo 추가·스택 감지·진단·팀 현황·킷 업그레이드 · 팩 켜기 · 원격 붙이기 · 방향 인터뷰 끝냄 · 진행 방식(기능 단위 · 스프린트 · 전체 · 이슈형) · 유형 바꾸기 · 로드맵 보기 · 문서 사이트 · 기획 문서 ID 찾기 · 화면설계 · 데이터 설계 검사). "모델 바꿔줘", "리뷰는 GPT 로", "이제 Claude 만 써", "게이트웨이 모델 다시 받아", "이 규칙 꺼줘", "repo 추가해줘", "팀원 추가", "설정 잠가줘", "킷 업데이트", "텔레그램 알림 켜줘", "팀 방에 공지해줘", "스프린트로 바꿔줘", "로드맵 보여줘", "FN-001 어디서 써?", "GitLab 토큰 확인해줘", "토큰 옮겨줘" 같은 요청에 쓴다.
 ---
 
 # kedovi: 워크스페이스 설정을 명령으로
@@ -14,7 +14,10 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 요청 | 명령 | 범위 |
 |---|---|---|
 | 지금 모델 보기 | `kedovi models` (화면 없이 실행하면 표: 팀 구성 · 성향 · 역할별 등급과 출처, `--json` 은 JSON) | 보기 |
-| 진행 방식 보기 · 바꾸기 | `kedovi approach` (지금 값) · `kedovi approach sprint\|full\|issue` (MVP · 스프린트: 최소 기능부터 기능 단위 스프린트 · 데모 · 회고, 워터폴 · 전체: 전체 설계 뒤 구축, 이슈형: 운영 · 유지보수의 이슈 보드). 기본 단계 그대로인 로드맵은 새 뼈대로 바뀐다. "작게 시작하자" · "스프린트로" · "이슈 단위로 관리" 같은 말에 쓴다 | 팀 (팀장) |
+| 원격 붙이기 · push ("원격 붙여줘 <주소>", "GitLab 에 올려줘") | `kedovi remote add <주소> --yes` (origin 추가 · GitLab · GitHub 판별 · 공개 repo 확인 · `push -u origin HEAD`, push 없이는 `--no-push`). 지금 원격 = `kedovi remote`. 공개 repo 면 실행 전에 사용자에게 확인받는다. 붙인 뒤 문서 사이트 Pages CI · 웹훅 안내까지 | 팀 (팀장) |
+| 문서 사이트 원격 연결 다시 ("사이트 웹훅 다시 설정해줘", "Pages 연결해줘") | `kedovi remote setup` (Pages CI · Pages 주소 · GitLab 파이프라인 트리거 + 웹훅. 토큰이 없으면 손으로 하는 법을 그대로 전한다) | 팀 (팀장) |
+| 방향 인터뷰 끝냄 · 다시 | `kedovi kickoff` (지금 상태) · `kedovi kickoff done` (인터뷰 결과를 남긴 뒤) · `kedovi kickoff again` (다음 시작에서 다시). 인터뷰 자체는 `kickoff` 스킬 | 팀 (팀장) |
+| 진행 방식 보기 · 바꾸기 | `kedovi approach` (지금 값) · `kedovi approach feature\|sprint\|full\|issue` (기능 단위: 설계 기준 뒤 기능마다 명세 → 설계 → AI 구현 → 검증 → 배포, 새 워크스페이스 기본 · MVP · 스프린트: 최소 기능부터 기능 단위 스프린트 · 데모 · 회고, 워터폴 · 전체: 전체 설계 뒤 구축, 이슈형: 운영 · 유지보수의 이슈 보드). 기본 단계 그대로인 로드맵은 새 뼈대로 바뀐다. "작게 시작하자" · "스프린트로" · "이슈 단위로 관리" 같은 말에 쓴다 | 팀 (팀장) |
 | 유형 바꾸기 | `kedovi type <new\|modernization\|enhancement\|consulting> [--approach a] [--code 이름,…]` (분석·설계 → 구축 · 고도화 등. 현행 repo 중 고칠 것을 개발 repo 로 · 진행 방식 · 로드맵 새 뼈대, 지난 로드맵은 남김). 바꾸기 전에 무엇이 바뀌는지 보여 주고 확인받는다 | 팀 (팀장) |
 | 역할 에이전트 상한 확인 · 바꾸기 | `kedovi models limits` (적용 값 · 정한 곳 표) · `set total=30 leaders=3 … [--team]` · `clear [--team]` (직접 값 지우고 프로필 · 요금제대로) | 이 PC · 팀 |
 | 팀원 tmux 창 보기 (Claude Code agent teams) | `kedovi team watch` (읽기 전용으로 붙음) · `--rw` (입력도) · `--print` (명령만, 채팅에서는 이것을 사용자에게 보여 준다) | 읽기만 |
@@ -89,9 +92,11 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | push 뒤 핸드오프 묻기 · 묻지 않고 기록 · 끄기 | `kedovi handoff after-push ask\|auto\|off [--bundle 시간]` (오늘 핸드오프 뒤 그 시간 안의 push 는 묶어서 한 번에, 기본 3) | 팀 (workspace.json) |
 | 시간 예산 · 월간 집계 | `kedovi budget start "<작업>" 30m` · `extend` · `done` · `status` · `kedovi budget report [--month YYYY-MM]` (끝낸 작업 수 · 예산 초과율 · 걸린 시간 중앙값). "이번 달 예산 얼마나 넘었어?" 에 쓴다 | 이 PC |
 | 운영 결함 검사 · 월간 집계 | `kedovi defects check` (발견 · 분류 · 해소 칸) · `kedovi defects report [--month YYYY-MM]` (분류별 건수 · 잠복 · 해소 시간). "이번 달 장애 통계" 에 쓴다 | 보기 |
-| 문서 사이트 만들기 · 어긋남 검사 | `kedovi docs build [기획 repo]` · `kedovi docs check [기획 repo]` (md · 화면설계서 장 → `docs-site/` · 근거 색인). Pages 를 켠 repo 는 `docs-site/` 를 커밋한다 | 기획 repo |
-| 워크스페이스 전체 문서 사이트 (여러 repo 산출물을 한 사이트로) | 워크스페이스 루트에서 `kedovi docs build .` (`repos/` 의 repo 마다 사본 · 링크 · 뺌은 루트 `docs-site.json` 의 `repos`) | 팀 (`docs-site/` 를 커밋할지는 팀이 정한다) |
-| 문서 사이트를 Pages 로 올리기 켜고 끄기 · 상태 | `kedovi docs pages on [repo]` · `kedovi docs pages off [repo]` · `kedovi docs pages` (on = 원격에 맞는 CI 파일 · `docs-site/` 커밋, off = `.gitignore` 에 `/docs-site/`) | 기획 repo |
+| 문서 사이트 만들기 · 어긋남 검사 | `kedovi docs build` · `kedovi docs check` (워크스페이스 `docs-site/` 원본 → `.agents/site/`, 연결한 기획 repo 도 같은 사이트의 `repos/<이름>/`. `docs-site/` 가 없는 옛 구조면 기획 repo 마다 그 repo 의 `docs-site/`) | 팀 |
+| 옛 기획 repo 를 워크스페이스 문서로 옮기기 | `kedovi docs adopt <기획 repo> --dry-run` 으로 옮길 자리 표를 먼저 보이고, 확인 뒤 `kedovi docs adopt <기획 repo>` (원본 repo 는 그대로, 손댄 문서와 겹치면 멈춤, 덮기 `--force`). 끝나면 `kedovi repo remove <기획 repo>` · 커밋 | 팀 |
+| AI 자료 규칙 점검 | `kedovi docs ai-docs` (`ai-docs/` 맨 위 파일 · README 목록에 없는 폴더 · 머리 줄 없는 파일, 알림만) | 보기 |
+| 워크스페이스 루트 전체를 한 사이트로 (옛 구조) | `docs-site/` 원본이 없는 워크스페이스 루트에서 `kedovi docs build .` (`repos/` 의 repo 마다 사본 · 링크 · 뺌은 루트 `docs-site.json` 의 `repos`) | 팀 |
+| 문서 사이트를 Pages 로 올리기 켜고 끄기 · 상태 | `kedovi docs pages on` · `kedovi docs pages off` · `kedovi docs pages` (워크스페이스 사이트 = CI 가 빌드하는 CI 파일만 두고 생성물은 커밋하지 않는다. 옛 기획 repo 는 `kedovi docs pages on <repo>`: CI 파일 · `docs-site/` 커밋) | 팀 |
 | Codex 웹 검색 끄기 · 켜기 | `workspace.json` 의 `agents.webSearch` 를 `false` 로 (지우면 켬. `kedovi start` 가 Codex 에 `--search` 를 붙인다) | 팀 |
 | 작업 리더 진행판 ("리더 지금 어디까지 했어?" · "진행판 보여줘") | `kedovi team board [--all] [--json]` (단위마다 단계 · 끝난 것 · 다음 · 예상 종료 · 갱신, 소식 없는 리더 ⚠) · 리더가 적기 `kedovi team step --unit <단위> --stage <단계> [--left "남은 단계,…"] [--done "…"] [--next "…"] [--eta HH:MM]` (예상 종료는 실측 범위: 단계 종류별 지난 시간 · 무거운 시험 기록, `--eta` 는 기록 없을 때만) · 닫기 `--end 완료\|막힘\|결정 필요` · 보고 주기 `vars.team.leadReportMinutes` (기본 15분) · 팀원이 도는 채 끝내는 리더 되돌리기 `kedovi team-mode enforce hold off\|block [--team]` | 이 PC |
 | 요청 장부 ("내가 말한 거 어떻게 됐어?" · "요청 목록 보여줘") | `kedovi requests` (열린 요청: 번호 · 요청 · 맡은 에이전트 · 상태 · 결과, `--all` 이면 끝난 것까지 · `--json`) · 고치기 `kedovi requests set <번호> --status 접수\|진행\|완료\|보류\|취소 [--agent 이름] [--result "결과"]` · 답변 끝 표 `kedovi requests table` · 손으로 더하기 `kedovi requests add "<요청>"` · 요청 시작 훅이 자동 기록(handoffs/<id>/topics/요청-목록.md, 맞장구 · 백그라운드 알림 · 에이전트 메시지는 빼고, 질문은 물음으로 받아 답하면 닫고, 짧은 승인은 직전 요청에 붙임) · 답변 끝 표 검사 `kedovi team-mode enforce req off\|warn\|block [--team]` | 이 PC |
@@ -101,8 +106,8 @@ description: 워크스페이스 설정을 바꾸거나 확인하는 요청을 ke
 | 워크스페이스 현황판 | `kedovi board` (로드맵 · 팀원별 마지막 핸드오프 · 미완 작업 · 공지 + 기록 쪽을 `.agents/board/` 에 만들어 브라우저로 연다. 보기 전용) | 이 PC |
 | 다른 도구에 맡긴 작업(위임) 진행 보기 | `kedovi delegate watch [작업 id]` (상대 에이전트가 읽고 실행하는 것이 줄마다) · `kedovi delegate status [작업 id]` (지금 현황 한 번) · `kedovi delegate list` | 워크스페이스 |
 | 토론 모드 보기 · 쓸 수 있는 모델 | `kedovi debate list` · `kedovi debate watch [토론 id]` (실시간: 모델별 주장 · 판정 · 회차 정리. 터미널용이라 끝날 때까지 안 닫힌다. 채팅에서 "토론 어디까지 됐어?" 는 `--once`: 지금까지만 보여 주고 끝) · `kedovi debate status [토론 id]` · `kedovi debate models [--task code\|design\|docs]` (토론 시작은 debate 스킬: "토론해줘") | 워크스페이스 |
-| 문서 사이트를 이 PC 에서 웹 주소로 보기 | `kedovi docs serve [repo]` (`http://127.0.0.1:8000/`, `--open` 이면 브라우저도 연다. 끝내기 Ctrl+C) | 기획 repo |
-| 문서 사이트 메뉴 묶음 · 이름 · 버전 바꾸기 | 기획 repo 의 `docs-site.json` 을 고치고 `kedovi docs build` (README 의 「문서 사이트」 절 형식) | 기획 repo |
+| 문서 사이트를 이 PC 에서 웹 주소로 보기 | `kedovi docs serve [repo]` (`http://localhost:<포트>/`, 이미 떠 있으면 그 주소. `--open` 이면 브라우저도 연다. 끝내기 Ctrl+C, 뒤에서 띄운 서버는 `kedovi docs serve --stop`). 워크스페이스 사이트는 화면에서 의견 · 게시판 글 · 이슈를 쓰고(원격 인증이 있으면 원격, 없으면 파일 + 커밋), `docs-site/` · `issues/` 가 바뀌면 다시 만든다(`--no-watch` 로 끔) | 보기 |
+| 문서 사이트 메뉴 묶음 · 이름 · 버전 바꾸기 | `docs-site/docs-site.json`(옛 구조는 기획 repo 의 `docs-site.json`)을 고치고 `kedovi docs build` | 팀 |
 | 기획 문서 ID 하나 보기 · 쓰는 곳 찾기 | `kedovi docs show <ID> [--in <파일 조각>] [--all]` (정의 부분만) · `kedovi docs refs <ID> [--docs]` (기획 · 코드 · 이슈 repo 의 파일:줄). "FN-001 내용" · "이 결정 어디서 써?" 같은 말에 쓴다 | 보기 |
 | 기획과 코드 대조 | `kedovi docs trace [--ids FN] [--all] [--md] [--new]` (`--md` 추적표 · `--new` 새 진입 파일 중 ID 없는 것) (코드 주석에 구현 표시가 없는 기획 ID · 기획에 정의 없는 코드의 ID). "기획대로 다 만들었어?" · "코드랑 문서 어긋난 곳" 같은 말에 쓴다. 머리말은 `vars.docs.traceIds` | 보기 |
 | 리뷰 확인 (commit · push 전에 리뷰를 거쳤나) | 상태 `kedovi review status` (대상 repo 마다 리뷰 안 된 줄 수 · 마지막 리뷰) · 훅이 알 수 없는 방법으로 리뷰했으면 `kedovi review mark [--repo <이름>] [--by "<누가>"]` · 생략은 **사용자에게 먼저 묻고 승인받았을 때만** `kedovi review skip --reason "<사유>"` (다음 한 번). 켜기 · 수준 · 대상은 `kedovi team-mode enforce review off\|warn\|block [--repos a,b\|*] [--min-lines N] [--paths p1,p2] --team` (기본 꺼짐) | 이 PC · 수준은 팀 |

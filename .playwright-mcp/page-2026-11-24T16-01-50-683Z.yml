@@ -1,0 +1,184 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - link "주관 주문 관리" [ref=e5] [cursor=pointer]:
+      - /url: http://localhost:8765/index.html
+      - generic [ref=e6]: 주관
+      - generic [ref=e7]: 주문 관리
+    - navigation "상단 메뉴" [ref=e8]:
+      - link "개요" [ref=e9] [cursor=pointer]:
+        - /url: http://localhost:8765/index.html
+      - link "설계" [ref=e10] [cursor=pointer]:
+        - /url: http://localhost:8765/%EB%8D%B0%EC%9D%B4%ED%84%B0/index.html
+      - link "기능" [ref=e11] [cursor=pointer]:
+        - /url: http://localhost:8765/%EA%B8%B0%EB%8A%A5/index.html
+      - link "테스트" [ref=e12] [cursor=pointer]:
+        - /url: http://localhost:8765/_/tests.html
+      - link "일정" [ref=e13] [cursor=pointer]:
+        - /url: http://localhost:8765/_/gantt.html
+      - link "이슈" [ref=e14] [cursor=pointer]:
+        - /url: http://localhost:8765/_/issues.html
+      - link "자료실" [ref=e15] [cursor=pointer]:
+        - /url: http://localhost:8765/_/files.html
+    - generic [ref=e16]:
+      - link "나" [ref=e17] [cursor=pointer]:
+        - /url: http://localhost:8765/_/me.html
+        - generic [aria-hidden] [ref=e18]: "?"
+      - button "나를 부른 의견" [ref=e21] [cursor=pointer]
+      - button "검색" [ref=e24] [cursor=pointer]:
+        - generic [ref=e28]: ⌘K
+      - button "인쇄" [ref=e29] [cursor=pointer]
+      - button "테마" [ref=e34] [cursor=pointer]
+  - generic [ref=e38]:
+    - navigation [ref=e39]:
+      - generic [ref=e40]: 개요
+      - link "대시보드" [ref=e42] [cursor=pointer]:
+        - /url: http://localhost:8765/index.html
+      - link "프로젝트 개요" [ref=e44] [cursor=pointer]:
+        - /url: http://localhost:8765/%EA%B0%9C%EC%9A%94.html
+      - link "진행 현황" [ref=e46] [cursor=pointer]:
+        - /url: http://localhost:8765/_/progress.html
+      - link "최근 바뀐 문서" [ref=e48] [cursor=pointer]:
+        - /url: http://localhost:8765/_/recent.html
+      - link "팀 · 설정" [ref=e50] [cursor=pointer]:
+        - /url: http://localhost:8765/_/team.html
+    - main [ref=e52]:
+      - article [ref=e53]:
+        - generic [ref=e54]: 개요 › 대시보드
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - heading "주문 관리 · 대시보드" [level=1] [ref=e58]
+            - generic [ref=e59]:
+              - text: 11월 25일 기준 · 빌드 11-24 16:00 ·
+              - link "팀 4명 · AI 구성" [ref=e60] [cursor=pointer]:
+                - /url: http://localhost:8765/_/team.html
+          - generic [ref=e61]:
+            - generic [ref=e62]:
+              - generic [ref=e63]:
+                - text: 1차 오픈까지
+                - link "열기" [ref=e64] [cursor=pointer]:
+                  - /url: http://localhost:8765/_/milestones.html#ms-1%EC%B0%A8%20%EC%98%A4%ED%94%88
+              - generic [ref=e67]: 17일
+              - generic [ref=e68]: 12월 12일 · 기능 1 / 3
+            - generic [ref=e69]:
+              - generic [ref=e70]:
+                - text: 기능
+                - link "열기" [ref=e71] [cursor=pointer]:
+                  - /url: http://localhost:8765/_/progress.html
+              - generic [ref=e74]: 1 / 4
+              - generic [ref=e75]: 배포 1 · 진행 2 · 대기 1
+            - generic [ref=e76]:
+              - generic [ref=e77]:
+                - text: 열린 이슈
+                - link "열기" [ref=e78] [cursor=pointer]:
+                  - /url: http://localhost:8765/_/issues.html
+              - generic [ref=e81]: "2"
+              - generic [ref=e82]: 분석 1 · 수정 1
+            - generic [ref=e83]:
+              - generic [ref=e84]:
+                - text: 이번 주 마감 작업
+                - link "열기" [ref=e85] [cursor=pointer]:
+                  - /url: http://localhost:8765/_/workitems.html
+              - generic [ref=e88]: "2"
+              - generic [ref=e89]: "#52 11-27 · #53 11-28"
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]:
+                - generic [ref=e93]: 기능 진행
+                - link "진행 현황" [ref=e94] [cursor=pointer]:
+                  - /url: http://localhost:8765/_/progress.html
+              - generic [ref=e95]:
+                - generic [ref=e96]: 기능
+                - generic [ref=e97]: 명세
+                - generic [ref=e98]: 설계
+                - generic [ref=e99]: 구현
+                - generic [ref=e100]: 검증
+                - generic [ref=e101]: 배포
+                - generic [ref=e102]:
+                  - generic [ref=e103]: "001"
+                  - generic [ref=e104]: 회원 관리
+                  - link "열기" [ref=e105] [cursor=pointer]:
+                    - /url: http://localhost:8765/%EA%B8%B0%EB%8A%A5/001-%ED%9A%8C%EC%9B%90%EA%B4%80%EB%A6%AC.html
+                - generic "명세 · 끝남" [ref=e109]
+                - generic "설계 · 끝남" [ref=e111]
+                - generic "구현 · 끝남" [ref=e113]
+                - generic "검증 · 끝남" [ref=e115]
+                - generic "배포 · 끝남" [ref=e117]
+                - generic [ref=e118]:
+                  - generic [ref=e119]: "002"
+                  - generic [ref=e120]: 상품 관리
+                  - link "열기" [ref=e121] [cursor=pointer]:
+                    - /url: http://localhost:8765/%EA%B8%B0%EB%8A%A5/002-%EC%83%81%ED%92%88%EA%B4%80%EB%A6%AC.html
+                - generic "명세 · 끝남" [ref=e125]
+                - generic "설계 · 끝남" [ref=e127]
+                - generic "구현 · 끝남" [ref=e129]
+                - generic "검증 · 지금" [ref=e131]
+                - generic "배포 · 남음" [ref=e133]
+                - generic [ref=e134]:
+                  - generic [ref=e135]: "003"
+                  - generic [ref=e136]: 주문 관리
+                  - link "열기" [ref=e137] [cursor=pointer]:
+                    - /url: http://localhost:8765/%EA%B8%B0%EB%8A%A5/003-%EC%A3%BC%EB%AC%B8%EA%B4%80%EB%A6%AC.html
+                - generic "명세 · 끝남" [ref=e141]
+                - generic "설계 · 끝남" [ref=e143]
+                - generic "구현 · 지금" [ref=e145]
+                - generic "검증 · 남음" [ref=e147]
+                - generic "배포 · 남음" [ref=e149]
+                - generic [ref=e150]:
+                  - generic [ref=e151]: "004"
+                  - generic [ref=e152]: 정산
+                  - link "열기" [ref=e153] [cursor=pointer]:
+                    - /url: http://localhost:8765/%EA%B8%B0%EB%8A%A5/004-%EC%A0%95%EC%82%B0.html
+                - generic "명세 · 지금" [ref=e157]
+                - generic "설계 · 남음" [ref=e159]
+                - generic "구현 · 남음" [ref=e161]
+                - generic "검증 · 남음" [ref=e163]
+                - generic "배포 · 남음" [ref=e165]
+            - generic [ref=e166]:
+              - generic [ref=e167]:
+                - generic [ref=e168]:
+                  - text: 공지 · 게시판
+                  - generic [ref=e169]: 안 읽음 1
+                - link "게시판" [ref=e170] [cursor=pointer]:
+                  - /url: http://localhost:8765/_/board.html
+              - generic [ref=e171]:
+                - generic "안 읽음" [ref=e172]
+                - generic [ref=e173]: 공지
+                - generic [ref=e174]: 1차 오픈 일정
+                - generic [ref=e175]: 11-21
+                - link "열기" [ref=e176] [cursor=pointer]:
+                  - /url: http://localhost:8765/_/board/post.html?id=%2360
+              - generic [ref=e179]:
+                - generic [ref=e180]: 취소 사유 목록 의견
+                - generic [ref=e181]: 11-22
+                - link "열기" [ref=e182] [cursor=pointer]:
+                  - /url: http://localhost:8765/_/board/post.html?id=%2361
+          - generic [ref=e185]:
+            - generic [ref=e186]:
+              - generic [ref=e187]:
+                - generic [ref=e188]: 내 일
+                - link "내 일 전체" [ref=e189] [cursor=pointer]:
+                  - /url: http://localhost:8765/_/me/work.html
+              - generic [ref=e190]: 나 › 프로필에서 내 아이디를 고르면 내 일이 모입니다
+            - generic [ref=e191]:
+              - generic [ref=e192]:
+                - generic [ref=e193]: 열린 이슈
+                - link "처리 보드" [ref=e194] [cursor=pointer]:
+                  - /url: http://localhost:8765/_/issues/board.html
+              - generic [ref=e195]:
+                - generic [ref=e196] [cursor=pointer]: "#41"
+                - generic [ref=e197]: 취소 사유에 「재고 없음」 추가
+                - generic [ref=e198]: 분석
+                - link "열기" [ref=e199] [cursor=pointer]:
+                  - /url: https://gitlab.example.com/shop/order-ws/-/issues/41
+              - generic [ref=e204]:
+                - generic [ref=e205] [cursor=pointer]: "#38"
+                - generic [ref=e206]: 휴대폰 인증 문자가 늦게 옴
+                - generic [ref=e207]: 수정
+                - link "열기" [ref=e208] [cursor=pointer]:
+                  - /url: https://gitlab.example.com/shop/order-ws/-/issues/38
+            - generic [ref=e213]:
+              - generic [ref=e214]:
+                - generic [ref=e215]: 지난 방문 이후
+                - link "전체" [ref=e216] [cursor=pointer]:
+                  - /url: http://localhost:8765/_/recent.html
+              - generic [ref=e217]: 다음 방문부터 그 사이에 바뀐 문서를 모아 보입니다

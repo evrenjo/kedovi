@@ -1,0 +1,13 @@
+{
+  "project": true,
+  "groups": [
+    { "group": "개요", "icon": "◆", "files": ["개요.md", "개요/**"] },
+    { "group": "설계", "icon": "⬡", "files": ["설계/요구사항.md", "설계/아키텍처.md", "데이터/README.md", "데이터/**", "화면/README.md", "화면/**", "설계/개발표준.md", "설계/*.md", "설계/결정/README.md", "설계/**"] },
+    { "group": "기능", "icon": "☰", "files": ["기능/README.md", "기능/*.md", "기능/**"] },
+    { "group": "테스트", "icon": "✓", "files": ["테스트/README.md", "테스트/**"] },
+    { "group": "일정", "icon": "▭", "files": ["일정/README.md", "일정/**"] },
+    { "group": "이슈", "icon": "!", "files": ["이슈/README.md", "이슈/**"] },
+    { "group": "자료실", "icon": "▧", "files": ["자료실/README.md", "자료실/**", "repos/**"], "tree": true }
+  ],
+  "exclude": ["화면/prototype/**", "자료실/게시판/**"]
+}

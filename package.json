@@ -1,8 +1,8 @@
 {
   "name": "kedovi",
-  "version": "0.108.2",
+  "version": "0.109.0",
   "private": false,
-  "description": "Claude Code · Codex 팀 개발 워크스페이스 킷: 메인은 대화, 작업은 리더 · 팀원 에이전트가 병렬로 · 착수 전 확인 → 검사 → 리뷰를 훅으로 지킴 · 요청 장부 · 진행판(실측 예상 종료) · 화면 정본 대조 · AI 티 없는 화면 · 실행 흐름 디버깅 · 검증 2단 · 주간 사용량 조절 · 기획 문서 사이트 · 핸드오프 · 세션 제목 자동",
+  "description": "Claude Code · Codex 팀 개발 워크스페이스 킷: 메인은 대화, 작업은 리더 · 팀원 에이전트가 병렬로 · 착수 전 확인 → 검사 → 리뷰를 훅으로 지킴 · 프로젝트 사이트(대시보드 · 기능 진행 · 일정 · 이슈 · 의견 · 멘션) · 요청 장부 · 진행판(실측 예상) · 화면 정본 대조 · AI 티 없는 화면 · 실행 흐름 디버깅 · 검증 2단 · 핸드오프",
   "keywords": [
     "claude-code",
     "codex",
@@ -26,7 +26,9 @@
     "developer-tools",
     "git-worktree",
     "request-tracking",
-    "ai-slop"
+    "ai-slop",
+    "project-portal",
+    "spec-driven-development"
   ],
   "license": "MIT",
   "repository": {
@@ -57,7 +59,8 @@
     "!**/__pycache__",
     "!bin/selftest.js",
     "!bin/vendor.js",
-    "!bin/site-test.js"
+    "!bin/site-test.js",
+    "!bin/fixtures"
   ],
   "scripts": {
     "test": "node bin/selftest.js",

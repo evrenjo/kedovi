@@ -1,0 +1,1256 @@
+{
+ "version": 2,
+ "layout": "workspace",
+ "title": "주문 관리",
+ "builtAt": "2026-11-24T16:00:00+09:00",
+ "project": {
+  "title": "주문 관리",
+  "description": "판매자가 주문을 접수 · 출고 · 취소하고 주간 정산을 받는 관리 화면",
+  "onboarded": true
+ },
+ "stages": [
+  "명세",
+  "설계",
+  "구현",
+  "검증",
+  "배포"
+ ],
+ "features": [
+  {
+   "no": "001",
+   "name": "회원 관리",
+   "milestone": "1차 오픈",
+   "stage": "배포",
+   "page": "기능/001-회원관리.html",
+   "md": "기능/001-회원관리.md",
+   "title": "001 회원 관리",
+   "fn": [
+    {
+     "id": "FN-001",
+     "text": "이메일 · 휴대폰 인증 가입"
+    },
+    {
+     "id": "FN-002",
+     "text": "휴대폰 인증 문자 발송"
+    },
+    {
+     "id": "FN-003",
+     "text": "로그인 · 로그인 유지 14일"
+    },
+    {
+     "id": "FN-004",
+     "text": "비밀번호 재설정"
+    }
+   ],
+   "ac": [
+    {
+     "id": "AC-001-1",
+     "text": "같은 이메일로 두 번 가입할 수 없다",
+     "result": "통과"
+    },
+    {
+     "id": "AC-002-1",
+     "text": "인증 문자는 3분 뒤 만료된다",
+     "result": "통과"
+    },
+    {
+     "id": "AC-003-1",
+     "text": "5회 틀리면 10분 잠금",
+     "result": "통과"
+    }
+   ],
+   "api": [
+    "API-MEM-01",
+    "API-MEM-02",
+    "API-MEM-03"
+   ],
+   "scr": [
+    "SCR-MEM-01",
+    "SCR-MEM-02"
+   ],
+   "tables": [
+    "members",
+    "sms_codes"
+   ],
+   "updatedAt": "2026-11-24T15:20:00+09:00"
+  },
+  {
+   "no": "002",
+   "name": "상품 관리",
+   "milestone": "1차 오픈",
+   "stage": "검증",
+   "page": "기능/002-상품관리.html",
+   "md": "기능/002-상품관리.md",
+   "title": "002 상품 관리",
+   "fn": [
+    {
+     "id": "FN-010",
+     "text": "상품 등록 (이미지 5장까지)"
+    },
+    {
+     "id": "FN-011",
+     "text": "이미지 업로드 · 순서 바꾸기"
+    },
+    {
+     "id": "FN-012",
+     "text": "재고 수량 조정"
+    },
+    {
+     "id": "FN-013",
+     "text": "판매 중지 · 재개"
+    }
+   ],
+   "ac": [
+    {
+     "id": "AC-010-1",
+     "text": "이미지 6장째는 올라가지 않는다",
+     "result": "통과"
+    },
+    {
+     "id": "AC-012-1",
+     "text": "재고는 0 아래로 내려가지 않는다",
+     "result": "통과"
+    },
+    {
+     "id": "AC-013-1",
+     "text": "판매 중지 상품은 주문 화면에 안 보인다",
+     "result": "시험 중"
+    }
+   ],
+   "api": [
+    "API-PRD-01",
+    "API-PRD-02",
+    "API-PRD-04"
+   ],
+   "scr": [
+    "SCR-PRD-01",
+    "SCR-PRD-02"
+   ],
+   "tables": [
+    "products",
+    "product_images"
+   ],
+   "updatedAt": "2026-11-24T15:20:00+09:00"
+  },
+  {
+   "no": "003",
+   "name": "주문 관리",
+   "milestone": "1차 오픈",
+   "stage": "구현",
+   "page": "기능/003-주문관리.html",
+   "md": "기능/003-주문관리.md",
+   "title": "003 주문 관리",
+   "fn": [
+    {
+     "id": "FN-020",
+     "text": "주문 목록 · 상태 필터"
+    },
+    {
+     "id": "FN-021",
+     "text": "주문 상태 전이 (결제 → 접수 → 출고)"
+    },
+    {
+     "id": "FN-022",
+     "text": "송장 번호 입력"
+    },
+    {
+     "id": "FN-024",
+     "text": "출고 전 주문 취소 (사유 선택)"
+    }
+   ],
+   "ac": [
+    {
+     "id": "AC-020-1",
+     "text": "상태 필터를 바꾸면 주소에 남는다",
+     "result": "아직"
+    },
+    {
+     "id": "AC-024-1",
+     "text": "출고된 주문은 취소 버튼이 보이지 않는다",
+     "result": "아직"
+    },
+    {
+     "id": "AC-024-2",
+     "text": "취소하면 재고가 돌아온다",
+     "result": "아직"
+    }
+   ],
+   "api": [
+    "API-ORD-01",
+    "API-ORD-02",
+    "API-ORD-04",
+    "API-ORD-05"
+   ],
+   "scr": [
+    "SCR-ORD-01",
+    "SCR-ORD-03"
+   ],
+   "tables": [
+    "orders",
+    "order_items"
+   ],
+   "updatedAt": "2026-11-24T15:20:00+09:00"
+  },
+  {
+   "no": "004",
+   "name": "정산",
+   "milestone": "2차 · 정산",
+   "stage": "명세",
+   "page": "기능/004-정산.html",
+   "md": "기능/004-정산.md",
+   "title": "004 정산",
+   "fn": [
+    {
+     "id": "FN-030",
+     "text": "주간 정산서 만들기"
+    },
+    {
+     "id": "FN-031",
+     "text": "수수료 계산"
+    },
+    {
+     "id": "FN-032",
+     "text": "정산서 내려받기"
+    }
+   ],
+   "ac": [],
+   "api": [],
+   "scr": [
+    "SCR-STL-01"
+   ],
+   "tables": [
+    "settlements"
+   ],
+   "updatedAt": "2026-11-24T15:20:00+09:00"
+  }
+ ],
+ "milestones": [
+  {
+   "name": "1차 오픈",
+   "start": "2026-11-03",
+   "due": "2026-12-12",
+   "features": [
+    "001",
+    "002",
+    "003"
+   ],
+   "progress": {
+    "done": 1,
+    "total": 3
+   },
+   "source": "gitlab",
+   "url": "https://gitlab.example.com/shop/order-ws/-/milestones/1"
+  },
+  {
+   "name": "2차 · 정산",
+   "start": "2026-12-15",
+   "due": "2026-12-26",
+   "features": [
+    "004"
+   ],
+   "progress": {
+    "done": 0,
+    "total": 1
+   },
+   "source": "gitlab",
+   "url": "https://gitlab.example.com/shop/order-ws/-/milestones/2"
+  }
+ ],
+ "docs": [
+  {
+   "page": "개요.html",
+   "md": "개요.md",
+   "title": "프로젝트 개요",
+   "group": "개요",
+   "updatedAt": "2026-11-11T10:00:00+09:00",
+   "updatedBy": "kim"
+  },
+  {
+   "page": "설계/요구사항.html",
+   "md": "설계/요구사항.md",
+   "title": "요구사항",
+   "group": "설계",
+   "updatedAt": "2026-11-12T10:00:00+09:00",
+   "updatedBy": "lee"
+  },
+  {
+   "page": "설계/아키텍처.html",
+   "md": "설계/아키텍처.md",
+   "title": "아키텍처",
+   "group": "설계",
+   "updatedAt": "2026-11-13T10:00:00+09:00",
+   "updatedBy": "park"
+  },
+  {
+   "page": "설계/개발표준.html",
+   "md": "설계/개발표준.md",
+   "title": "개발 표준",
+   "group": "설계",
+   "updatedAt": "2026-11-14T10:00:00+09:00",
+   "updatedBy": "hong"
+  },
+  {
+   "page": "설계/결정/DEC-005-취소사유.html",
+   "md": "설계/결정/DEC-005-취소사유.md",
+   "title": "DEC-005 취소 사유는 고정 목록",
+   "group": "설계",
+   "updatedAt": "2026-11-15T10:00:00+09:00",
+   "updatedBy": "kim"
+  },
+  {
+   "page": "데이터/주문.html",
+   "md": "데이터/주문.md",
+   "title": "주문 데이터",
+   "group": "설계",
+   "updatedAt": "2026-11-16T10:00:00+09:00",
+   "updatedBy": "lee"
+  },
+  {
+   "page": "화면/index.html",
+   "md": "화면/README.md",
+   "title": "화면 목록",
+   "group": "설계",
+   "updatedAt": "2026-11-17T10:00:00+09:00",
+   "updatedBy": "park"
+  },
+  {
+   "page": "기능/001-회원관리.html",
+   "md": "기능/001-회원관리.md",
+   "title": "001 회원 관리",
+   "group": "기능",
+   "updatedAt": "2026-11-18T10:00:00+09:00",
+   "updatedBy": "hong"
+  },
+  {
+   "page": "기능/002-상품관리.html",
+   "md": "기능/002-상품관리.md",
+   "title": "002 상품 관리",
+   "group": "기능",
+   "updatedAt": "2026-11-19T10:00:00+09:00",
+   "updatedBy": "kim"
+  },
+  {
+   "page": "기능/003-주문관리.html",
+   "md": "기능/003-주문관리.md",
+   "title": "003 주문 관리",
+   "group": "기능",
+   "updatedAt": "2026-11-20T10:00:00+09:00",
+   "updatedBy": "lee"
+  },
+  {
+   "page": "기능/004-정산.html",
+   "md": "기능/004-정산.md",
+   "title": "004 정산",
+   "group": "기능",
+   "updatedAt": "2026-11-21T10:00:00+09:00",
+   "updatedBy": "park"
+  },
+  {
+   "page": "자료실/index.html",
+   "md": "자료실/README.md",
+   "title": "자료실",
+   "group": "자료실",
+   "updatedAt": "2026-11-22T10:00:00+09:00",
+   "updatedBy": "hong"
+  },
+  {
+   "page": "자료실/회의록/2026-11-20-킥오프.html",
+   "md": "자료실/회의록/2026-11-20-킥오프.md",
+   "title": "2026-11-20 킥오프",
+   "group": "자료실",
+   "updatedAt": "2026-11-23T10:00:00+09:00",
+   "updatedBy": "kim"
+  }
+ ],
+ "ids": {
+  "FN-001": {
+   "page": "기능/001-회원관리.html",
+   "title": "이메일 · 휴대폰 인증 가입",
+   "kind": "FN"
+  },
+  "FN-002": {
+   "page": "기능/001-회원관리.html",
+   "title": "휴대폰 인증 문자 발송",
+   "kind": "FN"
+  },
+  "FN-003": {
+   "page": "기능/001-회원관리.html",
+   "title": "로그인 · 로그인 유지 14일",
+   "kind": "FN"
+  },
+  "FN-004": {
+   "page": "기능/001-회원관리.html",
+   "title": "비밀번호 재설정",
+   "kind": "FN"
+  },
+  "AC-001-1": {
+   "page": "기능/001-회원관리.html",
+   "title": "같은 이메일로 두 번 가입할 수 없다",
+   "kind": "AC"
+  },
+  "AC-002-1": {
+   "page": "기능/001-회원관리.html",
+   "title": "인증 문자는 3분 뒤 만료된다",
+   "kind": "AC"
+  },
+  "AC-003-1": {
+   "page": "기능/001-회원관리.html",
+   "title": "5회 틀리면 10분 잠금",
+   "kind": "AC"
+  },
+  "API-MEM-01": {
+   "page": "기능/001-회원관리.html",
+   "title": "API-MEM-01",
+   "kind": "API"
+  },
+  "API-MEM-02": {
+   "page": "기능/001-회원관리.html",
+   "title": "API-MEM-02",
+   "kind": "API"
+  },
+  "API-MEM-03": {
+   "page": "기능/001-회원관리.html",
+   "title": "API-MEM-03",
+   "kind": "API"
+  },
+  "SCR-MEM-01": {
+   "page": "기능/001-회원관리.html",
+   "title": "SCR-MEM-01",
+   "kind": "SCR"
+  },
+  "SCR-MEM-02": {
+   "page": "기능/001-회원관리.html",
+   "title": "SCR-MEM-02",
+   "kind": "SCR"
+  },
+  "FN-010": {
+   "page": "기능/002-상품관리.html",
+   "title": "상품 등록 (이미지 5장까지)",
+   "kind": "FN"
+  },
+  "FN-011": {
+   "page": "기능/002-상품관리.html",
+   "title": "이미지 업로드 · 순서 바꾸기",
+   "kind": "FN"
+  },
+  "FN-012": {
+   "page": "기능/002-상품관리.html",
+   "title": "재고 수량 조정",
+   "kind": "FN"
+  },
+  "FN-013": {
+   "page": "기능/002-상품관리.html",
+   "title": "판매 중지 · 재개",
+   "kind": "FN"
+  },
+  "AC-010-1": {
+   "page": "기능/002-상품관리.html",
+   "title": "이미지 6장째는 올라가지 않는다",
+   "kind": "AC"
+  },
+  "AC-012-1": {
+   "page": "기능/002-상품관리.html",
+   "title": "재고는 0 아래로 내려가지 않는다",
+   "kind": "AC"
+  },
+  "AC-013-1": {
+   "page": "기능/002-상품관리.html",
+   "title": "판매 중지 상품은 주문 화면에 안 보인다",
+   "kind": "AC"
+  },
+  "API-PRD-01": {
+   "page": "기능/002-상품관리.html",
+   "title": "API-PRD-01",
+   "kind": "API"
+  },
+  "API-PRD-02": {
+   "page": "기능/002-상품관리.html",
+   "title": "API-PRD-02",
+   "kind": "API"
+  },
+  "API-PRD-04": {
+   "page": "기능/002-상품관리.html",
+   "title": "API-PRD-04",
+   "kind": "API"
+  },
+  "SCR-PRD-01": {
+   "page": "기능/002-상품관리.html",
+   "title": "SCR-PRD-01",
+   "kind": "SCR"
+  },
+  "SCR-PRD-02": {
+   "page": "기능/002-상품관리.html",
+   "title": "SCR-PRD-02",
+   "kind": "SCR"
+  },
+  "FN-020": {
+   "page": "기능/003-주문관리.html",
+   "title": "주문 목록 · 상태 필터",
+   "kind": "FN"
+  },
+  "FN-021": {
+   "page": "기능/003-주문관리.html",
+   "title": "주문 상태 전이 (결제 → 접수 → 출고)",
+   "kind": "FN"
+  },
+  "FN-022": {
+   "page": "기능/003-주문관리.html",
+   "title": "송장 번호 입력",
+   "kind": "FN"
+  },
+  "FN-024": {
+   "page": "기능/003-주문관리.html",
+   "title": "출고 전 주문 취소 (사유 선택)",
+   "kind": "FN"
+  },
+  "AC-020-1": {
+   "page": "기능/003-주문관리.html",
+   "title": "상태 필터를 바꾸면 주소에 남는다",
+   "kind": "AC"
+  },
+  "AC-024-1": {
+   "page": "기능/003-주문관리.html",
+   "title": "출고된 주문은 취소 버튼이 보이지 않는다",
+   "kind": "AC"
+  },
+  "AC-024-2": {
+   "page": "기능/003-주문관리.html",
+   "title": "취소하면 재고가 돌아온다",
+   "kind": "AC"
+  },
+  "API-ORD-01": {
+   "page": "기능/003-주문관리.html",
+   "title": "API-ORD-01",
+   "kind": "API"
+  },
+  "API-ORD-02": {
+   "page": "기능/003-주문관리.html",
+   "title": "API-ORD-02",
+   "kind": "API"
+  },
+  "API-ORD-04": {
+   "page": "기능/003-주문관리.html",
+   "title": "API-ORD-04",
+   "kind": "API"
+  },
+  "API-ORD-05": {
+   "page": "기능/003-주문관리.html",
+   "title": "API-ORD-05",
+   "kind": "API"
+  },
+  "SCR-ORD-01": {
+   "page": "기능/003-주문관리.html",
+   "title": "SCR-ORD-01",
+   "kind": "SCR"
+  },
+  "SCR-ORD-03": {
+   "page": "기능/003-주문관리.html",
+   "title": "SCR-ORD-03",
+   "kind": "SCR"
+  },
+  "FN-030": {
+   "page": "기능/004-정산.html",
+   "title": "주간 정산서 만들기",
+   "kind": "FN"
+  },
+  "FN-031": {
+   "page": "기능/004-정산.html",
+   "title": "수수료 계산",
+   "kind": "FN"
+  },
+  "FN-032": {
+   "page": "기능/004-정산.html",
+   "title": "정산서 내려받기",
+   "kind": "FN"
+  },
+  "SCR-STL-01": {
+   "page": "기능/004-정산.html",
+   "title": "SCR-STL-01",
+   "kind": "SCR"
+  },
+  "REQ-001": {
+   "page": "설계/요구사항.html",
+   "title": "요구 REQ-001",
+   "kind": "REQ"
+  },
+  "REQ-004": {
+   "page": "설계/요구사항.html",
+   "title": "요구 REQ-004",
+   "kind": "REQ"
+  },
+  "REQ-007": {
+   "page": "설계/요구사항.html",
+   "title": "요구 REQ-007",
+   "kind": "REQ"
+  },
+  "REQ-008": {
+   "page": "설계/요구사항.html",
+   "title": "요구 REQ-008",
+   "kind": "REQ"
+  },
+  "REQ-012": {
+   "page": "설계/요구사항.html",
+   "title": "요구 REQ-012",
+   "kind": "REQ"
+  },
+  "DEC-005": {
+   "page": "설계/결정/DEC-005-취소사유.html",
+   "title": "취소 사유는 고정 목록",
+   "kind": "DEC"
+  },
+  "members": {
+   "page": "데이터/주문.html",
+   "title": "members",
+   "kind": "TABLE"
+  },
+  "sms_codes": {
+   "page": "데이터/주문.html",
+   "title": "sms_codes",
+   "kind": "TABLE"
+  },
+  "products": {
+   "page": "데이터/주문.html",
+   "title": "products",
+   "kind": "TABLE"
+  },
+  "product_images": {
+   "page": "데이터/주문.html",
+   "title": "product_images",
+   "kind": "TABLE"
+  },
+  "orders": {
+   "page": "데이터/주문.html",
+   "title": "orders",
+   "kind": "TABLE"
+  },
+  "order_items": {
+   "page": "데이터/주문.html",
+   "title": "order_items",
+   "kind": "TABLE"
+  },
+  "settlements": {
+   "page": "데이터/주문.html",
+   "title": "settlements",
+   "kind": "TABLE"
+  },
+  "#41": {
+   "page": null,
+   "title": "취소 사유에 「재고 없음」 추가",
+   "kind": "ISSUE"
+  },
+  "#38": {
+   "page": null,
+   "title": "휴대폰 인증 문자가 늦게 옴",
+   "kind": "ISSUE"
+  },
+  "#35": {
+   "page": null,
+   "title": "이미지 순서가 저장 뒤 바뀜",
+   "kind": "ISSUE"
+  }
+ },
+ "relations": {
+  "FN-001": {
+   "req": [
+    "REQ-001"
+   ],
+   "api": [
+    "API-MEM-01",
+    "API-MEM-02",
+    "API-MEM-03"
+   ],
+   "scr": [
+    "SCR-MEM-01",
+    "SCR-MEM-02"
+   ],
+   "tables": [
+    "members",
+    "sms_codes"
+   ],
+   "ac": [
+    "AC-001-1"
+   ],
+   "dec": [],
+   "issues": []
+  },
+  "FN-002": {
+   "req": [],
+   "api": [
+    "API-MEM-01",
+    "API-MEM-02",
+    "API-MEM-03"
+   ],
+   "scr": [
+    "SCR-MEM-01",
+    "SCR-MEM-02"
+   ],
+   "tables": [
+    "members",
+    "sms_codes"
+   ],
+   "ac": [
+    "AC-002-1"
+   ],
+   "dec": [],
+   "issues": [
+    "#38"
+   ]
+  },
+  "FN-003": {
+   "req": [],
+   "api": [
+    "API-MEM-01",
+    "API-MEM-02",
+    "API-MEM-03"
+   ],
+   "scr": [
+    "SCR-MEM-01",
+    "SCR-MEM-02"
+   ],
+   "tables": [
+    "members",
+    "sms_codes"
+   ],
+   "ac": [
+    "AC-003-1"
+   ],
+   "dec": [],
+   "issues": []
+  },
+  "FN-004": {
+   "req": [],
+   "api": [
+    "API-MEM-01",
+    "API-MEM-02",
+    "API-MEM-03"
+   ],
+   "scr": [
+    "SCR-MEM-01",
+    "SCR-MEM-02"
+   ],
+   "tables": [
+    "members",
+    "sms_codes"
+   ],
+   "ac": [],
+   "dec": [],
+   "issues": []
+  },
+  "FN-010": {
+   "req": [
+    "REQ-004"
+   ],
+   "api": [
+    "API-PRD-01",
+    "API-PRD-02",
+    "API-PRD-04"
+   ],
+   "scr": [
+    "SCR-PRD-01",
+    "SCR-PRD-02"
+   ],
+   "tables": [
+    "products",
+    "product_images"
+   ],
+   "ac": [
+    "AC-010-1"
+   ],
+   "dec": [],
+   "issues": []
+  },
+  "FN-011": {
+   "req": [],
+   "api": [
+    "API-PRD-01",
+    "API-PRD-02",
+    "API-PRD-04"
+   ],
+   "scr": [
+    "SCR-PRD-01",
+    "SCR-PRD-02"
+   ],
+   "tables": [
+    "products",
+    "product_images"
+   ],
+   "ac": [],
+   "dec": [],
+   "issues": [
+    "#35"
+   ]
+  },
+  "FN-012": {
+   "req": [],
+   "api": [
+    "API-PRD-01",
+    "API-PRD-02",
+    "API-PRD-04"
+   ],
+   "scr": [
+    "SCR-PRD-01",
+    "SCR-PRD-02"
+   ],
+   "tables": [
+    "products",
+    "product_images"
+   ],
+   "ac": [
+    "AC-012-1"
+   ],
+   "dec": [],
+   "issues": []
+  },
+  "FN-013": {
+   "req": [],
+   "api": [
+    "API-PRD-01",
+    "API-PRD-02",
+    "API-PRD-04"
+   ],
+   "scr": [
+    "SCR-PRD-01",
+    "SCR-PRD-02"
+   ],
+   "tables": [
+    "products",
+    "product_images"
+   ],
+   "ac": [
+    "AC-013-1"
+   ],
+   "dec": [],
+   "issues": []
+  },
+  "FN-020": {
+   "req": [],
+   "api": [
+    "API-ORD-01",
+    "API-ORD-02",
+    "API-ORD-04",
+    "API-ORD-05"
+   ],
+   "scr": [
+    "SCR-ORD-01",
+    "SCR-ORD-03"
+   ],
+   "tables": [
+    "orders",
+    "order_items"
+   ],
+   "ac": [
+    "AC-020-1"
+   ],
+   "dec": [],
+   "issues": []
+  },
+  "FN-021": {
+   "req": [
+    "REQ-007"
+   ],
+   "api": [
+    "API-ORD-01",
+    "API-ORD-02",
+    "API-ORD-04",
+    "API-ORD-05"
+   ],
+   "scr": [
+    "SCR-ORD-01",
+    "SCR-ORD-03"
+   ],
+   "tables": [
+    "orders",
+    "order_items"
+   ],
+   "ac": [],
+   "dec": [],
+   "issues": []
+  },
+  "FN-022": {
+   "req": [],
+   "api": [
+    "API-ORD-01",
+    "API-ORD-02",
+    "API-ORD-04",
+    "API-ORD-05"
+   ],
+   "scr": [
+    "SCR-ORD-01",
+    "SCR-ORD-03"
+   ],
+   "tables": [
+    "orders",
+    "order_items"
+   ],
+   "ac": [],
+   "dec": [],
+   "issues": []
+  },
+  "FN-024": {
+   "req": [
+    "REQ-008"
+   ],
+   "api": [
+    "API-ORD-01",
+    "API-ORD-02",
+    "API-ORD-04",
+    "API-ORD-05"
+   ],
+   "scr": [
+    "SCR-ORD-01",
+    "SCR-ORD-03"
+   ],
+   "tables": [
+    "orders",
+    "order_items"
+   ],
+   "ac": [
+    "AC-024-1",
+    "AC-024-2"
+   ],
+   "dec": [
+    "DEC-005"
+   ],
+   "issues": [
+    "#41"
+   ]
+  },
+  "FN-030": {
+   "req": [
+    "REQ-012"
+   ],
+   "api": [],
+   "scr": [
+    "SCR-STL-01"
+   ],
+   "tables": [
+    "settlements"
+   ],
+   "ac": [],
+   "dec": [],
+   "issues": []
+  },
+  "FN-031": {
+   "req": [],
+   "api": [],
+   "scr": [
+    "SCR-STL-01"
+   ],
+   "tables": [
+    "settlements"
+   ],
+   "ac": [],
+   "dec": [],
+   "issues": []
+  },
+  "FN-032": {
+   "req": [],
+   "api": [],
+   "scr": [
+    "SCR-STL-01"
+   ],
+   "tables": [
+    "settlements"
+   ],
+   "ac": [],
+   "dec": [],
+   "issues": []
+  }
+ },
+ "changes": [
+  {
+   "page": "기능/003-주문관리.html",
+   "at": "2026-11-24T15:20:00+09:00",
+   "by": "kim",
+   "summary": "docs: 주문 취소 API 사유 필수로",
+   "ids": [
+    "API-ORD-05",
+    "FN-024"
+   ]
+  },
+  {
+   "page": "설계/요구사항.html",
+   "at": "2026-11-24T10:30:00+09:00",
+   "by": "hong",
+   "summary": "docs: REQ-008 부분 취소 검토",
+   "ids": [
+    "REQ-008"
+   ]
+  },
+  {
+   "page": "설계/결정/DEC-005-취소사유.html",
+   "at": "2026-11-23T18:10:00+09:00",
+   "by": "hong",
+   "summary": "docs: DEC-005 결정",
+   "ids": [
+    "DEC-005"
+   ]
+  }
+ ],
+ "team": {
+  "members": [
+   {
+    "id": "hong",
+    "name": "홍길동",
+    "role": "팀장",
+    "repos": []
+   },
+   {
+    "id": "kim",
+    "name": "김민수",
+    "role": "팀원",
+    "repos": [
+     "order-api"
+    ]
+   },
+   {
+    "id": "lee",
+    "name": "이서연",
+    "role": "팀원",
+    "repos": [
+     "order-web"
+    ]
+   },
+   {
+    "id": "park",
+    "name": "박지훈",
+    "role": "팀원",
+    "repos": [
+     "order-api",
+     "order-web"
+    ]
+   }
+  ],
+  "ai": {
+   "tool": "claude",
+   "mainModel": "opus",
+   "roles": [
+    {
+     "role": "planner",
+     "model": "opus",
+     "desc": "계획 · 설계"
+    },
+    {
+     "role": "developer",
+     "model": "sonnet",
+     "desc": "구현"
+    },
+    {
+     "role": "reviewer",
+     "model": "opus",
+     "desc": "리뷰"
+    }
+   ],
+   "teamMode": "auto",
+   "enforce": [
+    {
+     "name": "spec",
+     "level": "warn"
+    },
+    {
+     "name": "main",
+     "level": "block"
+    }
+   ]
+  },
+  "kit": {
+   "version": "0.109.0",
+   "packs": [
+    "core",
+    "backend",
+    "frontend",
+    "datamodel",
+    "screens",
+    "gitlab"
+   ]
+  },
+  "repos": [
+   {
+    "name": "order-api",
+    "kind": "code",
+    "stack": "spring-boot"
+   },
+   {
+    "name": "order-web",
+    "kind": "code",
+    "stack": "react"
+   }
+  ]
+ },
+ "issues": {
+  "source": "gitlab",
+  "url": "https://gitlab.example.com/shop/order-ws/-/issues",
+  "items": [
+   {
+    "id": "#41",
+    "title": "취소 사유에 「재고 없음」 추가",
+    "state": "열림",
+    "stage": "분석",
+    "labels": [
+     "요청"
+    ],
+    "assignee": "kim",
+    "ids": [
+     "FN-024",
+     "DEC-005"
+    ],
+    "milestone": "1차 오픈",
+    "created": "2026-11-22T09:00:00+09:00",
+    "updated": "2026-11-24T09:20:00+09:00",
+    "url": "https://gitlab.example.com/shop/order-ws/-/issues/41"
+   },
+   {
+    "id": "#38",
+    "title": "휴대폰 인증 문자가 늦게 옴",
+    "state": "열림",
+    "stage": "수정",
+    "labels": [
+     "결함"
+    ],
+    "assignee": "lee",
+    "ids": [
+     "FN-002"
+    ],
+    "milestone": "1차 오픈",
+    "created": "2026-11-18T11:00:00+09:00",
+    "updated": "2026-11-24T09:20:00+09:00",
+    "url": "https://gitlab.example.com/shop/order-ws/-/issues/38"
+   },
+   {
+    "id": "#35",
+    "title": "이미지 순서가 저장 뒤 바뀜",
+    "state": "닫힘",
+    "stage": "검증",
+    "labels": [
+     "결함"
+    ],
+    "assignee": "lee",
+    "ids": [
+     "FN-011"
+    ],
+    "milestone": "1차 오픈",
+    "created": "2026-11-12T11:00:00+09:00",
+    "updated": "2026-11-20T17:00:00+09:00",
+    "url": "https://gitlab.example.com/shop/order-ws/-/issues/35"
+   }
+  ]
+ },
+ "workItems": [
+  {
+   "id": "#52",
+   "title": "취소 API · 재고 되돌리기",
+   "assignee": "kim",
+   "start": "2026-11-24",
+   "due": "2026-11-27",
+   "state": "열림",
+   "feature": "003",
+   "milestone": "1차 오픈",
+   "url": "https://gitlab.example.com/shop/order-ws/-/work_items/52"
+  },
+  {
+   "id": "#53",
+   "title": "주문 상세 취소 버튼",
+   "assignee": "lee",
+   "start": "2026-11-25",
+   "due": "2026-11-28",
+   "state": "열림",
+   "feature": "003",
+   "milestone": "1차 오픈",
+   "url": "https://gitlab.example.com/shop/order-ws/-/work_items/53"
+  }
+ ],
+ "board": [
+  {
+   "id": "#60",
+   "title": "1차 오픈 일정",
+   "body": "12/10 전체 시험, 12/12 오픈입니다. @kim 취소 API 는 12/5 까지.",
+   "author": "hong",
+   "at": "2026-11-21T10:00:00+09:00",
+   "pinned": true,
+   "comments": [
+    {
+     "who": "kim",
+     "at": "2026-11-24T11:00:00+09:00",
+     "text": "네 12/5 까지 올리겠습니다"
+    }
+   ],
+   "url": "https://gitlab.example.com/shop/order-ws/-/issues/60"
+  },
+  {
+   "id": "#61",
+   "title": "취소 사유 목록 의견",
+   "body": "고정 목록에 「재고 없음」 을 넣을지 의견 주세요. @hong",
+   "author": "lee",
+   "at": "2026-11-22T14:00:00+09:00",
+   "pinned": false,
+   "comments": [],
+   "url": "https://gitlab.example.com/shop/order-ws/-/issues/61"
+  }
+ ],
+ "files": [
+  {
+   "name": "택배사 API 연동 가이드.pdf",
+   "path": "자료실/택배사 API 연동 가이드.pdf",
+   "kind": "pdf",
+   "by": "park",
+   "at": "2026-11-23T11:00:00+09:00",
+   "size": 482133
+  },
+  {
+   "name": "화면 시안 v2.png",
+   "path": "자료실/화면 시안 v2.png",
+   "kind": "png",
+   "by": "lee",
+   "at": "2026-11-19T16:00:00+09:00",
+   "size": 120400
+  }
+ ],
+ "comments": {
+  "기능/003-주문관리.html": [
+   {
+    "id": "n101",
+    "who": "lee",
+    "at": "2026-11-24T15:30:00+09:00",
+    "quote": "/orders/{id}/cancel",
+    "text": "@kim 취소 사유 없이 부르면 400 인가요?",
+    "url": "https://gitlab.example.com/shop/order-ws/-/issues/70#note_101"
+   },
+   {
+    "id": "n102",
+    "who": "kim",
+    "at": "2026-11-24T15:41:00+09:00",
+    "quote": "",
+    "text": "@lee 네, 사유가 필수라 400 입니다. 명세 FN-024 에 적었습니다",
+    "url": "https://gitlab.example.com/shop/order-ws/-/issues/70#note_102"
+   }
+  ],
+  "설계/요구사항.html": [
+   {
+    "id": "n90",
+    "who": "hong",
+    "at": "2026-11-24T10:40:00+09:00",
+    "quote": "출고 전 주문은 판매자가 취소할 수 있다",
+    "text": "@park 부분 취소(일부 상품만)도 되는지 고객에게 확인 부탁드려요",
+    "url": "https://gitlab.example.com/shop/order-ws/-/issues/71#note_90"
+   }
+  ]
+ },
+ "remote": {
+  "kind": "gitlab",
+  "web": "https://gitlab.example.com/shop/order-ws",
+  "project": "shop/order-ws",
+  "api": "https://gitlab.example.com/api/v4",
+  "pages": "https://shop.pages.example.com/order-ws/",
+  "commentIssues": {
+   "기능/003-주문관리.html": "https://gitlab.example.com/shop/order-ws/-/issues/70",
+   "설계/요구사항.html": "https://gitlab.example.com/shop/order-ws/-/issues/71"
+  }
+ },
+ "apis": [
+  {
+   "repo": "order-api",
+   "title": "주문 관리 API",
+   "file": "assets/openapi/order-api.json"
+  }
+ ]
+}

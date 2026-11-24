@@ -2,7 +2,7 @@
 /**
  * agent-workspace-kit — 한 벌의 정본(packs/ + workspace.json)에서 Claude Code 와 Codex 설정을 함께 만든다.
  *
- *   node bin/kit.js init <대상폴더> --name <id> --title <제목> --type new|modernization|enhancement|consulting [--approach sprint|full]
+ *   node bin/kit.js init <대상폴더> --name <id> --title <제목> --type new|modernization|enhancement|consulting [--approach feature|sprint|full|issue]
  *                        [--code <주소,..>] [--docs <주소,..>] [--issues <주소,..>] [--legacy <주소,..>]
  *   node bin/kit.js install         repos/ 에 clone(또는 링크) + git 훅 경로 + sync (clone 직후 1회)
  *   node bin/kit.js detect [--force] 코드 repo 의 스택 감지 → workspace.json repos[].stacks (--force 면 다시)
@@ -98,13 +98,15 @@ const PROJECT_TYPES = {
 const TYPE_RULES = {
   // defaults: 그 유형에 기본으로 켜는 팩 (화면 · 데이터를 새로 설계하는 유형은 화면설계서 · 데이터 설계)
   // approach: 새 워크스페이스의 진행 방식 기본값 (전체 설계가 산출물인 차세대 · ISP 만 전체)
-  new: { pack: null, requires: [], warnsOn: ['legacy'], defaults: ['screens', 'datamodel'], approach: 'sprint' },
+  new: { pack: null, requires: [], warnsOn: ['legacy'], defaults: ['screens', 'datamodel'], approach: 'feature' },
   modernization: { pack: 'modernization', requires: ['legacy'], warnsOn: [], defaults: ['screens', 'datamodel'], approach: 'full' },
   enhancement: { pack: 'enhancement', requires: ['code'], warnsOn: ['legacy'], approach: 'sprint' },
   consulting: { pack: 'consulting', requires: [], warnsOn: ['code'], approach: 'full' },
 };
 // 진행 방식 (workspace.json project.approach). 없으면 전체처럼 동작한다 (옛 워크스페이스는 kedovi approach 로 고른다)
+// feature(기능 단위)가 새 워크스페이스의 기본: 설계 기준을 먼저 정하고 기능마다 명세 → 설계 → AI 구현 → 검증 → 배포
 const APPROACHES = {
+  feature: '기능 단위 (설계 기준을 먼저 정하고, 기능마다 명세 → 설계 → AI 구현 → 검증 → 배포)',
   sprint: 'MVP · 스프린트 (끝까지 동작하는 최소 기능부터, 스프린트마다 데모하며 하나씩 붙인다)',
   full: '워터폴 · 전체 (전체 범위를 설계한 뒤 구축)',
   issue: '이슈형 (운영 · 유지보수: 이슈마다 운영에 반영, 단계 대신 이슈 보드)',
@@ -276,7 +278,7 @@ function deriveVars(ws) {
 }
 
 /** project.type · repos[].kind 규칙. 차세대인데 레거시가 없으면 AS-IS 대조 자체가 불가능하므로 멈춘다. */
-function validateProject(ws, errors, warnings) {
+function validateProject(ws, errors, warnings, root = null) {
   const type = ws.project.type;
   if (!type) warnings.push(`workspace.json project.type 이 없습니다. ${Object.keys(PROJECT_TYPES).join(' | ')} 중 하나로 정하세요`);
   else if (!PROJECT_TYPES[type]) errors.push(`project.type '${type}': ${Object.keys(PROJECT_TYPES).join(' | ')} 중 하나`);
@@ -322,8 +324,9 @@ function validateProject(ws, errors, warnings) {
       if (ws.repos.some((r) => r.kind === k)) warnings.push(`유형이 ${PROJECT_TYPES[type]} 인데 ${REPO_KINDS[k]}(kind: "${k}") repo 가 있습니다. 유형이 맞는지 확인하세요`);
     }
   }
-  // 기획 repo 가 없는 것이 흔한 유형(운영·고도화)이나 없다고 밝힌 워크스페이스(workspace.json 의 docsRepo: false)는 알리지 않는다
-  if (!ws.repos.some((r) => r.kind === 'docs') && type !== 'enhancement' && ws.docsRepo !== false) warnings.push('기획 repo(kind: "docs")가 없습니다. 요구사항 근거를 에이전트가 찾을 곳이 없습니다. 없는 것이 맞으면 workspace.json 에 "docsRepo": false 를 넣어 끕니다');
+  // 기획 repo 가 없는 것이 흔한 유형(운영·고도화)이나 없다고 밝힌 워크스페이스(workspace.json 의 docsRepo: false), 워크스페이스에 사람 문서 원본(docs-site/)이 있으면 알리지 않는다
+  const siteSrc = root && isDir(path.join(root, 'docs-site')) && !exists(path.join(root, 'docs-site', 'assets', 'site.json'));
+  if (!siteSrc && !ws.repos.some((r) => r.kind === 'docs') && type !== 'enhancement' && ws.docsRepo !== false) warnings.push('기획 repo(kind: "docs")가 없습니다. 요구사항 근거를 에이전트가 찾을 곳이 없습니다. 없는 것이 맞으면 workspace.json 에 "docsRepo": false 를 넣어 끕니다');
   if (ws.packs.includes('modernization') && !(ws.vars.asis && ws.vars.asis.sourceRoot)) errors.push('modernization 팩은 레거시 소스 위치가 필요합니다. repos 에 kind: "legacy" 를 넣거나 vars.asis.sourceRoot 를 지정하세요');
 }
 
@@ -1026,7 +1029,12 @@ function buildAgentsMd(ws, rules, skills, repoMap = {}, catalog = [], extra = ne
   const p = ws.project;
   const parts = member ? [`# 팀원 지침: ${p.title || p.name || '워크스페이스'}`, ''] : [`<!-- ${GEN_NOTE} -->`, '', `# ${p.title || p.name || '워크스페이스'}`, ''];
   if (p.type) parts.push(`**프로젝트 유형: ${PROJECT_TYPES[p.type] || p.type}**`, '');
-  if (p.approach === 'sprint') {
+  if (p.onboarded === false && !member) parts.push('**방향 인터뷰 전**: 유형 · 진행 방식은 임시값이다. 팀장의 첫 세션에서 `kickoff` 스킬로 정한다.', '');
+  if (p.approach === 'feature') {
+    parts.push(`**진행 방식: ${APPROACHES.feature}**`, '',
+      '- 설계 기준(요구사항 · 아키텍처 · 개발 표준)을 먼저 정한 뒤, 기능 하나씩 명세 → 설계 → AI 구현 → 검증 → 배포로 끝까지 진행한다.',
+      '- 기능의 단계 · 마일스톤은 그 기능 문서 머리(단계 · 마일스톤 줄)가 정본이다. 단계를 넘기면 그 줄을 고친다. 로드맵(`handoffs/PLAN.md`)에는 큰 단계만 둔다.', '');
+  } else if (p.approach === 'sprint') {
     parts.push(`**진행 방식: ${APPROACHES.sprint}**`, '',
       '- 스프린트 = 기능 단위 (기간 아님). 첫 스프린트는 끝까지 동작하는 최소 기능 하나(많아야 몇 개)만 잡는다. 최소는 기능 수다: 그 기능의 완성도(오류 처리 · 사이드이펙트 · 테스트)는 줄이지 않는다. 나머지는 `handoffs/PLAN.md` 의 「백로그」 에 한 줄씩 적고 지금 만들지 않는다.',
       '- 분석 · 설계 · 화면설계 · 데이터 설계도 이번 스프린트 기능만 한다. 전체를 미리 설계하지 않고, 나중에 붙일 자리만 남긴다.',
@@ -1170,6 +1178,7 @@ const GITIGNORE_END = '# <<< kit <<<';
 function buildGitignore(current, ws) {
   const block = [GITIGNORE_BEGIN, '# 개인 지침: 공유하지 않는다',
     '.agents/local.md', LOCAL_CONFIG, 'CLAUDE.local.md', 'AGENTS.override.md', '.claude/settings.local.json', '.handoff-snooze', '.agents/bin/', '.agents/board/', '.agents/board.serve.json', '.agents/reports/', '.agents/traces/', '.agents/history/', '.agents/status/', '.agents/heavy/', '.agents/verify/', '.worktrees/', '.claude/worktrees/',
+    '# 문서 사이트: 원본은 docs-site/, HTML 은 각자 kedovi docs build 가 만든다', '.agents/site/', '.agents/site.serve.json', '.agents/site.remote.json',
     '# 팀 에이전트: 모델이 사람마다 다를 수 있어 각자 sync 가 만든다', '.claude/agents/', '.codex/agents/', LOCAL_MANIFEST,
     '# repo: 각자 kedovi install 로 clone 한다', `/${REPOS_DIR}/`, GITIGNORE_END].join('\n');
   const re = new RegExp(`${GITIGNORE_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${GITIGNORE_END}`);
@@ -1189,7 +1198,7 @@ function generate(root) {
   applyPackVarDefaults(ws, packs.map((pk) => pk.dir)); // 메모리에서만 — 새로 붙은 스택 팩 변수가 비어 sync 가 멈추지 않게
   checkVarChoices(ws, packs, warnings);
   checkComponentWeb(ws, packs, warnings);
-  validateProject(ws, errors, warnings);
+  validateProject(ws, errors, warnings, root);
   const detectLib = path.join(root, 'packs', 'core', 'lib', 'detect.js');
   if (ws.stackHints !== undefined && exists(detectLib)) {
     const { checkHints } = require(detectLib);
@@ -2294,6 +2303,14 @@ node "$ROOT/bin/kit.js" check || {
   exit 1
 }
 
+# 사람 문서(docs-site/) 글 형식 검사 · AI 자료(ai-docs/) 목록 알림 (core 팩 도구, 없으면 건너뜀)
+if [ -f "$ROOT/packs/core/bin/draft.js" ] && [ -d "$ROOT/docs-site" ]; then
+  node "$ROOT/packs/core/bin/draft.js" staged "$ROOT" --only docs-site/ || exit 1
+fi
+if [ -f "$ROOT/packs/core/bin/docs-site.js" ] && [ -d "$ROOT/ai-docs" ]; then
+  node "$ROOT/packs/core/bin/docs-site.js" ai-docs --quiet || true
+fi
+
 # 죽은 참조 검사 (core 팩 도구, 없으면 건너뜀)
 if [ -f "$ROOT/packs/core/bin/check-refs.js" ]; then
   node "$ROOT/packs/core/bin/check-refs.js" --fail || {
@@ -2820,6 +2837,7 @@ function initWorkspace(opts) {
 
   fs.mkdirSync(dst, { recursive: true });
   copyTemplate(path.join(kit, 'templates', 'workspace'), dst);
+  copyTemplate(docSkeleton(kit), dst); // 사람 문서 원본 docs-site/ · AI 자료 ai-docs/ · 이슈 issues/
   fs.mkdirSync(path.join(dst, 'bin'), { recursive: true });
   fs.copyFileSync(path.join(kit, 'bin', 'kit.js'), path.join(dst, 'bin', 'kit.js'));
   // 팩은 전부 복사한다 — repo 스택이 나중에 바뀌어도(kedovi detect) 킷 없이 sync 가 된다. 쓰는 팩은 workspace.json 이 정한다
@@ -2833,6 +2851,9 @@ function initWorkspace(opts) {
   if (opts.approach && !APPROACHES[opts.approach]) die(`진행 방식은 ${Object.keys(APPROACHES).join(' | ')} 중 하나`);
   ws.project.approach = opts.approach || TYPE_RULES[type].approach;
   if (opts.description) ws.project.description = opts.description;
+  // 새 워크스페이스는 방향 인터뷰(kickoff 스킬) 전: 유형 · 진행 방식은 임시값. 인터뷰가 끝나면 kedovi kickoff done 이 true 로
+  // (이 필드가 없는 옛 워크스페이스는 인터뷰를 마친 것으로 본다)
+  ws.project.onboarded = false;
   ws.repos = opts.repos || [];
   ws.packs = [...packs, 'project'];
   applyPackVarDefaults(ws, packs.map((p) => path.join(kit, 'packs', p)));
@@ -2848,6 +2869,17 @@ function initWorkspace(opts) {
   return { dir: dst, ok, type, approach: ws.project.approach, packs: ws.packs, repos: repoResults };
 }
 
+/** 새 워크스페이스의 첫 커밋 (chore: init workspace). 원격은 붙이지 않는다 (kedovi remote add). 반환 { ok, reason } */
+function initialCommit(dir) {
+  const g = (...a) => spawnSync('git', ['-C', dir, ...a], { encoding: 'utf8' });
+  if (g('rev-parse', '--is-inside-work-tree').status !== 0 && g('init', '-q').status !== 0) return { ok: false, reason: 'git init 실패' };
+  g('add', '-A');
+  const c = g('commit', '-q', '-m', 'chore: init workspace');
+  const out = `${c.stdout || ''}${c.stderr || ''}`;
+  if (c.status === 0 || /nothing to commit|nothing added/.test(out)) return { ok: true };
+  return { ok: false, reason: `${out.trim().split('\n').slice(-2).join(' ')} (git user.name · user.email 을 정한 뒤 git add -A && git commit -m "chore: init workspace")` };
+}
+
 function cmdInit(args) {
   const target = args._[1];
   if (!target) die(`사용법: node bin/kit.js init <대상폴더> --type ${Object.keys(PROJECT_TYPES).join('|')} [--approach ${Object.keys(APPROACHES).join('|')}] [--packs ..] [--code ..(주소·폴더·new:<이름>)] [--docs ..] [--legacy ..]  (대화형은 kedovi init)`);
@@ -2857,9 +2889,75 @@ function cmdInit(args) {
     packs: String(args.packs || '').split(',').map((x) => x.trim()).filter(Boolean),
     repos: [...refsFromArg(args.code, 'code', dst), ...refsFromArg(args.docs, 'docs', dst), ...refsFromArg(args.issues, 'issues', dst), ...refsFromArg(args.legacy, 'legacy', dst)],
   });
+  const committed = initialCommit(res.dir);
   console.log(`\n${res.ok ? '✔' : '⚠'} 워크스페이스 생성: ${res.dir}\n  유형: ${PROJECT_TYPES[res.type]} · 진행 방식: ${APPROACHES[res.approach]} · 팩: ${res.packs.join(', ')}`);
+  console.log(committed.ok ? '  첫 커밋: chore: init workspace (원격 없음. 올리기: kedovi remote add <주소>)' : `  ⚠ 첫 커밋을 하지 못했습니다: ${committed.reason}`);
   console.log(res.ok ? '  다음: workspace.json 의 repos 에 코드 repo 를 추가하고 node bin/kit.js install'
     : '  위 오류를 workspace.json 에서 고친 뒤 node bin/kit.js install');
+}
+
+/**
+ * 옛 뼈대 그대로인 docs-site/docs-site.json (0.109 의 묶음 7개: 화면 · 데이터 · 기획 repo 따로) → 새 뼈대 (상단 7개 탭 + "project": true).
+ * 사람이 고친 파일(묶음 · 제외 · 그 밖 칸이 다름)은 그대로 둔다. build 가 채운 source · pagesUrl · title 은 옮긴다. 바꿨으면 알릴 줄
+ */
+const OLD_SITE_MENUS = [JSON.stringify({ groups: [
+  { group: '개요', icon: '◆', files: ['개요.md', '개요/*.md'] },
+  { group: '설계', icon: '⬡', files: ['설계/요구사항.md', '설계/아키텍처.md', '설계/개발표준.md', '설계/*.md', '설계/결정/README.md', '설계/**'] },
+  { group: '기능', icon: '☰', files: ['기능/README.md', '기능/*.md', '기능/**'] },
+  { group: '화면', icon: '▦', files: ['화면/README.md', '화면/**'] },
+  { group: '데이터', icon: '▤', files: ['데이터/README.md', '데이터/**'] },
+  { group: '자료실', icon: '▧', files: ['자료실/README.md', '자료실/**'], collapsed: true },
+  { group: '기획 repo', icon: '…', files: ['repos/**'], collapsed: true, tree: true },
+], exclude: ['화면/prototype/**'] })];
+function siteMenuUpgrade(root, tpl) {
+  const f = path.join(root, 'docs-site', 'docs-site.json');
+  let cur;
+  try { cur = JSON.parse(read(f)); } catch { return ''; }
+  const { source, pagesUrl, title, ...menu } = cur;
+  if (!OLD_SITE_MENUS.includes(JSON.stringify(menu))) return '';
+  let next;
+  try { next = JSON.parse(read(path.join(tpl, 'docs-site', 'docs-site.json'))); } catch { return ''; }
+  const keep = Object.fromEntries(Object.entries({ title, source, pagesUrl }).filter(([, v]) => v !== undefined));
+  fs.writeFileSync(f, `${JSON.stringify({ ...keep, ...next }, null, 2)}\n`);
+  return '문서 사이트 메뉴를 새 뼈대로 바꿈: docs-site/docs-site.json (상단 탭 개요 · 설계 · 기능 · 테스트 · 일정 · 이슈 · 자료실)';
+}
+
+/** 문서 자리 뼈대 (docs-site/ · ai-docs/ · issues/): 워크스페이스에도 팩과 함께 복사돼 kedovi docs adopt 가 같은 뼈대를 쓴다 */
+const docSkeleton = (kit) => path.join(kit, 'packs', 'core', 'assets', 'workspace');
+
+/**
+ * 문서 자리 (0.109 전 워크스페이스): 없는 파일만 템플릿에서 만든다 (있는 파일은 덮지 않는다).
+ * ai-docs/README.md · issues/README.md 는 늘, 사람 문서 원본 docs-site/ 뼈대는 기획 repo(kind: docs)가 없고 docs-site/ 폴더도 없을 때만
+ * (기획 repo 가 있으면 kedovi docs adopt 안내 한 줄, docs-site/ 가 옛 루트 사이트 출력이면 그대로 둔다). 반환 = 알릴 줄
+ */
+function ensureDocLayout(root, kit, ws) {
+  const tpl = docSkeleton(kit);
+  const lines = [];
+  const copyMissing = (rel) => {
+    const made = [];
+    const from = path.join(tpl, rel);
+    if (!exists(from)) return made;
+    const files = isDir(from) ? listFiles(from).map((f) => path.join(rel, f)) : [rel];
+    for (const f of files) {
+      const to = path.join(root, f);
+      if (exists(to)) continue;
+      fs.mkdirSync(path.dirname(to), { recursive: true });
+      fs.copyFileSync(path.join(tpl, f), to);
+      made.push(f.split(path.sep).join('/'));
+    }
+    return made;
+  };
+  const made = [...copyMissing(path.join('ai-docs', 'README.md')), ...copyMissing(path.join('issues', 'README.md'))];
+  if (made.length) lines.push(`문서 자리 만듦: ${made.join(' · ')}`);
+  const docsRepos = (ws.repos || []).filter((r) => r.kind === 'docs');
+  if (exists(path.join(root, 'docs-site'))) {
+    const moved = siteMenuUpgrade(root, tpl);
+    if (moved) lines.push(moved);
+    return lines;
+  }
+  if (docsRepos.length) lines.push(`기획 repo(${docsRepos.map((r) => r.name).join(', ')})가 있어 사람 문서 원본 docs-site/ 는 만들지 않았습니다. 워크스페이스로 옮기려면: kedovi docs adopt ${docsRepos[0].name} --dry-run`);
+  else { const n = copyMissing('docs-site').length; if (n) lines.push(`사람 문서 원본 docs-site/ 뼈대 ${n}개 만듦 (사이트: kedovi docs build → .agents/site/)`); }
+  return lines;
 }
 
 function cmdUpgrade(root, args) {
@@ -2904,6 +3002,7 @@ function cmdUpgrade(root, args) {
   fs.writeFileSync(path.join(root, 'workspace.json'), JSON.stringify(ws, null, 2) + '\n');
   console.log(`✔ upgrade ${from && from !== ws.kit.version ? `${from} → ` : ''}${ws.kit.version}`);
   console.log(`  bin/kit.js · 팩 ${replaced.length}개 갱신 (project 팩은 그대로)`);
+  for (const l of ensureDocLayout(root, kit, ws)) console.log(`  ${l}`);
   const planMade = ensurePlan(root);
   if (planMade) console.log(`  로드맵 ${planMade.replace(/^✔ /, '')}`);
   // 방금 교체한 새 kit.js 로 sync 해야 새 생성 규칙이 적용된다 (지금 도는 건 옛 버전)
@@ -2942,4 +3041,4 @@ function main() {
 
 main();
 
-module.exports = { suggestGroups, remoteNamespace, LIMIT_KEYS, LIMIT_DEFAULTS, claudeRoom, claudeModelEnv, hasFamily, gatewayAliasFix, gatewayAliasCheck, gatewayAliasHint, gatewayFetchNotices, scanGuides, fillGuides, guideChanges, GUIDE_MODES, isGuideMode, hintedCatalog, parseRepos, repoLanguages, labelLanguages, ruleRepos, projectRulesPinning, fillLanguages, loadLanguages, claudeKey, window1m, claudeWindow, SECRET_PATTERNS, secretHits, repoRel, repoSafe, ENFORCE_LEVELS, ENFORCE_DEFAULTS, APPROACHES, missingTypePacks, ensurePlan, roleGrades, teamOptions, teamSection, loadCatalogFor, loginPlanValues, detectPlans, vendorRooms, profileRank, profileLabel, profileNotice, countPicks, applyAccess, normalizeAccess, gatewayVendors, gatewayId, startToolOf, migrateTypes, lockState, generate, buildAgentFiles, splitModel, fillLocalRemotes, installRepos, effortOf, profileModels, fillStackPaths, setStackPaths, detectLine, addStackHint, HINT_HELP, auditModels, resolveModels, stacksLabel, stackLabel, loadLayers, LAYER_PACKS, folderState, HOSTS, inferHost, hostOf, detectRepos, loadCatalog, repoPacks, PROJECT_NAME, PROJECT_NAME_RULE, PROJECT_TYPES, TYPE_RULES, REPO_KINDS, REPOS_DIR, LOCAL_CONFIG, initWorkspace, cmdInstall, cmdSync, cmdCheck, loadWorkspace, findRoot, kitRoot, isGitUrl };
+module.exports = { initialCommit, suggestGroups, remoteNamespace, LIMIT_KEYS, LIMIT_DEFAULTS, claudeRoom, claudeModelEnv, hasFamily, gatewayAliasFix, gatewayAliasCheck, gatewayAliasHint, gatewayFetchNotices, scanGuides, fillGuides, guideChanges, GUIDE_MODES, isGuideMode, hintedCatalog, parseRepos, repoLanguages, labelLanguages, ruleRepos, projectRulesPinning, fillLanguages, loadLanguages, claudeKey, window1m, claudeWindow, SECRET_PATTERNS, secretHits, repoRel, repoSafe, ENFORCE_LEVELS, ENFORCE_DEFAULTS, APPROACHES, missingTypePacks, ensurePlan, roleGrades, teamOptions, teamSection, loadCatalogFor, loginPlanValues, detectPlans, vendorRooms, profileRank, profileLabel, profileNotice, countPicks, applyAccess, normalizeAccess, gatewayVendors, gatewayId, startToolOf, migrateTypes, lockState, generate, buildAgentFiles, splitModel, fillLocalRemotes, installRepos, effortOf, profileModels, fillStackPaths, setStackPaths, detectLine, addStackHint, HINT_HELP, auditModels, resolveModels, stacksLabel, stackLabel, loadLayers, LAYER_PACKS, folderState, HOSTS, inferHost, hostOf, detectRepos, loadCatalog, repoPacks, PROJECT_NAME, PROJECT_NAME_RULE, PROJECT_TYPES, TYPE_RULES, REPO_KINDS, REPOS_DIR, LOCAL_CONFIG, initWorkspace, cmdInstall, cmdSync, cmdCheck, loadWorkspace, findRoot, kitRoot, isGitUrl };

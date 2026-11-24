@@ -1,6 +1,15 @@
 {
-  "_note": "기능 추천 지도 (feature-suggest 훅 · kedovi suggest). 대화 주제(topic 정규식, 대소문자 무시)가 맞고 상태 조건(when)이 맞으면 한 세션에 몇 개까지 에이전트가 답 끝에 한 줄로 쓸지 묻는다. 사용자가 정하면(kedovi suggest set <id> yes|no) 다시 묻지 않는다. anytime = 주제 없이도 세션 중간에 추천해도 되는 항목. when: packOn · packOff (팩 켜짐 · 꺼짐) · unset (workspace.json 값이 비었을 때) · localUnset (.agents/local.json) · not { 경로: 값 } (그 값이 아닐 때) · localNot · stack (repo 스택 · 언어 정규식) · notify on|off (개인 알림) · skillMissing (그 스킬이 이 PC · 워크스페이스에 없을 때). 위에 있는 항목이 먼저다. 새 기능 명령을 만들면 맞는 항목을 더한다 (packs/core/skills/kedovi/SKILL.md 표와 짝)",
+  "_note": "기능 추천 지도 (feature-suggest 훅 · kedovi suggest). 대화 주제(topic 정규식, 대소문자 무시)가 맞고 상태 조건(when)이 맞으면 한 세션에 몇 개까지 에이전트가 답 끝에 한 줄로 쓸지 묻는다. 사용자가 정하면(kedovi suggest set <id> yes|no) 다시 묻지 않는다. anytime = 주제 없이도 세션 중간에 추천해도 되는 항목. when: packOn · packOff (팩 켜짐 · 꺼짐) · unset (workspace.json 값이 비었을 때) · localUnset (.agents/local.json) · not { 경로: 값 } (그 값이 아닐 때) · localNot · stack (repo 스택 · 언어 정규식) · notify on|off (개인 알림) · skillMissing (그 스킬이 이 PC · 워크스페이스에 없을 때) · noRemote (워크스페이스 repo 에 origin 이 없을 때). 위에 있는 항목이 먼저다. 새 기능 명령을 만들면 맞는 항목을 더한다 (packs/core/skills/kedovi/SKILL.md 표와 짝)",
   "entries": [
+    {
+      "id": "remote",
+      "topic": "원격|push|푸시|팀원.{0,8}(?:받|clone|합류)|팀(?:과|에)\\s*(?:공유|나누|올리)|gitlab\\s*에\\s*올|github\\s*에\\s*올",
+      "when": { "noRemote": true },
+      "say": "워크스페이스 원격 붙이기 (kedovi remote add)",
+      "why": "init 은 첫 커밋까지만 하고 원격을 붙이지 않는다. 원격을 붙이고 push 해야 팀원이 clone 해 같은 규칙 · 기록으로 일한다",
+      "cmd": "kedovi remote add <주소>",
+      "scope": "팀 (워크스페이스 repo)"
+    },
     {
       "id": "trace",
       "topic": "디버깅|디버거|어디서\\s*(?:값이\\s*)?바뀌|(?:실행|호출)\\s*흐름|로직.{0,8}(?:어떻게\\s*(?:돌|흘러|타)|따라가)|어느\\s*(?:함수|메서드|서비스)를?\\s*(?:타|거치)|NPE|NullPointer|SQL.{0,8}(?:뭐가|어떤|몇\\s*번)\\s*(?:나가|실행)",

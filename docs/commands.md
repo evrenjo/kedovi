@@ -6,7 +6,10 @@
 
 | 명령 | 언제 | 하는 일 |
 |---|---|---|
-| `kedovi init [프로젝트명]` | 프로젝트당 1번 (리드) | 선택 화면으로 워크스페이스 생성 → 이어서 install. clone 한 repo 안이면 그 자리에, 아니면 `./<이름>` 에 만든다. 워크스페이스 안에서 하면 막고 `kedovi type` 을 알린다 (유형이 바뀌어도 새로 만들지 않는다) |
+| `kedovi init [프로젝트명]` | 프로젝트당 1번 (리드) | 선택 화면으로 워크스페이스 생성 → 이어서 install → 첫 커밋(`chore: init workspace`, 원격 없음). 묻는 것은 프로젝트명 · repo(종류: 코드 · 참고 자료 · 기존 기획 repo) · 스택 · AI 설정뿐이고, 유형 · 진행 방식은 첫 `kedovi start` 의 방향 인터뷰가 정한다. clone 한 repo 안이면 그 자리에, 아니면 `./<이름>` 에 만든다. 워크스페이스 안에서 하면 막고 `kedovi type` 을 알린다 (유형이 바뀌어도 새로 만들지 않는다) |
+| `kedovi remote add <주소> [--yes] [--no-push]` | 팀과 나눌 때 (리드) | 워크스페이스 repo 에 origin 을 붙이고 `git push -u origin HEAD`. GitLab · GitHub 를 주소로 판별하고, 공개 repo 면 확인한다(화면이 없으면 `--yes` 필요). 화면에서는 push 전에 묻는다. 인자 없이 `kedovi remote` = 지금 원격. 이미 다른 origin 이 있으면 바꾸지 않는다. 붙인 뒤 문서 사이트 연결(Pages CI · Pages 주소 · GitLab 웹훅 또는 그 방법 안내)까지 한다 |
+| `kedovi remote setup` | 토큰을 넣은 뒤 · CI 파일을 지운 뒤 | 문서 사이트 원격 연결만 다시: Pages CI 파일, `workspace.json` 의 `project.pagesUrl`(GitHub 은 주소를 안다), GitLab 이면 파이프라인 트리거 + 웹훅(이슈 · 댓글 → 사이트 다시 만들기, 토큰(권한 api)이 있으면 API 로, 없으면 손으로 하는 법), CI 변수 `KEDOVI_SITE_TOKEN` 안내 |
+| `kedovi kickoff [done\|again]` | 방향 인터뷰를 끝냈을 때 | 새 워크스페이스는 `workspace.json` 의 `project.onboarded` 가 `false` 이고, 팀장의 첫 세션에서 `kickoff` 스킬이 방향 인터뷰를 한다. `done` = 끝냄(`true`) · `again` = 다음 시작에서 다시 · 인자 없이 = 지금 상태 (팀장) |
 | `kedovi install` | clone 직후 1번 (팀원) | ① `workspace.json` 의 repo 를 `repos/` 에 clone (repo 마다 `(3/15)` 순번 · 받은 양 · 속도 · 걸린 시간 한 줄. 받는 속도가 60초 동안 1KB/s 아래면 끊고 ✖) ② git 훅 등록 ③ 두 도구용 파일 생성 ④ AI 연결 방식 · 실행 인자 (처음 한 번. 모델 프로필은 팀 값을 따른다) |
 | `kedovi start [--no-brief] [--no-channel] [--pixel-agents]` | 매번 | 이 워크스페이스에 정한 에이전트(claude/codex)를 실행. 세션 시작 훅이 브리핑(프로젝트 · 로드맵(흐름도 · 지금 단계 표) · 공지 `NOTICE.md` · 마지막 핸드오프 · 미완 작업(진행 중 작업의 완료 조건) · 내 TODO)을 넘기고, 첫 메시지 "세션 브리핑" 한 줄에 에이전트가 표로 보여 준다. 워크스페이스 안 어느 폴더에서든, 또는 바로 위 폴더에서. `--pixel-agents`: 설치된 [Pixel Agents](https://github.com/pablodelucca/pixel-agents)(`npm i -g pixel-agents`)로 에이전트 · 팀원을 캐릭터로 보여 주는 화면을 브라우저로 연다. 세션이 끝나면 함께 끈다. 없으면 알리고 화면 없이 시작. Claude 세션 제목은 `-n` 없이도 `[yyyy.MM.dd] <워크스페이스 폴더 이름>` 으로 붙는다 (`/resume` 목록 · 터미널 탭, 틀은 `vars.session.title`, `off` 면 Claude Code 가 첫 요청으로 제목을 만든다. `-n` · `/rename` 으로 붙인 제목은 그대로) |
 | `kedovi start --codex` | 가끔 | 이번 한 번만 다른 에이전트로. `-- <인자>` 로 에이전트 인자 전달 |
@@ -15,7 +18,7 @@
 | `kedovi ai` · `ai show` | 구독·게이트웨이가 바뀌었을 때 | 쓰는 AI(Claude · GPT · 둘 다 · AI 게이트웨이)만 다시 고른다 / 지금 값 보기 |
 | `kedovi ai direct claude,gpt` · `gateway [--url <주소> --key-env <변수>]` · `refresh` · `compose mix\|vendor\|single` · `main claude\|gpt` | AI 에게 시킬 때 | 화면 없이 같은 일. `refresh` 는 게이트웨이 모델 목록을 다시 받는다. `--key-env` 를 빼면 이 PC 설정에서 같은 주소의 키 이름(`ANTHROPIC_AUTH_TOKEN` 등)을 찾아 쓴다. `--team` 이면 팀 기본값 |
 | `kedovi models` | 필요할 때 | 모델 프로필, 또는 역할별(한 번에 차례로·하나씩)·교차 검토 모델을 **팀 기본값** 또는 **이 PC 만** 바꾼다. 화면 없이 실행하면 표(팀 구성 · 역할별 등급과 출처), `--json` 은 JSON |
-| `kedovi approach [sprint\|full\|issue]` | 진행 방식을 바꿀 때 | MVP · 스프린트(기능 단위. 끝까지 동작하는 최소 기능부터, 스프린트마다 데모 · 회고하고 백로그에서 하나씩) · 워터폴 · 전체(전체 설계 뒤 구축) · 이슈형(운영 · 유지보수: 이슈마다 운영 반영, 단계 대신 이슈 보드). 인자 없이 = 지금 값. 기본 단계 그대로인 로드맵은 새 뼈대로 바꾸고, 이슈형으로 바꾸면 고친 로드맵에도 맨 앞에 이슈 보드를 끼운다 (전 단계 표는 아래에 남김) (팀장) |
+| `kedovi approach [feature\|sprint\|full\|issue]` | 진행 방식을 바꿀 때 | 기능 단위(새 워크스페이스 기본: 설계 기준을 먼저 정하고 기능마다 명세 → 설계 → AI 구현 → 검증 → 배포, 기능별 단계는 기능 문서 머리가 정본) · MVP · 스프린트(기능 단위. 끝까지 동작하는 최소 기능부터, 스프린트마다 데모 · 회고하고 백로그에서 하나씩) · 워터폴 · 전체(전체 설계 뒤 구축) · 이슈형(운영 · 유지보수: 이슈마다 운영 반영, 단계 대신 이슈 보드). 인자 없이 = 지금 값. 기본 단계 그대로인 로드맵은 새 뼈대로 바꾸고, 이슈형으로 바꾸면 고친 로드맵에도 맨 앞에 이슈 보드를 끼운다 (전 단계 표는 아래에 남김) (팀장) |
 | `kedovi type [유형] [--approach a] [--code 이름,…]` | 분석·설계를 끝내고 구축 · 고도화로 넘어갈 때 | 같은 워크스페이스에서 유형을 바꾼다: 고칠 repo (현행 → 개발 repo, 화면에서 고름) · 진행 방식 · 유형 팩 교체 · 로드맵 새 뼈대(지난 로드맵은 아래 「지난 로드맵」 절에 남김) → sync. 기획 · 이슈 repo 와 작업 기록은 그대로 이어진다. 로드맵을 다 끝내면 `kedovi plan` 의 「다음」 이 이 명령을 알린다. 인자 없이 = 지금 값 (팀장) |
 | `kedovi team-mode [auto\|fixed]` · `prefer <역할> <claude\|codex>:<모델>` `[--team]` | 팀 구성 방식을 바꿀 때 | 자동(리더가 작업마다 역할·모델) · 고정(프로필대로), 역할별 선호 모델. `--team` 은 팀 기본값(팀장), 없으면 이 PC 만 |
 | `kedovi team-mode enforce review off\|warn\|block` `[--repos a,b\|*] [--min-lines N] [--paths p1,p2] --team` · `kedovi review status` · `mark` · `skip --reason "<사유>"` | 리뷰 없이 commit · push 하는 것을 잡을 때 | 기본 꺼짐. 켜면 에이전트(Claude Code)가 코드 · 기획 repo 에서 `git commit` · `git push` 할 때 리뷰 기록과 비교해 리뷰 안 된 줄 수가 기준을 넘으면 알리거나(warn) 막는다(block). 리뷰 기록은 reviewer 역할 에이전트 · reviewer 위임 · 교차 검토 때 남고, 리뷰 뒤 고치면 고친 만큼만 다시 센다. `mark` 는 직접 기록, `skip` 은 사용자 승인 뒤 한 번 생략. 핸드오프 기록은 세지 않는다 |
@@ -49,7 +52,9 @@
 | `kedovi budget start\|extend "<작업>" <시간>` · `done` · `status` · `report [--month YYYY-MM]` | 작업 시간을 재고 돌아볼 때 | 시간 예산(1.5배 넘으면 계속할지 묻는다). `report` 는 월간 집계: 끝낸 작업 수 · 예산 초과율 · 1.5배 넘김 · 걸린 시간과 예산 대비 중앙값. 이력은 이 PC 의 `.agents/history/budget.jsonl` (커밋하지 않는다) |
 | `kedovi defects check` · `report [--month YYYY-MM]` | 운영 결함을 기록 · 회고할 때 | 작업별 기록 머리가 「종류: 운영 결함」 인 기록의 발견 · 분류 · 해소 칸 검사, 월간 집계(분류별 건수 · 잠복 = 원인 커밋부터 발견까지 · 해소 시간 = 발견부터 해소까지). 분류 목록은 `vars.defects.categories` |
 | `kedovi plan` · `--short` · `--json` · `--report [시작 [끝]]` · `init` · `check` | 진행 정도를 볼 때 · 단계를 끝냈을 때 · 주간 보고 | 로드맵(`handoffs/PLAN.md`): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것(커밋 · 새 파일 · ID) · 다음. 이슈형은 이슈 보드: 상태별 건수 · 진행 중 이슈 표 · 멈춘 이슈 ⚠ · 개선 후보. `--report` 는 이슈형 기간 보고(기본 오늘까지 7일: 운영 반영 · 진행 중 · 새 접수 · 보류 · 멈춘 이슈). `--json` 은 다른 도구(전광판 등)용, `check` 는 갱신 누락 경고. `external "<위치>"` · `external off` 는 일정 정본이 밖(GitLab 마일스톤 등)일 때 그 위치를 적어 PLAN.md 경고를 끈다 |
-| `kedovi docs build [repo]` · `check` | 기획 문서 · 화면설계서 · 테이블 정의서를 고쳤을 때 | 기획 repo 의 md · 화면설계서 장 → `docs-site/` (정의 ID 앵커 · 근거 색인 · 뷰어 · 정의서 폴더마다 ERD). `check` 는 md 와 `docs-site/` 가 어긋났는지 (기획 repo pre-commit 도 막는다). 옵션 · 경고는 아래 「docs build 자세히」 |
+| `kedovi docs build [repo]` · `check` | 사람 문서 · 화면설계서 · 테이블 정의서를 고쳤을 때 | 워크스페이스 `docs-site/`(사람 문서 원본) → `.agents/site/` (커밋 안 함, 연결한 기획 repo 도 같은 사이트). `docs-site/` 가 없는 옛 구조면 기획 repo 의 md → 그 repo 의 `docs-site/`. 정의 ID 앵커 · 근거 색인 · 뷰어 · 정의서 폴더마다 ERD. `check` 는 md 와 생성물이 어긋났는지 (기획 repo pre-commit 도 막는다). 옵션 · 경고는 아래 「docs build 자세히」 |
+| `kedovi docs adopt <기획 repo> [--dry-run]` | 옛 기획 repo 를 워크스페이스 문서로 옮길 때 | 00-overview · 10-system · 20-features · 25-policies · 30-screens · 40-data · 45-api · 90-decisions · md · originals 를 `docs-site/` 의 개요 · 설계 · 기능 · 화면 · 데이터 · 자료실로. 미리보기 표 먼저, 링크 고침, 원본 repo 는 그대로, 손댄 문서와 겹치면 멈춤(`--force`). 끝나면 다음 할 일(`kedovi repo remove` · 커밋)을 알린다 |
+| `kedovi docs ai-docs` | AI 자료 규칙을 볼 때 | `ai-docs/` 의 맨 위 파일 · README 목록에 없는 폴더 · 머리 줄(한 줄 요약 · 날짜 · 관련 ID) 없는 파일을 알린다 (막지 않음) |
 | `kedovi delegate watch [id]` · `status [id]` · `list` | 다른 도구에 맡긴 리뷰 · 작업(Claude Code ↔ Codex)이 지금 무엇을 하는지 볼 때 | `watch` = 상대 에이전트가 읽은 파일 · 찾기 · 실행한 명령 · 고친 파일 · 중간에 한 말을 생기는 대로 한 줄씩(다른 터미널에서), 끝나면 요약. `status` = 경과 · 개수 · 최근 동작을 한 번. id 를 빼면 마지막 실행 중 작업 |
 | `kedovi models limits` · `set <parallel\|total\|leaders\|members>=<수> …` · `clear` `[--team]` | 상한이 생각보다 낮게 묶일 때 | 실제 적용 값과 정한 곳(프로필 · 팀 직접 값 `workspace.json agents.limits` · 이 PC 직접 값 · 요금제)을 표로. `set` 직접 값 넣기, `clear` 직접 값 지우고 프로필 · 요금제대로. 이 PC 값은 팀 값보다 낮게만. `kedovi ai show` 의 `limits` 에도 적용 값과 정한 곳 |
 | `kedovi report new "<제목>"` · `link <파일>` · `list` · `open [파일]` · `serve [--port N]` · `stop` | 보고가 길어 채팅에서 읽기 힘들 때 | 자세한 보고(바뀐 파일 · 검증 표 · 근거 · 남은 것)를 `.agents/reports/<날짜>/<시각>.md`(이 PC, 커밋 안 함)에 쓰고 현황판과 같은 틀의 웹 페이지(`http://127.0.0.1:<포트>/reports/…`)로 본다. `new` 가 틀 · 링크를 주고 서버를 뒤에서 띄운다. 페이지를 열 때 바뀐 보고를 다시 만든다. 현황판 메뉴 「보고 (이 PC)」 |
@@ -68,8 +73,8 @@
 | `kedovi worktree add <repo> <단위>` · `merge <repo> <단위>` · `remove <repo> <단위> [--force]` · `list [--json]` | 같은 repo 를 작업 리더 여럿이 함께 고칠 때 (메인이 한다) | `add` = `.worktrees/<repo>/<단위>/` 에 작업 폴더 (로컬 임시 브랜치 `kedovi/<단위>`, 원격에 안 올림). 있는 브랜치는 `--branch`, 기준 바꾸기는 `--base`. `merge` = 본 작업 트리에 **커밋하지 않은 변경**으로 옮기고 작업 폴더를 지운다. 겹치면 아무것도 지우지 않는다. `list` = 모든 repo 의 작업 폴더와 상태 |
 | `kedovi worktree clean [--dry-run] [--branches] [--now]` | 작업 폴더가 쌓였을 때 (세션이 6시간마다 알린다) | 바뀐 파일이 없고 브랜치 내용이 기준 브랜치에 있는(squash 머지 포함) 것을 지운다. 진행 중인데 킷 밖에 있는 것은 `.worktrees/<repo>/` 로 옮긴다. 다른 브랜치는 `--branches` 일 때만 지운다 |
 | `kedovi debate list` · `watch [id] [--once]` · `status [id]` · `models [--task code\|design\|docs]` | 토론 모드(여러 모델이 따로 보고 서로 반박)를 볼 때. 시작은 채팅에서 "토론해줘" | `watch` = 다른 터미널에서 모델별 주장 · 판정 · 회차 정리를 실시간으로 (끝나면 닫힘). `--once` = 지금까지만 보여 주고 끝 (채팅에서 물을 때). `models` = 이 PC 에서 쓸 수 있는 모델과 강점 점수, 작업에 맞춘 패널 예시. `status` = 지금 회차 · 모델별 상태 |
-| `kedovi docs serve [repo]` | Pages 없이 이 PC 에서 문서 사이트를 볼 때 | `docs-site/` 를 `http://127.0.0.1:8000/` 로 연다 (`--port` · `--open`). `file://` 로 열면 쪽 이동이 새로고침이 되고 전체 인쇄가 안 된다 |
-| `kedovi docs pages [on\|off] [repo]` | 문서 사이트를 Pages 로 올릴지 정할 때 | on = 원격에 맞는 CI 파일 · `docs-site/` 커밋 대상, off = `.gitignore` 에 `/docs-site/`. 인자 없이 = repo 마다 상태 |
+| `kedovi docs serve [repo]` · `serve --stop` | Pages 없이 이 PC 에서 문서 사이트를 볼 때 | 생성물을 `http://localhost:<포트>/` 로 연다 (`--port` · `--open`, 이미 떠 있으면 그 주소). 뒤에서 띄운 서버는 `--stop` 으로 끈다. `file://` 로 열면 쪽 이동이 새로고침이 되고 전체 인쇄가 안 된다 워크스페이스 사이트는 화면에서 의견 · 게시판 · 이슈를 쓰고(원격 인증이 있으면 원격 이슈 · 댓글, 없으면 파일 + 그 파일만 커밋), `docs-site/` · `issues/` 가 바뀌면 다시 만든다 (`--no-watch` 로 끔) |
+| `kedovi docs pages [on\|off] [repo]` | 문서 사이트를 Pages 로 올릴지 정할 때 | 워크스페이스 사이트: on = CI 가 워크스페이스의 킷으로 빌드해 올리는 CI 파일 (생성물은 커밋하지 않음), off = 그 CI 파일을 지움. 옛 기획 repo 는 CI 파일과 그 repo 의 `docs-site/` 를 커밋 대상으로 두고, 끌 때는 `.gitignore` 로 뺀다. 인자 없이 = 상태 |
 | `kedovi docs show <ID>` · `refs <ID>` | 근거를 볼 때 · 결정이 바뀌어 고칠 곳을 찾을 때 | `show` = 그 ID 의 정의 부분만(제목 절 · 표 행 · 문단 · 화면설계서 장). `refs` = 그 ID 가 나오는 곳(기획 · 코드 · 이슈 repo, 파일:줄, ★ 정의 · [동결]). 에이전트도 큰 문서를 통째로 열지 않고 이것을 쓴다 |
 | `kedovi docs trace` `[--md] [--new]` | 기획대로 만들었는지 볼 때 | 기획 ID(`vars.docs.traceIds`, 예: FN,SCR,API,AC)와 코드의 `@spec` 주석을 대조. ⚠ 코드에 표시 없는 ID · ⚠ 테스트에 없는 수용 기준(AC-) · ✖ 기획에 정의 없는 ID(오타 · 지운 기능), 각각 파일:줄. `--md` = 추적표(ID · 정의 · 코드 · 테스트), `--new` = 새로 만들거나 고친 진입 파일(컨트롤러 · 화면 · 라우트 등) 중 기획 ID 가 없는 것 (커밋 전) |
 | `kedovi gitlab pipeline` | MR · 배포 뒤 파이프라인을 볼 때 | 최근 파이프라인 목록과 맨 위(또는 `--id`) 파이프라인의 단계별 작업 상태. `--ref <브랜치>` · `--mr <번호>`(MR 파이프라인이 없으면 머지 커밋의 것) · `--log`(실패한 작업의 로그 끝부분) · `--json`. 읽기만 한다 (gitlab 팩, `GITLAB_TOKEN`) |
@@ -145,7 +150,8 @@ AI 티 없는 화면 (screens 팩):
 
 ### docs build 자세히
 
-- `--out` 은 대상 폴더 기준 상대 경로 또는 절대 경로.
+- `--out` 은 대상 폴더(워크스페이스 사이트는 워크스페이스 루트) 기준 상대 경로 또는 절대 경로.
+- 워크스페이스 사이트는 `assets/site-db.json`(기능 머리 줄 · 마일스톤 · 문서 목록 · repo 넣은 방식)도 만든다.
 - 원본 주소 파일 `docs-site.json` 은 이미 있거나 기획 repo · 워크스페이스 루트일 때만 만든다. 그 밖(제품 repo 의 `docs/` 등)은 `--write-config` 를 줄 때만.
 - 정의서 폴더가 git 무시 대상이면 ⚠ 한 줄.
 - 문서 점검 경고: 큰 문서 · 머리말 이력 · 같은 문장 · 긴 표 칸 · 문단형 표 · 칸 안 경위 · 그림 없는 큰 문서 · 메뉴 「기타」 · 규모 문서 없음.
@@ -215,13 +221,11 @@ AI 연결 방식과 시작 도구는 **워크스페이스마다** 정하고 `.ag
 
 ```screen
 ◇ 프로젝트명           영문 소문자와 - 만, 문자로 시작 (예: new-stocker). 지금 폴더 아래 <이름>/ 을 만든다
-◇ 시작 유형            ● 신규 구축 ○ 차세대 ○ 운영·고도화(SM 포함) ○ 분석·설계(ISP·ISMP)
-   고르는 유형의 근거 · 넣는 repo · AI 가 하는 일이 목록 아래에 보인다
-◇ 프로젝트 repository   하나 입력 → [추가] [확정] 반복 (분석·설계는 묻지 않음)
-◇ 기획 repository       〃 (없으면 Enter)
-◇ 이슈 repository       〃 (없으면 Enter)
-◇ 레거시·현행 repository  차세대(필수) · 분석·설계(선택)만
+◇ repo 등록: 종류       ● 코드 ○ 참고 자료 (레거시) ○ 기존 기획 repo 연결 ○ 없음(처음만)
+   → 방식 (clone · 기존 로컬 폴더 · 새로 만들기(코드만)) → 값
+◇ repo 등록             ● 추가 ○ 확정   (기본은 추가. 다 넣었으면 확정을 직접 고른다)
 ◇ <호스트> 의 협업 도구  github.com·gitlab 이 든 주소는 자동 판단, 모르는 호스트만 묻는다
+◇ repo 폴더 묶기        repo 3개 이상이고 주소 경로 · 이름 앞부분이 겹칠 때만
 ◇ 이대로 만들까요?
    … 워크스페이스 생성 · repo clone · 스택 감지 …
 ◇ repos/<이름> 스택     감지 결과 [맞음] [고치기] [건너뛰기]  (repo 마다)
@@ -232,10 +236,10 @@ AI 연결 방식과 시작 도구는 **워크스페이스마다** 정하고 `.ag
    역할 구성은 자동 (두 회사 = 섞기, 한 회사 = 한 회사 모델만). 단일 모델은 kedovi ai compose single
 ◇ 팀 기본 모델 프로필   최고 · 표준 · 절약 · 역할별로 직접 고르기
 ◇ claude 에 항상 붙일 인자   없음 · 계획 먼저 · 파일 수정은 자동 · 확인 없이 실행 · 직접 입력 (이 PC 전용)
-◇ 워크스페이스 repository 주소 → 지금 커밋·push 할까요?   (원격이 없으면 주소부터, 예를 누르면 push 까지)
+   … 첫 커밋 chore: init workspace (원격 없음) → 다음: kedovi start (방향 인터뷰) · 팀과 나누기: kedovi remote add <주소>
 ```
 
 **Esc 는 이전 질문으로**(첫 질문에서는 취소), Ctrl+C 는 전체 취소. 폴더는 마지막 "이대로 만들까요?" 에서 예를 누른 뒤에만 만든다.
 프로젝트 폴더를 미리 만들 필요 없이 **상위 폴더에서** `kedovi init` 한다 (그 이름의 빈 폴더 안에서 해도 겹쳐 만들지 않는다). 안에 파일이 있는 폴더·이미 워크스페이스인 곳은 막는다. 워크스페이스 안에서 실행하면 바로 멈추고 `kedovi type` 을 알린다 (분석·설계 → 구축처럼 유형이 바뀌어도 같은 워크스페이스에서 바꾼다).
 repo 이름은 주소 끝 폴더명에서 자동으로 정한다. 스택·역할·브랜치는 `workspace.json` 에서 고치고 `kedovi sync`.
-스크립트로 만들 때는 `node <킷>/bin/kit.js init <폴더> --type new|modernization --packs … --docs … --legacy …`.
+스크립트로 만들 때는 `node <킷>/bin/kit.js init <폴더> [--type new|modernization|enhancement|consulting] [--approach feature|sprint|full|issue] --packs … --code … --docs … --legacy …` (유형 기본 new · 진행 방식 기본 기능 단위. 첫 커밋까지 하고, 방향 인터뷰 전 상태로 만든다).
