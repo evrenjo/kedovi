@@ -271,7 +271,9 @@ for (const c of cases) {
     ok = readme && npmIntro;
     detail = ok ? `${top[1]}: README · npm 소개 갱신됨` : `${top[1]} 에 기능이 있는데 ${prev[1]} 뒤로 ${[!readme && 'README 「주요 특징」', !npmIntro && 'package.json description · keywords (npm 소개)'].filter(Boolean).join(' · ')} 이 그대로입니다. 고치거나, 특징이 아닌 작은 기능뿐이면 그 판 절에 <!-- readme: skip -->`;
   }
-  record('배포 판 소개 최신화 (README · npm 소개)', ok, detail);
+  // npm 은 description 을 앞 255자까지만 저장한다 (넘으면 뒤 기능이 npm 에 안 보인다). 자세한 기능 목록은 README 로
+  if (pkg.description.length > 255) { ok = false; detail = `package.json description 이 ${pkg.description.length}자입니다. npm 은 255자까지만 저장해 뒤가 잘립니다. 대표 기능만 255자 안으로 (자세한 목록은 README 「주요 특징」)`; }
+  record('배포 판 소개 최신화 (README · npm 소개 · 255자)', ok, detail);
 }
 
 // 3. 금지 문자열
