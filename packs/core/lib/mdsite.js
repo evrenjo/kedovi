@@ -497,7 +497,7 @@ function build(input, opts = {}) {
   const virt = cfg.project ? VIRTUAL.map((v) => (v.view === 'dashboard' && docs.some((d) => d.page === 'index.html') ? { ...v, page: '_/dashboard.html' } : v)) : [];
   const navG = navData(groups, virt);
   const firstLeaf = (items) => { for (const x of items) { if (x.hide) continue; if (x.items) { const f = firstLeaf(x.items); if (f) return f; } else return x.p; } return null; };
-  const tabs = navG.map((g) => ({ t: g.group, p: firstLeaf(g.items) })).filter((x) => x.p);
+  const tabs = navG.map((g) => ({ t: g.group, l: g.label || g.group, p: firstLeaf(g.items) })).filter((x) => x.p);
   const env0 = { tabs, home: virt.length ? virt[0].page : 'index.html', docs, where, mdPages, opts, prefixRe, warnings, files, titleWords, docNames, groups, flat, splitPages, spa: new Set(), texts: [] };
   for (const d of docs) {
     if (d.kind === 'sheets') { pages[d.page] = sheetPage(d, opts.sheetTheme); continue; }
@@ -633,6 +633,7 @@ const VIRTUAL = [
   { view: 'gantt', page: '_/gantt.html', t: '간트', tab: '일정' },
   { view: 'milestones', page: '_/milestones.html', t: '마일스톤', tab: '일정' },
   { view: 'workitems', page: '_/workitems.html', t: '작업 항목', tab: '일정' },
+  { view: 'backlog', page: '_/backlog.html', t: '백로그', tab: '일정' },
   { view: 'issues', page: '_/issues.html', t: '열린 이슈', tab: '이슈' },
   { view: 'issues-board', page: '_/issues/board.html', t: '처리 보드', tab: '이슈' },
   { view: 'issues-setup', page: '_/issues/setup.html', t: '연계 설정', tab: '이슈' },
@@ -667,7 +668,7 @@ function navGroups(docs, config) {
       const res = (g.files || []).map(globRe);
       const ds = [];
       for (const re of res) for (const d of listed.filter((x) => !used.has(x) && re.test(x.origin || x.md)).sort(order)) { used.add(d); ds.push(d); }
-      return { group: g.group || `묶음 ${i + 1}`, icon: g.icon || ICONS[i % ICONS.length], docs: ds, collapsed: !!g.collapsed, tree: !!g.tree };
+      return { group: g.group || `묶음 ${i + 1}`, ...(g.label && g.label !== g.group ? { label: String(g.label) } : {}), icon: g.icon || ICONS[i % ICONS.length], docs: ds, collapsed: !!g.collapsed, tree: !!g.tree };
     }).filter((g) => g.docs.length || (config.project && VTABS.includes(g.group)));
     // 프로젝트 사이트: 가상 화면이 있는 상단 탭은 설정에 없어도 둔다 (일정 · 이슈 등 문서 없는 탭)
     if (config.project) for (const t of VTABS) if (!out.some((g) => g.group === t)) out.push({ group: t, icon: '', docs: [], collapsed: false, tree: false });
@@ -722,7 +723,8 @@ function navGroups(docs, config) {
  * 왼쪽 메뉴 자료 (assets/nav.js 의 groups, 주소는 사이트 맨 위 기준 쪽 경로). docs-site.json 묶음 옵션:
  *   collapsed: true  처음엔 접힌 묶음 (지금 문서가 든 묶음은 앱이 편다)
  *   tree: true       묶음 안 문서를 폴더대로 접히는 트리로 (issues/2024/… → 2024 ▸ …)
- * [{ k, group, icon, open, acts: [{ p, h, label }], items: [{ p, t } | { k, dir, items }] }]
+ *   label: '…'     상단 탭 · 메뉴 머리에 보일 이름 (경로 · glob 은 group 그대로, 프로필이 정한다: 개선 · 요구 영역 등)
+ * [{ k, group, label?, icon, open, acts: [{ p, h, label }], items: [{ p, t } | { k, dir, items }] }]
  */
 function navData(groups, virt) {
   const item = (d) => ({ p: d.page, t: d.navTitle || d.title });
@@ -753,7 +755,7 @@ function navData(groups, virt) {
     const tail = vs.filter((v) => !v.at && !v.sec).map(vi);
     const secs = [...new Set(vs.filter((v) => v.sec).map((v) => v.sec))].map((sec) => ({ k: `${g.group}/${sec}`, sec, items: vs.filter((v) => v.sec === sec).map(vi) }));
     return {
-      k: g.group, group: g.group, icon: g.icon, open: !g.collapsed,
+      k: g.group, group: g.group, ...(g.label ? { label: g.label } : {}), icon: g.icon, open: !g.collapsed,
       acts: [act(g.sheets, 'sheet-docs', '설계서 보기'), act(g.erds, 'erd-docs', 'ERD 보기')].filter(Boolean),
       items: [...head, ...docsItems, ...tail, ...secs],
     };
@@ -813,7 +815,7 @@ function layout(a, env) {
   };
   const site0 = { title: site, logo, version: cfg.version || '', ink: cfg.ink !== false, ...(cfg.project ? { project: true } : {}) };
   const tabOf = (env.tabs || []).find((t) => t.t === a.crumb || t.t === (flat[i] || {}).groupName);
-  const tabsHtml = (env.tabs || []).map((t) => `<a class="tab${t === tabOf ? ' on' : ''}" href="${esc(relLink(a.page, t.p))}"${t === tabOf ? ' aria-current="true"' : ''}>${esc(t.t)}</a>`).join('');
+  const tabsHtml = (env.tabs || []).map((t) => `<a class="tab${t === tabOf ? ' on' : ''}" href="${esc(relLink(a.page, t.p))}"${t === tabOf ? ' aria-current="true"' : ''}>${esc(t.l || t.t)}</a>`).join('');
   return `<!doctype html>
 <html lang="ko" data-theme="light">
 <head>

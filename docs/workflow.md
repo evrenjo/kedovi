@@ -64,7 +64,7 @@ flowchart TD
     GQ -->|"아니오"| OK
     GP --> OK{"이대로 만들까요?"}
     OK -->|"아니오"| X(["만들지 않고 끝"])
-    OK -->|"예"| MK["워크스페이스 생성 · repo clone<br/>스택 자동 감지<br/>workspace.json: 유형 new (임시) · 진행 방식 기능 단위 · onboarded false"]
+    OK -->|"예"| MK["워크스페이스 생성 · repo clone<br/>스택 자동 감지<br/>workspace.json: 유형 new (임시) · 분야 web (임시) · 진행 방식 기능 단위 · onboarded false"]
     MK --> RF{"clone 하지 못한 repo 가 있는가"}
     RF -->|"있음"| RA{"받지 못한 repo n개를 지금 다시 받을까요?<br/>(git clone 그대로, 인증을 물으면 입력 · 아니오면 나중에 kedovi install)"}
     RA --> ST
@@ -285,7 +285,7 @@ flowchart TD
 
 **첫 시작의 계정**: 팀이 있는 워크스페이스는 이 PC 사용자를 한 번 확인한다. 원격에서 저장소 계정을 읽으면 그대로 쓰고, 못 읽으면(원격이 없는 새 워크스페이스 포함) 「아이디」 와 「이름」 을 묻는다 (git · GitLab 에서 쓰는 아이디와 같게 적으면 커밋 · 이슈 · 담당 repo 추적이 쉽다). `.agents/local.json` 의 `me` 에 저장하고 다시 묻지 않는다. 원격이 없고 init 이 git user.name 으로 적은 팀장이 이 사람이면 그 자리를 적은 아이디 · 이름으로 바꾼다.
 
-**방향 인터뷰** (`kickoff` 스킬): 새 워크스페이스(`workspace.json` 의 `project.onboarded` 가 `false`)에서 팀장이 처음 시작하면 세션 시작 훅이 인터뷰를 먼저 하라고 넣는다. 한 번에 한 질문(주제 n/6): 무엇 · 누가 쓰나 → 유형(새로 · 운영 중 · 이전 → `kedovi type`) → 기존 자료 위치 → 첫 기능 목록 · 마일스톤 → 개발 표준 · 스택 → 규칙 켜고 끄기(`kedovi rules`). 결과는 `docs-site/개요.md` · `docs-site/설계/` 의 요구사항 · 아키텍처 · 개발표준 초안 · `docs-site/기능/NNN-이름.md` (머리에 번호 · 이름 · 마일스톤 · 단계). 사이트를 다시 만들고 `kedovi kickoff done` 으로 끝낸다. 필드가 없는 옛 워크스페이스는 인터뷰를 하지 않는다 (하려면 `kedovi kickoff again`).
+**방향 인터뷰** (`kickoff` 스킬): 새 워크스페이스(`workspace.json` 의 `project.onboarded` 가 `false`)에서 팀장이 처음 시작하면 세션 시작 훅이 인터뷰를 먼저 하라고 넣는다. 한 번에 한 질문(주제 n/7): 무엇 · 누가 쓰나 → 유형(새로 · 운영 중 · 이전 → `kedovi type`) → 분야(웹 · 앱 · 게임 · 웨어러블 · 장치 · IoT → `kedovi domain`) → 기존 자료 위치 → 첫 기능 목록 · 마일스톤 → 개발 표준 · 스택 → 규칙 켜고 끄기(`kedovi rules`). 결과는 `docs-site/개요.md` · `docs-site/설계/` 의 요구사항 · 아키텍처 · 개발표준 초안 · `docs-site/기능/NNN-이름.md` (머리에 번호 · 이름 · 마일스톤 · 단계, 분야별 기능 문서 틀). 유형 · 분야를 정하면 그 프로필의 빈 쪽이 `docs-site/` 에 생긴다 ([문서 사이트](docs-site.md) 「유형 · 분야 프로필」). 사이트를 다시 만들고 `kedovi kickoff done` 으로 끝낸다. 필드가 없는 옛 워크스페이스는 인터뷰를 하지 않는다 (하려면 `kedovi kickoff again`).
 
 지난 대화를 이어서 하려면 `kedovi start -c`(마지막 대화) · `kedovi start -r <세션 ID>`(`/exit` 때 나온 ID) · `kedovi start -r`(목록에서 고르기). 브리핑은 넣지 않고 모델 · 텔레그램 채널은 그대로 적용한다. Codex 는 `codex resume --last` · `resume <ID>` 로 바꿔 넘긴다.
 `kedovi start --pixel-agents` 는 이 PC 에 설치된 [Pixel Agents](https://github.com/pablodelucca/pixel-agents)(`npm i -g pixel-agents`)를 워크스페이스에서 띄우고 브라우저로 연다. 메인 에이전트 · 팀원 · 서브에이전트가 사무실 캐릭터로 움직인다(Claude Code 만). 세션이 끝나면 서버도 끈다. 설치돼 있지 않으면 알리고 화면 없이 시작한다. 처음 열 때 그 화면이 `~/.claude/settings.json` 에 훅을 넣을지 묻는다.
@@ -314,7 +314,7 @@ flowchart TD
     PXW --> RUN["에이전트 실행"]
     RUN --> SS["세션 시작 훅: repo 갱신 확인 · 생성물 동기화 확인 · 내 마지막 핸드오프 한 줄"]
     SS --> KO{"방향 인터뷰 전이고 팀장인가<br/>(project.onboarded false)"}
-    KO -->|"예"| KI["kickoff 스킬: 주제 n/6 한 질문씩<br/>→ docs-site 초안 · kedovi type · rules · 사이트 빌드 → kedovi kickoff done"]
+    KO -->|"예"| KI["kickoff 스킬: 주제 n/7 한 질문씩<br/>→ docs-site 초안 · kedovi type · kedovi domain · rules · 사이트 빌드 → kedovi kickoff done"]
     KO -->|"아니오"| WORK
     KI --> WORK["작업: 규칙(AGENTS.md) · 스킬 · 역할 에이전트<br/>(AI 가 필요할 때 스스로 부르고 정리. 한 요청 상한을 넘으면 훅이 막는다)"]
     WORK -->|"독립 단위 2개 이상"| TIER["메인 → 작업 리더(단위마다) → 팀원<br/>같은 repo 면 kedovi worktree add · merge<br/>진행 보기 kedovi agents watch"]
@@ -365,7 +365,8 @@ flowchart TD
     Q -->|"요청 장부"| REQ["요청 시작 훅이 요청마다 번호를 붙여 기록 (맞장구 빼고 · 끼어든 메시지 포함)<br/>kedovi requests set 번호 --status 진행 · 완료 --agent 이름 --result 결과<br/>→ handoffs/id/topics/요청-목록.md · 열린 요청은 답변 끝 표 (enforce req)"]
     Q -->|"답변 시각 표시"| TS["kedovi timestamp on · off · team [--team]<br/>답변 첫 줄에 요청 받은 시각 (기본 켜짐, Claude Code)<br/>→ .agents/local.json (팀은 workspace.json)"]
     Q -->|"진행 방식"| APR["kedovi approach feature · sprint · full · issue (팀장)<br/>기능 단위(기본): 설계 기준 뒤 기능마다 명세 → 설계 → AI 구현 → 검증 → 배포 · 스프린트: 최소 기능부터, 스프린트마다 데모 · 회고 · 전체: 전체 설계 뒤 구축 · 이슈형: 단계 대신 이슈 보드<br/>→ sync · 기본 단계 그대로인 로드맵은 새 뼈대 (이슈형은 고친 로드맵 앞에도 이슈 보드)"]
-    Q -->|"유형 바꾸기"| TYP["kedovi type &lt;유형&gt; [--approach a] [--code 이름,…] (팀장)<br/>고칠 repo (현행 → 개발 repo) → 진행 방식<br/>→ 유형 팩 교체 · 로드맵 새 뼈대 (지난 로드맵은 아래에 남김) → sync"]
+    Q -->|"유형 바꾸기"| TYP["kedovi type &lt;유형&gt; [--approach a] [--code 이름,…] (팀장)<br/>고칠 repo (현행 → 개발 repo) → 진행 방식<br/>→ 유형 팩 교체 · 로드맵 새 뼈대 (지난 로드맵은 아래에 남김) → sync<br/>→ 그 유형의 빈 문서 쪽 (없는 것만) · 탭 이름 (손대지 않은 메뉴만)"]
+    Q -->|"분야"| DOM["kedovi domain web · game · device · iot (팀장)<br/>분야 규칙 팩 교체 (domain-game · domain-device · domain-iot) → sync<br/>→ 그 분야의 빈 문서 쪽 (없는 것만) · 기능 문서 틀 (손대지 않은 틀만)"]
     Q -->|"요금제"| PLN["kedovi ai (화면) · kedovi ai plan claude|gpt &lt;요금제&gt;<br/>--team 은 팀 기본값 → sync"]
     Q -->|"연결 방식 · 인자"| AGT["kedovi agent (5절)"]
     Q -->|"내 프로필 (팀과 같거나 낮게)"| MP["kedovi models profile (화면에서 고름)<br/>인자: rich · standard · lean · team (되돌리기)"]
@@ -432,7 +433,8 @@ flowchart TD
 | `kedovi draft` | 사람이 읽는 글의 틀과 올리기 전 검사: `template <형식>`(작업 항목 · 결함 · MR · 완료 댓글 · 주간보고 · 보고 · 기획 문서) · `check --file <파일> --type <형식>`(빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것 · 소스 코드 표현). 수준은 `kedovi team-mode enforce draft` |
 | `kedovi timestamp` | 답변 첫 줄 시각 표시 (Claude Code, 기본 켜짐): 요청 받은 시각 yyyy-MM-dd HH:mm:ss. `on\|off` 이 PC · `team` 이 PC 값 지우기 · `--team` 팀 기본값(팀장). 인자 없이 = 지금 값 |
 | `kedovi approach` | 진행 방식: MVP · 스프린트(최소 기능부터 기능 단위로 하나씩) · 워터폴 · 전체(전체 설계 뒤 구축) · 이슈형(운영 · 유지보수: 이슈마다 운영 반영, 이슈 보드). 인자 없이 = 지금 값 (팀장) |
-| `kedovi type` | 유형 바꾸기 (분석·설계 → 구축 · 고도화 등): 현행 repo 중 고칠 것을 개발 repo 로 · 진행 방식 · 유형 팩 교체 · 로드맵 새 뼈대. 인자 없이 = 지금 값 (팀장) |
+| `kedovi type` | 유형 바꾸기 (분석·설계 → 구축 · 고도화 등): 현행 repo 중 고칠 것을 개발 repo 로 · 진행 방식 · 유형 팩 교체 · 로드맵 새 뼈대 · 그 유형의 빈 문서 쪽 · 탭 이름. 인자 없이 = 지금 값 (팀장) |
+| `kedovi domain` | 분야: 웹 · 앱(기본) · 게임 · 웨어러블 · 장치 · IoT · 임베디드. 분야 규칙 팩 · 빈 문서 쪽(없는 것만) · 기능 문서 틀(손대지 않았을 때만). 인자 없이 = 지금 값 · 목록 (팀장) |
 | `kedovi plan` | 로드맵(`handoffs/PLAN.md`): 단계 흐름 · 지금 단계 표 · 이번에 생긴 것 · 다음. 이슈형은 이슈 보드(상태별 건수 · 진행 중 이슈 · 멈춘 이슈 ⚠) (`--short` · `--json` · `--report` 기간 보고 · `init` · `check` 도) |
 | `kedovi docs build [repo]` | 워크스페이스 `docs-site/`(사람 문서 원본) → `.agents/site/` (커밋 안 함, 연결한 기획 repo 는 같은 사이트의 `repos/<이름>/`, `ai-docs/` 는 넣지 않음). `docs-site/` 가 없는 옛 구조면 기획 repo 의 md · 화면설계서 장 → 그 repo 의 `docs-site/`. 정의 ID 앵커 · 근거 색인 · 정의서 폴더마다 ERD, 묶음 · 포함 범위는 `docs-site.json`. `check` 는 md 와 어긋났는지. 둘 다 문서 점검 경고와 mermaid 문법 오류를 낸다. 자세히는 [문서 사이트](docs-site.md) |
 | `kedovi docs adopt <기획 repo> [--dry-run]` | 옛 기획 repo(00-overview · 10-system · 20-features …)를 워크스페이스 `docs-site/` 새 자리(개요 · 설계 · 기능 · 화면 · 데이터 · 자료실)로 옮긴다. 미리보기 표 먼저 · 링크 고침 · 원본 repo 는 그대로 · 손댄 문서와 겹치면 멈춤(`--force`). 다음 할 일(연결 끊기 · 커밋)을 알린다 |
@@ -524,7 +526,7 @@ flowchart TD
 
 | 파일 | 누가 쓰나 | 공유 | 들어가는 것 |
 |---|---|---|---|
-| `workspace.json` | init · detect · models(팀) · team-mode(팀) · team add · rules · kickoff · upgrade | git 공유 | 유형 · 진행 방식 · 방향 인터뷰 여부(`project.onboarded`, 새 워크스페이스는 `false`) · repo · 스택 · 팀 모델 프로필 · 팀 구성(`agents.mode` · `save` · `prefer`) · 훅 강제 수준 · 리뷰 확인 대상 · 대기 팀원 시간(`agents.enforce`) · 팀원의 높은 프로필 허용(`agents.allowHigherProfile`) · 팀 직접 지정 모델 · 팀 명단 · 팀장 · 설정 수정 권한(`team`) · 끈 규칙(`rules.off`) · 필요할 때만 읽는 규칙(`rules.onDemand`) |
+| `workspace.json` | init · detect · models(팀) · team-mode(팀) · team add · rules · kickoff · type · domain · upgrade | git 공유 | 유형 · 분야(`project.domain`, 없으면 web) · 진행 방식 · 방향 인터뷰 여부(`project.onboarded`, 새 워크스페이스는 `false`) · repo · 스택 · 팀 모델 프로필 · 팀 구성(`agents.mode` · `save` · `prefer`) · 훅 강제 수준 · 리뷰 확인 대상 · 대기 팀원 시간(`agents.enforce`) · 팀원의 높은 프로필 허용(`agents.allowHigherProfile`) · 팀 직접 지정 모델 · 팀 명단 · 팀장 · 설정 수정 권한(`team`) · 끈 규칙(`rules.off`) · 필요할 때만 읽는 규칙(`rules.onDemand`) |
 | `.agents/local.json` | install · agent · ai · models(내 PC) · start(첫 계정) | 이 PC 만 | 이 PC 사용자(`me`: 아이디 · 이름 · 읽은 곳) · 시작 도구 · 인자 · AI 연결 방식(`agents.access`: 게이트웨이 주소·키 환경변수 이름·모델 목록, 키 값은 없음) · 내 프로필(팀과 같거나 낮은 것만) · 내가 직접 고른 모델 · 역할 상한(`agents.limits`, 팀 값 이내) |
 | `.claude/agents` · `.codex/agents` | sync | 이 PC 만 (사람마다 모델이 달라서) | 역할 에이전트 파일 |
 | `.worktrees/<repo>/<단위>/` | kedovi worktree add · clean | 이 PC 만 (gitignore) | 작업 폴더 · 로컬 임시 브랜치 `kedovi/<단위>` (merge · remove · clean 때 지운다). 작업 폴더는 여기에만 만든다 (`git worktree add` 로 repo 옆에 만들면 훅이 막는다) |

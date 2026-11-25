@@ -45,6 +45,7 @@ const WRL = require('../lib/writes');
 const S = require('../lib/site');
 const SD = require('../lib/sitedb');
 const SR = require('../lib/siteremote');
+const SH = require('../lib/sitehist');
 
 const PACKS = path.resolve(__dirname, '..', '..');
 const argv = process.argv.slice(2);
@@ -637,7 +638,20 @@ function generate(t, ws, out, live = false, extra = {}) {
     // API 명세: build 때만 코드 repo 에서 새로 읽고, check 는 사이트에 넣은 사본으로 (코드 repo 가 바뀌어도 어긋남으로 치지 않는다)
     const apis = live ? SD.findApis(ws || {}) : (prev.apis || []).map((a) => { try { return { ...a, data: fs.readFileSync(path.join(outDir, a.file)) }; } catch { return null; } }).filter(Boolean);
     for (const a of apis) res.pages[a.file] = a.data;
-    const db = SD.build({ ws: ws || {}, src: t.dir, title: titleOf(t.dir, ws, t.name), files: real, docs: res.docs, index: res.index, pageOf, remote: extra.remote || null, apis, library, config, builtAt: live ? new Date().toISOString() : (prev.builtAt || null) });
+    // AsyncAPI 명세 (인터페이스 명세): API 명세와 같이 build 때만 새로 읽는다
+    const asyncs = live ? SD.findAsyncApis(ws || {}) : (prev.interfaces || []).filter((a) => a.kind === 'asyncapi').map((a) => { try { return { ...a, data: fs.readFileSync(path.join(outDir, a.file)) }; } catch { return null; } }).filter(Boolean);
+    for (const a of asyncs) res.pages[a.file] = a.data;
+    const db = SD.build({ ws: ws || {}, src: t.dir, title: titleOf(t.dir, ws, t.name), files: real, docs: res.docs, index: res.index, pageOf, remote: extra.remote || null, apis, asyncs, library, config, builtAt: live ? new Date().toISOString() : (prev.builtAt || null) });
+    // 문서별 지난 판 (바뀐 점 보기): build 때만 git 에서 새로 읽고, check 는 사이트에 넣은 것을 그대로 (커밋만 해도 바뀌므로 어긋남으로 치지 않는다)
+    if (live) {
+      const at = (md) => { const c = (sc.copies || []).find((x) => md.startsWith(`${x.rel}/`)); return c ? { dir: c.dir, rel: md.slice(c.rel.length + 1) } : { dir: t.dir, rel: md }; };
+      const h = SH.collect((db.docs || []).map((d) => ({ md: d.md, page: d.page, ...at(d.md) })), { config, who: SD.personMap(ws || {}), now: db.builtAt });
+      Object.assign(res.pages, h.pages);
+      db.history = h.map;
+    } else {
+      db.history = prev.history || {};
+      for (const f of oldFiles(outDir)) if (f.startsWith(`${SH.DIR}/`)) { try { res.pages[f] = fs.readFileSync(path.join(outDir, f), 'utf8'); } catch { /* 없으면 뺀다 */ } }
+    }
     res.pages['assets/site-db.json'] = `${JSON.stringify(db, null, 1)}\n`;
   }
   const moved = movedPages(path.resolve(t.dir, out), res.pages);

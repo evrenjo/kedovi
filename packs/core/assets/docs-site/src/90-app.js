@@ -11,7 +11,7 @@
   function Head(props) {
     var m = props.meta;
     return html`<div class="page-head"><div>
-        <div class="crumb">${m.crumb}${m.status ? html` <span class="ds-badge" data-status=${m.status}>${m.status}</span>` : null}</div>
+        <div class="crumb">${DS.tabLabel(m.crumb)}${m.status ? html` <span class="ds-badge" data-status=${m.status}>${m.status}</span>` : null}</div>
         <h1 dangerouslySetInnerHTML=${{ __html: m.h1 }}></h1>
         ${m.lead ? html`<p class="lead" dangerouslySetInnerHTML=${{ __html: m.lead }}></p>` : null}
       </div><div class="head-r">${props.tools}${m.src ? html`<a class="src" href=${m.src.href} title="원본 md">원본 ${m.src.name}</a>` : null}</div></div>`;
@@ -27,7 +27,7 @@
   function Pager(props) {
     var m = props.meta;
     if (!m.prev && !m.next) return null;
-    var one = function (d, cls, label) { return d ? html`<a class=${cls} href=${DS.url(d.p)}><small>${label} · ${d.g}</small>${d.t}</a>` : html`<span></span>`; };
+    var one = function (d, cls, label) { return d ? html`<a class=${cls} href=${DS.url(d.p)}><small>${label} · ${DS.tabLabel(d.g)}</small>${d.t}</a>` : html`<span></span>`; };
     return html`<div class="pager">${one(m.prev, "prev", "이전")}${one(m.next, "next", "다음")}</div>`;
   }
 
@@ -127,7 +127,7 @@
       : isVirtual ? html`<div class="ds-body ds-view" ref=${bodyEl}><${Virtual} db=${db} meta=${meta} /></div>`
       : html`<div class="ds-body" ref=${bodyEl} dangerouslySetInnerHTML=${{ __html: cur.d.body }}></div>`;
     var tools = docExtras ? html`<${DS.DocTools} db=${db} page=${meta.page} comments=${true} memo=${memo} onMemo=${function () { setMemo(!memo); }} />` : null;
-    var head = isPrint ? null : isVirtual ? html`<div class="crumb vcrumb">${[tab, meta.title].filter(Boolean).join(" › ")}</div>` : html`<${Head} meta=${meta} tools=${tools} />`;
+    var head = isPrint ? null : isVirtual ? html`<div class="crumb vcrumb">${[tab && tab !== "나" ? DS.tabLabel(tab) : tab, meta.view === "api" && db && (db.interfaces || []).length ? "인터페이스 명세" : meta.title].filter(Boolean).join(" › ")}</div>` : html`<${Head} meta=${meta} tools=${tools} />`;
     var article = html`<main id="main"><article class="page" ref=${art}>${head}
       ${docExtras ? html`<${DS.ChangeBar} db=${db} page=${meta.page} />` : null}
       ${feat ? html`<${DS.FeatHead} db=${db} f=${feat} toc=${meta.toc} />` : null}

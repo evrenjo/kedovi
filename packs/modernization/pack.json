@@ -2,7 +2,7 @@
   "name": "modernization",
   "title": "차세대 전환 (AS-IS → TO-BE)",
   "summary": "AS-IS 대조 규칙 · 레거시 분석 도구",
-  "description": "레거시(AS-IS) 재구축 프로젝트: AS-IS 정합 원칙(저장·복사·조회 대조, grep -a, 뷰 정의 확인), 데이터 마이그레이션 원칙, COBOL·EGL 효과/읽기/필드 쓰기 추출 도구, AS-IS↔TO-BE 매핑·대조 도구, asis-compare 스킬",
+  "description": "레거시(AS-IS) 재구축 프로젝트: AS-IS 정합 원칙(저장·복사·조회 대조, grep -a, 뷰 정의 확인), 데이터 마이그레이션 원칙, COBOL·EGL 효과/읽기/필드 쓰기 추출 도구, AS-IS↔TO-BE 매핑·대조 도구, asis-compare 스킬. 문서 사이트: 빈 쪽(현행 분석 · 정합표 · 데이터 이관 · 정합 검증)",
   "requires": [
     "core"
   ],

@@ -101,7 +101,8 @@
  *   kedovi team-mode enforce req off|warn|block [--team]   요청 장부 (Claude Code): 요청 기록 + 열린 요청이 있는데 답변 끝에 요청 표가 없으면 한 번 되돌린다 (기본 막기, warn 은 기록만)
  *   kedovi draft list · template <형식> · check --file F [--type 형식] [--repo R] · config --file F   사람이 읽는 글의 틀과 올리기 전 검사, 환경 · 설정 파일 주석 검사: 형식 task(작업 항목) · bug(결함) · mr · done(완료 댓글) · weekly(주간보고) · report(보고 · 위키) · plan(기획 문서). 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것
  *   kedovi timestamp [on|off|team] [--team]   답변 첫 줄에 요청 받은 시각(yyyy-MM-dd HH:mm:ss) 표시 (Claude Code, 기본 켜짐). 이 PC 값이 팀 값보다 먼저, team = 이 PC 값 지우기. 인자 없이 = 지금 값
- *   kedovi type [유형] [--approach a] [--code 이름,…]   유형 바꾸기: 분석·설계 → 구축 · 고도화 등. 유형 팩 · 현행 repo 중 고칠 것(개발 repo 로) · 진행 방식 · 로드맵 새 뼈대 (팀장)
+ *   kedovi type [유형] [--approach a] [--code 이름,…]   유형 바꾸기: 분석·설계 → 구축 · 고도화 등. 유형 팩 · 현행 repo 중 고칠 것(개발 repo 로) · 진행 방식 · 로드맵 새 뼈대 · 그 유형의 빈 문서 쪽 · 탭 이름 (팀장)
+ *   kedovi domain [web|game|device|iot]   분야: 웹 · 앱(기본) · 게임 · 웨어러블 · 장치 · IoT · 임베디드. 분야 규칙 팩을 켜고 빈 문서 쪽(없는 것만) · 기능 문서 틀(손대지 않았을 때만)을 맞춘다. 인자 없이 = 지금 값 · 목록 (팀장)
  *   kedovi approach [feature|sprint|full|issue]   진행 방식: 기능 단위(기본: 설계 기준 뒤 기능마다 명세 → 설계 → AI 구현 → 검증 → 배포) · MVP · 스프린트(최소 기능부터, 스프린트마다 데모하며 하나씩) · 워터폴 · 전체(전체 설계 뒤 구축) · 이슈형(운영 · 유지보수, 이슈 보드). 바꾸면 로드맵도 맞춘다 (팀장)
  *   kedovi team-mode [auto|fixed] · prefer <역할> <claude|codex>:<모델>|- · [--team]   팀 구성: 자동(리더가 작업마다 역할·모델, 요금제 여유도 반영) · 고정(프로필대로), 역할별 선호 모델. --team 은 팀 기본값(팀장)
  *   kedovi review status · mark [--repo R] [--by "<누가>"] · skip --reason "<사유>" [--repo R]   리뷰 확인(commit · push 전에 리뷰를 거쳤나): 대상 repo 마다 리뷰 안 된 줄 수 · 지금 상태를 리뷰했다고 기록 · 한 번 생략(사용자 승인 뒤). 켜기는 team-mode enforce review
@@ -2762,6 +2763,40 @@ function cmdApproach(argv) {
 }
 
 /**
+ * 분야 (팀장): 웹 · 앱 · 게임 · 웨어러블 · 장치 · IoT · 임베디드. 분야 규칙 팩 교체 · 그 분야의 빈 문서 쪽(없는 것만) ·
+ * 기능 문서 틀(손대지 않은 뼈대일 때만) → sync. 같은 분야를 다시 고르면 빠진 쪽만 채운다
+ */
+function cmdDomain(argv) {
+  const root = locateWorkspace();
+  const wsFile = path.join(root, 'workspace.json');
+  const w = JSON.parse(read(wsFile));
+  const cur = (w.project || {}).domain || 'web';
+  const want = argv.find((x) => !x.startsWith('--'));
+  if (!want) {
+    console.log(`분야: ${kit.DOMAINS[cur] || cur}${(w.project || {}).domain ? '' : ' (정하지 않음, 기본)'}`);
+    for (const [k, v] of Object.entries(kit.DOMAINS)) console.log(`  kedovi domain ${k.padEnd(8)} ${v}${kit.DOMAIN_RULES[k].pack ? ` (규칙 팩 ${kit.DOMAIN_RULES[k].pack})` : ''}`);
+    return;
+  }
+  if (!kit.DOMAINS[want]) fail(`사용법: kedovi domain [${Object.keys(kit.DOMAINS).join('|')}]`);
+  if (!read(path.join(root, 'bin', 'kit.js')).includes('DOMAIN_RULES')) fail('이 워크스페이스의 킷이 분야를 모릅니다. kedovi upgrade 를 먼저 하세요');
+  requireAdmin(root, '분야 변경');
+  const all = Object.values(kit.DOMAIN_RULES).map((r) => r.pack).filter(Boolean);
+  const pack = kit.DOMAIN_RULES[want].pack;
+  const packs = (w.packs || []).filter((x) => !all.includes(x) || x === pack);
+  if (pack && !packs.includes(pack) && fs.existsSync(path.join(root, 'packs', pack, 'pack.json'))) { const at = packs.indexOf('project'); packs.splice(at < 0 ? packs.length : at, 0, pack); }
+  w.packs = packs;
+  w.project = { ...(w.project || {}), domain: want };
+  fs.writeFileSync(wsFile, `${JSON.stringify(w, null, 2)}\n`);
+  if (!runWorkspaceKit(root, ['sync', '--quiet'])) process.exit(1);
+  const lines = kit.ensureProfile(root, root, w);
+  console.log(want === cur ? `✔ 분야: ${kit.DOMAINS[want]} (그대로)` : `✔ 분야: ${kit.DOMAINS[cur] || cur} → ${kit.DOMAINS[want]}`);
+  console.log(`  규칙 팩: ${pack || '없음 (웹 · 앱은 스택 규칙으로)'}`);
+  for (const l of lines) console.log(`  ${l}`);
+  if (!lines.length) console.log('  문서 쪽: 더할 것 없음 (이미 있거나 docs-site/ 가 없음. 고친 파일은 그대로 둡니다)');
+  console.log('  workspace.json · docs-site/ 를 commit · push 하면 팀에 적용됩니다');
+}
+
+/**
  * 유형 바꾸기 (팀장): 분석·설계를 끝내고 같은 워크스페이스에서 구축 · 고도화로 넘어갈 때 등.
  * 유형 팩 교체 · 필수 repo(현행 repo 중 고칠 것을 개발 repo 로) · 진행 방식 · 로드맵(새 뼈대, 지난 로드맵은 아래에 남김) → sync
  */
@@ -2830,10 +2865,12 @@ async function cmdType(argv) {
     const body = old.split('\n').filter((l) => !/^#\s/.test(l) && !l.includes('<!-- kedovi:preset')).map((l) => l.replace(/^##\s/, '### '));
     fs.writeFileSync(planFile, `${read(planFile).trimEnd()}\n\n## 지난 로드맵 (${kit.PROJECT_TYPES[cur] || cur}, ~${new Date().toISOString().slice(0, 10)}. 읽지 않는다)\n\n${body.join('\n').trim()}\n`);
   }
+  const profiled = kit.ensureProfile(root, root, w); // 그 유형의 빈 문서 쪽(없는 것만) · 탭 이름 (손대지 않은 메뉴만)
   const lines = [`✔ 유형: ${kit.PROJECT_TYPES[cur] || cur} → ${kit.PROJECT_TYPES[want]} · 진행 방식 ${kit.APPROACHES[approach].split(' (')[0]}`,
     `  팩: ${packs.filter((x) => x !== 'core' && x !== 'project').join(', ') || '(core 만)'}`,
     ...(toCode.length ? [`  개발 repo 로: ${toCode.join(', ')}`] : []),
-    `  로드맵: handoffs/PLAN.md 새 뼈대${old ? ' (지난 로드맵은 아래 「지난 로드맵」 절에 남김)' : ''}`];
+    `  로드맵: handoffs/PLAN.md 새 뼈대${old ? ' (지난 로드맵은 아래 「지난 로드맵」 절에 남김)' : ''}`,
+    ...profiled.map((l) => `  ${l}`)];
   const has = (k) => repos.some((r) => r.kind === k);
   if (toCode.length) lines.push('  개발 repo 로 바꾼 repo 의 스택 확인: kedovi detect');
   if (rule.requires.includes('code') && !has('code')) lines.push('  ⚠ 개발 repo 가 없습니다. kedovi repo add 로 더하거나 kedovi type 을 다시 해 현행 repo 를 고르세요');
@@ -3892,7 +3929,7 @@ function upgradeSummary(root, from) {
 const HELP_GROUPS = [
   ['시작 · 설치', '워크스페이스 만들기 · 받기 · 작업 시작 · 킷 새 버전', ['init', 'init-docs', 'install', 'remote', 'kickoff', 'start', 'upgrade', 'list', 'remove', 'help']],
   ['AI · 모델', '연결 방식 · 메인 에이전트 · 모델 프로필 · 응답 언어 · 대화 스타일 · 기능 추천', ['agent', 'ai', 'models', 'prefs', 'timestamp', 'suggest']],
-  ['프로젝트 설정', '유형 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'approach', 'repo', 'detect', 'rules', 'archrules', 'views', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
+  ['프로젝트 설정', '유형 · 분야 · 진행 방식 · repo · 스택 · 규칙 · 구조 검사 · 쓰기 보고서 · 외부 API 장부 · 극값 · 생성물', ['type', 'domain', 'approach', 'repo', 'detect', 'rules', 'archrules', 'views', 'writes', 'apiledger', 'extremes', 'sync', 'check', 'doctor', 'packs', 'reset']],
   ['팀', '팀 현황 · 명단 · 팀 구성', ['team', 'team-mode']],
   ['팀 규칙 점검', '리뷰 확인 · 훅이 알리거나 막는 수준', ['review', 'team-mode enforce']],
   ['진행 · 기록', '로드맵 · 핸드오프 · 시간 예산 · 결함 측정 · 현황판 · 보고 페이지 · 글 틀 · 형식 검사 · 검증 2단 · 무거운 시험 순번 · 주간 사용량 속도 · 실행 흐름 디버깅 · 위임 · 에이전트 진행 · 화면 안내 · 작업 리더 worktree · 토론 · 옛 작업 가져오기 · 요청 장부', ['plan', 'handoff', 'budget', 'defects', 'board', 'report', 'draft', 'verify', 'heavy', 'usage', 'trace', 'delegate', 'agents', 'tips', 'worktree', 'debate', 'import', 'tidy', 'requests']],
@@ -4152,6 +4189,7 @@ async function main() {
     case 'extremes': return runWsTool('extremes.js', rest.map((a, i) => (rest[i - 1] === '--out' || (i === 1 && ['check', 'fixture'].includes(rest[0])) ? path.resolve(a) : a)), 'backend');
     case 'team-mode': return cmdTeamMode(rest);
     case 'approach': return cmdApproach(rest);
+    case 'domain': return cmdDomain(rest);
     case 'remote': return cmdRemote(rest);
     case 'kickoff': return cmdKickoff(rest);
     case 'type': return cmdType(rest);

@@ -88,6 +88,7 @@ packs/<이름>/
 |---|---|---|
 | `core` | 항상 | `core` |
 | `type` | 시작 유형이 정한다 (`project.type`) | `modernization` · `enhancement` · `consulting` |
+| `domain` | 분야가 정한다 (`project.domain`, `kedovi domain`) | `domain-game` · `domain-device` · `domain-iot` |
 | `workflow` | repo 주소(또는 `host`)가 그 도구인 repo 에만 | `gitlab` · `github` |
 | `layer` | **repo 스택**이 그 layer 면 자동. 기술과 무관한 공통 원칙 | `backend` · `frontend` · `db` |
 | `stack` | **repo 스택**이 그 기술이면 자동. `"layer"` · `"stacks": ["<id>"]` 를 적는다 | `stack-spring` · `stack-react` · `stack-postgres` |

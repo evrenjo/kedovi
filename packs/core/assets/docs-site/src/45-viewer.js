@@ -79,7 +79,7 @@
     var isNew = !!d && DS.isNew(page, d.updatedAt);
     if (!isNew) return null;
     var by = DS.changesOf(db, page)[0];
-    return html`<div class="chgbar" role="status"><span>지난 방문(${DS.mdhm(DS.since)}) 이후 바뀐 문서입니다${by ? " · " + DS.mdhm(by.at) + " " + (by.by || "") : ""}. 바뀐 줄을 표시했습니다</span><button type="button" class="abtn" onClick=${function () { DS.markSeen(page, d.updatedAt); }}>확인함</button></div>`;
+    return html`<div class="chgbar" role="status"><span>지난 방문(${DS.mdhm(DS.since)}) 이후 바뀐 문서입니다${by ? " · " + DS.mdhm(by.at) + " " + (by.by || "") : ""}. 바뀐 줄을 표시했습니다</span><span class="acts">${DS.hasHist(db) ? html`<button type="button" class="abtn chg-diff" onClick=${function () { DS.emit("drawer", { kind: "diff", page: page }); }}>바뀐 점 보기</button>` : null}<button type="button" class="abtn chg-ok" onClick=${function () { DS.markSeen(page, d.updatedAt); }}>확인함</button></span></div>`;
   };
 
   /* ── 기능 문서 머리: 단계 줄 · 마일스톤 칩(날짜) · 절 이동 ── */
@@ -90,9 +90,23 @@
     return html`<div class="feat-head">
       <div class="feat-row"><div class="track" aria-label="단계">${st.map(function (s, i) { return html`<span key=${s} class=${"step " + DS.stageState(db, f, i)}>${s}</span>`; })}</div>
         ${f.milestone ? html`<span class="mschip">마일스톤 · ${f.milestone}${ms && ms.due ? " · " + DS.kday(ms.due) : ""}<${DS.Go} href=${DS.url("_/milestones.html") + "#ms-" + encodeURIComponent(f.milestone)} label="마일스톤 열기" /></span>` : null}</div>
+      <${FeatLinks} db=${db} f=${f} />
       ${secs.length ? html`<div class="subtabs">${secs.map(function (s) { return html`<a key=${s.sid} href=${"#" + s.sid}>${s.text}</a>`; })}</div>` : null}
     </div>`;
   };
+  /* 프로필(분야)이 더한 이음: 보드 판 · 위험 · 인터페이스 (장치 · IoT), 밸런스 표 (게임). ID 칩 = 관계 서랍, 밸런스 표는 정의(표 문서)로 가는 화살표도 */
+  DS.REL_LABEL = { bal: "밸런스 표", ifs: "인터페이스", hw: "보드 판", risks: "위험 · 대책" };
+  function FeatLinks(props) {
+    var db = props.db, f = props.f;
+    var rows = ["hw", "risks", "ifs", "bal"].filter(function (k) { return (f[k] || []).length; });
+    if (!rows.length) return null;
+    return html`<div class="feat-links">${rows.map(function (k) {
+      return html`<div class=${"fl-row fl-" + k} key=${k}><span class="fl-l">${DS.REL_LABEL[k]}</span><span class="ids">${f[k].map(function (id) {
+        var href = k === "bal" ? DS.idHref(db, id) : null;
+        return html`<span class="rel-i" key=${id}><${DS.IdChip} id=${id} />${href ? html`<${DS.Go} href=${href} label=${id + " 표 열기"} />` : null}</span>`;
+      })}</span></div>`;
+    })}</div>`;
+  }
 
   /* 정의 행의 ID 글자 → 관계 서랍을 여는 ID 칩 (DB 에 있는 ID 만). 기능 문서 머리 줄 인용(번호 · 단계)은 머리의 단계 줄이 대신한다 */
   DS.enhanceDoc = function (el, db, feat) {
@@ -105,7 +119,56 @@
       td.appendChild(b);
     });
     if (feat) { var q = el.querySelector("blockquote"); if (q && /번호\s*[:：]/.test(q.textContent) && /단계\s*[:：]/.test(q.textContent)) q.hidden = true; }
+    if (feat) tierTable(el, db, feat);
   };
+
+  /* 검증 절의 단계별 결과 표 (단계 · 결과 · 어디서). 문서에 그 표가 있으면 결과 칸에 상태 색만 입히고,
+     없으면 빌드 DB 의 기능 tiers(+ 프로필 단계)로 절 맨 앞에 그린다. 장치 · IoT 는 결과가 없어도 단계 줄을 보인다 */
+  function hwChips(td, text, db) {
+    String(text || "").split(/(HW-[A-Za-z0-9_.-]+)/).forEach(function (part, i) {
+      if (i % 2 && (db.ids || {})[part]) { var b = document.createElement("button"); b.type = "button"; b.className = "idc ds-def"; b.textContent = part; b.title = "관계 보기"; td.appendChild(b); }
+      else if (part) td.appendChild(document.createTextNode(part));
+    });
+  }
+  var KIND_WORD = { done: "통과", bad: "실패", cur: "진행 중", wait: "시험 전" };
+  var heads = function (t) { return $$("th", t).map(function (th) { return th.textContent.trim(); }); };
+  function tierTable(el, db, f) {
+    var h = $$("h2", el).find(function (x) { return /^검증/.test(x.textContent.trim()); });
+    if (!h) return;
+    var tables = [], n = h.nextElementSibling;
+    while (n && n.tagName !== "H2") { if (n.tagName === "TABLE") tables.push(n); else $$("table", n).forEach(function (t) { tables.push(t); }); n = n.nextElementSibling; }
+    var own = tables.find(function (t) { var hs = heads(t); return hs[0] === "단계" && hs.indexOf("결과") > 0; });
+    if (own) {
+      var ri = heads(own).indexOf("결과");
+      own.classList.add("ds-tiers");
+      $$("tbody tr", own).forEach(function (tr) {
+        var td = tr.cells[ri];
+        if (!td || td.querySelector(".state")) return;
+        var t = td.textContent.trim(), sp = document.createElement("span");
+        sp.className = "state " + (t ? DS.resultKind(t) : "wait"); sp.textContent = t || KIND_WORD.wait;
+        td.textContent = ""; td.appendChild(sp);
+      });
+      return;
+    }
+    var dom = (DS.profileOf(db) || {}).domain || "";
+    if (!(f.tiers || []).length && !/^(device|iot)$/.test(dom)) return;
+    var rows = DS.tierRows(db, f);
+    if (!rows.length || el.querySelector(".ds-tiers")) return;
+    var box = document.createElement("div"); box.className = "table ds-tiers-box";
+    var tb = document.createElement("table"); tb.className = "ds-tiers";
+    tb.innerHTML = "<thead><tr><th>단계</th><th>결과</th><th>어디서</th></tr></thead><tbody></tbody>";
+    rows.forEach(function (t) {
+      var tr = document.createElement("tr"), k = DS.tierKind(t);
+      var a = document.createElement("td"); a.textContent = t.tier;
+      var b = document.createElement("td"), sp = document.createElement("span"); sp.className = "state " + k; sp.textContent = t.result || KIND_WORD[k]; b.appendChild(sp);
+      var c = document.createElement("td"); hwChips(c, t.where, db);
+      tr.appendChild(a); tr.appendChild(b); tr.appendChild(c); tb.tBodies[0].appendChild(tr);
+    });
+    box.appendChild(tb);
+    var cap = document.createElement("p"); cap.className = "muted-s ds-tiers-cap"; cap.textContent = "검증 단계별 결과 (기능 문서 · 빌드 DB). 어디서 = 돌린 곳 · 보드 판";
+    h.parentNode.insertBefore(cap, h.nextSibling);
+    h.parentNode.insertBefore(box, cap.nextSibling);
+  }
 
   /* 의견 있는 글자에 밑줄 (본문 글자 노드에서 처음 나온 곳) */
   DS.markQuotes = function (el, list) {
@@ -136,13 +199,16 @@
     var chip = function (y) { var href = DS.idHref(db, y), ext = /^https?:/.test(href || "") && href.indexOf(DS.root) !== 0; return html`<span class=${"rel-i" + (y === id ? " me" : "")} key=${y}><span class="idc">${y}</span>${href ? html`<${DS.Go} href=${href} ext=${ext} />` : null}</span>`; };
     var row = function (label, list) { return html`<div class="rel-row"><div class="rel-l">${label}</div><div class="rel-v">${list.length ? list.map(chip) : html`<span class="muted-s">없음</span>`}</div></div>`; };
     var def = DS.idHref(db, id);
+    /* 프로필이 더한 칸: 이 분야가 쓰는 ID 종류(profile.ids)거나 값이 있을 때만 줄을 보인다 */
+    var KIND = { bal: "BAL", ifs: "IF", hw: "HW", risks: "HAZ" }, extra = ["bal", "ifs", "hw", "risks"];
+    var kinds = ((DS.profileOf(db) || {}).ids) || [];
     return html`<div class="rel-h"><span class="idc">${id}</span>${def ? html`<${DS.Go} href=${def} label="정의로 가기" ext=${/^https?:/.test(def) && def.indexOf(DS.root) !== 0} />` : null}<button type="button" class="lbtn rel-x" onClick=${props.onClose}>닫기</button></div>
       ${x && x.title && x.title !== id ? html`<div class="rel-t">${x.title}</div>` : null}
       ${fns.length ? fns.map(function (fn) {
         var r = db.relations[fn] || {}, f = DS.fnFeature(db, fn);
         return html`<div class="rel-block" key=${fn}>
           ${f ? html`<div class="muted-s">${f.no} ${f.name || f.title}${f.milestone ? " · 마일스톤 " + f.milestone : ""}${f.stage ? " · " + f.stage : ""}</div>` : null}
-          <div class="rel-chain">${row("요구사항", r.req || [])}${row("기능", [fn])}${row("API", r.api || [])}${row("화면", r.scr || [])}${row("테이블", r.tables || [])}${row("시험", r.ac || [])}${row("결정", r.dec || [])}${row("이슈", r.issues || [])}</div>
+          <div class="rel-chain">${row("요구사항", r.req || [])}${row("기능", [fn])}${row("API", r.api || [])}${row("화면", r.scr || [])}${row("테이블", r.tables || [])}${row("시험", r.ac || [])}${row("결정", r.dec || [])}${row("이슈", r.issues || [])}${extra.filter(function (k) { return (r[k] || []).length || kinds.indexOf(KIND[k]) >= 0; }).map(function (k) { return row(DS.REL_LABEL[k], r[k] || []); })}</div>
         </div>`;
       }) : html`<div class="kempty">이 ID 에 이어진 기능이 아직 없습니다</div>`}
       <p class="muted-s">이것을 바꾸면 위 줄들을 함께 봅니다. 빌드 때 만든 DB 에서 ID 끼리 이어 찾습니다</p>`;
@@ -214,6 +280,7 @@
       return function () { document.removeEventListener("keydown", key); };
     }, []);
     if (!d || !db) return null;
+    if (d.kind === "diff") return html`<aside class="drawer wide" role="complementary" aria-label="바뀐 점"><${DS.DiffDrawer} db=${db} page=${d.page} onClose=${props.onClose} /></aside>`;
     return html`<aside class="drawer" role="complementary" aria-label=${d.kind === "rel" ? "관계" : "의견"}>
       ${d.kind === "rel" ? html`<${RelDrawer} db=${db} id=${d.id} onClose=${props.onClose} />` : html`<${CmtDrawer} db=${db} page=${d.page} quote=${d.quote} onClose=${props.onClose} />`}
     </aside>`;

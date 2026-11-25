@@ -28,7 +28,7 @@
   }
 
   /* ID 종류 → 칩 */
-  var KIND_OF = { FN: "명세", REQ: "명세", DEC: "명세", POL: "명세", Q: "명세", BR: "명세", API: "API", SCR: "화면", AC: "테스트", TC: "테스트", TS: "테스트", ISSUE: "이슈", TABLE: "데이터" };
+  var KIND_OF = { FN: "명세", REQ: "명세", DEC: "명세", POL: "명세", Q: "명세", BR: "명세", API: "API", SCR: "화면", AC: "테스트", TC: "테스트", TS: "테스트", ISSUE: "이슈", TABLE: "데이터", IF: "API", BAL: "명세", HW: "명세", HAZ: "명세", RC: "명세" };
   function idKind(id, db) {
     var x = db && db.ids && db.ids[id];
     var k = x ? x.kind : String(id).split("-")[0];
@@ -37,6 +37,7 @@
   /* 위치 줄: 탭 › 기능 › 문서 */
   function crumbOf(page, db, extra) {
     var tab = DS.tabOf(page) || "", f = DS.featureOf(db, page);
+    if (tab && tab !== "나") tab = DS.tabLabel(tab);
     var parts = [tab];
     if (f) parts.push(f.no + " " + (f.name || f.title)); else parts.push(DS.titleOf(page));
     if (extra) parts.push(extra);

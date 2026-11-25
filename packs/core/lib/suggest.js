@@ -44,7 +44,7 @@ function whenOk(when, ctx) {
   const { ws, local, root } = ctx;
   const packs = ws.packs || [];
   if (when.packOn && !packs.includes(when.packOn)) return false;
-  if (when.packOff && packs.includes(when.packOff)) return false;
+  for (const pk of [].concat(when.packOff || [])) if (packs.includes(pk)) return false;
   for (const k of [].concat(when.unset || [])) if (!empty(get(ws, k))) return false;
   for (const k of [].concat(when.localUnset || [])) if (!empty(get(local, k))) return false;
   for (const [k, v] of Object.entries(when.not || {})) if (get(ws, k) === v) return false;

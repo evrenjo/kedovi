@@ -320,13 +320,26 @@
     return i < k ? "done" : i === k ? "cur" : "wait";
   };
   DS.featDone = function (db, f) { var st = (db && db.stages) || []; return st.length && f.stage === st[st.length - 1]; };
+  /* 관계 칸: 웹 기본 + 프로필(분야)이 더한 밸런스 표 · 인터페이스 · 보드 판 · 위험 */
+  DS.REL_KEYS = ["req", "api", "scr", "tables", "ac", "dec", "issues", "bal", "ifs", "hw", "risks"];
+  /* 프로필 (빌드 DB profile, 없으면 null = 지금 화면 그대로) */
+  DS.profileOf = function (db) { var p = db && db.profile; return p && typeof p === "object" ? p : null; };
+  /* 검증 단계 결과 한 칸 → 끝남 · 실패 · 지금 · 남음 */
+  DS.tierKind = function (t) { return t && t.result ? DS.resultKind(t.result) : "wait"; };
+  /* 기능 하나의 검증 단계 줄: 프로필 단계 순서대로 + 기능에만 있는 단계 */
+  DS.tierRows = function (db, f) {
+    var p = DS.profileOf(db), have = (f && f.tiers) || [], out = [];
+    ((p && p.tiers) || []).forEach(function (name) { out.push(have.find(function (t) { return t.tier === name; }) || { tier: name, result: "", where: "" }); });
+    have.forEach(function (t) { if (!out.some(function (o) { return o.tier === t.tier; })) out.push(t); });
+    return out;
+  };
   /* ID → 그 ID 가 이어진 기능 ID 들 (FN 이면 자기, 아니면 관계에서 거꾸로) */
   DS.fnsOf = function (db, id) {
     var rel = (db && db.relations) || {};
     if (rel[id]) return [id];
     return Object.keys(rel).filter(function (fn) {
       var r = rel[fn];
-      return ["req", "api", "scr", "tables", "ac", "dec", "issues"].some(function (k) { return (r[k] || []).indexOf(id) >= 0; });
+      return DS.REL_KEYS.some(function (k) { return (r[k] || []).indexOf(id) >= 0; });
     });
   };
   DS.fnFeature = function (db, fn) { return (db.features || []).find(function (f) { return (f.fn || []).some(function (x) { return x.id === fn; }); }) || null; };
@@ -483,7 +496,17 @@
     var g = (NAV.groups || []).find(function (x) { return has(x.items, page); });
     return g ? g.group : null;
   };
-  DS.tabs = function () { return (NAV.groups || []).map(function (g) { return { t: g.group, p: firstLeaf(g.items) }; }).filter(function (x) { return x.p; }); };
+  DS.tabs = function () { return (NAV.groups || []).map(function (g) { return { t: g.group, l: DS.tabLabel(g.group), p: firstLeaf(g.items) }; }).filter(function (x) { return x.p; }); };
+  /* 탭 표시 이름: docs-site.json 묶음의 label, 없으면 빌드 DB 프로필(profile.labels), 그것도 없으면 묶음 이름. 경로 · 판단은 늘 묶음 이름으로 */
+  DS.tabLabel = function (group) {
+    var g = (NAV.groups || []).find(function (x) { return x.group === group; });
+    var pl = DS.db && DS.db.profile && DS.db.profile.labels;
+    return (g && g.label) || (pl && pl[group]) || group;
+  };
+  /* 이 유형의 중심 탭 (빌드 DB profile.mainTab) */
+  DS.mainTab = function () { return (DS.db && DS.db.profile && DS.db.profile.mainTab) || null; };
+  /* 메뉴 글자 바꾸기: 인터페이스 명세가 있으면 API 보기 화면 이름을 「인터페이스 명세」 로 (주소는 그대로) */
+  DS.navTitle = function (x, db) { return x.v === "api" && db && (db.interfaces || []).length ? "인터페이스 명세" : x.t; };
 
   /* 이 쪽이 든 폴더 키들 */
   function pathTo(items, page) {
@@ -509,10 +532,10 @@
 
   function Items(props) {
     return props.items.filter(function (x) { return !x.hide; }).map(function (x) {
-      if (x.sec) return html`<div class="nav-sec-wrap" key=${x.k}><div class="nav-sec">${x.sec}</div><${Items} items=${x.items} isOpen=${props.isOpen} toggle=${props.toggle} cur=${props.cur} isNew=${props.isNew} /></div>`;
-      if (x.items) return html`<details class="nav-dir" key=${x.k} open=${props.isOpen(x.k)} onToggle=${props.toggle(x.k)}><summary><${Chev} />${x.dir}</summary><${Items} items=${x.items} isOpen=${props.isOpen} toggle=${props.toggle} cur=${props.cur} isNew=${props.isNew} /></details>`;
+      if (x.sec) return html`<div class="nav-sec-wrap" key=${x.k}><div class="nav-sec">${x.sec}</div><${Items} items=${x.items} isOpen=${props.isOpen} toggle=${props.toggle} cur=${props.cur} isNew=${props.isNew} db=${props.db} /></div>`;
+      if (x.items) return html`<details class="nav-dir" key=${x.k} open=${props.isOpen(x.k)} onToggle=${props.toggle(x.k)}><summary><${Chev} />${x.dir}</summary><${Items} items=${x.items} isOpen=${props.isOpen} toggle=${props.toggle} cur=${props.cur} isNew=${props.isNew} db=${props.db} /></details>`;
       var on = x.p === props.cur;
-      return html`<a key=${x.p} class=${"nav-link" + (on ? " on" : "")} href=${DS.url(x.p)} aria-current=${on ? "page" : undefined}><span class="nav-t">${x.t}</span>${props.isNew(x.p) ? html`<${NewB} />` : null}</a>`;
+      return html`<a key=${x.p} class=${"nav-link" + (on ? " on" : "")} href=${DS.url(x.p)} aria-current=${on ? "page" : undefined}><span class="nav-t">${DS.navTitle(x, props.db)}</span>${props.isNew(x.p) ? html`<${NewB} />` : null}</a>`;
     });
   }
 
@@ -525,7 +548,7 @@
     var other = (props.items || []).filter(function (x) { return !x.items && !feats.some(function (f) { return f.page === x.p; }); });
     return html`${other.length ? html`<div class="nav-sec-wrap"><${Items} items=${other} isOpen=${function () { return true; }} toggle=${function () { return function () {}; }} cur=${cur} isNew=${props.isNew} /></div>` : null}
       ${order.filter(function (m) { return feats.some(function (f) { return (f.milestone || "") === m; }); }).map(function (m) {
-        return html`<div class="nav-sec-wrap" key=${m}><div class="nav-sec nav-ms"><span>${m || "마일스톤 없음"}</span>${m ? html`<${DS.Go} href=${DS.url("_/milestones.html") + "#ms-" + encodeURIComponent(m)} label="마일스톤 열기" />` : null}</div>
+        return html`<div class="nav-sec-wrap" key=${m}><div class="nav-sec nav-ms"><span>${m || "마일스톤 정하지 않음"}</span>${m ? html`<${DS.Go} href=${DS.url("_/milestones.html") + "#ms-" + encodeURIComponent(m)} label="마일스톤 열기" />` : null}</div>
           ${feats.filter(function (f) { return (f.milestone || "") === m; }).map(function (f) {
             var on = f.page === cur, st = DS.featDone(db, f) ? "done" : DS.stageIdx(db, f) <= 0 ? "wait" : "cur";
             return html`<a key=${f.page} class=${"nav-link feat" + (on ? " on" : "")} href=${DS.url(f.page)} aria-current=${on ? "page" : undefined}><span class="num">${f.no}</span><span class="nav-t">${f.name || f.title}</span>${props.isNew(f.page) ? html`<${NewB} />` : null}<span class=${"dot " + st} title=${f.stage || "단계 없음"}></span></a>
@@ -568,18 +591,22 @@
     var feats = db && tab === "기능" && (db.features || []).length;
     var secs = (props.toc || []).filter(function (x) { return x.lvl === 2; });
     return html`<nav class="side" id="side-nav" ref=${ref} onClick=${function (e) { if (e.target.closest && e.target.closest("a")) props.onPick(); }}>
-      ${props.narrow ? html`<div class="nav-tabs">${DS.tabs().map(function (t) { return html`<a key=${t.t} class=${"nav-tab" + (t.t === tab ? " on" : "")} href=${DS.url(t.p)}>${t.t}</a>`; })}</div>` : null}
-      ${dirs.length ? html`<${window.SideHead} label=${g.group} anyOpen=${dirs.some(function (k) { return isOpen(k) && pathTo(g.items, cur).indexOf(k) < 0; })} onToggle=${all} />` : html`<div class="side-head"><span class="side-head-title">${g.group}</span></div>`}
+      ${props.narrow ? html`<div class="nav-tabs">${DS.tabs().map(function (t) { return html`<a key=${t.t} class=${"nav-tab" + (t.t === tab ? " on" : "")} href=${DS.url(t.p)}>${t.l}${t.t === DS.mainTab() ? html`<${MainDot} />` : null}</a>`; })}</div>` : null}
+      ${dirs.length ? html`<${window.SideHead} label=${tab === "나" ? g.group : DS.tabLabel(g.group)} anyOpen=${dirs.some(function (k) { return isOpen(k) && pathTo(g.items, cur).indexOf(k) < 0; })} onToggle=${all} />` : html`<div class="side-head"><span class="side-head-title">${tab === "나" ? g.group : DS.tabLabel(g.group)}</span></div>`}
       ${(g.acts || []).length ? html`<div class="nav-acts">${g.acts.map(function (a) { return html`<a class="nav-act" key=${a.label} href=${DS.url(a.p) + (a.h ? "#" + a.h : "")} title=${a.label} aria-label=${a.label}><span>${a.label}</span><${DS.Icon} paths=${DS.ICON.go} size=${14} /></a>`; })}</div>` : null}
-      ${feats ? html`<${Features} db=${db} cur=${cur} items=${g.items} isNew=${isNew} secs=${secs} />` : html`<${Items} items=${g.items} isOpen=${isOpen} toggle=${toggle} cur=${cur} isNew=${isNew} />`}
+      ${feats ? html`<${Features} db=${db} cur=${cur} items=${g.items} isNew=${isNew} secs=${secs} />` : html`<${Items} items=${g.items} isOpen=${isOpen} toggle=${toggle} cur=${cur} isNew=${isNew} db=${db} />`}
     </nav>`;
   };
 
-  /* 상단 탭 (선택 = 밑줄) */
+  /* 중심 탭 표시: 이 유형에서 가장 많이 여는 탭 옆 작은 점 */
+  var MainDot = function () { return html`<span class="main-dot" title="이 유형의 중심 메뉴" aria-label="중심 메뉴"></span>`; };
+  /* 상단 탭 (선택 = 밑줄). 글자 = 표시 이름(label), 중심 탭에 점 */
   DS.Tabs = function Tabs(props) {
+    DS.useDb();
+    var main = DS.mainTab();
     return html`<nav class="tabs" aria-label="상단 메뉴">${DS.tabs().map(function (t) {
       var on = t.t === props.tab;
-      return html`<a key=${t.t} class=${"tab" + (on ? " on" : "")} href=${DS.url(t.p)} aria-current=${on ? "true" : undefined}>${t.t}</a>`;
+      return html`<a key=${t.t} class=${"tab" + (on ? " on" : "")} href=${DS.url(t.p)} aria-current=${on ? "true" : undefined} data-group=${t.t}>${t.l}${t.t === main ? html`<${MainDot} />` : null}</a>`;
     })}</nav>`;
   };
 
@@ -627,7 +654,7 @@
   }
 
   /* ID 종류 → 칩 */
-  var KIND_OF = { FN: "명세", REQ: "명세", DEC: "명세", POL: "명세", Q: "명세", BR: "명세", API: "API", SCR: "화면", AC: "테스트", TC: "테스트", TS: "테스트", ISSUE: "이슈", TABLE: "데이터" };
+  var KIND_OF = { FN: "명세", REQ: "명세", DEC: "명세", POL: "명세", Q: "명세", BR: "명세", API: "API", SCR: "화면", AC: "테스트", TC: "테스트", TS: "테스트", ISSUE: "이슈", TABLE: "데이터", IF: "API", BAL: "명세", HW: "명세", HAZ: "명세", RC: "명세" };
   function idKind(id, db) {
     var x = db && db.ids && db.ids[id];
     var k = x ? x.kind : String(id).split("-")[0];
@@ -636,6 +663,7 @@
   /* 위치 줄: 탭 › 기능 › 문서 */
   function crumbOf(page, db, extra) {
     var tab = DS.tabOf(page) || "", f = DS.featureOf(db, page);
+    if (tab && tab !== "나") tab = DS.tabLabel(tab);
     var parts = [tab];
     if (f) parts.push(f.no + " " + (f.name || f.title)); else parts.push(DS.titleOf(page));
     if (extra) parts.push(extra);
@@ -937,7 +965,7 @@
     var isNew = !!d && DS.isNew(page, d.updatedAt);
     if (!isNew) return null;
     var by = DS.changesOf(db, page)[0];
-    return html`<div class="chgbar" role="status"><span>지난 방문(${DS.mdhm(DS.since)}) 이후 바뀐 문서입니다${by ? " · " + DS.mdhm(by.at) + " " + (by.by || "") : ""}. 바뀐 줄을 표시했습니다</span><button type="button" class="abtn" onClick=${function () { DS.markSeen(page, d.updatedAt); }}>확인함</button></div>`;
+    return html`<div class="chgbar" role="status"><span>지난 방문(${DS.mdhm(DS.since)}) 이후 바뀐 문서입니다${by ? " · " + DS.mdhm(by.at) + " " + (by.by || "") : ""}. 바뀐 줄을 표시했습니다</span><span class="acts">${DS.hasHist(db) ? html`<button type="button" class="abtn chg-diff" onClick=${function () { DS.emit("drawer", { kind: "diff", page: page }); }}>바뀐 점 보기</button>` : null}<button type="button" class="abtn chg-ok" onClick=${function () { DS.markSeen(page, d.updatedAt); }}>확인함</button></span></div>`;
   };
 
   /* ── 기능 문서 머리: 단계 줄 · 마일스톤 칩(날짜) · 절 이동 ── */
@@ -948,9 +976,23 @@
     return html`<div class="feat-head">
       <div class="feat-row"><div class="track" aria-label="단계">${st.map(function (s, i) { return html`<span key=${s} class=${"step " + DS.stageState(db, f, i)}>${s}</span>`; })}</div>
         ${f.milestone ? html`<span class="mschip">마일스톤 · ${f.milestone}${ms && ms.due ? " · " + DS.kday(ms.due) : ""}<${DS.Go} href=${DS.url("_/milestones.html") + "#ms-" + encodeURIComponent(f.milestone)} label="마일스톤 열기" /></span>` : null}</div>
+      <${FeatLinks} db=${db} f=${f} />
       ${secs.length ? html`<div class="subtabs">${secs.map(function (s) { return html`<a key=${s.sid} href=${"#" + s.sid}>${s.text}</a>`; })}</div>` : null}
     </div>`;
   };
+  /* 프로필(분야)이 더한 이음: 보드 판 · 위험 · 인터페이스 (장치 · IoT), 밸런스 표 (게임). ID 칩 = 관계 서랍, 밸런스 표는 정의(표 문서)로 가는 화살표도 */
+  DS.REL_LABEL = { bal: "밸런스 표", ifs: "인터페이스", hw: "보드 판", risks: "위험 · 대책" };
+  function FeatLinks(props) {
+    var db = props.db, f = props.f;
+    var rows = ["hw", "risks", "ifs", "bal"].filter(function (k) { return (f[k] || []).length; });
+    if (!rows.length) return null;
+    return html`<div class="feat-links">${rows.map(function (k) {
+      return html`<div class=${"fl-row fl-" + k} key=${k}><span class="fl-l">${DS.REL_LABEL[k]}</span><span class="ids">${f[k].map(function (id) {
+        var href = k === "bal" ? DS.idHref(db, id) : null;
+        return html`<span class="rel-i" key=${id}><${DS.IdChip} id=${id} />${href ? html`<${DS.Go} href=${href} label=${id + " 표 열기"} />` : null}</span>`;
+      })}</span></div>`;
+    })}</div>`;
+  }
 
   /* 정의 행의 ID 글자 → 관계 서랍을 여는 ID 칩 (DB 에 있는 ID 만). 기능 문서 머리 줄 인용(번호 · 단계)은 머리의 단계 줄이 대신한다 */
   DS.enhanceDoc = function (el, db, feat) {
@@ -963,7 +1005,56 @@
       td.appendChild(b);
     });
     if (feat) { var q = el.querySelector("blockquote"); if (q && /번호\s*[:：]/.test(q.textContent) && /단계\s*[:：]/.test(q.textContent)) q.hidden = true; }
+    if (feat) tierTable(el, db, feat);
   };
+
+  /* 검증 절의 단계별 결과 표 (단계 · 결과 · 어디서). 문서에 그 표가 있으면 결과 칸에 상태 색만 입히고,
+     없으면 빌드 DB 의 기능 tiers(+ 프로필 단계)로 절 맨 앞에 그린다. 장치 · IoT 는 결과가 없어도 단계 줄을 보인다 */
+  function hwChips(td, text, db) {
+    String(text || "").split(/(HW-[A-Za-z0-9_.-]+)/).forEach(function (part, i) {
+      if (i % 2 && (db.ids || {})[part]) { var b = document.createElement("button"); b.type = "button"; b.className = "idc ds-def"; b.textContent = part; b.title = "관계 보기"; td.appendChild(b); }
+      else if (part) td.appendChild(document.createTextNode(part));
+    });
+  }
+  var KIND_WORD = { done: "통과", bad: "실패", cur: "진행 중", wait: "시험 전" };
+  var heads = function (t) { return $$("th", t).map(function (th) { return th.textContent.trim(); }); };
+  function tierTable(el, db, f) {
+    var h = $$("h2", el).find(function (x) { return /^검증/.test(x.textContent.trim()); });
+    if (!h) return;
+    var tables = [], n = h.nextElementSibling;
+    while (n && n.tagName !== "H2") { if (n.tagName === "TABLE") tables.push(n); else $$("table", n).forEach(function (t) { tables.push(t); }); n = n.nextElementSibling; }
+    var own = tables.find(function (t) { var hs = heads(t); return hs[0] === "단계" && hs.indexOf("결과") > 0; });
+    if (own) {
+      var ri = heads(own).indexOf("결과");
+      own.classList.add("ds-tiers");
+      $$("tbody tr", own).forEach(function (tr) {
+        var td = tr.cells[ri];
+        if (!td || td.querySelector(".state")) return;
+        var t = td.textContent.trim(), sp = document.createElement("span");
+        sp.className = "state " + (t ? DS.resultKind(t) : "wait"); sp.textContent = t || KIND_WORD.wait;
+        td.textContent = ""; td.appendChild(sp);
+      });
+      return;
+    }
+    var dom = (DS.profileOf(db) || {}).domain || "";
+    if (!(f.tiers || []).length && !/^(device|iot)$/.test(dom)) return;
+    var rows = DS.tierRows(db, f);
+    if (!rows.length || el.querySelector(".ds-tiers")) return;
+    var box = document.createElement("div"); box.className = "table ds-tiers-box";
+    var tb = document.createElement("table"); tb.className = "ds-tiers";
+    tb.innerHTML = "<thead><tr><th>단계</th><th>결과</th><th>어디서</th></tr></thead><tbody></tbody>";
+    rows.forEach(function (t) {
+      var tr = document.createElement("tr"), k = DS.tierKind(t);
+      var a = document.createElement("td"); a.textContent = t.tier;
+      var b = document.createElement("td"), sp = document.createElement("span"); sp.className = "state " + k; sp.textContent = t.result || KIND_WORD[k]; b.appendChild(sp);
+      var c = document.createElement("td"); hwChips(c, t.where, db);
+      tr.appendChild(a); tr.appendChild(b); tr.appendChild(c); tb.tBodies[0].appendChild(tr);
+    });
+    box.appendChild(tb);
+    var cap = document.createElement("p"); cap.className = "muted-s ds-tiers-cap"; cap.textContent = "검증 단계별 결과 (기능 문서 · 빌드 DB). 어디서 = 돌린 곳 · 보드 판";
+    h.parentNode.insertBefore(cap, h.nextSibling);
+    h.parentNode.insertBefore(box, cap.nextSibling);
+  }
 
   /* 의견 있는 글자에 밑줄 (본문 글자 노드에서 처음 나온 곳) */
   DS.markQuotes = function (el, list) {
@@ -994,13 +1085,16 @@
     var chip = function (y) { var href = DS.idHref(db, y), ext = /^https?:/.test(href || "") && href.indexOf(DS.root) !== 0; return html`<span class=${"rel-i" + (y === id ? " me" : "")} key=${y}><span class="idc">${y}</span>${href ? html`<${DS.Go} href=${href} ext=${ext} />` : null}</span>`; };
     var row = function (label, list) { return html`<div class="rel-row"><div class="rel-l">${label}</div><div class="rel-v">${list.length ? list.map(chip) : html`<span class="muted-s">없음</span>`}</div></div>`; };
     var def = DS.idHref(db, id);
+    /* 프로필이 더한 칸: 이 분야가 쓰는 ID 종류(profile.ids)거나 값이 있을 때만 줄을 보인다 */
+    var KIND = { bal: "BAL", ifs: "IF", hw: "HW", risks: "HAZ" }, extra = ["bal", "ifs", "hw", "risks"];
+    var kinds = ((DS.profileOf(db) || {}).ids) || [];
     return html`<div class="rel-h"><span class="idc">${id}</span>${def ? html`<${DS.Go} href=${def} label="정의로 가기" ext=${/^https?:/.test(def) && def.indexOf(DS.root) !== 0} />` : null}<button type="button" class="lbtn rel-x" onClick=${props.onClose}>닫기</button></div>
       ${x && x.title && x.title !== id ? html`<div class="rel-t">${x.title}</div>` : null}
       ${fns.length ? fns.map(function (fn) {
         var r = db.relations[fn] || {}, f = DS.fnFeature(db, fn);
         return html`<div class="rel-block" key=${fn}>
           ${f ? html`<div class="muted-s">${f.no} ${f.name || f.title}${f.milestone ? " · 마일스톤 " + f.milestone : ""}${f.stage ? " · " + f.stage : ""}</div>` : null}
-          <div class="rel-chain">${row("요구사항", r.req || [])}${row("기능", [fn])}${row("API", r.api || [])}${row("화면", r.scr || [])}${row("테이블", r.tables || [])}${row("시험", r.ac || [])}${row("결정", r.dec || [])}${row("이슈", r.issues || [])}</div>
+          <div class="rel-chain">${row("요구사항", r.req || [])}${row("기능", [fn])}${row("API", r.api || [])}${row("화면", r.scr || [])}${row("테이블", r.tables || [])}${row("시험", r.ac || [])}${row("결정", r.dec || [])}${row("이슈", r.issues || [])}${extra.filter(function (k) { return (r[k] || []).length || kinds.indexOf(KIND[k]) >= 0; }).map(function (k) { return row(DS.REL_LABEL[k], r[k] || []); })}</div>
         </div>`;
       }) : html`<div class="kempty">이 ID 에 이어진 기능이 아직 없습니다</div>`}
       <p class="muted-s">이것을 바꾸면 위 줄들을 함께 봅니다. 빌드 때 만든 DB 에서 ID 끼리 이어 찾습니다</p>`;
@@ -1072,6 +1166,7 @@
       return function () { document.removeEventListener("keydown", key); };
     }, []);
     if (!d || !db) return null;
+    if (d.kind === "diff") return html`<aside class="drawer wide" role="complementary" aria-label="바뀐 점"><${DS.DiffDrawer} db=${db} page=${d.page} onClose=${props.onClose} /></aside>`;
     return html`<aside class="drawer" role="complementary" aria-label=${d.kind === "rel" ? "관계" : "의견"}>
       ${d.kind === "rel" ? html`<${RelDrawer} db=${db} id=${d.id} onClose=${props.onClose} />` : html`<${CmtDrawer} db=${db} page=${d.page} quote=${d.quote} onClose=${props.onClose} />`}
     </aside>`;
@@ -1137,6 +1232,179 @@
     var r = (DS.my.get("recent", []) || []).filter(function (y) { return y !== p; });
     r.unshift(p); DS.my.set("recent", r.slice(0, 20));
   });
+})();
+/* ── 47-diff.js ── */
+/* 바뀐 점 보기 (프로젝트 사이트): 문서 md 의 지난 판(assets/history/<이름>.json, 필요할 때만 읽음)과 지금 판을 줄 단위로 비교한다.
+   「합쳐 보기」 = 고른 기간 앞 판 → 지금, 「커밋별」 = 커밋마다 그 앞 판 → 그 커밋. 더한 줄 초록 · 지운 줄 빨강 · 같은 줄은 접는다.
+   기간 기본: 지난 방문 이후 (모르면 최근 7일, 그 사이 커밋이 없으면 마지막 커밋). 비교는 이 파일의 줄 diff (Myers) */
+(function () {
+  "use strict";
+  var DS = window.DS, html = DS.html, H = DS.hooks;
+  var CTX = 3;
+  DS.ICON.diff = '<circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/>';
+
+  /* ── 줄 diff: 앞뒤 같은 줄을 걷고 Myers O(ND). 너무 다르면 통째로 지우고 더한다 ── */
+  DS.lineDiff = function (a, b) {
+    var s = 0, ea = a.length, eb = b.length, out = [], i;
+    while (s < ea && s < eb && a[s] === b[s]) s++;
+    while (ea > s && eb > s && a[ea - 1] === b[eb - 1]) { ea--; eb--; }
+    for (i = 0; i < s; i++) out.push({ k: " ", s: a[i] });
+    var mid = myers(a.slice(s, ea), b.slice(s, eb));
+    out = out.concat(mid);
+    for (i = ea; i < a.length; i++) out.push({ k: " ", s: a[i] });
+    return out;
+  };
+  var whole = function (a, b) { return a.map(function (s) { return { k: "-", s: s }; }).concat(b.map(function (s) { return { k: "+", s: s }; })); };
+  /* 차례마다 그때 쓰인 칸(-d-1 … d+1)만 남긴다 (메모리 O(D²)). 2000 차례가 넘게 다르면 통째로 */
+  function myers(a, b) {
+    var n = a.length, m = b.length, max = n + m, off = max + 1, v = new Int32Array(2 * max + 3), trace = [], d, k, x, y;
+    if (!n || !m) return whole(a, b);
+    for (d = 0; d <= max; d++) {
+      if (d > 2000) return whole(a, b);
+      trace.push({ lo: off - d - 1, a: v.slice(off - d - 1, off + d + 2) });
+      for (k = -d; k <= d; k += 2) {
+        x = k === -d || (k !== d && v[off + k - 1] < v[off + k + 1]) ? v[off + k + 1] : v[off + k - 1] + 1;
+        y = x - k;
+        while (x < n && y < m && a[x] === b[y]) { x++; y++; }
+        v[off + k] = x;
+        if (x >= n && y >= m) return back(trace, a, b, off, x, y, d);
+      }
+    }
+    return whole(a, b);
+  }
+  function back(trace, a, b, off, x, y, D) {
+    var out = [], d, k, t, pk, px, py;
+    var at = function (i) { return t.a[i - t.lo]; };
+    for (d = D; d > 0; d--) {
+      t = trace[d]; k = x - y;
+      pk = k === -d || (k !== d && at(off + k - 1) < at(off + k + 1)) ? k + 1 : k - 1;
+      px = at(off + pk); py = px - pk;
+      while (x > px && y > py) { out.push({ k: " ", s: a[x - 1] }); x--; y--; }
+      if (x === px) out.push({ k: "+", s: b[py] }); else out.push({ k: "-", s: a[px] });
+      x = px; y = py;
+    }
+    while (x > 0 && y > 0) { out.push({ k: " ", s: a[x - 1] }); x--; y--; }
+    return out.reverse();
+  }
+
+  /* 지운 줄 묶음 바로 뒤 같은 수의 더한 줄: 짝을 지어 바뀐 글자만 진하게 (앞뒤 같은 글자를 걷는 정도) */
+  function pairWords(ops) {
+    for (var i = 0; i < ops.length; i++) {
+      if (ops[i].k !== "-") continue;
+      var j = i; while (j < ops.length && ops[j].k === "-") j++;
+      var e = j; while (e < ops.length && ops[e].k === "+") e++;
+      if (e - j === j - i) for (var t = 0; t < j - i; t++) mark(ops[i + t], ops[j + t]);
+      i = e - 1;
+    }
+    return ops;
+  }
+  function mark(o, n) {
+    var a = o.s, b = n.s, p = 0, q = 0;
+    while (p < a.length && p < b.length && a[p] === b[p]) p++;
+    while (q < a.length - p && q < b.length - p && a[a.length - 1 - q] === b[b.length - 1 - q]) q++;
+    if (p + q === 0) return;
+    o.w = [p, a.length - q]; n.w = [p, b.length - q];
+  }
+  var lines = function (t) { return t == null ? [] : String(t).replace(/\r\n?/g, "\n").replace(/\n$/, "").split("\n"); };
+
+  /* ── 지난 판 읽기 (쪽마다 한 번) ── */
+  var cache = {};
+  DS.histLoad = function (db, page) {
+    var f = db && db.history && db.history[page];
+    if (!f) return Promise.resolve(null);
+    if (!cache[f]) cache[f] = (window.fetch ? fetch(DS.url(f), { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }) : Promise.reject(new Error("fetch 없음")))
+      .then(function (j) { return j && Array.isArray(j.commits) && Array.isArray(j.texts) ? j : null; }, function () { delete cache[f]; return null; });
+    return cache[f];
+  };
+  /* 이 사이트가 지난 판을 만들었는가 (옛 빌드 DB 에는 칸이 없다) */
+  DS.hasHist = function (db) { return !!(db && db.history && typeof db.history === "object"); };
+
+  /* 기간: since(지난 방문) · 7d · last(마지막 커밋) · all(남은 기록 전체). 반환 { list(새것부터 커밋), from(앞 판 글 | null) } */
+  function rangeOf(h, key) {
+    var cs = h.commits, cut = null, n;
+    if (key === "since") cut = DS.since;
+    if (key === "7d") cut = new Date(Date.now() - 7 * 86400000).toISOString();
+    if (key === "last") n = 1;
+    else if (key === "all") n = cs.length;
+    else { n = 0; while (n < cs.length && new Date(cs[n].at) > new Date(cut)) n++; }
+    return { list: cs.slice(0, n), from: textBefore(h, n) };
+  }
+  /* n 번째 커밋 앞 판: 그다음 커밋의 글, 없으면 바탕 (null = 모름) */
+  function textBefore(h, n) { return n < h.commits.length ? h.texts[h.commits[n].t] : h.base == null ? null : h.texts[h.base]; }
+  var RANGES = [["since", "지난 방문 이후"], ["7d", "최근 7일"], ["last", "마지막 커밋"], ["all", "남은 기록 전체"]];
+
+  /* 비교 한 벌: 더한 줄 · 지운 줄 · 같은 줄(앞뒤 CTX 줄만, 나머지는 접음) */
+  function Diff(props) {
+    var es = H.useState({}), open = es[0], setOpen = es[1];
+    var ops = H.useMemo(function () { return pairWords(DS.lineDiff(lines(props.a), lines(props.b))); }, [props.a, props.b]);
+    var add = 0, del = 0;
+    ops.forEach(function (o) { if (o.k === "+") add++; else if (o.k === "-") del++; });
+    if (!add && !del) return html`<div class="df-none">글은 그대로입니다</div>`;
+    var keep = ops.map(function () { return false; });
+    ops.forEach(function (o, i) { if (o.k !== " ") for (var j = Math.max(0, i - CTX); j <= Math.min(ops.length - 1, i + CTX); j++) keep[j] = true; });
+    var rows = [], i = 0, oldN = 0, newN = 0;
+    while (i < ops.length) {
+      if (keep[i] || open[i]) {
+        var o = ops[i];
+        if (o.k !== "+") oldN++;
+        if (o.k !== "-") newN++;
+        rows.push(html`<div key=${i} class=${"df-row " + (o.k === "+" ? "add" : o.k === "-" ? "del" : "ctx")}><span class="df-n">${o.k === "+" ? "" : oldN}</span><span class="df-n">${o.k === "-" ? "" : newN}</span><span class="df-s" aria-hidden="true">${o.k === " " ? "" : o.k}</span><span class="df-t">${o.w ? [o.s.slice(0, o.w[0]), html`<mark>${o.s.slice(o.w[0], o.w[1])}</mark>`, o.s.slice(o.w[1])] : o.s || " "}</span></div>`);
+        i++;
+        continue;
+      }
+      var j = i; while (j < ops.length && !keep[j] && !open[j]) j++;
+      var from = i, cnt = j - i;
+      oldN += cnt; newN += cnt;
+      rows.push(html`<button type="button" key=${"f" + i} class="df-fold" onClick=${function () { var x = Object.assign({}, open); for (var t = from; t < from + cnt; t++) x[t] = true; setOpen(x); }}>같은 줄 ${cnt}개 펼치기</button>`);
+      i = j;
+    }
+    return html`<div class="df"><div class="df-sum">${add ? html`<span class="df-add">+${add}</span>` : null}${del ? html`<span class="df-del">−${del}</span>` : null}</div><div class="df-body" role="table" aria-label="바뀐 줄">${rows}</div></div>`;
+  }
+
+  function Commit(props) {
+    var c = props.c;
+    return html`<div class="df-c"><span class="df-when">${DS.mdhm(c.at)}</span><b>${c.by}</b><span class="df-msg">${c.summary}</span><code>${c.sha}</code></div>`;
+  }
+
+  /* ── 서랍 ── */
+  DS.DiffDrawer = function DiffDrawer(props) {
+    var db = props.db, page = props.page;
+    var hs = H.useState(undefined), h = hs[0], setH = hs[1];
+    var ms = H.useState("sum"), mode = ms[0], setMode = ms[1];
+    var rs = H.useState(null), key = rs[0], setKey = rs[1];
+    H.useEffect(function () { setH(undefined); setKey(null); DS.histLoad(db, page).then(function (j) { setH(j); }); }, [page]);
+    var head = html`<div class="rel-h"><b>바뀐 점</b><button type="button" class="lbtn rel-x" onClick=${props.onClose}>닫기</button></div><div class="muted-s">${DS.titleOf(page)} · md 원본 기준</div>`;
+    if (h === undefined) return html`${head}<div class="kempty">읽는 중…</div>`;
+    if (!h || !h.commits.length) return html`${head}<div class="kempty">이전 판이 없습니다</div>`;
+    /* 쓸 수 있는 기간 (커밋이 있고 앞 판과 다른 것만, 같은 커밋 묶음은 하나만) */
+    var opts = [], seen = {};
+    RANGES.forEach(function (r) {
+      if (r[0] === "since" && !DS.since) return;
+      var x = rangeOf(h, r[0]), sig = x.list.length;
+      if (!x.list.length || seen[sig]) return;
+      seen[sig] = 1; opts.push({ k: r[0], t: r[1], x: x });
+    });
+    var cur = opts.find(function (o) { return o.k === key; }) || opts[0];
+    var now = h.texts[h.commits[0].t];
+    var list = cur.x.list;
+    return html`${head}
+      <div class="df-bar">
+        <div class="subtabs" role="tablist">${[["sum", "합쳐 보기"], ["each", "커밋별"]].map(function (t) { return html`<button type="button" role="tab" key=${t[0]} class=${mode === t[0] ? "on" : ""} aria-selected=${mode === t[0]} onClick=${function () { setMode(t[0]); }}>${t[1]}</button>`; })}</div>
+        <select class="tin df-range" aria-label="기간" value=${cur.k} onChange=${function (e) { setKey(e.currentTarget.value); }}>${opts.map(function (o) { return html`<option key=${o.k} value=${o.k}>${o.t} · 커밋 ${o.x.list.length}</option>`; })}</select>
+      </div>
+      ${mode === "sum" ? html`<div class="df-cs">${list.map(function (c) { return html`<${Commit} key=${c.sha} c=${c} />`; })}</div>
+          ${cur.x.from == null ? html`<div class="kempty">이전 판이 없습니다</div>` : html`<${Diff} a=${cur.x.from} b=${now} />`}`
+        : list.map(function (c, i) {
+          var before = textBefore(h, h.commits.indexOf(c) + 1);
+          return html`<section class="df-each" key=${c.sha}><${Commit} c=${c} />${before == null ? html`<div class="kempty">이전 판이 없습니다</div>` : html`<${Diff} a=${before} b=${h.texts[c.t]} />`}</section>`;
+        })}`;
+  };
+
+  /* 행 끝 아이콘: 바뀐 점 서랍 열기 */
+  DS.DiffGo = function (props) {
+    if (!DS.hasHist(DS.db)) return null;
+    return html`<button type="button" class="go df-go" title="바뀐 점 보기" aria-label="바뀐 점 보기" onClick=${function (e) { e.preventDefault(); DS.emit("drawer", { kind: "diff", page: props.page }); }}><${DS.Icon} paths=${DS.ICON.diff} size=${14} /></button>`;
+  };
 })();
 /* ── 50-print.js ── */
 /* 인쇄: 머리 줄 인쇄 단추 → 이 문서 · 전체 문서. 인쇄 때는 접힌 곳을 모두 편다 (Ctrl+P 도).
@@ -1651,6 +1919,41 @@
       .filter(function (d) { return DS.isNew(d.page, d.updatedAt); }).sort(function (a, b) { return String(b.updatedAt).localeCompare(String(a.updatedAt)); });
   };
 
+  /* ── 프로필 (유형 · 분야) ── */
+  var TYPE_NAME = { "new": "신규 구축", enhancement: "운영 · 유지보수", modernization: "차세대", consulting: "분석 · 설계" };
+  var DOMAIN_NAME = { web: "웹 · 앱", game: "게임", device: "웨어러블 · 장치", iot: "IoT · 임베디드" };
+  var DAY_KEYS = { daysToMilestone: 1, daysToCutover: 1, avgLeadDays: 1 };
+  var METRIC_HREF = {
+    daysToMilestone: "_/milestones.html", daysToCutover: "_/milestones.html", featureProgress: "_/progress.html", parityDone: "_/progress.html", deliverableProgress: "_/progress.html",
+    openIssues: "_/issues.html", openDefects: "_/issues.html", overdue: "_/issues.html", openDiffs: "_/issues.html", avgLeadDays: "_/issues/board.html", releasedThisWeek: "_/issues.html?state=" + enc("닫힘"),
+    dueThisWeek: "_/workitems.html", migrationRehearsal: "_/tests.html", confirmedReqs: "_/trace.html", reviewComments: "_/me/mentions.html"
+  };
+  var METRIC_HINT = {
+    openDefects: "결함 이슈가 모이면 셉니다", avgLeadDays: "닫힌 이슈가 생기면 접수부터 닫힘까지 평균을 냅니다", releasedThisWeek: "운영 반영 기록이 생기면 셉니다", overdue: "처리 기한이 있는 이슈가 생기면 셉니다",
+    daysToCutover: "전환 마일스톤에 날짜를 정하면 남은 날을 셉니다", parityDone: "정합표에 같음 확인이 쌓이면 셉니다", migrationRehearsal: "이관 리허설 기록이 생기면 보입니다", openDiffs: "정합 검증에서 다름이 나오면 셉니다",
+    deliverableProgress: "산출물 문서에 단계를 적으면 셉니다", confirmedReqs: "요구사항에 확정 표시가 생기면 셉니다", pendingDecisions: "대기 중인 결정 문서가 생기면 셉니다", reviewComments: "산출물에 검토 의견이 달리면 셉니다"
+  };
+  var fmtMetric = function (key, v) { return typeof v === "number" && DAY_KEYS[key] ? v + "일" : v; };
+  /* 분야 기본 마일스톤 이름 (원격 · docs-site.json 마일스톤이 없을 때 안내 글에) */
+  var msNames = function (db) { var p = DS.profileOf(db), m = (p && p.milestones) || []; return m.length ? "(" + m.join(" → ") + ")" : ""; };
+  DS.msNames = msNames;
+  /* 검증 단계 줄: 프로필 단계마다 기능들의 결과를 모아 끝남 · 지금 · 남음 (실패가 있으면 실패) */
+  function TierStrip(props) {
+    var db = props.db, p = DS.profileOf(db), tiers = p.tiers || [];
+    var fws = (db.features || []).filter(function (f) { return (f.tiers || []).length; });
+    var ms = p.milestones || [];
+    var dom = p.domain || "";
+    return html`<section class="dcard tier-card"><div class="dh"><span>검증 단계${ms.length > 1 ? " · " + ms[0] + " → " + ms[ms.length - 1] : ""}</span><a class="ilink" href=${U("_/tests.html")}>시나리오</a></div>
+      <div class="track tier-track" aria-label="검증 단계">${tiers.map(function (t, i) {
+        var res = fws.map(function (f) { var x = f.tiers.find(function (y) { return y.tier === t; }); return x ? DS.tierKind(x) : "wait"; });
+        var pass = res.filter(function (k) { return k === "done"; }).length;
+        var k = !fws.length ? "wait" : res.some(function (r) { return r === "bad"; }) ? "bad" : pass === fws.length ? "done" : res.some(function (r) { return r !== "wait"; }) ? "cur" : "wait";
+        return html`${i ? html`<span class="tier-arrow" aria-hidden="true">→</span>` : null}<span key=${t} class=${"step " + k} title=${t + " · " + (fws.length ? "통과 " + pass + " / " + fws.length : "결과 없음")}>${t}${fws.length ? html`<span class="tier-n">${pass} / ${fws.length}</span>` : null}</span>`;
+      })}</div>
+      <p class="muted-s tier-note">${fws.length ? "기능마다 검증 절에 남긴 단계별 결과를 모은 것" + (/^(device|iot)$/.test(dom) ? " (어디서 = 보드 판)" : "") : "검증 단계별 결과를 적은 기능이 아직 없습니다. 기능 문서 검증 절에 단계 · 결과 · 어디서를 적으면 모입니다"}</p>
+    </section>`;
+  }
+
   /* ── 개요 ── */
   V.dashboard = function (props) {
     var db = props.db, me = DS.meId();
@@ -1665,17 +1968,28 @@
     var noticeRead = DS.my.get("notice", {});
     var unreadN = notices.filter(function (b) { return b.pinned && !noticeRead[b.id]; }).length;
     var team = ((db.team || {}).members || []).length;
-    var stat = function (label, href, v, sub) { return html`<div class="stat"><span class="sl">${label}<${DS.Go} href=${href} /></span><span class="sv">${v}</span><span class="sc">${sub}</span></div>`; };
+    var stat = function (label, href, v, sub, none) { return html`<div class=${"stat" + (none ? " none" : "")}><span class="sl">${label}<${DS.Go} href=${href} /></span><span class="sv">${v}</span><span class="sc">${sub}</span></div>`; };
     var nd = newDocs(db);
+    /* 지금(신규 구축) 네 칸: 빌드 DB 로 화면이 센다 */
+    var own = {
+      daysToMilestone: function (l) { return next ? stat(next.name + "까지", U("_/milestones.html") + "#ms-" + enc(next.name), Math.max(0, Math.ceil((DS.date(next.due) - t0) / dayMs)) + "일", DS.kday(next.due) + (next.progress ? " · 기능 " + next.progress.done + " / " + next.progress.total : ""))
+        : stat(l || "마일스톤", U("_/milestones.html"), ms.length ? "끝남" : "없음", ms.length ? "남은 마일스톤 없음" : "마일스톤" + msNames(db) + "을 정하면 남은 날을 셉니다"); },
+      featureProgress: function (l) { return stat(l || "기능", U("_/progress.html"), done + " / " + fs.length, "배포 " + done + " · 진행 " + (fs.length - done - waitN) + " · 대기 " + waitN); },
+      openIssues: function (l) { return stat(l || "열린 이슈", U("_/issues.html"), issues.length, issues.length ? Object.entries(issues.reduce(function (a, i) { a[i.stage || i.state] = (a[i.stage || i.state] || 0) + 1; return a; }, {})).map(function (x) { return x[0] + " " + x[1]; }).join(" · ") : "열린 이슈 없음"); },
+      dueThisWeek: function (l) { return stat(l || "이번 주 마감 작업", U("_/workitems.html"), week.length, week.length ? week.slice(0, 3).map(function (w) { return (w.id || "") + " " + DS.md(w.due); }).join(" · ") : "7일 안 마감 없음"); }
+    };
+    var prof = DS.profileOf(db), met = db.metrics || {};
+    /* 프로필 네 칸: 이름 = profile.dashboard, 값 = 빌드가 센 metrics. 못 구한 값(null)은 무엇이 생기면 세는지 알린다 */
+    var cells = prof && (prof.dashboard || []).length ? prof.dashboard.slice(0, 4).map(function (d) {
+      var m = met[d.key];
+      if (m && m.value != null && m.value !== "") return stat(d.label, METRIC_HREF[d.key] ? U(METRIC_HREF[d.key]) : null, fmtMetric(d.key, m.value), m.sub || "");
+      if (own[d.key]) return own[d.key](d.label);
+      return stat(d.label, METRIC_HREF[d.key] ? U(METRIC_HREF[d.key]) : null, "아직 없음", METRIC_HINT[d.key] || "빌드가 이 값을 모으면 보입니다", true);
+    }) : [own.daysToMilestone(), own.featureProgress(), own.openIssues(), own.dueThisWeek()];
     return html`<div class="view dash">
       <${Head} title=${((db.project || {}).title || db.title || "프로젝트") + " · 대시보드"} sub=${html`${DS.kday(new Date().toISOString())} 기준${db.builtAt ? " · 빌드 " + DS.mdhm(db.builtAt) : ""}${team ? html` · <a class="ilink" href=${U("_/team.html")}>팀 ${team}명 · AI 구성</a>` : null}`} />
-      <div class="stats">
-        ${next ? stat(next.name + "까지", U("_/milestones.html") + "#ms-" + enc(next.name), Math.max(0, Math.ceil((DS.date(next.due) - t0) / dayMs)) + "일", DS.kday(next.due) + (next.progress ? " · 기능 " + next.progress.done + " / " + next.progress.total : ""))
-          : stat("마일스톤", U("_/milestones.html"), ms.length ? "끝남" : "없음", ms.length ? "남은 마일스톤 없음" : "마일스톤을 정하면 남은 날을 셉니다")}
-        ${stat("기능", U("_/progress.html"), done + " / " + fs.length, "배포 " + done + " · 진행 " + (fs.length - done - waitN) + " · 대기 " + waitN)}
-        ${stat("열린 이슈", U("_/issues.html"), issues.length, issues.length ? Object.entries(issues.reduce(function (a, i) { a[i.stage || i.state] = (a[i.stage || i.state] || 0) + 1; return a; }, {})).map(function (x) { return x[0] + " " + x[1]; }).join(" · ") : "열린 이슈 없음")}
-        ${stat("이번 주 마감 작업", U("_/workitems.html"), week.length, week.length ? week.slice(0, 3).map(function (w) { return (w.id || "") + " " + DS.md(w.due); }).join(" · ") : "7일 안 마감 없음")}
-      </div>
+      <div class="stats">${cells}</div>
+      ${prof && (prof.tiers || []).length ? html`<${TierStrip} db=${db} />` : null}
       <div class="dash-grid">
         <${Card} wide=${true} title="기능 진행" link=${U("_/progress.html")} linkText="진행 현황"><${FeatBoard} db=${db} /><//>
         <${Card} title=${html`공지 · 게시판${unreadN ? html` <span class="unread">안 읽음 ${unreadN}</span>` : null}`} link=${U("_/board.html")} linkText="게시판">
@@ -1690,7 +2004,7 @@
           ${issues.length ? issues.slice(0, 5).map(function (i) { return html`<div class="dl" key=${i.id}><span class="idc">${i.id}</span><span class="dt">${i.title}</span><${DS.State} k=${/검증/.test(i.stage) ? "done" : /접수/.test(i.stage) ? "wait" : "cur"}>${i.stage || i.state}<//><${DS.Go} href=${i.url} ext=${true} /></div>`; }) : html`<${Empty}>열린 이슈가 없습니다<//>`}
         <//>
         <${Card} title=${html`지난 방문 이후${DS.since ? html` <span class="muted-s">${DS.mdhm(DS.since)}</span>` : null}`} link=${U("_/recent.html")} linkText="전체">
-          ${!DS.since ? html`<${Empty}>다음 방문부터 그 사이에 바뀐 문서를 모아 보입니다<//>` : nd.length ? nd.slice(0, 6).map(function (d) { return html`<div class="dl" key=${d.page}><span class="dt">${d.title}</span><span class="dm">${DS.mdhm(d.updatedAt)}</span><${DS.Go} href=${DS.url(d.page)} /></div>`; }) : html`<${Empty}>새로 바뀐 문서가 없습니다<//>`}
+          ${!DS.since ? html`<${Empty}>다음 방문부터 그 사이에 바뀐 문서를 모아 보입니다<//>` : nd.length ? nd.slice(0, 6).map(function (d) { return html`<div class="dl" key=${d.page}><span class="dt">${d.title}</span><span class="dm">${DS.mdhm(d.updatedAt)}</span><${DS.DiffGo} page=${d.page} /><${DS.Go} href=${DS.url(d.page)} /></div>`; }) : html`<${Empty}>새로 바뀐 문서가 없습니다<//>`}
         <//>
       </div>
     </div>`;
@@ -1717,28 +2031,29 @@
       <${Head} title="최근 바뀐 문서" sub=${DS.since ? "지난 방문 " + DS.mdhm(DS.since) + " 이후 바뀐 것은 새로 표시" : ""} acts=${newDocs(db).length ? html`<button type="button" class="abtn" onClick=${function () { newDocs(db).forEach(function (d) { DS.markSeen(d.page, d.updatedAt); }); }}>모두 확인함</button>` : null} />
       <h2>바뀐 내용</h2>
       ${(db.changes || []).length ? html`<${Tbl} head=${["때", "문서", "바꾼 이", "무엇", "ID", ""]}>${db.changes.map(function (c, i) {
-        return html`<tr key=${i} class=${DS.isNew(c.page, c.at) ? "chg" : ""}><td>${DS.mdhm(c.at)}</td><td>${DS.titleOf(c.page)}${DS.isNew(c.page, c.at) ? html`<span class="newb">새로</span>` : null}</td><td>${c.by}</td><td>${c.summary}</td><td><${Ids} ids=${c.ids} /></td><td class="go-td"><${DS.Go} href=${DS.url(c.page)} /></td></tr>`;
+        return html`<tr key=${i} class=${DS.isNew(c.page, c.at) ? "chg" : ""}><td>${DS.mdhm(c.at)}</td><td>${DS.titleOf(c.page)}${DS.isNew(c.page, c.at) ? html`<span class="newb">새로</span>` : null}</td><td>${c.by}</td><td>${c.summary}</td><td><${Ids} ids=${c.ids} /></td><td class="go-td"><${DS.DiffGo} page=${c.page} /><${DS.Go} href=${DS.url(c.page)} /></td></tr>`;
       })}<//>` : html`<${Empty}>git 기록이 아직 없습니다<//>`}
       <h2>문서</h2>
       ${docs.length ? html`<${Tbl} head=${["문서", "탭", "바뀐 때", "바꾼 이", ""]}>${docs.map(function (d) {
-        return html`<tr key=${d.page}><td>${d.title}${DS.isNew(d.page, d.updatedAt) ? html`<span class="newb">새로</span>` : null}</td><td>${d.group || ""}</td><td>${DS.mdhm(d.updatedAt)}</td><td>${d.updatedBy || ""}</td><td class="go-td"><${DS.Go} href=${DS.url(d.page)} /></td></tr>`;
+        return html`<tr key=${d.page}><td>${d.title}${DS.isNew(d.page, d.updatedAt) ? html`<span class="newb">새로</span>` : null}</td><td>${d.group || ""}</td><td>${DS.mdhm(d.updatedAt)}</td><td>${d.updatedBy || ""}</td><td class="go-td"><${DS.DiffGo} page=${d.page} /><${DS.Go} href=${DS.url(d.page)} /></td></tr>`;
       })}<//>` : html`<${Empty}>문서가 아직 없습니다<//>`}
     </div>`;
   };
 
   /* 팀 · 설정: 빌드가 허용 목록으로 내보낸 칸만 그린다 */
   V.team = function (props) {
-    var t = props.db.team || {}, ai = t.ai || {}, kit = t.kit || {};
+    var t = props.db.team || {}, ai = t.ai || {}, kit = t.kit || {}, prof = DS.profileOf(props.db);
     var LV = { block: "막음", warn: "알림", off: "끔", on: "켬" };
     var kv = function (rows) { rows = rows.filter(function (r) { return r[1] != null && r[1] !== ""; }); return rows.length ? html`<div class="kv">${rows.map(function (r) { return html`<div key=${r[0]}><span>${r[0]}</span><div>${r[1]}</div></div>`; })}</div>` : null; };
     return html`<div class="view">
       <${Head} title="팀 · 설정" sub="workspace.json 의 팀 · AI 구성 · 프로젝트 설정. 바꾸려면 채팅에서 말하거나 kedovi 명령으로 고치고 커밋합니다" />
+      ${prof ? html`<h2>유형 · 분야</h2>${kv([["유형", TYPE_NAME[prof.type] || prof.type], ["분야", DOMAIN_NAME[prof.domain] || prof.domain], ["진행 방식", prof.approach], ["사람 관문", (prof.gates || []).join(" · ")], ["에이전트 도구 추천", (prof.tools || []).join(" · ")]])}` : null}
       ${(t.members || []).length ? html`<h2>참여 인원</h2><${Tbl} head=${["아이디", "이름", "역할", "담당 repo"]}>${t.members.map(function (m) { return html`<tr key=${m.id}><td><span class="who"><${DS.Avatar} id=${m.id} />${m.id}</span></td><td>${m.name || ""}</td><td>${m.role ? html`<span class="pin">${m.role}</span>` : ""}</td><td>${(m.repos || []).join(" · ") || "전체"}</td></tr>`; })}<//>` : null}
       ${ai.tool || ai.mainModel || ai.teamMode ? html`<h2>AI 구성</h2>${kv([["쓰는 AI", ai.tool], ["메인 모델", ai.mainModel], ["팀 모드", ai.teamMode]])}` : null}
       ${(ai.roles || []).length ? html`<${Tbl} head=${["역할", "모델", "하는 일"]}>${ai.roles.map(function (r) { return html`<tr key=${r.role}><td>${r.role}</td><td><code>${r.model}</code></td><td>${r.desc || ""}</td></tr>`; })}<//>` : null}
       ${(ai.enforce || []).length ? html`<h2>지키는 장치</h2><${Tbl} head=${["장치", "수준"]}>${ai.enforce.map(function (e) { return html`<tr key=${e.name}><td>${e.name}</td><td><${DS.State} k=${e.level === "block" ? "cur" : "wait"}>${LV[e.level] || e.level}<//></td></tr>`; })}<//>` : null}
       ${kit.version || (kit.packs || []).length || (t.repos || []).length ? html`<h2>프로젝트 설정</h2>${kv([["킷 판", kit.version], ["팩", (kit.packs || []).join(" · ")], ["repo", (t.repos || []).map(function (r) { return r.name + (r.kind || r.stack ? " (" + [r.kind === "code" ? "코드" : r.kind === "ref" ? "참고" : r.kind, r.stack].filter(Boolean).join(", ") + ")" : ""); }).join(" · ")]])}` : null}
-      ${!(t.members || []).length && !ai.tool && !kit.version ? html`<${Empty}>팀 · 설정 정보가 아직 없습니다<//>` : null}
+      ${!prof && !(t.members || []).length && !ai.tool && !kit.version ? html`<${Empty}>팀 · 설정 정보가 아직 없습니다<//>` : null}
     </div>`;
   };
 
@@ -1813,15 +2128,42 @@
     (db.features || []).forEach(function (f) { (f.api || []).forEach(function (a) { rows.push({ id: a, f: f }); }); });
     return rows.length ? html`<${Tbl} head=${["ID", "설명", "기능"]}>${rows.map(function (r) { return html`<tr key=${r.id}><td><${DS.IdChip} id=${r.id} /></td><td>${idTitle(db, r.id)}</td><td><${Feat} f=${r.f} /></td></tr>`; })}<//>` : html`<${Empty}>기능 문서의 설계 절에 API ID 를 쓰거나 코드 repo 에 openapi.json 을 두면 여기에 보입니다<//>`;
   }
+  /* AsyncAPI: 서버 없이 빌드가 풀어 둔 channels 를 표로 (채널 · 동작 · 메시지 · 필드) */
+  var ACT = { send: "보냄", publish: "보냄", receive: "받음", subscribe: "받음" };
+  function AsyncTable(props) {
+    var rows = [];
+    (props.spec.channels || []).forEach(function (c) {
+      var ms = (c.messages || []).length ? c.messages : [{ name: "", fields: [] }];
+      ms.forEach(function (m, i) { rows.push({ c: c, m: m, first: i === 0, n: ms.length }); });
+    });
+    return html`<${Tbl} head=${["채널", "동작", "메시지", "필드"]}>${rows.map(function (r, i) {
+      return html`<tr key=${i}>${r.first ? html`<td rowspan=${r.n}><code>${r.c.name}</code></td><td rowspan=${r.n}>${ACT[r.c.action] || r.c.action || ""}</td>` : null}<td>${r.m.name ? html`<code>${r.m.name}</code>` : html`<span class="muted-s">메시지 없음</span>`}</td><td>${(r.m.fields || []).length ? html`<span class="ifields">${r.m.fields.map(function (f) { return html`<code key=${f}>${f}</code>`; })}</span>` : ""}</td></tr>`;
+    })}<//>`;
+  }
+  var kindName = function (a) { return a.kind === "asyncapi" ? "AsyncAPI" : "OpenAPI"; };
+  /* 명세 화면: interfaces(OpenAPI · AsyncAPI) 가 있으면 「인터페이스 명세」, 없으면 지금처럼 apis(OpenAPI) 로 「API 명세」. 주소는 그대로 _/api.html */
   V.api = function (props) {
-    var db = props.db, list = db.apis || [];
-    var q = DS.param("repo"), cur = list.find(function (a) { return a.repo === q; }) || list[0];
+    var db = props.db, ifs = db.interfaces || [], isIf = ifs.length > 0;
+    var list = isIf ? ifs : (db.apis || []).map(function (a) { return Object.assign({ kind: "openapi" }, a); });
+    var q = DS.param("repo"), qk = DS.param("kind");
+    var cur = list.find(function (a) { return a.repo === q && (!qk || a.kind === qk); }) || list.find(function (a) { return a.repo === q; }) || list[0];
+    var title = isIf ? "인터페이스 명세" : "API 명세";
+    var many = function (a) { return list.filter(function (x) { return x.repo === a.repo; }).length > 1; };
+    var chips = list.length > 1 ? list.map(function (a, i) { return html`<a key=${i} class=${"vchip" + (a === cur ? " on" : "")} href=${U("_/api.html", "repo=" + enc(a.repo) + (many(a) ? "&kind=" + enc(a.kind) : ""))}>${a.repo}${isIf ? " · " + kindName(a) : ""}</a>`; }) : null;
+    if (cur && cur.kind === "asyncapi") {
+      var yaml = !(cur.channels || []).length;
+      return html`<div class="view">
+        <${Head} title=${title} sub=${(cur.title || cur.repo) + " · " + cur.repo + " · AsyncAPI"} acts=${chips} />
+        ${yaml ? html`<${Empty}>이 AsyncAPI 명세는 YAML 이라 표로 풀지 않았습니다. <a class="ilink" href=${DS.url(cur.file)} target="_blank" rel="noopener">명세 파일</a>을 열어 봅니다<//>`
+          : html`<${AsyncTable} spec=${cur} /><${Note}>채널 · 메시지 표는 빌드가 명세 JSON 을 풀어 그린 것입니다. 원본은 <a class="ilink" href=${DS.url(cur.file)} target="_blank" rel="noopener">명세 파일</a><//>`}
+      </div>`;
+    }
     var dark = document.documentElement.dataset.theme === "dark";
     var useSpec = cur && !DS.file;
     var doc = useSpec ? '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{margin:0}</style></head><body><div id="app"></div><script src="' + SCALAR + '"></script><script>Scalar.createApiReference("#app",{url:' + JSON.stringify(DS.url(cur.file)) + ',darkMode:' + dark + ',hideClientButton:false,withDefaultFonts:false})</script></body></html>' : "";
     return html`<div class="view full">
-      <${Head} title="API 명세" sub=${cur ? cur.title + " · " + cur.repo : "기능 문서의 API 표"} acts=${list.length > 1 ? list.map(function (a) { return html`<a key=${a.repo} class=${"vchip" + (a === cur ? " on" : "")} href=${U("_/api.html", "repo=" + enc(a.repo))}>${a.repo}</a>`; }) : null} />
-      ${useSpec ? html`<div class="vframe api"><iframe key=${cur.repo + dark} srcdoc=${doc} title="API 명세" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe></div><${Note}>Scalar ${"1.40.0"} 로 그립니다. 인터넷이 막힌 곳이면 <a class="ilink" href=${DS.url(cur.file)}>명세 파일</a>을 받아 봅니다<//>`
+      <${Head} title=${title} sub=${cur ? cur.title + " · " + cur.repo + (isIf ? " · OpenAPI" : "") : "기능 문서의 API 표"} acts=${chips} />
+      ${useSpec ? html`<div class="vframe api"><iframe key=${cur.repo + dark} srcdoc=${doc} title=${title} sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe></div><${Note}>Scalar ${"1.40.0"} 로 그립니다. 인터넷이 막힌 곳이면 <a class="ilink" href=${DS.url(cur.file)}>명세 파일</a>을 받아 봅니다<//>`
         : html`${cur && DS.file ? html`<${Note}>이 PC 파일로 열면 명세 화면을 띄우지 않습니다. kedovi docs serve 로 여세요<//>` : null}<${ApiTable} db=${db} />`}
     </div>`;
   };
@@ -1832,7 +2174,7 @@
       ${fs.length ? fs.map(function (f) { return html`<section key=${f.page}><h2><${Feat} f=${f} /></h2><${Tbl} head=${["ID", "기능"]}>${f.fn.map(function (x) { return html`<tr key=${x.id}><td><${DS.IdChip} id=${x.id} /></td><td>${x.text}</td></tr>`; })}<//></section>`; }) : html`<${Empty}>기능 ID(FN-)를 쓴 기능 문서가 아직 없습니다<//>`}</div>`;
   };
   V["all-api"] = function (props) {
-    return html`<div class="view"><${Head} title="API 전체" sub="기능 문서의 설계 절에 쓴 API ID" /><${ApiTable} db=${props.db} />${(props.db.apis || []).length ? html`<${Note}>명세 화면은 <a class="ilink" href=${U("_/api.html")}>API</a> 에서 봅니다<//>` : null}</div>`;
+    return html`<div class="view"><${Head} title="API 전체" sub="기능 문서의 설계 절에 쓴 API ID" /><${ApiTable} db=${props.db} />${(props.db.apis || []).length || (props.db.interfaces || []).length ? html`<${Note}>명세 화면은 <a class="ilink" href=${U("_/api.html")}>${(props.db.interfaces || []).length ? "인터페이스 명세" : "API"}</a> 에서 봅니다<//>` : null}</div>`;
   };
   V["all-screen"] = function (props) {
     var db = props.db, rows = [];
@@ -1882,7 +2224,7 @@
           <div class="ms-h"><b>${m.name}</b><span class="muted-s">${m.start ? DS.md(m.start) + " ~ " : ""}${m.due ? DS.md(m.due) : "날짜 없음"} · 기능 ${p.done} / ${p.total}</span><span class="pbar"><i style=${{ width: (p.total ? Math.round(p.done * 100 / p.total) : 0) + "%" }}></i></span>${m.url ? html`<${DS.Go} href=${m.url} ext=${true} label="원격에서 보기" />` : null}</div>
           ${fs.length ? fs.map(function (f) { return html`<div class="dl" key=${f.page}><span class="num-s">${f.no}</span><span class="dt">${f.name || f.title}</span><${DS.State} k=${stateKind(db, f)}>${stateLabel(db, f)}<//><${DS.Go} href=${DS.url(f.page)} /></div>`; }) : html`<${Empty}>이 마일스톤에 든 기능이 없습니다<//>`}
         </section>`;
-      }) : html`<${Empty}>마일스톤이 아직 없습니다. 기능 문서 머리 줄에 마일스톤을 적거나 원격(GitLab · GitHub) 마일스톤을 쓰면 여기에 모입니다<//>`}</div>`;
+      }) : html`<${Empty}>마일스톤${msNames(db)}이 아직 없습니다. 기능 문서 머리 줄에 마일스톤을 적거나 원격(GitLab · GitHub) 마일스톤을 쓰면 여기에 모입니다<//>`}</div>`;
   };
   V.workitems = function (props) {
     var db = props.db, ws = db.workItems || [], rn = DS.remoteName(db);
@@ -1890,6 +2232,15 @@
       ${ws.length ? html`<${Tbl} head=${["#", "작업", "기능", "마일스톤", "담당", "시작", "마감", "상태", ""]}>${ws.map(function (w, i) {
         return html`<tr key=${w.id || i}><td><span class="idc">${w.id}</span></td><td>${w.title}</td><td><${Feat} f=${featByNo(db, w.feature)} /></td><td>${w.milestone || ""}</td><td>${w.assignee || ""}</td><td>${DS.md(w.start)}</td><td>${DS.md(w.due)}</td><td><${DS.State} k=${isOpen(w.state) ? "cur" : "done"}>${w.state}<//></td><td class="go-td"><${DS.Go} href=${w.url} ext=${true} /></td></tr>`;
       })}<//>` : html`<${Empty}>작업 항목이 아직 없습니다. 원격을 붙이면(kedovi remote add) GitLab 작업 항목 · GitHub 이슈를 가져옵니다<//>`}</div>`;
+  };
+
+  /* 백로그: handoffs/PLAN.md 의 「백로그」(이슈형은 「개선 후보」) 절. 정본은 PLAN.md, 여기서는 읽기만 */
+  V.backlog = function (props) {
+    var db = props.db, b = db.backlog || null, items = (b && b.items) || [], name = (b && b.label) || "백로그";
+    return html`<div class="view"><${Head} title=${name} sub=${items.length ? "로드맵(handoffs/PLAN.md)의 「" + name + "」 절 · " + items.length + "개" : ""} />
+      ${items.length ? html`<${Tbl} head=${["#", "항목", "추가한 날"]}>${items.map(function (x, i) {
+        return html`<tr key=${i}><td class="num">${i + 1}</td><td>${x.text}</td><td>${x.added ? DS.md(x.added) : ""}</td></tr>`;
+      })}<//>` : html`<${Empty}>백로그 없음. 로드맵(handoffs/PLAN.md)의 「${name}」 절에 한 줄씩 적으면 여기에 보입니다<//>`}</div>`;
   };
 
   /* 간트: frappe-gantt (assets/vendor/, 이 화면에서만 읽는다). 줄 = 기능(작업 항목 날짜, 없으면 마일스톤 기간), 마일스톤 = 하루짜리 표시 막대 */
@@ -2208,7 +2559,7 @@
   function Head(props) {
     var m = props.meta;
     return html`<div class="page-head"><div>
-        <div class="crumb">${m.crumb}${m.status ? html` <span class="ds-badge" data-status=${m.status}>${m.status}</span>` : null}</div>
+        <div class="crumb">${DS.tabLabel(m.crumb)}${m.status ? html` <span class="ds-badge" data-status=${m.status}>${m.status}</span>` : null}</div>
         <h1 dangerouslySetInnerHTML=${{ __html: m.h1 }}></h1>
         ${m.lead ? html`<p class="lead" dangerouslySetInnerHTML=${{ __html: m.lead }}></p>` : null}
       </div><div class="head-r">${props.tools}${m.src ? html`<a class="src" href=${m.src.href} title="원본 md">원본 ${m.src.name}</a>` : null}</div></div>`;
@@ -2224,7 +2575,7 @@
   function Pager(props) {
     var m = props.meta;
     if (!m.prev && !m.next) return null;
-    var one = function (d, cls, label) { return d ? html`<a class=${cls} href=${DS.url(d.p)}><small>${label} · ${d.g}</small>${d.t}</a>` : html`<span></span>`; };
+    var one = function (d, cls, label) { return d ? html`<a class=${cls} href=${DS.url(d.p)}><small>${label} · ${DS.tabLabel(d.g)}</small>${d.t}</a>` : html`<span></span>`; };
     return html`<div class="pager">${one(m.prev, "prev", "이전")}${one(m.next, "next", "다음")}</div>`;
   }
 
@@ -2324,7 +2675,7 @@
       : isVirtual ? html`<div class="ds-body ds-view" ref=${bodyEl}><${Virtual} db=${db} meta=${meta} /></div>`
       : html`<div class="ds-body" ref=${bodyEl} dangerouslySetInnerHTML=${{ __html: cur.d.body }}></div>`;
     var tools = docExtras ? html`<${DS.DocTools} db=${db} page=${meta.page} comments=${true} memo=${memo} onMemo=${function () { setMemo(!memo); }} />` : null;
-    var head = isPrint ? null : isVirtual ? html`<div class="crumb vcrumb">${[tab, meta.title].filter(Boolean).join(" › ")}</div>` : html`<${Head} meta=${meta} tools=${tools} />`;
+    var head = isPrint ? null : isVirtual ? html`<div class="crumb vcrumb">${[tab && tab !== "나" ? DS.tabLabel(tab) : tab, meta.view === "api" && db && (db.interfaces || []).length ? "인터페이스 명세" : meta.title].filter(Boolean).join(" › ")}</div>` : html`<${Head} meta=${meta} tools=${tools} />`;
     var article = html`<main id="main"><article class="page" ref=${art}>${head}
       ${docExtras ? html`<${DS.ChangeBar} db=${db} page=${meta.page} />` : null}
       ${feat ? html`<${DS.FeatHead} db=${db} f=${feat} toc=${meta.toc} />` : null}

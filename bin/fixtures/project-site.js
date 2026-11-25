@@ -103,12 +103,30 @@ const files = {
 };
 
 /** dir 에 원본을 쓰고 사이트를 만들어 out 에 쓴다. db = 빌드 DB (없으면 이 폴더의 site-db.json) */
-function build(dir, out, db) {
+function build(dir, out, db, opt = {}) {
   const write = (root, pages) => { for (const [p, c] of Object.entries(pages)) { fs.mkdirSync(path.dirname(path.join(root, p)), { recursive: true }); fs.writeFileSync(path.join(root, p), c); } };
-  write(dir, files);
+  // opt.labels = { 묶음: 표시 이름 } (프로필이 docs-site.json 에 넣는 탭 이름)
+  const cfg = JSON.parse(files['docs-site.json']);
+  if (opt.labels) for (const g of cfg.groups) if (opt.labels[g.group]) g.label = opt.labels[g.group];
+  write(dir, { ...files, 'docs-site.json': JSON.stringify(cfg, null, 1) });
   const DS = require('../../packs/core/bin/docs-site');
   const res = DS.generate({ name: 'project', dir }, null, out);
-  res.pages['assets/site-db.json'] = JSON.stringify(db || JSON.parse(fs.readFileSync(path.join(__dirname, 'site-db.json'), 'utf8')), null, 1);
+  const dbj = db || JSON.parse(fs.readFileSync(path.join(__dirname, 'site-db.json'), 'utf8'));
+  // 바뀐 점 보기: 003 주문 관리의 지난 판 셋 (lib/sitehist.js 모양). 지난 방문(11-20) 뒤 커밋 둘, 앞 커밋 하나 + 바탕
+  if (!dbj.history) {
+    const now = files['기능/003-주문관리.md'];
+    const v2 = now.replace('출고 전 주문을 취소한다', '주문을 취소한다');
+    const v1 = v2.replace('| AC-024-2 | 취소하면 재고가 돌아온다 | |\n', '');
+    const v0 = v1.replace('## 검증', '## 검증 (초안)');
+    const f = 'assets/history/fixture003.json';
+    res.pages[f] = JSON.stringify({ v: 1, md: '기능/003-주문관리.md', texts: [now, v2, v1, v0], base: 3, commits: [
+      { sha: 'c3c3c3c', at: '2026-11-24T15:20:00+09:00', by: 'kim', summary: 'docs: 주문 취소 API 사유 필수로', t: 0 },
+      { sha: 'b2b2b2b', at: '2026-11-22T11:00:00+09:00', by: 'lee', summary: 'docs: 취소하면 재고 복구', t: 1 },
+      { sha: 'a1a1a1a', at: '2026-11-18T09:00:00+09:00', by: 'hong', summary: 'docs: 검증 절 정리', t: 2 },
+    ] });
+    dbj.history = { '기능/003-주문관리.html': f };
+  }
+  res.pages['assets/site-db.json'] = JSON.stringify(dbj, null, 1);
   write(path.join(dir, out), res.pages);
   // API 명세 (Scalar 가 읽는다)
   write(path.join(dir, out), { 'assets/openapi/order-api.json': JSON.stringify({ openapi: '3.0.3', info: { title: '주문 관리 API', version: '1.0.0' }, paths: { '/orders/{id}/cancel': { post: { summary: '출고 전 주문 취소', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { 200: { description: '취소됨' } } } } } }) });

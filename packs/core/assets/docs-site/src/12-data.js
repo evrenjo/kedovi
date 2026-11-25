@@ -104,13 +104,26 @@
     return i < k ? "done" : i === k ? "cur" : "wait";
   };
   DS.featDone = function (db, f) { var st = (db && db.stages) || []; return st.length && f.stage === st[st.length - 1]; };
+  /* 관계 칸: 웹 기본 + 프로필(분야)이 더한 밸런스 표 · 인터페이스 · 보드 판 · 위험 */
+  DS.REL_KEYS = ["req", "api", "scr", "tables", "ac", "dec", "issues", "bal", "ifs", "hw", "risks"];
+  /* 프로필 (빌드 DB profile, 없으면 null = 지금 화면 그대로) */
+  DS.profileOf = function (db) { var p = db && db.profile; return p && typeof p === "object" ? p : null; };
+  /* 검증 단계 결과 한 칸 → 끝남 · 실패 · 지금 · 남음 */
+  DS.tierKind = function (t) { return t && t.result ? DS.resultKind(t.result) : "wait"; };
+  /* 기능 하나의 검증 단계 줄: 프로필 단계 순서대로 + 기능에만 있는 단계 */
+  DS.tierRows = function (db, f) {
+    var p = DS.profileOf(db), have = (f && f.tiers) || [], out = [];
+    ((p && p.tiers) || []).forEach(function (name) { out.push(have.find(function (t) { return t.tier === name; }) || { tier: name, result: "", where: "" }); });
+    have.forEach(function (t) { if (!out.some(function (o) { return o.tier === t.tier; })) out.push(t); });
+    return out;
+  };
   /* ID → 그 ID 가 이어진 기능 ID 들 (FN 이면 자기, 아니면 관계에서 거꾸로) */
   DS.fnsOf = function (db, id) {
     var rel = (db && db.relations) || {};
     if (rel[id]) return [id];
     return Object.keys(rel).filter(function (fn) {
       var r = rel[fn];
-      return ["req", "api", "scr", "tables", "ac", "dec", "issues"].some(function (k) { return (r[k] || []).indexOf(id) >= 0; });
+      return DS.REL_KEYS.some(function (k) { return (r[k] || []).indexOf(id) >= 0; });
     });
   };
   DS.fnFeature = function (db, fn) { return (db.features || []).find(function (f) { return (f.fn || []).some(function (x) { return x.id === fn; }); }) || null; };

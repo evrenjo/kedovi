@@ -1,0 +1,127 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - link "dd device-demo" [ref=e5] [cursor=pointer]:
+      - /url: http://localhost:8766/index.html
+      - generic [ref=e6]: dd
+      - generic [ref=e7]: device-demo
+    - navigation "상단 메뉴" [ref=e8]:
+      - link "개요" [ref=e9] [cursor=pointer]:
+        - /url: http://localhost:8766/index.html
+      - link "설계" [ref=e10] [cursor=pointer]:
+        - /url: http://localhost:8766/%EC%84%A4%EA%B3%84/%EC%9A%94%EA%B5%AC%EC%82%AC%ED%95%AD.html
+      - link "기능 중심 메뉴" [ref=e11] [cursor=pointer]:
+        - /url: http://localhost:8766/%EA%B8%B0%EB%8A%A5/index.html
+        - text: 기능
+        - generic "중심 메뉴" [ref=e12]
+      - link "테스트" [ref=e13] [cursor=pointer]:
+        - /url: http://localhost:8766/%ED%85%8C%EC%8A%A4%ED%8A%B8/HIL.html
+      - link "일정" [ref=e14] [cursor=pointer]:
+        - /url: http://localhost:8766/_/gantt.html
+      - link "이슈" [ref=e15] [cursor=pointer]:
+        - /url: http://localhost:8766/_/issues.html
+      - link "자료실" [ref=e16] [cursor=pointer]:
+        - /url: http://localhost:8766/_/files.html
+    - generic [ref=e17]:
+      - link "나" [ref=e18] [cursor=pointer]:
+        - /url: http://localhost:8766/_/me.html
+        - generic [aria-hidden] [ref=e19]: "?"
+      - button "나를 부른 의견" [ref=e22] [cursor=pointer]
+      - button "검색" [ref=e25] [cursor=pointer]:
+        - generic [ref=e29]: ⌘K
+      - button "인쇄" [ref=e30] [cursor=pointer]
+      - button "테마" [ref=e35] [cursor=pointer]
+  - generic [ref=e39]:
+    - navigation [ref=e40]:
+      - generic [ref=e41]: 개요
+      - link "대시보드" [ref=e43] [cursor=pointer]:
+        - /url: http://localhost:8766/index.html
+      - link "프로젝트 개요" [ref=e45] [cursor=pointer]:
+        - /url: http://localhost:8766/%EA%B0%9C%EC%9A%94.html
+      - link "진행 현황" [ref=e47] [cursor=pointer]:
+        - /url: http://localhost:8766/_/progress.html
+      - link "최근 바뀐 문서" [ref=e49] [cursor=pointer]:
+        - /url: http://localhost:8766/_/recent.html
+      - link "팀 · 설정" [ref=e51] [cursor=pointer]:
+        - /url: http://localhost:8766/_/team.html
+    - main [ref=e53]:
+      - article [ref=e54]:
+        - generic [ref=e55]: 개요 › 대시보드
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - heading "device-demo · 대시보드" [level=1] [ref=e59]
+            - generic [ref=e60]: 11월 25일 기준 · 빌드 11-25 16:14
+          - generic [ref=e61]:
+            - generic [ref=e62]:
+              - generic [ref=e63]:
+                - text: 오픈까지 남은 날
+                - link "열기" [ref=e64] [cursor=pointer]:
+                  - /url: http://localhost:8766/_/milestones.html
+              - generic [ref=e67]: 없음
+              - generic [ref=e68]: 마일스톤(POC → EVT → DVT → PVT → 양산)을 정하면 남은 날을 셉니다
+            - generic [ref=e69]:
+              - generic [ref=e70]:
+                - text: 기능 진행
+                - link "열기" [ref=e71] [cursor=pointer]:
+                  - /url: http://localhost:8766/_/progress.html
+              - generic [ref=e74]: 0 / 0
+              - generic [ref=e75]: 배포 0 · 진행 0 · 대기 0
+            - generic [ref=e76]:
+              - generic [ref=e77]:
+                - text: 열린 이슈
+                - link "열기" [ref=e78] [cursor=pointer]:
+                  - /url: http://localhost:8766/_/issues.html
+              - generic [ref=e81]: "0"
+              - generic [ref=e82]: 열린 이슈 없음
+            - generic [ref=e83]:
+              - generic [ref=e84]:
+                - text: 이번 주 마감
+                - link "열기" [ref=e85] [cursor=pointer]:
+                  - /url: http://localhost:8766/_/workitems.html
+              - generic [ref=e88]: "0"
+              - generic [ref=e89]: 7일 안 마감 없음
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: 검증 단계 · POC → 양산
+              - link "시나리오" [ref=e93] [cursor=pointer]:
+                - /url: http://localhost:8766/_/tests.html
+            - generic "검증 단계" [ref=e94]:
+              - generic "정적 분석 (MISRA · CERT) · 결과 없음" [ref=e95]: 정적 분석 (MISRA · CERT)
+              - generic [aria-hidden] [ref=e96]: →
+              - generic "단위 · 결과 없음" [ref=e97]: 단위
+              - generic [aria-hidden] [ref=e98]: →
+              - generic "에뮬레이터 (Renode · Wokwi) · 결과 없음" [ref=e99]: 에뮬레이터 (Renode · Wokwi)
+              - generic [aria-hidden] [ref=e100]: →
+              - generic "HIL (실제 보드 · 전력 측정) · 결과 없음" [ref=e101]: HIL (실제 보드 · 전력 측정)
+            - paragraph [ref=e102]: 검증 단계별 결과를 적은 기능이 아직 없습니다. 기능 문서 검증 절에 단계 · 결과 · 어디서를 적으면 모입니다
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - generic [ref=e105]:
+                - generic [ref=e106]: 기능 진행
+                - link "진행 현황" [ref=e107] [cursor=pointer]:
+                  - /url: http://localhost:8766/_/progress.html
+              - generic [ref=e108]: 기능 문서가 아직 없습니다. docs-site/기능/ 에 기능마다 한 파일을 만들면 여기에 줄이 생깁니다
+            - generic [ref=e109]:
+              - generic [ref=e110]:
+                - generic [ref=e111]: 공지 · 게시판
+                - link "게시판" [ref=e112] [cursor=pointer]:
+                  - /url: http://localhost:8766/_/board.html
+              - generic [ref=e113]: 올라온 글이 없습니다
+          - generic [ref=e114]:
+            - generic [ref=e115]:
+              - generic [ref=e116]:
+                - generic [ref=e117]: 내 일
+                - link "내 일 전체" [ref=e118] [cursor=pointer]:
+                  - /url: http://localhost:8766/_/me/work.html
+              - generic [ref=e119]: 나 › 프로필에서 내 아이디를 고르면 내 일이 모입니다
+            - generic [ref=e120]:
+              - generic [ref=e121]:
+                - generic [ref=e122]: 열린 이슈
+                - link "처리 보드" [ref=e123] [cursor=pointer]:
+                  - /url: http://localhost:8766/_/issues/board.html
+              - generic [ref=e124]: 열린 이슈가 없습니다
+            - generic [ref=e125]:
+              - generic [ref=e126]:
+                - generic [ref=e127]: 지난 방문 이후
+                - link "전체" [ref=e128] [cursor=pointer]:
+                  - /url: http://localhost:8766/_/recent.html
+              - generic [ref=e129]: 다음 방문부터 그 사이에 바뀐 문서를 모아 보입니다

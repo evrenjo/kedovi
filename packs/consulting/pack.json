@@ -2,7 +2,7 @@
   "name": "consulting",
   "title": "분석·설계 (ISP·ISMP)",
   "summary": "문서 산출물 · requirements 스킬",
-  "description": "구축 전 분석·설계 사업: 결과물은 문서(현행 분석·요구사항 정의·목표 모델·이행계획·RFP), 코드 수정 없음, 근거 표기, requirements 스킬",
+  "description": "구축 전 분석·설계 사업: 결과물은 문서(현행 분석·요구사항 정의·목표 모델·이행계획·RFP), 코드 수정 없음, 근거 표기, requirements 스킬. 문서 사이트: 기능 탭 이름 「요구 영역」, 빈 쪽(현행 분석 · 목표 모델 · 이행계획 · RFP · 산출물 검토)",
   "requires": [
     "core"
   ],

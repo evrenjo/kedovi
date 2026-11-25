@@ -43,8 +43,9 @@ function isTeammate(input) {
 /** SessionStart 등: 평문을 에이전트 컨텍스트로 */
 function context(text) { if (text) process.stdout.write(`${text.trim()}\n`); }
 
-/** Stop: 에이전트를 멈추지 않고 reason 을 새 지시로 이어가게 한다 (두 도구 공통 JSON) */
-function block(reason) { process.stdout.write(JSON.stringify({ decision: 'block', reason })); }
+const NO_REPEAT = ' 앞서 쓴 답은 사용자 화면에 이미 나갔다. 그 답을 다시 쓰지 말고, 위에서 요구한 것만 이어서 짧게 쓴다.';
+/** Stop: 멈추지 않고 reason 을 새 지시로 이어가게 한다 (두 도구 공통 JSON). 되돌아온 에이전트가 앞 답을 통째로 다시 쓰지 않게 끝에 한 줄을 붙인다 (답 자체를 고쳐 쓰게 하는 훅은 { redo: true }) */
+function block(reason, { redo = false } = {}) { process.stdout.write(JSON.stringify({ decision: 'block', reason: redo ? reason : `${reason}${NO_REPEAT}` })); }
 
 /** PreToolUse: 이 도구 호출을 막고 이유를 에이전트에게 (Claude Code 형식) */
 function deny(reason) { process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })); }

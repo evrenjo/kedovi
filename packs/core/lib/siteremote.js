@@ -128,6 +128,7 @@ function issueItem(i, kind) {
     labels: labels.filter((x) => !Object.values(LABEL).includes(x) && !STAGE_LABELS.includes(x.replace(/^단계::/, ''))),
     assignee: who || null, ids: idsIn(`${i.title} ${i.description || i.body || ''}`), milestone: (i.milestone && i.milestone.title) || null,
     created: i.created_at || null, updated: i.updated_at || null, url: i.web_url || i.html_url || null,
+    closed: i.closed_at || null, due: date10(i.due_date), // 대시보드 숫자 (처리 시간 · 기한 넘김)
   };
 }
 

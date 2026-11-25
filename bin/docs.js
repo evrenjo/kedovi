@@ -78,7 +78,7 @@ function warnLines(res) {
 const PACK_MD = path.join(KIT, 'docs', 'packs.md');
 const CAT_MARK = ['<!-- packs:catalog: node bin/docs.js 가 packs/ 로 쓴다. 손으로 고치지 않는다 -->', '<!-- /packs:catalog -->'];
 const CATEGORIES = [
-  ['core', '공통'], ['type', '유형'], ['workflow', '협업 도구'], ['layer', '계층'], ['stack', '스택'], ['lang', '언어'], ['other', '산출물'],
+  ['core', '공통'], ['type', '유형'], ['domain', '분야'], ['workflow', '협업 도구'], ['layer', '계층'], ['stack', '스택'], ['lang', '언어'], ['other', '산출물'],
 ];
 
 function frontmatter(file) {
@@ -103,6 +103,7 @@ function packCatalogMd() {
   const when = (pk, cat) => {
     if (cat === 'core') return '항상';
     if (cat === 'type') { const t = typeOf(pk.name); return `시작 유형이 ${t ? (kit.PROJECT_TYPES || {})[t[0]] || t[0] : pk.name} 일 때`; }
+    if (cat === 'domain') { const d = Object.entries(kit.DOMAIN_RULES || {}).find(([, x]) => x.pack === pk.name); return d ? `분야가 ${(kit.DOMAINS || {})[d[0]] || d[0]} 일 때 (kedovi domain ${d[0]})` : pk.name; }
     if (cat === 'workflow') return `repo 주소가 ${pk.name === 'github' ? 'GitHub' : 'GitLab'} 인 repo 에`;
     if (cat === 'layer') { const ids = stackList.filter((s) => s.layer === pk.meta.layer && !s.parent).map((s) => s.label || s.id); return `repo 스택의 계층이 ${pk.meta.layer} 일 때 (${ids.length}종: ${ids.slice(0, 8).join(', ')}${ids.length > 8 ? ' …' : ''})`; }
     if (cat === 'stack') return `repo 스택이 ${(pk.meta.stacks || []).join(', ')} 일 때 (${pk.meta.layer} 계층 팩과 함께)`;

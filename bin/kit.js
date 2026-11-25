@@ -2,7 +2,7 @@
 /**
  * agent-workspace-kit — 한 벌의 정본(packs/ + workspace.json)에서 Claude Code 와 Codex 설정을 함께 만든다.
  *
- *   node bin/kit.js init <대상폴더> --name <id> --title <제목> --type new|modernization|enhancement|consulting [--approach feature|sprint|full|issue]
+ *   node bin/kit.js init <대상폴더> --name <id> --title <제목> --type new|modernization|enhancement|consulting [--domain web|game|device|iot] [--approach feature|sprint|full|issue]
  *                        [--code <주소,..>] [--docs <주소,..>] [--issues <주소,..>] [--legacy <주소,..>]
  *   node bin/kit.js install         repos/ 에 clone(또는 링크) + git 훅 경로 + sync (clone 직후 1회)
  *   node bin/kit.js detect [--force] 코드 repo 의 스택 감지 → workspace.json repos[].stacks (--force 면 다시)
@@ -103,6 +103,13 @@ const TYPE_RULES = {
   enhancement: { pack: 'enhancement', requires: ['code'], warnsOn: ['legacy'], approach: 'sprint' },
   consulting: { pack: 'consulting', requires: [], warnsOn: ['code'], approach: 'full' },
 };
+// 분야 (workspace.json project.domain, 없으면 web). 고르면 그 분야 규칙 팩이 켜진다 (kedovi domain). 화면 · 문서 쪽 프로필은 packs/core/lib/profile.js
+const DOMAINS = { web: '웹 · 앱', game: '게임', device: '웨어러블 · 장치', iot: 'IoT · 임베디드' };
+const DOMAIN_RULES = { web: { pack: null }, game: { pack: 'domain-game' }, device: { pack: 'domain-device' }, iot: { pack: 'domain-iot' } };
+/** 유형 · 분야 프로필의 빈 쪽 · 탭 이름을 docs-site/ 에 맞춘다 (그 킷의 packs/core/lib/profile.js). 반환 = 알릴 줄 */
+function ensureProfile(root, kitDir, ws) {
+  try { return require(path.join(kitDir, 'packs', 'core', 'lib', 'profile.js')).applyProfile(root, ws); } catch { return []; }
+}
 // 진행 방식 (workspace.json project.approach). 없으면 전체처럼 동작한다 (옛 워크스페이스는 kedovi approach 로 고른다)
 // feature(기능 단위)가 새 워크스페이스의 기본: 설계 기준을 먼저 정하고 기능마다 명세 → 설계 → AI 구현 → 검증 → 배포
 const APPROACHES = {
@@ -284,6 +291,9 @@ function validateProject(ws, errors, warnings, root = null) {
   else if (!PROJECT_TYPES[type]) errors.push(`project.type '${type}': ${Object.keys(PROJECT_TYPES).join(' | ')} 중 하나`);
   const ap = ws.project.approach;
   if (ap !== undefined && !APPROACHES[ap]) errors.push(`project.approach '${ap}': ${Object.keys(APPROACHES).join(' | ')} 중 하나 (kedovi approach)`);
+  const dm = ws.project.domain;
+  if (dm !== undefined && !DOMAINS[dm]) errors.push(`project.domain '${dm}': ${Object.keys(DOMAINS).join(' | ')} 중 하나 (kedovi domain)`);
+  else if (dm && DOMAIN_RULES[dm].pack && !ws.packs.includes(DOMAIN_RULES[dm].pack)) errors.push(`분야가 ${DOMAINS[dm]} 인데 ${DOMAIN_RULES[dm].pack} 팩이 없습니다. kedovi domain ${dm} 을 다시 하거나 kedovi upgrade --add ${DOMAIN_RULES[dm].pack}`);
   for (const r of ws.repos) {
     if (!REPO_KINDS[r.kind]) errors.push(`repos '${r.name}': kind '${r.kind}': ${Object.keys(REPO_KINDS).join(' | ')} 중 하나`);
     if (!r.name || !REPO_SEG.test(r.name)) errors.push(`repos 항목 name 은 영문·숫자·._- 만 ('-' 로 시작 · '.' · '..' 금지): ${JSON.stringify(r.name)}`);
@@ -1028,7 +1038,7 @@ const MEMBER_COMMON = [
 function buildAgentsMd(ws, rules, skills, repoMap = {}, catalog = [], extra = new Map(), languages = [], { member = false } = {}) {
   const p = ws.project;
   const parts = member ? [`# 팀원 지침: ${p.title || p.name || '워크스페이스'}`, ''] : [`<!-- ${GEN_NOTE} -->`, '', `# ${p.title || p.name || '워크스페이스'}`, ''];
-  if (p.type) parts.push(`**프로젝트 유형: ${PROJECT_TYPES[p.type] || p.type}**`, '');
+  if (p.type) parts.push(`**프로젝트 유형: ${PROJECT_TYPES[p.type] || p.type}${DOMAINS[p.domain] && p.domain !== 'web' ? ` · 분야: ${DOMAINS[p.domain]}` : ''}**`, '');
   if (p.onboarded === false && !member) parts.push('**방향 인터뷰 전**: 유형 · 진행 방식은 임시값이다. 팀장의 첫 세션에서 `kickoff` 스킬로 정한다.', '');
   if (p.approach === 'feature') {
     parts.push(`**진행 방식: ${APPROACHES.feature}**`, '',
@@ -2834,6 +2844,9 @@ function initWorkspace(opts) {
   (opts.packs || []).forEach(add);
   if (TYPE_RULES[type].pack) add(TYPE_RULES[type].pack);
   for (const pk of TYPE_RULES[type].defaults || []) if (exists(path.join(kit, 'packs', pk, 'pack.json')) && !(opts.without || []).includes(pk)) add(pk);
+  const domain = opts.domain || 'web';
+  if (!DOMAINS[domain]) die(`분야는 ${Object.keys(DOMAINS).join(' | ')} 중 하나`);
+  if (DOMAIN_RULES[domain].pack) add(DOMAIN_RULES[domain].pack);
 
   fs.mkdirSync(dst, { recursive: true });
   copyTemplate(path.join(kit, 'templates', 'workspace'), dst);
@@ -2848,6 +2861,7 @@ function initWorkspace(opts) {
   ws.project.name = projectName;
   ws.project.title = opts.title || ws.project.name;
   ws.project.type = type;
+  ws.project.domain = domain;
   if (opts.approach && !APPROACHES[opts.approach]) die(`진행 방식은 ${Object.keys(APPROACHES).join(' | ')} 중 하나`);
   ws.project.approach = opts.approach || TYPE_RULES[type].approach;
   if (opts.description) ws.project.description = opts.description;
@@ -2860,6 +2874,7 @@ function initWorkspace(opts) {
   ws.kit = { version: JSON.parse(read(path.join(kit, 'package.json'))).version, initializedAt: new Date().toISOString().slice(0, 10) };
   ws.agents = { ...(ws.agents || {}), mode: 'auto' }; // 새 워크스페이스는 자동 팀 구성 (옛 워크스페이스는 mode 가 없어 고정)
   fs.writeFileSync(wsFile, JSON.stringify(ws, null, 2) + '\n');
+  ensureProfile(dst, kit, ws); // 유형 · 분야의 빈 쪽 · 기능 문서 틀 · 탭 이름
 
   if (!isDir(path.join(dst, '.git'))) {
     try { execFileSync('git', ['init', '-q', dst]); } catch { console.warn('⚠ git init 실패: 직접 해주세요'); }
@@ -2882,10 +2897,10 @@ function initialCommit(dir) {
 
 function cmdInit(args) {
   const target = args._[1];
-  if (!target) die(`사용법: node bin/kit.js init <대상폴더> --type ${Object.keys(PROJECT_TYPES).join('|')} [--approach ${Object.keys(APPROACHES).join('|')}] [--packs ..] [--code ..(주소·폴더·new:<이름>)] [--docs ..] [--legacy ..]  (대화형은 kedovi init)`);
+  if (!target) die(`사용법: node bin/kit.js init <대상폴더> --type ${Object.keys(PROJECT_TYPES).join('|')} [--domain ${Object.keys(DOMAINS).join('|')}] [--approach ${Object.keys(APPROACHES).join('|')}] [--packs ..] [--code ..(주소·폴더·new:<이름>)] [--docs ..] [--legacy ..]  (대화형은 kedovi init)`);
   const dst = path.resolve(target);
   const res = initWorkspace({
-    dir: dst, name: args.name, title: args.title, type: args.type, approach: args.approach,
+    dir: dst, name: args.name, title: args.title, type: args.type, domain: args.domain, approach: args.approach,
     packs: String(args.packs || '').split(',').map((x) => x.trim()).filter(Boolean),
     repos: [...refsFromArg(args.code, 'code', dst), ...refsFromArg(args.docs, 'docs', dst), ...refsFromArg(args.issues, 'issues', dst), ...refsFromArg(args.legacy, 'legacy', dst)],
   });
@@ -2983,6 +2998,9 @@ function cmdUpgrade(root, args) {
     ws.packs.splice(at < 0 ? ws.packs.length : at, 0, n);
   };
   add.forEach(addPack);
+  // 분야 규칙 팩: 분야를 정했는데 팩이 빠졌으면 켠다 (kedovi domain 이 켜는 팩)
+  const dPack = (DOMAIN_RULES[(ws.project || {}).domain] || {}).pack;
+  if (dPack && exists(path.join(kit, 'packs', dPack, 'pack.json'))) addPack(dPack);
   fs.copyFileSync(path.join(kit, 'bin', 'kit.js'), path.join(root, 'bin', 'kit.js'));
   const replaced = [];
   const kitPacks = fs.readdirSync(path.join(kit, 'packs')).filter((n) => exists(path.join(kit, 'packs', n, 'pack.json')));
@@ -3003,6 +3021,7 @@ function cmdUpgrade(root, args) {
   console.log(`✔ upgrade ${from && from !== ws.kit.version ? `${from} → ` : ''}${ws.kit.version}`);
   console.log(`  bin/kit.js · 팩 ${replaced.length}개 갱신 (project 팩은 그대로)`);
   for (const l of ensureDocLayout(root, kit, ws)) console.log(`  ${l}`);
+  for (const l of ensureProfile(root, kit, ws)) console.log(`  ${l}`);
   const planMade = ensurePlan(root);
   if (planMade) console.log(`  로드맵 ${planMade.replace(/^✔ /, '')}`);
   // 방금 교체한 새 kit.js 로 sync 해야 새 생성 규칙이 적용된다 (지금 도는 건 옛 버전)
@@ -3041,4 +3060,4 @@ function main() {
 
 main();
 
-module.exports = { initialCommit, suggestGroups, remoteNamespace, LIMIT_KEYS, LIMIT_DEFAULTS, claudeRoom, claudeModelEnv, hasFamily, gatewayAliasFix, gatewayAliasCheck, gatewayAliasHint, gatewayFetchNotices, scanGuides, fillGuides, guideChanges, GUIDE_MODES, isGuideMode, hintedCatalog, parseRepos, repoLanguages, labelLanguages, ruleRepos, projectRulesPinning, fillLanguages, loadLanguages, claudeKey, window1m, claudeWindow, SECRET_PATTERNS, secretHits, repoRel, repoSafe, ENFORCE_LEVELS, ENFORCE_DEFAULTS, APPROACHES, missingTypePacks, ensurePlan, roleGrades, teamOptions, teamSection, loadCatalogFor, loginPlanValues, detectPlans, vendorRooms, profileRank, profileLabel, profileNotice, countPicks, applyAccess, normalizeAccess, gatewayVendors, gatewayId, startToolOf, migrateTypes, lockState, generate, buildAgentFiles, splitModel, fillLocalRemotes, installRepos, effortOf, profileModels, fillStackPaths, setStackPaths, detectLine, addStackHint, HINT_HELP, auditModels, resolveModels, stacksLabel, stackLabel, loadLayers, LAYER_PACKS, folderState, HOSTS, inferHost, hostOf, detectRepos, loadCatalog, repoPacks, PROJECT_NAME, PROJECT_NAME_RULE, PROJECT_TYPES, TYPE_RULES, REPO_KINDS, REPOS_DIR, LOCAL_CONFIG, initWorkspace, cmdInstall, cmdSync, cmdCheck, loadWorkspace, findRoot, kitRoot, isGitUrl };
+module.exports = { initialCommit, suggestGroups, remoteNamespace, LIMIT_KEYS, LIMIT_DEFAULTS, claudeRoom, claudeModelEnv, hasFamily, gatewayAliasFix, gatewayAliasCheck, gatewayAliasHint, gatewayFetchNotices, scanGuides, fillGuides, guideChanges, GUIDE_MODES, isGuideMode, hintedCatalog, parseRepos, repoLanguages, labelLanguages, ruleRepos, projectRulesPinning, fillLanguages, loadLanguages, claudeKey, window1m, claudeWindow, SECRET_PATTERNS, secretHits, repoRel, repoSafe, ENFORCE_LEVELS, ENFORCE_DEFAULTS, APPROACHES, missingTypePacks, ensurePlan, roleGrades, teamOptions, teamSection, loadCatalogFor, loginPlanValues, detectPlans, vendorRooms, profileRank, profileLabel, profileNotice, countPicks, applyAccess, normalizeAccess, gatewayVendors, gatewayId, startToolOf, migrateTypes, lockState, generate, buildAgentFiles, splitModel, fillLocalRemotes, installRepos, effortOf, profileModels, fillStackPaths, setStackPaths, detectLine, addStackHint, HINT_HELP, auditModels, resolveModels, stacksLabel, stackLabel, loadLayers, LAYER_PACKS, folderState, HOSTS, inferHost, hostOf, detectRepos, loadCatalog, repoPacks, PROJECT_NAME, PROJECT_NAME_RULE, PROJECT_TYPES, TYPE_RULES, DOMAINS, DOMAIN_RULES, ensureProfile, REPO_KINDS, REPOS_DIR, LOCAL_CONFIG, initWorkspace, cmdInstall, cmdSync, cmdCheck, loadWorkspace, findRoot, kitRoot, isGitUrl };

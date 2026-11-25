@@ -67,6 +67,41 @@
       .filter(function (d) { return DS.isNew(d.page, d.updatedAt); }).sort(function (a, b) { return String(b.updatedAt).localeCompare(String(a.updatedAt)); });
   };
 
+  /* ── 프로필 (유형 · 분야) ── */
+  var TYPE_NAME = { "new": "신규 구축", enhancement: "운영 · 유지보수", modernization: "차세대", consulting: "분석 · 설계" };
+  var DOMAIN_NAME = { web: "웹 · 앱", game: "게임", device: "웨어러블 · 장치", iot: "IoT · 임베디드" };
+  var DAY_KEYS = { daysToMilestone: 1, daysToCutover: 1, avgLeadDays: 1 };
+  var METRIC_HREF = {
+    daysToMilestone: "_/milestones.html", daysToCutover: "_/milestones.html", featureProgress: "_/progress.html", parityDone: "_/progress.html", deliverableProgress: "_/progress.html",
+    openIssues: "_/issues.html", openDefects: "_/issues.html", overdue: "_/issues.html", openDiffs: "_/issues.html", avgLeadDays: "_/issues/board.html", releasedThisWeek: "_/issues.html?state=" + enc("닫힘"),
+    dueThisWeek: "_/workitems.html", migrationRehearsal: "_/tests.html", confirmedReqs: "_/trace.html", reviewComments: "_/me/mentions.html"
+  };
+  var METRIC_HINT = {
+    openDefects: "결함 이슈가 모이면 셉니다", avgLeadDays: "닫힌 이슈가 생기면 접수부터 닫힘까지 평균을 냅니다", releasedThisWeek: "운영 반영 기록이 생기면 셉니다", overdue: "처리 기한이 있는 이슈가 생기면 셉니다",
+    daysToCutover: "전환 마일스톤에 날짜를 정하면 남은 날을 셉니다", parityDone: "정합표에 같음 확인이 쌓이면 셉니다", migrationRehearsal: "이관 리허설 기록이 생기면 보입니다", openDiffs: "정합 검증에서 다름이 나오면 셉니다",
+    deliverableProgress: "산출물 문서에 단계를 적으면 셉니다", confirmedReqs: "요구사항에 확정 표시가 생기면 셉니다", pendingDecisions: "대기 중인 결정 문서가 생기면 셉니다", reviewComments: "산출물에 검토 의견이 달리면 셉니다"
+  };
+  var fmtMetric = function (key, v) { return typeof v === "number" && DAY_KEYS[key] ? v + "일" : v; };
+  /* 분야 기본 마일스톤 이름 (원격 · docs-site.json 마일스톤이 없을 때 안내 글에) */
+  var msNames = function (db) { var p = DS.profileOf(db), m = (p && p.milestones) || []; return m.length ? "(" + m.join(" → ") + ")" : ""; };
+  DS.msNames = msNames;
+  /* 검증 단계 줄: 프로필 단계마다 기능들의 결과를 모아 끝남 · 지금 · 남음 (실패가 있으면 실패) */
+  function TierStrip(props) {
+    var db = props.db, p = DS.profileOf(db), tiers = p.tiers || [];
+    var fws = (db.features || []).filter(function (f) { return (f.tiers || []).length; });
+    var ms = p.milestones || [];
+    var dom = p.domain || "";
+    return html`<section class="dcard tier-card"><div class="dh"><span>검증 단계${ms.length > 1 ? " · " + ms[0] + " → " + ms[ms.length - 1] : ""}</span><a class="ilink" href=${U("_/tests.html")}>시나리오</a></div>
+      <div class="track tier-track" aria-label="검증 단계">${tiers.map(function (t, i) {
+        var res = fws.map(function (f) { var x = f.tiers.find(function (y) { return y.tier === t; }); return x ? DS.tierKind(x) : "wait"; });
+        var pass = res.filter(function (k) { return k === "done"; }).length;
+        var k = !fws.length ? "wait" : res.some(function (r) { return r === "bad"; }) ? "bad" : pass === fws.length ? "done" : res.some(function (r) { return r !== "wait"; }) ? "cur" : "wait";
+        return html`${i ? html`<span class="tier-arrow" aria-hidden="true">→</span>` : null}<span key=${t} class=${"step " + k} title=${t + " · " + (fws.length ? "통과 " + pass + " / " + fws.length : "결과 없음")}>${t}${fws.length ? html`<span class="tier-n">${pass} / ${fws.length}</span>` : null}</span>`;
+      })}</div>
+      <p class="muted-s tier-note">${fws.length ? "기능마다 검증 절에 남긴 단계별 결과를 모은 것" + (/^(device|iot)$/.test(dom) ? " (어디서 = 보드 판)" : "") : "검증 단계별 결과를 적은 기능이 아직 없습니다. 기능 문서 검증 절에 단계 · 결과 · 어디서를 적으면 모입니다"}</p>
+    </section>`;
+  }
+
   /* ── 개요 ── */
   V.dashboard = function (props) {
     var db = props.db, me = DS.meId();
@@ -81,17 +116,28 @@
     var noticeRead = DS.my.get("notice", {});
     var unreadN = notices.filter(function (b) { return b.pinned && !noticeRead[b.id]; }).length;
     var team = ((db.team || {}).members || []).length;
-    var stat = function (label, href, v, sub) { return html`<div class="stat"><span class="sl">${label}<${DS.Go} href=${href} /></span><span class="sv">${v}</span><span class="sc">${sub}</span></div>`; };
+    var stat = function (label, href, v, sub, none) { return html`<div class=${"stat" + (none ? " none" : "")}><span class="sl">${label}<${DS.Go} href=${href} /></span><span class="sv">${v}</span><span class="sc">${sub}</span></div>`; };
     var nd = newDocs(db);
+    /* 지금(신규 구축) 네 칸: 빌드 DB 로 화면이 센다 */
+    var own = {
+      daysToMilestone: function (l) { return next ? stat(next.name + "까지", U("_/milestones.html") + "#ms-" + enc(next.name), Math.max(0, Math.ceil((DS.date(next.due) - t0) / dayMs)) + "일", DS.kday(next.due) + (next.progress ? " · 기능 " + next.progress.done + " / " + next.progress.total : ""))
+        : stat(l || "마일스톤", U("_/milestones.html"), ms.length ? "끝남" : "없음", ms.length ? "남은 마일스톤 없음" : "마일스톤" + msNames(db) + "을 정하면 남은 날을 셉니다"); },
+      featureProgress: function (l) { return stat(l || "기능", U("_/progress.html"), done + " / " + fs.length, "배포 " + done + " · 진행 " + (fs.length - done - waitN) + " · 대기 " + waitN); },
+      openIssues: function (l) { return stat(l || "열린 이슈", U("_/issues.html"), issues.length, issues.length ? Object.entries(issues.reduce(function (a, i) { a[i.stage || i.state] = (a[i.stage || i.state] || 0) + 1; return a; }, {})).map(function (x) { return x[0] + " " + x[1]; }).join(" · ") : "열린 이슈 없음"); },
+      dueThisWeek: function (l) { return stat(l || "이번 주 마감 작업", U("_/workitems.html"), week.length, week.length ? week.slice(0, 3).map(function (w) { return (w.id || "") + " " + DS.md(w.due); }).join(" · ") : "7일 안 마감 없음"); }
+    };
+    var prof = DS.profileOf(db), met = db.metrics || {};
+    /* 프로필 네 칸: 이름 = profile.dashboard, 값 = 빌드가 센 metrics. 못 구한 값(null)은 무엇이 생기면 세는지 알린다 */
+    var cells = prof && (prof.dashboard || []).length ? prof.dashboard.slice(0, 4).map(function (d) {
+      var m = met[d.key];
+      if (m && m.value != null && m.value !== "") return stat(d.label, METRIC_HREF[d.key] ? U(METRIC_HREF[d.key]) : null, fmtMetric(d.key, m.value), m.sub || "");
+      if (own[d.key]) return own[d.key](d.label);
+      return stat(d.label, METRIC_HREF[d.key] ? U(METRIC_HREF[d.key]) : null, "아직 없음", METRIC_HINT[d.key] || "빌드가 이 값을 모으면 보입니다", true);
+    }) : [own.daysToMilestone(), own.featureProgress(), own.openIssues(), own.dueThisWeek()];
     return html`<div class="view dash">
       <${Head} title=${((db.project || {}).title || db.title || "프로젝트") + " · 대시보드"} sub=${html`${DS.kday(new Date().toISOString())} 기준${db.builtAt ? " · 빌드 " + DS.mdhm(db.builtAt) : ""}${team ? html` · <a class="ilink" href=${U("_/team.html")}>팀 ${team}명 · AI 구성</a>` : null}`} />
-      <div class="stats">
-        ${next ? stat(next.name + "까지", U("_/milestones.html") + "#ms-" + enc(next.name), Math.max(0, Math.ceil((DS.date(next.due) - t0) / dayMs)) + "일", DS.kday(next.due) + (next.progress ? " · 기능 " + next.progress.done + " / " + next.progress.total : ""))
-          : stat("마일스톤", U("_/milestones.html"), ms.length ? "끝남" : "없음", ms.length ? "남은 마일스톤 없음" : "마일스톤을 정하면 남은 날을 셉니다")}
-        ${stat("기능", U("_/progress.html"), done + " / " + fs.length, "배포 " + done + " · 진행 " + (fs.length - done - waitN) + " · 대기 " + waitN)}
-        ${stat("열린 이슈", U("_/issues.html"), issues.length, issues.length ? Object.entries(issues.reduce(function (a, i) { a[i.stage || i.state] = (a[i.stage || i.state] || 0) + 1; return a; }, {})).map(function (x) { return x[0] + " " + x[1]; }).join(" · ") : "열린 이슈 없음")}
-        ${stat("이번 주 마감 작업", U("_/workitems.html"), week.length, week.length ? week.slice(0, 3).map(function (w) { return (w.id || "") + " " + DS.md(w.due); }).join(" · ") : "7일 안 마감 없음")}
-      </div>
+      <div class="stats">${cells}</div>
+      ${prof && (prof.tiers || []).length ? html`<${TierStrip} db=${db} />` : null}
       <div class="dash-grid">
         <${Card} wide=${true} title="기능 진행" link=${U("_/progress.html")} linkText="진행 현황"><${FeatBoard} db=${db} /><//>
         <${Card} title=${html`공지 · 게시판${unreadN ? html` <span class="unread">안 읽음 ${unreadN}</span>` : null}`} link=${U("_/board.html")} linkText="게시판">
@@ -106,7 +152,7 @@
           ${issues.length ? issues.slice(0, 5).map(function (i) { return html`<div class="dl" key=${i.id}><span class="idc">${i.id}</span><span class="dt">${i.title}</span><${DS.State} k=${/검증/.test(i.stage) ? "done" : /접수/.test(i.stage) ? "wait" : "cur"}>${i.stage || i.state}<//><${DS.Go} href=${i.url} ext=${true} /></div>`; }) : html`<${Empty}>열린 이슈가 없습니다<//>`}
         <//>
         <${Card} title=${html`지난 방문 이후${DS.since ? html` <span class="muted-s">${DS.mdhm(DS.since)}</span>` : null}`} link=${U("_/recent.html")} linkText="전체">
-          ${!DS.since ? html`<${Empty}>다음 방문부터 그 사이에 바뀐 문서를 모아 보입니다<//>` : nd.length ? nd.slice(0, 6).map(function (d) { return html`<div class="dl" key=${d.page}><span class="dt">${d.title}</span><span class="dm">${DS.mdhm(d.updatedAt)}</span><${DS.Go} href=${DS.url(d.page)} /></div>`; }) : html`<${Empty}>새로 바뀐 문서가 없습니다<//>`}
+          ${!DS.since ? html`<${Empty}>다음 방문부터 그 사이에 바뀐 문서를 모아 보입니다<//>` : nd.length ? nd.slice(0, 6).map(function (d) { return html`<div class="dl" key=${d.page}><span class="dt">${d.title}</span><span class="dm">${DS.mdhm(d.updatedAt)}</span><${DS.DiffGo} page=${d.page} /><${DS.Go} href=${DS.url(d.page)} /></div>`; }) : html`<${Empty}>새로 바뀐 문서가 없습니다<//>`}
         <//>
       </div>
     </div>`;
@@ -133,28 +179,29 @@
       <${Head} title="최근 바뀐 문서" sub=${DS.since ? "지난 방문 " + DS.mdhm(DS.since) + " 이후 바뀐 것은 새로 표시" : ""} acts=${newDocs(db).length ? html`<button type="button" class="abtn" onClick=${function () { newDocs(db).forEach(function (d) { DS.markSeen(d.page, d.updatedAt); }); }}>모두 확인함</button>` : null} />
       <h2>바뀐 내용</h2>
       ${(db.changes || []).length ? html`<${Tbl} head=${["때", "문서", "바꾼 이", "무엇", "ID", ""]}>${db.changes.map(function (c, i) {
-        return html`<tr key=${i} class=${DS.isNew(c.page, c.at) ? "chg" : ""}><td>${DS.mdhm(c.at)}</td><td>${DS.titleOf(c.page)}${DS.isNew(c.page, c.at) ? html`<span class="newb">새로</span>` : null}</td><td>${c.by}</td><td>${c.summary}</td><td><${Ids} ids=${c.ids} /></td><td class="go-td"><${DS.Go} href=${DS.url(c.page)} /></td></tr>`;
+        return html`<tr key=${i} class=${DS.isNew(c.page, c.at) ? "chg" : ""}><td>${DS.mdhm(c.at)}</td><td>${DS.titleOf(c.page)}${DS.isNew(c.page, c.at) ? html`<span class="newb">새로</span>` : null}</td><td>${c.by}</td><td>${c.summary}</td><td><${Ids} ids=${c.ids} /></td><td class="go-td"><${DS.DiffGo} page=${c.page} /><${DS.Go} href=${DS.url(c.page)} /></td></tr>`;
       })}<//>` : html`<${Empty}>git 기록이 아직 없습니다<//>`}
       <h2>문서</h2>
       ${docs.length ? html`<${Tbl} head=${["문서", "탭", "바뀐 때", "바꾼 이", ""]}>${docs.map(function (d) {
-        return html`<tr key=${d.page}><td>${d.title}${DS.isNew(d.page, d.updatedAt) ? html`<span class="newb">새로</span>` : null}</td><td>${d.group || ""}</td><td>${DS.mdhm(d.updatedAt)}</td><td>${d.updatedBy || ""}</td><td class="go-td"><${DS.Go} href=${DS.url(d.page)} /></td></tr>`;
+        return html`<tr key=${d.page}><td>${d.title}${DS.isNew(d.page, d.updatedAt) ? html`<span class="newb">새로</span>` : null}</td><td>${d.group || ""}</td><td>${DS.mdhm(d.updatedAt)}</td><td>${d.updatedBy || ""}</td><td class="go-td"><${DS.DiffGo} page=${d.page} /><${DS.Go} href=${DS.url(d.page)} /></td></tr>`;
       })}<//>` : html`<${Empty}>문서가 아직 없습니다<//>`}
     </div>`;
   };
 
   /* 팀 · 설정: 빌드가 허용 목록으로 내보낸 칸만 그린다 */
   V.team = function (props) {
-    var t = props.db.team || {}, ai = t.ai || {}, kit = t.kit || {};
+    var t = props.db.team || {}, ai = t.ai || {}, kit = t.kit || {}, prof = DS.profileOf(props.db);
     var LV = { block: "막음", warn: "알림", off: "끔", on: "켬" };
     var kv = function (rows) { rows = rows.filter(function (r) { return r[1] != null && r[1] !== ""; }); return rows.length ? html`<div class="kv">${rows.map(function (r) { return html`<div key=${r[0]}><span>${r[0]}</span><div>${r[1]}</div></div>`; })}</div>` : null; };
     return html`<div class="view">
       <${Head} title="팀 · 설정" sub="workspace.json 의 팀 · AI 구성 · 프로젝트 설정. 바꾸려면 채팅에서 말하거나 kedovi 명령으로 고치고 커밋합니다" />
+      ${prof ? html`<h2>유형 · 분야</h2>${kv([["유형", TYPE_NAME[prof.type] || prof.type], ["분야", DOMAIN_NAME[prof.domain] || prof.domain], ["진행 방식", prof.approach], ["사람 관문", (prof.gates || []).join(" · ")], ["에이전트 도구 추천", (prof.tools || []).join(" · ")]])}` : null}
       ${(t.members || []).length ? html`<h2>참여 인원</h2><${Tbl} head=${["아이디", "이름", "역할", "담당 repo"]}>${t.members.map(function (m) { return html`<tr key=${m.id}><td><span class="who"><${DS.Avatar} id=${m.id} />${m.id}</span></td><td>${m.name || ""}</td><td>${m.role ? html`<span class="pin">${m.role}</span>` : ""}</td><td>${(m.repos || []).join(" · ") || "전체"}</td></tr>`; })}<//>` : null}
       ${ai.tool || ai.mainModel || ai.teamMode ? html`<h2>AI 구성</h2>${kv([["쓰는 AI", ai.tool], ["메인 모델", ai.mainModel], ["팀 모드", ai.teamMode]])}` : null}
       ${(ai.roles || []).length ? html`<${Tbl} head=${["역할", "모델", "하는 일"]}>${ai.roles.map(function (r) { return html`<tr key=${r.role}><td>${r.role}</td><td><code>${r.model}</code></td><td>${r.desc || ""}</td></tr>`; })}<//>` : null}
       ${(ai.enforce || []).length ? html`<h2>지키는 장치</h2><${Tbl} head=${["장치", "수준"]}>${ai.enforce.map(function (e) { return html`<tr key=${e.name}><td>${e.name}</td><td><${DS.State} k=${e.level === "block" ? "cur" : "wait"}>${LV[e.level] || e.level}<//></td></tr>`; })}<//>` : null}
       ${kit.version || (kit.packs || []).length || (t.repos || []).length ? html`<h2>프로젝트 설정</h2>${kv([["킷 판", kit.version], ["팩", (kit.packs || []).join(" · ")], ["repo", (t.repos || []).map(function (r) { return r.name + (r.kind || r.stack ? " (" + [r.kind === "code" ? "코드" : r.kind === "ref" ? "참고" : r.kind, r.stack].filter(Boolean).join(", ") + ")" : ""); }).join(" · ")]])}` : null}
-      ${!(t.members || []).length && !ai.tool && !kit.version ? html`<${Empty}>팀 · 설정 정보가 아직 없습니다<//>` : null}
+      ${!prof && !(t.members || []).length && !ai.tool && !kit.version ? html`<${Empty}>팀 · 설정 정보가 아직 없습니다<//>` : null}
     </div>`;
   };
 
@@ -229,15 +276,42 @@
     (db.features || []).forEach(function (f) { (f.api || []).forEach(function (a) { rows.push({ id: a, f: f }); }); });
     return rows.length ? html`<${Tbl} head=${["ID", "설명", "기능"]}>${rows.map(function (r) { return html`<tr key=${r.id}><td><${DS.IdChip} id=${r.id} /></td><td>${idTitle(db, r.id)}</td><td><${Feat} f=${r.f} /></td></tr>`; })}<//>` : html`<${Empty}>기능 문서의 설계 절에 API ID 를 쓰거나 코드 repo 에 openapi.json 을 두면 여기에 보입니다<//>`;
   }
+  /* AsyncAPI: 서버 없이 빌드가 풀어 둔 channels 를 표로 (채널 · 동작 · 메시지 · 필드) */
+  var ACT = { send: "보냄", publish: "보냄", receive: "받음", subscribe: "받음" };
+  function AsyncTable(props) {
+    var rows = [];
+    (props.spec.channels || []).forEach(function (c) {
+      var ms = (c.messages || []).length ? c.messages : [{ name: "", fields: [] }];
+      ms.forEach(function (m, i) { rows.push({ c: c, m: m, first: i === 0, n: ms.length }); });
+    });
+    return html`<${Tbl} head=${["채널", "동작", "메시지", "필드"]}>${rows.map(function (r, i) {
+      return html`<tr key=${i}>${r.first ? html`<td rowspan=${r.n}><code>${r.c.name}</code></td><td rowspan=${r.n}>${ACT[r.c.action] || r.c.action || ""}</td>` : null}<td>${r.m.name ? html`<code>${r.m.name}</code>` : html`<span class="muted-s">메시지 없음</span>`}</td><td>${(r.m.fields || []).length ? html`<span class="ifields">${r.m.fields.map(function (f) { return html`<code key=${f}>${f}</code>`; })}</span>` : ""}</td></tr>`;
+    })}<//>`;
+  }
+  var kindName = function (a) { return a.kind === "asyncapi" ? "AsyncAPI" : "OpenAPI"; };
+  /* 명세 화면: interfaces(OpenAPI · AsyncAPI) 가 있으면 「인터페이스 명세」, 없으면 지금처럼 apis(OpenAPI) 로 「API 명세」. 주소는 그대로 _/api.html */
   V.api = function (props) {
-    var db = props.db, list = db.apis || [];
-    var q = DS.param("repo"), cur = list.find(function (a) { return a.repo === q; }) || list[0];
+    var db = props.db, ifs = db.interfaces || [], isIf = ifs.length > 0;
+    var list = isIf ? ifs : (db.apis || []).map(function (a) { return Object.assign({ kind: "openapi" }, a); });
+    var q = DS.param("repo"), qk = DS.param("kind");
+    var cur = list.find(function (a) { return a.repo === q && (!qk || a.kind === qk); }) || list.find(function (a) { return a.repo === q; }) || list[0];
+    var title = isIf ? "인터페이스 명세" : "API 명세";
+    var many = function (a) { return list.filter(function (x) { return x.repo === a.repo; }).length > 1; };
+    var chips = list.length > 1 ? list.map(function (a, i) { return html`<a key=${i} class=${"vchip" + (a === cur ? " on" : "")} href=${U("_/api.html", "repo=" + enc(a.repo) + (many(a) ? "&kind=" + enc(a.kind) : ""))}>${a.repo}${isIf ? " · " + kindName(a) : ""}</a>`; }) : null;
+    if (cur && cur.kind === "asyncapi") {
+      var yaml = !(cur.channels || []).length;
+      return html`<div class="view">
+        <${Head} title=${title} sub=${(cur.title || cur.repo) + " · " + cur.repo + " · AsyncAPI"} acts=${chips} />
+        ${yaml ? html`<${Empty}>이 AsyncAPI 명세는 YAML 이라 표로 풀지 않았습니다. <a class="ilink" href=${DS.url(cur.file)} target="_blank" rel="noopener">명세 파일</a>을 열어 봅니다<//>`
+          : html`<${AsyncTable} spec=${cur} /><${Note}>채널 · 메시지 표는 빌드가 명세 JSON 을 풀어 그린 것입니다. 원본은 <a class="ilink" href=${DS.url(cur.file)} target="_blank" rel="noopener">명세 파일</a><//>`}
+      </div>`;
+    }
     var dark = document.documentElement.dataset.theme === "dark";
     var useSpec = cur && !DS.file;
     var doc = useSpec ? '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{margin:0}</style></head><body><div id="app"></div><script src="' + SCALAR + '"></script><script>Scalar.createApiReference("#app",{url:' + JSON.stringify(DS.url(cur.file)) + ',darkMode:' + dark + ',hideClientButton:false,withDefaultFonts:false})</script></body></html>' : "";
     return html`<div class="view full">
-      <${Head} title="API 명세" sub=${cur ? cur.title + " · " + cur.repo : "기능 문서의 API 표"} acts=${list.length > 1 ? list.map(function (a) { return html`<a key=${a.repo} class=${"vchip" + (a === cur ? " on" : "")} href=${U("_/api.html", "repo=" + enc(a.repo))}>${a.repo}</a>`; }) : null} />
-      ${useSpec ? html`<div class="vframe api"><iframe key=${cur.repo + dark} srcdoc=${doc} title="API 명세" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe></div><${Note}>Scalar ${"1.40.0"} 로 그립니다. 인터넷이 막힌 곳이면 <a class="ilink" href=${DS.url(cur.file)}>명세 파일</a>을 받아 봅니다<//>`
+      <${Head} title=${title} sub=${cur ? cur.title + " · " + cur.repo + (isIf ? " · OpenAPI" : "") : "기능 문서의 API 표"} acts=${chips} />
+      ${useSpec ? html`<div class="vframe api"><iframe key=${cur.repo + dark} srcdoc=${doc} title=${title} sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe></div><${Note}>Scalar ${"1.40.0"} 로 그립니다. 인터넷이 막힌 곳이면 <a class="ilink" href=${DS.url(cur.file)}>명세 파일</a>을 받아 봅니다<//>`
         : html`${cur && DS.file ? html`<${Note}>이 PC 파일로 열면 명세 화면을 띄우지 않습니다. kedovi docs serve 로 여세요<//>` : null}<${ApiTable} db=${db} />`}
     </div>`;
   };
@@ -248,7 +322,7 @@
       ${fs.length ? fs.map(function (f) { return html`<section key=${f.page}><h2><${Feat} f=${f} /></h2><${Tbl} head=${["ID", "기능"]}>${f.fn.map(function (x) { return html`<tr key=${x.id}><td><${DS.IdChip} id=${x.id} /></td><td>${x.text}</td></tr>`; })}<//></section>`; }) : html`<${Empty}>기능 ID(FN-)를 쓴 기능 문서가 아직 없습니다<//>`}</div>`;
   };
   V["all-api"] = function (props) {
-    return html`<div class="view"><${Head} title="API 전체" sub="기능 문서의 설계 절에 쓴 API ID" /><${ApiTable} db=${props.db} />${(props.db.apis || []).length ? html`<${Note}>명세 화면은 <a class="ilink" href=${U("_/api.html")}>API</a> 에서 봅니다<//>` : null}</div>`;
+    return html`<div class="view"><${Head} title="API 전체" sub="기능 문서의 설계 절에 쓴 API ID" /><${ApiTable} db=${props.db} />${(props.db.apis || []).length || (props.db.interfaces || []).length ? html`<${Note}>명세 화면은 <a class="ilink" href=${U("_/api.html")}>${(props.db.interfaces || []).length ? "인터페이스 명세" : "API"}</a> 에서 봅니다<//>` : null}</div>`;
   };
   V["all-screen"] = function (props) {
     var db = props.db, rows = [];
@@ -298,7 +372,7 @@
           <div class="ms-h"><b>${m.name}</b><span class="muted-s">${m.start ? DS.md(m.start) + " ~ " : ""}${m.due ? DS.md(m.due) : "날짜 없음"} · 기능 ${p.done} / ${p.total}</span><span class="pbar"><i style=${{ width: (p.total ? Math.round(p.done * 100 / p.total) : 0) + "%" }}></i></span>${m.url ? html`<${DS.Go} href=${m.url} ext=${true} label="원격에서 보기" />` : null}</div>
           ${fs.length ? fs.map(function (f) { return html`<div class="dl" key=${f.page}><span class="num-s">${f.no}</span><span class="dt">${f.name || f.title}</span><${DS.State} k=${stateKind(db, f)}>${stateLabel(db, f)}<//><${DS.Go} href=${DS.url(f.page)} /></div>`; }) : html`<${Empty}>이 마일스톤에 든 기능이 없습니다<//>`}
         </section>`;
-      }) : html`<${Empty}>마일스톤이 아직 없습니다. 기능 문서 머리 줄에 마일스톤을 적거나 원격(GitLab · GitHub) 마일스톤을 쓰면 여기에 모입니다<//>`}</div>`;
+      }) : html`<${Empty}>마일스톤${msNames(db)}이 아직 없습니다. 기능 문서 머리 줄에 마일스톤을 적거나 원격(GitLab · GitHub) 마일스톤을 쓰면 여기에 모입니다<//>`}</div>`;
   };
   V.workitems = function (props) {
     var db = props.db, ws = db.workItems || [], rn = DS.remoteName(db);
@@ -306,6 +380,15 @@
       ${ws.length ? html`<${Tbl} head=${["#", "작업", "기능", "마일스톤", "담당", "시작", "마감", "상태", ""]}>${ws.map(function (w, i) {
         return html`<tr key=${w.id || i}><td><span class="idc">${w.id}</span></td><td>${w.title}</td><td><${Feat} f=${featByNo(db, w.feature)} /></td><td>${w.milestone || ""}</td><td>${w.assignee || ""}</td><td>${DS.md(w.start)}</td><td>${DS.md(w.due)}</td><td><${DS.State} k=${isOpen(w.state) ? "cur" : "done"}>${w.state}<//></td><td class="go-td"><${DS.Go} href=${w.url} ext=${true} /></td></tr>`;
       })}<//>` : html`<${Empty}>작업 항목이 아직 없습니다. 원격을 붙이면(kedovi remote add) GitLab 작업 항목 · GitHub 이슈를 가져옵니다<//>`}</div>`;
+  };
+
+  /* 백로그: handoffs/PLAN.md 의 「백로그」(이슈형은 「개선 후보」) 절. 정본은 PLAN.md, 여기서는 읽기만 */
+  V.backlog = function (props) {
+    var db = props.db, b = db.backlog || null, items = (b && b.items) || [], name = (b && b.label) || "백로그";
+    return html`<div class="view"><${Head} title=${name} sub=${items.length ? "로드맵(handoffs/PLAN.md)의 「" + name + "」 절 · " + items.length + "개" : ""} />
+      ${items.length ? html`<${Tbl} head=${["#", "항목", "추가한 날"]}>${items.map(function (x, i) {
+        return html`<tr key=${i}><td class="num">${i + 1}</td><td>${x.text}</td><td>${x.added ? DS.md(x.added) : ""}</td></tr>`;
+      })}<//>` : html`<${Empty}>백로그 없음. 로드맵(handoffs/PLAN.md)의 「${name}」 절에 한 줄씩 적으면 여기에 보입니다<//>`}</div>`;
   };
 
   /* 간트: frappe-gantt (assets/vendor/, 이 화면에서만 읽는다). 줄 = 기능(작업 항목 날짜, 없으면 마일스톤 기간), 마일스톤 = 하루짜리 표시 막대 */

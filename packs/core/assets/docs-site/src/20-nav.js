@@ -24,7 +24,17 @@
     var g = (NAV.groups || []).find(function (x) { return has(x.items, page); });
     return g ? g.group : null;
   };
-  DS.tabs = function () { return (NAV.groups || []).map(function (g) { return { t: g.group, p: firstLeaf(g.items) }; }).filter(function (x) { return x.p; }); };
+  DS.tabs = function () { return (NAV.groups || []).map(function (g) { return { t: g.group, l: DS.tabLabel(g.group), p: firstLeaf(g.items) }; }).filter(function (x) { return x.p; }); };
+  /* 탭 표시 이름: docs-site.json 묶음의 label, 없으면 빌드 DB 프로필(profile.labels), 그것도 없으면 묶음 이름. 경로 · 판단은 늘 묶음 이름으로 */
+  DS.tabLabel = function (group) {
+    var g = (NAV.groups || []).find(function (x) { return x.group === group; });
+    var pl = DS.db && DS.db.profile && DS.db.profile.labels;
+    return (g && g.label) || (pl && pl[group]) || group;
+  };
+  /* 이 유형의 중심 탭 (빌드 DB profile.mainTab) */
+  DS.mainTab = function () { return (DS.db && DS.db.profile && DS.db.profile.mainTab) || null; };
+  /* 메뉴 글자 바꾸기: 인터페이스 명세가 있으면 API 보기 화면 이름을 「인터페이스 명세」 로 (주소는 그대로) */
+  DS.navTitle = function (x, db) { return x.v === "api" && db && (db.interfaces || []).length ? "인터페이스 명세" : x.t; };
 
   /* 이 쪽이 든 폴더 키들 */
   function pathTo(items, page) {
@@ -50,10 +60,10 @@
 
   function Items(props) {
     return props.items.filter(function (x) { return !x.hide; }).map(function (x) {
-      if (x.sec) return html`<div class="nav-sec-wrap" key=${x.k}><div class="nav-sec">${x.sec}</div><${Items} items=${x.items} isOpen=${props.isOpen} toggle=${props.toggle} cur=${props.cur} isNew=${props.isNew} /></div>`;
-      if (x.items) return html`<details class="nav-dir" key=${x.k} open=${props.isOpen(x.k)} onToggle=${props.toggle(x.k)}><summary><${Chev} />${x.dir}</summary><${Items} items=${x.items} isOpen=${props.isOpen} toggle=${props.toggle} cur=${props.cur} isNew=${props.isNew} /></details>`;
+      if (x.sec) return html`<div class="nav-sec-wrap" key=${x.k}><div class="nav-sec">${x.sec}</div><${Items} items=${x.items} isOpen=${props.isOpen} toggle=${props.toggle} cur=${props.cur} isNew=${props.isNew} db=${props.db} /></div>`;
+      if (x.items) return html`<details class="nav-dir" key=${x.k} open=${props.isOpen(x.k)} onToggle=${props.toggle(x.k)}><summary><${Chev} />${x.dir}</summary><${Items} items=${x.items} isOpen=${props.isOpen} toggle=${props.toggle} cur=${props.cur} isNew=${props.isNew} db=${props.db} /></details>`;
       var on = x.p === props.cur;
-      return html`<a key=${x.p} class=${"nav-link" + (on ? " on" : "")} href=${DS.url(x.p)} aria-current=${on ? "page" : undefined}><span class="nav-t">${x.t}</span>${props.isNew(x.p) ? html`<${NewB} />` : null}</a>`;
+      return html`<a key=${x.p} class=${"nav-link" + (on ? " on" : "")} href=${DS.url(x.p)} aria-current=${on ? "page" : undefined}><span class="nav-t">${DS.navTitle(x, props.db)}</span>${props.isNew(x.p) ? html`<${NewB} />` : null}</a>`;
     });
   }
 
@@ -66,7 +76,7 @@
     var other = (props.items || []).filter(function (x) { return !x.items && !feats.some(function (f) { return f.page === x.p; }); });
     return html`${other.length ? html`<div class="nav-sec-wrap"><${Items} items=${other} isOpen=${function () { return true; }} toggle=${function () { return function () {}; }} cur=${cur} isNew=${props.isNew} /></div>` : null}
       ${order.filter(function (m) { return feats.some(function (f) { return (f.milestone || "") === m; }); }).map(function (m) {
-        return html`<div class="nav-sec-wrap" key=${m}><div class="nav-sec nav-ms"><span>${m || "마일스톤 없음"}</span>${m ? html`<${DS.Go} href=${DS.url("_/milestones.html") + "#ms-" + encodeURIComponent(m)} label="마일스톤 열기" />` : null}</div>
+        return html`<div class="nav-sec-wrap" key=${m}><div class="nav-sec nav-ms"><span>${m || "마일스톤 정하지 않음"}</span>${m ? html`<${DS.Go} href=${DS.url("_/milestones.html") + "#ms-" + encodeURIComponent(m)} label="마일스톤 열기" />` : null}</div>
           ${feats.filter(function (f) { return (f.milestone || "") === m; }).map(function (f) {
             var on = f.page === cur, st = DS.featDone(db, f) ? "done" : DS.stageIdx(db, f) <= 0 ? "wait" : "cur";
             return html`<a key=${f.page} class=${"nav-link feat" + (on ? " on" : "")} href=${DS.url(f.page)} aria-current=${on ? "page" : undefined}><span class="num">${f.no}</span><span class="nav-t">${f.name || f.title}</span>${props.isNew(f.page) ? html`<${NewB} />` : null}<span class=${"dot " + st} title=${f.stage || "단계 없음"}></span></a>
@@ -109,18 +119,22 @@
     var feats = db && tab === "기능" && (db.features || []).length;
     var secs = (props.toc || []).filter(function (x) { return x.lvl === 2; });
     return html`<nav class="side" id="side-nav" ref=${ref} onClick=${function (e) { if (e.target.closest && e.target.closest("a")) props.onPick(); }}>
-      ${props.narrow ? html`<div class="nav-tabs">${DS.tabs().map(function (t) { return html`<a key=${t.t} class=${"nav-tab" + (t.t === tab ? " on" : "")} href=${DS.url(t.p)}>${t.t}</a>`; })}</div>` : null}
-      ${dirs.length ? html`<${window.SideHead} label=${g.group} anyOpen=${dirs.some(function (k) { return isOpen(k) && pathTo(g.items, cur).indexOf(k) < 0; })} onToggle=${all} />` : html`<div class="side-head"><span class="side-head-title">${g.group}</span></div>`}
+      ${props.narrow ? html`<div class="nav-tabs">${DS.tabs().map(function (t) { return html`<a key=${t.t} class=${"nav-tab" + (t.t === tab ? " on" : "")} href=${DS.url(t.p)}>${t.l}${t.t === DS.mainTab() ? html`<${MainDot} />` : null}</a>`; })}</div>` : null}
+      ${dirs.length ? html`<${window.SideHead} label=${tab === "나" ? g.group : DS.tabLabel(g.group)} anyOpen=${dirs.some(function (k) { return isOpen(k) && pathTo(g.items, cur).indexOf(k) < 0; })} onToggle=${all} />` : html`<div class="side-head"><span class="side-head-title">${tab === "나" ? g.group : DS.tabLabel(g.group)}</span></div>`}
       ${(g.acts || []).length ? html`<div class="nav-acts">${g.acts.map(function (a) { return html`<a class="nav-act" key=${a.label} href=${DS.url(a.p) + (a.h ? "#" + a.h : "")} title=${a.label} aria-label=${a.label}><span>${a.label}</span><${DS.Icon} paths=${DS.ICON.go} size=${14} /></a>`; })}</div>` : null}
-      ${feats ? html`<${Features} db=${db} cur=${cur} items=${g.items} isNew=${isNew} secs=${secs} />` : html`<${Items} items=${g.items} isOpen=${isOpen} toggle=${toggle} cur=${cur} isNew=${isNew} />`}
+      ${feats ? html`<${Features} db=${db} cur=${cur} items=${g.items} isNew=${isNew} secs=${secs} />` : html`<${Items} items=${g.items} isOpen=${isOpen} toggle=${toggle} cur=${cur} isNew=${isNew} db=${db} />`}
     </nav>`;
   };
 
-  /* 상단 탭 (선택 = 밑줄) */
+  /* 중심 탭 표시: 이 유형에서 가장 많이 여는 탭 옆 작은 점 */
+  var MainDot = function () { return html`<span class="main-dot" title="이 유형의 중심 메뉴" aria-label="중심 메뉴"></span>`; };
+  /* 상단 탭 (선택 = 밑줄). 글자 = 표시 이름(label), 중심 탭에 점 */
   DS.Tabs = function Tabs(props) {
+    DS.useDb();
+    var main = DS.mainTab();
     return html`<nav class="tabs" aria-label="상단 메뉴">${DS.tabs().map(function (t) {
       var on = t.t === props.tab;
-      return html`<a key=${t.t} class=${"tab" + (on ? " on" : "")} href=${DS.url(t.p)} aria-current=${on ? "true" : undefined}>${t.t}</a>`;
+      return html`<a key=${t.t} class=${"tab" + (on ? " on" : "")} href=${DS.url(t.p)} aria-current=${on ? "true" : undefined} data-group=${t.t}>${t.l}${t.t === main ? html`<${MainDot} />` : null}</a>`;
     })}</nav>`;
   };
 

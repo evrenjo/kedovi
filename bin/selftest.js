@@ -1437,6 +1437,23 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     `방향 · 얻는 것 · 설치 명령 ${dirFirst} · 기능 추천 중복 없음 ${noDup} · 같은 세션 조용 ${once} · 직접 말하면 다시(권유는 안 함) ${again} · 상관없는 말 조용 ${off} · 깔려 있으면 그 스킬 ${useSkill} · 설정 연결 ${wired}`);
 }
 
+// 로드맵 백로그 → 사이트 DB (handoffs/PLAN.md 「백로그」 · 이슈형 「개선 후보」, 추가한 날 = 줄의 날짜 또는 git 이 넣은 날)
+{
+  const dir = path.join(tmp, 'backlog-ws');
+  fs.mkdirSync(path.join(dir, 'handoffs'), { recursive: true });
+  const g = (...a) => spawnSync('git', ['-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { encoding: 'utf8' });
+  g('init', '-q');
+  const plan = (lines) => fs.writeFileSync(path.join(dir, 'handoffs', 'PLAN.md'), ['# 로드맵', '', '| # | 단계 | 상태 | 생긴 것 | 다음 |', '|---|---|---|---|---|', '| 1 | 설계 기준 | ▶ | | |', '', '## 백로그', '', ...lines, ''].join('\n'));
+  plan([]);
+  const SD = require(path.join(KIT, 'packs', 'core', 'lib', 'sitedb.js'));
+  const empty = SD.planBacklog(dir);
+  plan(['- 엑셀로 주문 내보내기', '- 2026-11-20 · 정산서 메일 발송']);
+  g('add', '-A'); g('commit', '-qm', 'plan');
+  const b = SD.planBacklog(dir);
+  const ok = !!empty && empty.items.length === 0 && b.label === '백로그' && b.items.length === 2 && /^\d{4}-\d{2}-\d{2}$/.test(b.items[0].added || '') && b.items[1].added === '2026-11-20' && SD.planBacklog(path.join(tmp, 'no-such')) === null;
+  record('로드맵 백로그 → 사이트 DB (일정 › 백로그)', ok, `빈 백로그 ${!!empty && empty.items.length === 0} · 두 줄 ${b && b.items.length} · git 날짜 ${b && b.items[0].added} · 적은 날짜 ${b && b.items[1].added}`);
+}
+
 // 화면 없이 설정 바꾸기 (AI 가 대신 실행) — models profile · set(위임 포함) · agent --codex
 {
   const dir = path.join(tmp, 'noui-ws');
@@ -2030,6 +2047,13 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const fu = rows()[rows().length - 1];
     const follow = fu.status === '접수' && /릴리스 얼마나 했어\? → 그럼 고쳐줘/.test(fu.text);
     req('set', String(fu.no), '--status', '완료');
+    // 업무 요청이 없던 차례(알림)에는 열린 업무가 있어도 표를 요구하지 않는다. 업무 차례에 막을 때는 앞 답을 되풀이하지 말라고 붙인다
+    rl('UserPromptSubmit', 'req-6', { prompt: '주문 화면 필터도 고쳐 줘' });
+    const workBlock = rl('Stop', 'req-6', { last_assistant_message: '고치겠습니다.' });
+    rl('UserPromptSubmit', 'req-6', { prompt: '<task-notification>\n<task-id>b9</task-id>' });
+    const quietTurn = !rl('Stop', 'req-6', { last_assistant_message: '알림 확인.' }).trim();
+    const noRepeat = /"decision":"block"/.test(workBlock) && /다시 쓰지 말고/.test(workBlock) && quietTurn;
+    req('set', String(rows().filter((r) => /필터도 고쳐/.test(r.text)).pop().no), '--status', '완료');
     // 수준: off 면 아무것도 적지 않는다
     spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'team-mode', 'enforce', 'req', 'off', '--team'], { cwd: dir, encoding: 'utf8' });
     const before = rows().length;
@@ -2037,8 +2061,8 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'team-mode', 'enforce', 'req', 'block', '--team'], { cwd: dir, encoding: 'utf8' });
     const st = JSON.parse(fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8')).hooks || {};
     const wiredReq = ['UserPromptSubmit', 'Stop'].every((ev) => JSON.stringify(st[ev] || []).includes('request-ledger'));
-    record('요청 장부 (요청마다 기록 · 답변 끝 표 검사 · kedovi requests · 알림 제외 · 물음)', recorded && ackQuiet && attached && short && secret && subQuiet && notTopic && set && tableOk && blocked && withTable && loopSafe && cli && noneQuiet && midTurn && sysQuiet && asked && answered && follow && off && wiredReq,
-      `기록 ${recorded} · 맞장구 제외 ${ackQuiet} · 짧은 승인은 직전 요청에 ${attached} · 두 번째부터 한 줄 ${short} · 비밀값 가림 ${!!secret} · 서브에이전트 조용 ${subQuiet} · 진행 중 작업으로 안 봄 ${notTopic} · set ${set} · 표 ${tableOk} · 표 없으면 막음 ${blocked} · 표 있으면 통과 ${withTable} · 루프 방지 ${loopSafe} · kedovi requests ${cli} · 열린 요청 없으면 조용 ${noneQuiet} · 끼어 든 메시지 ${midTurn} · 알림 · 에이전트 메시지 · 예약 제외 ${sysQuiet} · 질문은 물음 · 표 밖 ${asked} · 답하면 닫힘 ${answered} · 질문 뒤 지시는 이어서 업무 ${follow} · off ${off} · 훅 연결 ${wiredReq}`);
+    record('요청 장부 (요청마다 기록 · 답변 끝 표 검사 · kedovi requests · 알림 제외 · 물음)', recorded && ackQuiet && attached && short && secret && subQuiet && notTopic && set && tableOk && blocked && withTable && loopSafe && cli && noneQuiet && midTurn && sysQuiet && asked && answered && follow && noRepeat && off && wiredReq,
+      `기록 ${recorded} · 맞장구 제외 ${ackQuiet} · 짧은 승인은 직전 요청에 ${attached} · 두 번째부터 한 줄 ${short} · 비밀값 가림 ${!!secret} · 서브에이전트 조용 ${subQuiet} · 진행 중 작업으로 안 봄 ${notTopic} · set ${set} · 표 ${tableOk} · 표 없으면 막음 ${blocked} · 표 있으면 통과 ${withTable} · 루프 방지 ${loopSafe} · kedovi requests ${cli} · 열린 요청 없으면 조용 ${noneQuiet} · 끼어 든 메시지 ${midTurn} · 알림 · 에이전트 메시지 · 예약 제외 ${sysQuiet} · 질문은 물음 · 표 밖 ${asked} · 답하면 닫힘 ${answered} · 질문 뒤 지시는 이어서 업무 ${follow} · 업무 차례만 표 요구 · 되풀이 금지 ${noRepeat} · off ${off} · 훅 연결 ${wiredReq}`);
   }
   // 답변 첫 줄 시각 (UserPromptSubmit): 기본 켜짐 · 팀 값 · 이 PC 값이 먼저 · kedovi timestamp · Claude 에만
   {
@@ -2929,7 +2953,25 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   const localOk = db.issues.source === 'local' && db.issues.items[0].id === 'ISSUE-001' && db.issues.items[0].assignee === 'kim' && db.board[0].pinned === true && db.board[0].author === 'hong'
     && (db.comments['기능/003-주문관리.html'] || [])[0].quote === '취소' && db.remote.kind === null && !fs.existsSync(path.join(out, '자료실', '게시판'));
   got.push(`팀 허용 목록 ${teamOk}`, `자료실 파일 ${libOk}`, `API 명세 ${apiOk}`, `로컬 이슈 · 게시판 · 의견 ${localOk}`);
-  // check: 커밋만 바뀌면(때 · 사람) 어긋남이 아니다
+  // 바뀐 점 보기: 문서별 지난 판 (assets/history/, site-db 에는 쪽 → 파일만). 커밋 둘 · 바탕은 빈 글(처음 만든 커밋)
+  const SH = require(path.join(KIT, 'packs', 'core', 'lib', 'sitehist.js'));
+  const hf = (db.history || {})['기능/003-주문관리.html'];
+  let hj = null;
+  try { hj = JSON.parse(fs.readFileSync(path.join(out, hf), 'utf8')); } catch { /* 없음 */ }
+  const histOk = hf === SH.fileOf('기능/003-주문관리.md') && hj && hj.commits.length === 2 && hj.commits[0].summary === 'docs: 주문 취소 사유 필수' && hj.commits[0].by === 'kim'
+    && /사유 필수/.test(hj.texts[hj.commits[0].t]) && !/사유 필수/.test(hj.texts[hj.commits[1].t]) && hj.texts[hj.base] === '' && !JSON.stringify(require(path.join(KIT, 'packs', 'core', 'lib', 'sitedb.js')).stable(db)).includes('assets/history');
+  // 상한: 문서 하나 상한을 넘으면 오래된 커밋부터 빼고 · 전체 상한을 넘는 문서는 넣지 않는다 · history false 면 끔
+  const docs3 = [{ md: '기능/003-주문관리.md', page: '기능/003-주문관리.html', dir: path.join(ws, 'docs-site'), rel: '기능/003-주문관리.md' }, { md: '개요.md', page: '개요.html', dir: path.join(ws, 'docs-site'), rel: '개요.md' }];
+  const full = SH.collect(docs3).pages[SH.fileOf('기능/003-주문관리.md')] || '';
+  const c1 = SH.collect(docs3, { cap: { file: Buffer.byteLength(full) - 20 } });
+  const t1 = c1.pages[SH.fileOf('기능/003-주문관리.md')];
+  const c2 = SH.collect(docs3, { cap: { total: 600 } });
+  const capOk = t1 && JSON.parse(t1).commits.length === 1 && JSON.parse(t1).base != null && c2.skipped >= 1 && Object.values(c2.pages).every((x) => Buffer.byteLength(x) <= 600)
+    && !Object.keys(SH.collect(docs3, { config: { history: false } }).pages).length && SH.collect(docs3, { config: { history: { commits: 1 } } }).pages[SH.fileOf('기능/003-주문관리.md')].includes('"base":1');
+  got.push(`지난 판 ${histOk}`, `지난 판 상한 ${capOk}`);
+  // check: 커밋만 바뀌면(때 · 사람) 어긋남이 아니다 (지난 판도 다시 읽지 않는다)
+  fs.appendFileSync(path.join(ws, 'docs-site', '기능', '003-주문관리.md'), '\n> 참고: 취소 사유 목록은 DEC-005\n'); commit('docs: 취소 사유 목록');
+  ds(['build']);
   W('docs-site/자료실/메모.txt', 'x'); commit('docs: 메모');
   fs.rmSync(path.join(ws, 'docs-site', '자료실', '메모.txt')); commit('docs: 메모 지움');
   const checkOk = ds(['check']).status === 0;
@@ -3027,7 +3069,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
       && gd.board.some((x) => x.id === 'D3' && x.pinned) && gd.remote.kind === 'github';
     g('remote', 'remove', 'origin');
     got.push(`GitHub 읽기 ${githubOk}`);
-    record('문서 사이트 DB 판 2 · 원격 읽기 · 로컬 서버 쓰기 (fixture, 네트워크 없음)', featOk && relOk && idsOk && docsOk && chOk && msOk && teamOk && libOk && apiOk && localOk && checkOk && remoteOk && recheck && remoteWrite && localWrite && guarded && rebuilt && githubOk, got.join(' · '));
+    record('문서 사이트 DB 판 2 · 원격 읽기 · 로컬 서버 쓰기 (fixture, 네트워크 없음)', featOk && relOk && idsOk && docsOk && chOk && msOk && teamOk && libOk && apiOk && localOk && checkOk && remoteOk && recheck && remoteWrite && localWrite && guarded && rebuilt && githubOk && histOk && capOk, got.join(' · '));
   }
   // 기능 문서 갱신 알림 (막지 않음): 워크스페이스 커밋의 단계 변경 · 코드 repo 커밋의 기능 ID · 머지 명령, 끄기
   {
@@ -3073,6 +3115,134 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const kept = JSON.parse(fs.readFileSync(cfg, 'utf8')).groups.length === 8;
     record('문서 사이트 메뉴 뼈대 upgrade (손대지 않은 옛 뼈대만 7개 탭으로)', moved && kept, `옛 뼈대 바꿈 · source 옮김 ${moved} · 고친 메뉴 그대로 ${kept}`);
   }
+}
+
+// 유형 · 분야 프로필: kedovi domain (분야 규칙 팩 교체 · 빈 쪽은 없는 것만 · 기능 문서 틀은 손대지 않았을 때만) · kedovi type 의 유형 쪽 · 탭 이름(손대지 않은 메뉴만) ·
+// upgrade(분야 없음 = web, 빠진 쪽만) · 사이트 DB profile · metrics · interfaces(AsyncAPI) · 기능 분야 칸 · 새 ID 종류 · 스킬 문구 (네트워크 없음)
+{
+  const PF = require(path.join(KIT, 'packs', 'core', 'lib', 'profile.js'));
+  const SDB = require(path.join(KIT, 'packs', 'core', 'lib', 'sitedb.js'));
+  const kitLib = require(path.join(KIT, 'bin', 'kit.js'));
+  const kedoviBin = path.join(KIT, 'bin', 'kedovi.js');
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: undefined };
+  const ai = (dir, args) => spawnSync(process.execPath, [kedoviBin, ...args], { cwd: dir, encoding: 'utf8', input: '', env });
+  const got = [];
+  const sameKeys = JSON.stringify(Object.keys(PF.DOMAINS)) === JSON.stringify(Object.keys(kitLib.DOMAINS))
+    && Object.entries(kitLib.DOMAIN_RULES).every(([k, r]) => PF.DOMAIN_PACKS[k] === r.pack && (!r.pack || JSON.parse(fs.readFileSync(path.join(KIT, 'packs', r.pack, 'pack.json'), 'utf8')).category === 'domain'))
+    && Object.keys(kitLib.PROJECT_TYPES).every((t) => PF.TYPE_PROFILE[t] && PF.TYPE_PROFILE[t].dashboard.length === 4);
+  got.push(`킷 · 프로필 목록 짝 ${sameKeys}`);
+
+  // 분야 · 유형 바꾸기 (빈 쪽 · 틀 · 팩 · 탭 이름)
+  const ws = path.join(tmp, 'profile-ws');
+  run(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', ws, '--type', 'new'], tmp);
+  const has = (rel) => fs.existsSync(path.join(ws, 'docs-site', rel));
+  const rd = (rel) => fs.readFileSync(path.join(ws, 'docs-site', rel), 'utf8');
+  const wsj = () => JSON.parse(fs.readFileSync(path.join(ws, 'workspace.json'), 'utf8'));
+  const webTpl = fs.readFileSync(path.join(KIT, 'packs', 'core', 'assets', 'workspace', 'docs-site', '기능', '_template.md'), 'utf8');
+  const init0 = wsj().project.domain === 'web' && !has('설계/하드웨어.md') && !has('이슈/운영-반영-기록.md') && rd('기능/_template.md') === webTpl && !('label' in JSON.parse(rd('docs-site.json')).groups[2]);
+  fs.writeFileSync(path.join(ws, 'docs-site', '설계', '펌웨어.md'), '# 우리 펌웨어\n'); // 사람이 먼저 만든 쪽은 덮지 않는다
+  const d1 = ai(ws, ['domain', 'device']);
+  const w1 = wsj();
+  const agents1 = fs.readFileSync(path.join(ws, 'AGENTS.md'), 'utf8');
+  const dev = d1.status === 0 && w1.project.domain === 'device' && w1.packs.includes('domain-device') && PF.stubFiles('device').every(has) && rd('설계/펌웨어.md') === '# 우리 펌웨어\n'
+    && /보드: <HW-001>/.test(rd('기능/_template.md')) && /domain-device--10-device/.test(agents1) && /분야: 웨어러블 · 장치/.test(agents1);
+  fs.appendFileSync(path.join(ws, 'docs-site', '기능', '_template.md'), '\n우리 줄\n'); // 고친 틀은 그대로
+  const d2 = ai(ws, ['domain', 'game']);
+  const w2 = wsj();
+  const game = d2.status === 0 && w2.packs.includes('domain-game') && !w2.packs.includes('domain-device') && PF.stubFiles('game').every(has) && /우리 줄/.test(rd('기능/_template.md')) && has('설계/하드웨어.md');
+  fs.rmSync(path.join(ws, 'docs-site', '설계', '레벨.md'));
+  const d3 = ai(ws, ['domain', 'game']);
+  const again = d3.status === 0 && has('설계/레벨.md') && /프로필 쪽 1개/.test(d3.stdout);
+  const list = ai(ws, ['domain']);
+  const listOk = /분야: 게임/.test(list.stdout) && /kedovi domain iot/.test(list.stdout) && ai(ws, ['domain', 'space']).status !== 0;
+  got.push(`처음 web(쪽 없음) ${init0}`, `분야 장치(팩 · 쪽 · 틀 · 고친 쪽 그대로 · AGENTS.md) ${dev}`, `분야 게임(팩 교체 · 고친 틀 그대로) ${game}`, `같은 분야 다시: 지운 쪽만 ${again}`, `목록 · 잘못된 값 ${listOk}`);
+  const t1 = ai(ws, ['type', 'enhancement', '--approach', 'issue']);
+  const cfg1 = JSON.parse(rd('docs-site.json'));
+  const typeOk = t1.status === 0 && PF.stubFiles('enhancement').every(has) && cfg1.groups.find((g) => g.group === '기능').label === '개선' && /탭 이름: 기능 → 개선/.test(t1.stdout)
+    && PF.bareMenu(cfg1) === PF.bareMenu(JSON.parse(fs.readFileSync(path.join(KIT, 'packs', 'core', 'assets', 'workspace', 'docs-site', 'docs-site.json'), 'utf8'))) && run(process.execPath, ['bin/kit.js', 'check'], ws).ok;
+  cfg1.groups.push({ group: '우리 묶음', files: ['우리/**'] });
+  fs.writeFileSync(path.join(ws, 'docs-site', 'docs-site.json'), JSON.stringify(cfg1, null, 2));
+  const t2 = ai(ws, ['type', 'consulting']);
+  const cfg2 = JSON.parse(rd('docs-site.json'));
+  const editedKept = t2.status === 0 && cfg2.groups.find((g) => g.group === '기능').label === '개선' && cfg2.groups.length === 8 && PF.stubFiles('consulting').every(has);
+  got.push(`유형 운영·고도화(쪽 · 탭 이름 「개선」 · check) ${typeOk}`, `고친 메뉴는 탭 이름 그대로 ${editedKept}`);
+  // upgrade: 분야 칸이 없는 옛 워크스페이스는 web, 지운 유형 쪽만 다시
+  const old = path.join(tmp, 'profile-old');
+  run(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', old, '--type', 'modernization', '--legacy', path.join(tmp, 'legacy-src')], tmp);
+  const ow = JSON.parse(fs.readFileSync(path.join(old, 'workspace.json'), 'utf8'));
+  delete ow.project.domain;
+  fs.writeFileSync(path.join(old, 'workspace.json'), JSON.stringify(ow, null, 2));
+  fs.rmSync(path.join(old, 'docs-site', '설계', '정합표.md'));
+  const up = run(process.execPath, ['bin/kit.js', 'upgrade', '--from', KIT], old);
+  const upOk = up.ok && fs.existsSync(path.join(old, 'docs-site', '설계', '정합표.md')) && JSON.parse(fs.readFileSync(path.join(old, 'workspace.json'), 'utf8')).project.domain === undefined
+    && !JSON.parse(fs.readFileSync(path.join(old, 'workspace.json'), 'utf8')).packs.some((x) => /^domain-/.test(x)) && run(process.execPath, ['bin/kit.js', 'check'], old).ok;
+  got.push(`upgrade(분야 없음 · 빠진 쪽만) ${upOk}`);
+
+  // 사이트 DB: 장치 + 운영·고도화 (profile · metrics · interfaces · 기능 분야 칸 · ID · 관계)
+  const db0 = path.join(tmp, 'profile-db');
+  run(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', db0, '--type', 'enhancement', '--domain', 'device', '--code', 'new:band-fw'], tmp);
+  const W = (rel, text) => { const f = path.join(db0, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); };
+  const day = (n) => { const d = new Date(Date.now() + n * 864e5); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+  W('docs-site/설계/하드웨어.md', '# 하드웨어\n\n> 상태: 초안\n\n## 보드 판\n\n| ID | 판 | 단계 | 바뀐 것 | 날짜 |\n|---|---|---|---|---|\n| HW-002 | EVT 2판 | EVT | 전원부 교체 | 2026-11-10 |\n\n## 위험\n\n| ID | 위험 | 심각도 | 대책 |\n|---|---|---|---|\n| HAZ-001 | 센서 과열 | 높음 | RC-001 |\n');
+  W('docs-site/기능/001-심박측정.md', '# 001 심박 측정\n\n> 번호: 001 · 이름: 심박 측정 · 마일스톤: EVT · 단계: 배포 · 보드: HW-002\n\n## 명세\n\n### 요구사항\n\n| ID | 요구 | 몫 | 근거 |\n|---|---|---|---|\n| FN-001-1 | 1초마다 심박을 잰다 | 펌웨어 | REQ-001 · HAZ-001 · RC-001 |\n| FN-001-2 | 앱에 심박을 보낸다 | 앱 | IF-001 |\n\n## 설계\n\n### 인터페이스\n\n| ID | 종류 | 내용 |\n|---|---|---|\n| IF-001 | BLE 특성 | 심박 알림 |\n\n## 검증\n\n| 단계 | 결과 | 어디서 |\n|---|---|---|\n| 정적 분석 | 통과 | MISRA 검사 |\n| HIL | 통과 | HW-002 · 전력 1.2mA |\n| 에뮬레이터 | <통과 · 실패 · 아직> | <Renode> |\n');
+  W('docs-site/기능/002-밸런스.md', '# 002 밸런스\n\n> 번호: 002 · 이름: 밸런스 · 마일스톤: DVT · 단계: 명세\n\n## 명세\n\n| ID | 규칙 | 근거 |\n|---|---|---|\n| FN-002-1 | 기본 값 | BAL-001 |\n');
+  W('issues/001-배터리-소모.md', `# 001 배터리 소모\n\n> 상태: 열림 · 종류: 결함 · 관련: FN-001-1 · 기한: ${day(-3)}\n\n대기 전류가 높다.\n`);
+  W('issues/002-연결-끊김.md', `# 002 연결 끊김\n\n> 상태: 닫힘 · 종류: 결함 · 날짜: ${day(-2)} · 닫은 날: ${day(0)}\n\n고침.\n`);
+  W('issues/003-글꼴.md', '# 003 글꼴\n\n> 상태: 열림 · 종류: 요청\n\n크게.\n');
+  W('repos/band-fw/asyncapi.json', JSON.stringify({ asyncapi: '2.6.0', info: { title: '밴드 동기화 메시지', version: '1' },
+    channels: { 'band/{id}/hr': { subscribe: { message: { $ref: '#/components/messages/HeartRate' } } }, 'band/{id}/cmd': { publish: { message: { oneOf: [{ $ref: '#/components/messages/Command' }, { name: 'Ping', payload: { type: 'object', properties: { at: {} } } }] } } } },
+    components: { messages: { HeartRate: { name: 'HeartRate', payload: { $ref: '#/components/schemas/Hr' } }, Command: { payload: { type: 'object', properties: { op: {}, args: {} } } } }, schemas: { Hr: { type: 'object', properties: { bpm: {}, at: {}, quality: {} } } } } }));
+  W('repos/band-fw/docs/sub/asyncapi.yaml', 'asyncapi: 3.0.0\ninfo:\n  title: 다른 것\n'); // 더 깊은 것은 고르지 않는다
+  const ds = (args) => spawnSync(process.execPath, [path.join(db0, 'packs', 'core', 'bin', 'docs-site.js'), ...args], { cwd: db0, encoding: 'utf8', env });
+  const b = ds(['build']);
+  let db = {};
+  try { db = JSON.parse(fs.readFileSync(path.join(db0, '.agents', 'site', 'assets', 'site-db.json'), 'utf8')); } catch { /* 빈 값 */ }
+  const pr = db.profile || {};
+  const profOk = b.status === 0 && pr.type === 'enhancement' && pr.domain === 'device' && pr.mainTab === '이슈' && pr.labels['기능'] === '개선' && pr.milestones.join() === 'POC,EVT,DVT,PVT,양산'
+    && pr.dashboard.map((x) => x.key).join() === 'openDefects,avgLeadDays,releasedThisWeek,overdue' && pr.tools.includes('Wokwi MCP') && pr.ids.includes('HAZ') && pr.gates.length === 4;
+  const m = db.metrics || {};
+  const metOk = m.openDefects && m.openDefects.value === '1' && m.avgLeadDays && m.avgLeadDays.value === '2일' && m.releasedThisWeek && m.releasedThisWeek.value === '1' && m.overdue && m.overdue.value === '1';
+  const ifc = (db.interfaces || []).find((x) => x.kind === 'asyncapi') || {};
+  const ifOk = ifc.title === '밴드 동기화 메시지' && ifc.file === 'assets/asyncapi/band-fw.json' && fs.existsSync(path.join(db0, '.agents', 'site', ifc.file))
+    && JSON.stringify(ifc.channels) === JSON.stringify([{ name: 'band/{id}/hr', action: 'subscribe', messages: [{ name: 'HeartRate', fields: ['bpm', 'at', 'quality'] }] }, { name: 'band/{id}/cmd', action: 'publish', messages: [{ name: 'Command', fields: ['op', 'args'] }, { name: 'Ping', fields: ['at'] }] }]);
+  const f1 = (db.features || []).find((f) => f.no === '001') || {};
+  const f2 = (db.features || []).find((f) => f.no === '002') || {};
+  const featOk = (f1.hw || []).join() === 'HW-002' && (f1.risks || []).join() === 'HAZ-001,RC-001' && (f1.ifs || []).join() === 'IF-001' && (f2.bal || []).join() === 'BAL-001'
+    && JSON.stringify(f1.tiers) === JSON.stringify([{ tier: '정적 분석', result: '통과', where: 'MISRA 검사' }, { tier: 'HIL', result: '통과', where: 'HW-002 · 전력 1.2mA' }, { tier: '에뮬레이터', result: '', where: '' }]);
+  const r1 = (db.relations || {})['FN-001-1'] || {};
+  const r2 = (db.relations || {})['FN-001-2'] || {};
+  const idOk = db.ids && db.ids['HW-002'].kind === 'HW' && db.ids['HW-002'].page === '설계/하드웨어.html' && db.ids['HAZ-001'].title === '센서 과열' && db.ids['IF-001'].kind === 'IF' && db.ids['BAL-001'].kind === 'BAL' && db.ids['RC-001'].kind === 'RC'
+    && r1.risks.join() === 'HAZ-001,RC-001' && r1.ifs.length === 0 && r2.ifs.join() === 'IF-001' && r2.risks.length === 0 && r1.hw.join() === 'HW-002' && r2.hw.join() === 'HW-002' && r1.issues.includes('ISSUE-001');
+  const checkOk = ds(['check']).status === 0;
+  got.push(`사이트 DB profile ${profOk}`, `metrics(결함 · 처리 시간 · 이번 주 · 기한 넘김) ${metOk}`, `interfaces(AsyncAPI 채널) ${ifOk}`, `기능 분야 칸 · 검증 단계 표 ${featOk}`, `새 ID 종류 · 관계 ${idOk}`, `check(날짜 숫자 빼고) ${checkOk}`);
+  // 숫자 계산 (유형별) · AsyncAPI 3.x
+  const today = '2026-11-25';
+  const M1 = SDB.computeMetrics({ keys: ['daysToMilestone', 'featureProgress', 'openIssues', 'dueThisWeek'], today, features: [{ stage: '배포' }, { stage: '구현' }], milestones: [{ name: '지난', due: '2026-11-01' }, { name: 'EVT', due: '2026-12-13' }], issues: { source: null, items: [] }, workItems: [{ state: '열림', due: '2026-11-27' }, { state: '열림', due: '2026-12-27' }] });
+  const newOk = M1.daysToMilestone.value === '18일' && /EVT/.test(M1.daysToMilestone.sub) && M1.featureProgress.value === '1 / 2' && M1.openIssues === null && M1.dueThisWeek.value === '1';
+  const files = {
+    '설계/정합표.md': '# 정합표\n\n| 기능 | 현행 동작 | 새 동작 | 상태 | 근거 |\n|---|---|---|---|---|\n| 주문 | a | a | 같음 | x |\n| 취소 | a | b | 차이 | x |\n| 환불 | a | b | 의도한 차이 | DEC-001 |\n',
+    '설계/데이터-이관.md': '# 이관\n\n## 리허설\n\n| 회차 | 날짜 | 결과 | 걸린 시간 | 차이 |\n|---|---|---|---|---|\n| 1 | 2026-11-01 | 실패 | 3h | 건수 |\n| 2 | 2026-11-15 | 통과 | 2h | 없음 |\n',
+    '설계/요구사항.md': '# 요구사항\n\n> 상태: 확정\n\n| ID | 요구 | 출처 | 기능 | 상태 |\n|---|---|---|---|---|\n| REQ-001 | a | b | FN-001 | 확정 |\n| REQ-002 | a | b | FN-002 | 초안 |\n',
+    '설계/현행-분석.md': '# 현행\n\n> 상태: 초안\n',
+    '설계/결정/README.md': '# 결정\n\n## 미결\n\n| 주제 | 정할 때 | 출처 |\n|---|---|---|\n| 결제 | 12월 | 회의 |\n',
+    '설계/결정/DEC-001-x.md': '# DEC-001 x\n\n> 상태: 제안\n',
+  };
+  const M2 = SDB.computeMetrics({ keys: ['daysToCutover', 'parityDone', 'migrationRehearsal', 'openDiffs', 'deliverableProgress', 'confirmedReqs', 'pendingDecisions', 'reviewComments'], today, milestones: [{ name: '전환', due: '2026-12-05' }], files, comments: { 'a.html': [{}, {}] } });
+  const otherOk = M2.daysToCutover.value === '10일' && M2.parityDone.value === '2 / 3' && M2.migrationRehearsal.value === '2회' && /통과/.test(M2.migrationRehearsal.sub) && M2.openDiffs.value === '1'
+    && M2.deliverableProgress.value === '1 / 2' && M2.confirmedReqs.value === '1 / 2' && M2.pendingDecisions.value === '2' && M2.reviewComments.value === '2'
+    && SDB.computeMetrics({ keys: ['parityDone', 'avgLeadDays'], today, files: {} }).parityDone === null;
+  const v3 = SDB.asyncChannels({ asyncapi: '3.0.0', channels: { temp: { address: 'site/{id}/temp', messages: { T: { $ref: '#/components/messages/Temp' } } } },
+    operations: { sendTemp: { action: 'send', channel: { $ref: '#/channels/temp' } } }, components: { messages: { Temp: { payload: { type: 'object', properties: { c: {}, at: {} } } } } } });
+  const v3Ok = JSON.stringify(v3) === JSON.stringify([{ name: 'site/{id}/temp', action: 'send', messages: [{ name: 'Temp', fields: ['c', 'at'] }] }]);
+  got.push(`숫자: 신규 ${newOk}`, `숫자: 차세대 · 분석·설계 ${otherOk}`, `AsyncAPI 3.x ${v3Ok}`);
+  // 스킬 문구: 분석·설계 요구사항은 docs-site 먼저 · 방향 인터뷰는 분야 질문
+  const req = fs.readFileSync(path.join(KIT, 'packs', 'consulting', 'skills', 'requirements', 'SKILL.md'), 'utf8');
+  const kick = fs.readFileSync(path.join(KIT, 'packs', 'core', 'skills', 'kickoff', 'SKILL.md'), 'utf8');
+  const skillOk = /docs-site\/설계\/요구사항\.md/.test(req) && req.indexOf('docs-site/') < req.indexOf('20-features') && /kedovi domain (game|device|iot)/.test(kick) && /주제 n\/7/.test(kick) && !/n\/6/.test(kick);
+  got.push(`스킬 문구(분석·설계 경로 · 분야 질문) ${skillOk}`);
+  record('유형 · 분야 프로필 (kedovi domain · 빈 쪽 · 탭 이름 · upgrade · 사이트 DB profile · metrics · interfaces · 분야 ID)',
+    sameKeys && init0 && dev && game && again && listOk && typeOk && editedKept && upOk && profOk && metOk && ifOk && featOk && idOk && checkOk && newOk && otherOk && v3Ok && skillOk,
+    `${got.join(' · ')}${d1.status ? ` · ${d1.stderr.trim()}` : ''}${b.status ? ` · ${b.stderr.trim()}` : ''}`);
 }
 
 // 변경 기록 — 지금 버전 항목이 CHANGELOG.md 에 있어야 한다 (kedovi upgrade 가 버전 사이 항목을 보여 준다). 패키지에 들어가야 다른 PC 에도 보인다

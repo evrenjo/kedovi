@@ -1,0 +1,11 @@
+{
+  "name": "domain-iot",
+  "title": "IoT · 임베디드 분야",
+  "summary": "인터페이스 계약 · V 모델 추적 · HIL 농장 · 보안 · 사람 관문",
+  "description": "IoT · 임베디드 프로젝트(분야: IoT): 요구사항 단위 명세 + 인터페이스 계약(IF-: MQTT 주제 · 메시지, AsyncAPI) · 보드 판(HW-) · 위협(HAZ-), V 모델 추적(요구 ↔ 시험 단계), 검증 단계(정적 분석 → 단위 → 에뮬레이터 → HIL 농장 → 현장 원격 측정, 컴파일 통과만으로 완료 아님), MISRA · CERT · 금지 API, OTA 되돌림 · 서명, 사람 관문(하드웨어 기동 · 보안 · 사이버 복원력법 · SBOM · 안전), 장치 MCP 가 있으면 쓰기",
+  "category": "domain",
+  "requires": [
+    "core"
+  ],
+  "vars": {}
+}

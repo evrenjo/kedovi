@@ -46,7 +46,7 @@ if (require.main === module) run(() => {
   const tableRows = progress ? 0 : lines.filter((l) => /^\s*\|/.test(l) && !/^\s*\|[\s:|-]+\|\s*$/.test(l)).length;
   if (lines.length <= max && tableRows <= 12) return;
   fs.writeFileSync(mark, 'warned');
-  block(`답이 깁니다 (${lines.length}줄${tableRows > 12 ? ` · 표 ${tableRows}줄` : ''}, 기준 ${max}줄). 사용자는 화면에서 다 읽지 못합니다. kedovi report new "<제목>"(안 되면 node packs/core/bin/report.js new "<제목>")이 준 파일에 자세한 내용(바뀐 파일 · 검증 표 · 근거 · 남은 것)을 옮기고, 답을 결론 1줄 + 핵심 3~5줄 + 「자세히: <링크>」 로 다시 씁니다. 오류 · 실패 · 사용자가 정할 것은 채팅에 남깁니다. 끄기: kedovi team-mode enforce long off`);
+  block(`답이 깁니다 (${lines.length}줄${tableRows > 12 ? ` · 표 ${tableRows}줄` : ''}, 기준 ${max}줄). 사용자는 화면에서 다 읽지 못합니다. kedovi report new "<제목>"(안 되면 node packs/core/bin/report.js new "<제목>")이 준 파일에 자세한 내용(바뀐 파일 · 검증 표 · 근거 · 남은 것)을 옮기고, 답을 결론 1줄 + 핵심 3~5줄 + 「자세히: <링크>」 로 다시 씁니다. 오류 · 실패 · 사용자가 정할 것은 채팅에 남깁니다. 끄기: kedovi team-mode enforce long off`, { redo: true });
 });
 
 module.exports = { isProgress };

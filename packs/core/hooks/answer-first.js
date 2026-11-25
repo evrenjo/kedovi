@@ -49,7 +49,7 @@ if (require.main === module) run(() => {
   if (ev !== 'Stop' || input.stop_hook_active || level !== 'block' || !fs.existsSync(mark)) return;
   try { fs.unlinkSync(mark); } catch { /* 없음 */ } // 한 번만 막는다
   if (!input.last_assistant_message || answersFirst(input.last_assistant_message)) return;
-  block('사용자가 질문했는데 마지막 답변 글의 첫 문장에 그 답(예 · 아니오 · 모름 + 이유)이 없습니다. 도구 앞 글에 답했어도 사용자 화면에는 마지막 글만 눈에 들어옵니다. 마지막 보고의 첫 줄을 질문의 답으로 다시 씁니다. 수준 바꾸기: kedovi team-mode enforce answer off|warn|block');
+  block('사용자가 질문했는데 마지막 답변 글의 첫 문장에 그 답(예 · 아니오 · 모름 + 이유)이 없습니다. 도구 앞 글에 답했어도 사용자 화면에는 마지막 글만 눈에 들어옵니다. 마지막 보고의 첫 줄을 질문의 답으로 다시 씁니다. 수준 바꾸기: kedovi team-mode enforce answer off|warn|block', { redo: true });
 });
 
 module.exports = { looksLikeQuestion, answersFirst };

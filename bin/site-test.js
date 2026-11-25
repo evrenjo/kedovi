@@ -65,7 +65,9 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
   write(guide, require('./docs').site().pages);
   const plans = fixture(tmp);
   const proj = require('./fixtures/project-site').build(path.join(tmp, 'project'), 'site');
-  const G = await serve(guide), F = await serve(plans), PJ = await serve(proj);
+  const PF = require('./fixtures/profiles');
+  const enh = require('./fixtures/project-site').build(path.join(tmp, 'enh'), 'site', PF.enhancement(), { labels: { 기능: '개선' } });
+  const G = await serve(guide), F = await serve(plans), PJ = await serve(proj), EN = await serve(enh);
   const browser = await chromium.launch(process.env.KEDOVI_CHROME ? { executablePath: process.env.KEDOVI_CHROME } : { channel: 'chrome' }).catch((e) => {
     console.error(`✖ Chrome 을 띄우지 못했습니다 (${e.message.split('\n')[0]}). Google Chrome 을 설치하거나 KEDOVI_CHROME=<Chromium 경로>`);
     process.exit(1);
@@ -405,11 +407,40 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     const h = await pj.evaluate(() => ({ cur: (document.querySelector('.feat-head .step.cur') || {}).textContent, ms: (document.querySelector('.feat-head .mschip') || {}).textContent, secs: [...document.querySelectorAll('.feat-head .subtabs a')].map((a) => a.textContent) }));
     ok(h.cur === '구현' && /1차 오픈 · 12월 12일/.test(h.ms) && h.secs.join() === '명세,설계,검증', JSON.stringify(h));
   });
+  await check('프로젝트: 바뀐 점 보기 (「새로」 크기 · 띠 · 합쳐 보기 · 커밋별 · 최근 바뀐 문서)', async () => {
+    await pj.waitForSelector('.chgbar .chg-diff', { timeout: 5000 });
+    const nb = await pj.evaluate(() => { const b = document.querySelector('nav.side .newb'); const r = b.getBoundingClientRect(); return { h: r.height, fs: parseFloat(getComputedStyle(b).fontSize), bw: parseFloat(getComputedStyle(b).borderTopWidth) || 0 }; });
+    ok(nb.h <= 16 && nb.fs <= 11 && nb.bw === 0, `「새로」 가 큼 ${JSON.stringify(nb)}`);
+    await pj.click('.chgbar .chg-diff'); await pj.waitForSelector('.drawer.wide .df-row', { timeout: 5000 });
+    const sum = await pj.evaluate(() => ({ add: document.querySelectorAll('.drawer .df-row.add').length, del: document.querySelectorAll('.drawer .df-row.del').length, fold: document.querySelectorAll('.drawer .df-fold').length, cs: document.querySelectorAll('.drawer .df-cs .df-c').length, range: document.querySelector('.drawer .df-range').value, mark: document.querySelectorAll('.drawer .df-row mark').length, w: document.querySelector('.drawer').getBoundingClientRect().width }));
+    // 지난 방문(11-20) 뒤 커밋 2: 재고 행 더함 · 「출고 전」 더함 (글자 강조) · 같은 줄은 접힘
+    ok(sum.cs === 2 && sum.range === 'since' && sum.add >= 2 && sum.del >= 1 && sum.fold >= 1 && sum.mark >= 1 && sum.w > 500, `합쳐 보기 ${JSON.stringify(sum)}`);
+    const n0 = await pj.evaluate(() => document.querySelectorAll('.drawer .df-row').length);
+    await pj.click('.drawer .df-fold'); ok(await pj.evaluate(() => document.querySelectorAll('.drawer .df-row').length) > n0, '같은 줄 펼치기');
+    await pj.click('.drawer .subtabs button:has-text("커밋별")');
+    const each = await pj.evaluate(() => [...document.querySelectorAll('.drawer .df-each')].map((x) => [x.querySelector('.df-c code').textContent, x.querySelectorAll('.df-row.add').length, x.querySelectorAll('.df-row.del').length]));
+    ok(each.length === 2 && each[0][0] === 'c3c3c3c' && each[1][0] === 'b2b2b2b' && each.every((e) => e[1] >= 1), `커밋별 ${JSON.stringify(each)}`);
+    await pj.selectOption('.drawer .df-range', 'all');
+    const all = await pj.evaluate(() => document.querySelectorAll('.drawer .df-each').length);
+    ok(all === 3, `남은 기록 전체 ${all}`);
+    await pj.keyboard.press('Escape'); await pj.waitForTimeout(100);
+    ok(!(await pj.$('.drawer')), 'Esc 로 안 닫힘');
+    // 최근 바뀐 문서: 행 끝 아이콘으로 같은 서랍
+    const back = await pj.evaluate(() => location.href);
+    await pj.goto(`${PJ.url}_/recent.html`); await pj.waitForSelector('.df-go');
+    await pj.click('tr:has-text("주문 관리") .df-go >> nth=0'); await pj.waitForSelector('.drawer.wide .df-row');
+    const none = await pj.evaluate(() => [...document.querySelectorAll('.df-go')].length);
+    await pj.keyboard.press('Escape');
+    await pj.click('tr:has-text("요구사항") .df-go >> nth=0'); ok(await pj.waitForSelector('.drawer.wide .kempty:has-text("이전 판이 없습니다")', { timeout: 5000 }).then(() => true, () => false), '지난 판 없는 문서 안내');
+    await pj.keyboard.press('Escape');
+    await pj.goto(back); await pj.waitForSelector('.chgbar');
+    return `+${sum.add} −${sum.del} · 커밋별 ${each.length} · 아이콘 ${none}`;
+  });
   await check('프로젝트: 지난 방문 이후 바뀐 문서 · 바뀐 줄 · 확인함', async () => {
     await pj.waitForSelector('tr.ds-chg', { timeout: 5000 }).catch(() => {});
     const a = await pj.evaluate(() => [!!document.querySelector('.chgbar'), document.querySelectorAll('tr.ds-chg').length, !!document.querySelector('nav.side .nav-link.on .newb')]);
     ok(a[0] && a[1] >= 1 && a[2], `띠 · 바뀐 줄 · 새로 ${a}`);
-    await pj.click('.chgbar button'); await pj.waitForTimeout(150);
+    await pj.click('.chgbar .chg-ok'); await pj.waitForTimeout(150);
     const b = await pj.evaluate(() => [!!document.querySelector('.chgbar'), document.querySelectorAll('tr.ds-chg').length, !!document.querySelector('nav.side .nav-link.on .newb')]);
     ok(!b[0] && b[1] === 0 && !b[2], `확인함 뒤 ${b}`);
     return `바뀐 줄 ${a[1]}`;
@@ -492,16 +523,107 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     await pj.goto(`${PJ.url}_/board/post.html?id=${encodeURIComponent('#60')}`); await pj.waitForSelector('.post-body');
     return `${pages.length}쪽`;
   });
+  await check('프로젝트: 일정 › 백로그 (PLAN.md 백로그 · 추가한 날)', async () => {
+    await pj.goto(`${PJ.url}_/backlog.html`); await pj.waitForSelector('.view h1');
+    const t = await pj.evaluate(() => document.querySelector('main').textContent);
+    ok(/엑셀로 주문 내보내기/.test(t) && /11-20/.test(t) && /정산서 메일 발송/.test(t), t.slice(0, 160));
+    ok(await pj.evaluate(() => [...document.querySelectorAll('nav.side a')].some((a) => /백로그/.test(a.textContent))), '일정 사이드에 백로그 없음');
+  });
   await check('프로젝트: 빈 DB 상태 화면 (흔적 없이)', async () => {
     const empty = { version: 2, layout: 'workspace', title: '빈 프로젝트', project: { title: '빈 프로젝트' }, stages: ['명세', '설계', '구현', '검증', '배포'], features: [], milestones: [], docs: [], ids: {}, relations: {}, changes: [], team: { members: [] }, issues: { items: [] }, workItems: [], board: [], files: [], comments: {}, remote: { kind: null }, apis: [] };
     const e = await page();
     await e.route('**/assets/site-db.json*', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(empty) }));
-    for (const u of ['index.html', '_/gantt.html', '_/issues.html', '_/board.html', '_/api.html', '_/team.html']) {
+    for (const u of ['index.html', '_/gantt.html', '_/issues.html', '_/board.html', '_/api.html', '_/team.html', '_/backlog.html']) {
       await e.goto(`${PJ.url}${u}`); await e.waitForSelector('.view h1');
       const t = await e.evaluate(() => document.querySelector('main').textContent);
       ok(!/undefined|null|NaN|숨김|숨겼|뺐/.test(t), `${u}: ${t.slice(0, 120)}`);
       ok(await e.evaluate(() => document.querySelectorAll('.kempty, .vnote').length) > 0, `${u} 빈 상태 화면 없음`);
     }
+    await e.close();
+  });
+
+  /* ── 프로필 (유형 · 분야): 빌드 DB profile · metrics · interfaces · 기능 tiers/hw/risks/ifs/bal (시험 재료 bin/fixtures/profiles.js) ── */
+  await check('프로필 없음: 지금 화면 그대로 (중심 점 · 검증 단계 줄 · 유형 칸 없음 · API 명세)', async () => {
+    await pj.goto(`${PJ.url}index.html`); await pj.waitForSelector('.dash .stat');
+    ok(await pj.evaluate(() => !document.querySelector('.main-dot') && !document.querySelector('.tier-card') && !document.querySelector('.stat.none')), '프로필 화면 요소가 보임');
+    await pj.goto(`${PJ.url}_/api.html`); await pj.waitForSelector('.view h1');
+    ok(await pj.evaluate(() => document.querySelector('.view h1').textContent === 'API 명세' && [...document.querySelectorAll('nav.side .nav-t')].some((x) => x.textContent === 'API')), 'API 명세 이름이 바뀜');
+    await pj.goto(`${PJ.url}_/team.html`); await pj.waitForSelector('.view h1');
+    ok(!/유형 · 분야/.test(await pj.evaluate(() => document.querySelector('main').textContent)), '유형 · 분야 칸이 보임');
+    await p.goto(`${G.url}index.html`);
+    ok(!(await p.$('.main-dot')), '킷 문서 사이트에 중심 점');
+  });
+  await check('프로필 운영 · 유지보수: 탭 이름 「개선」 · 중심 탭 점 · 숫자 칸 (빈 값 안내) · 검증 단계 줄', async () => {
+    const e = await page();
+    await e.goto(`${EN.url}index.html`); await e.waitForSelector('.dash .stat');
+    const r = await e.evaluate(() => ({
+      tabs: [...document.querySelectorAll('header .tab')].map((a) => a.textContent),
+      dots: [...document.querySelectorAll('header .tab .main-dot')].map((d) => d.closest('.tab').dataset.group),
+      labels: [...document.querySelectorAll('.dash .stat .sl')].map((x) => x.textContent),
+      vals: [...document.querySelectorAll('.dash .stat .sv')].map((x) => x.textContent),
+      none: document.querySelectorAll('.dash .stat.none').length,
+      steps: [...document.querySelectorAll('.tier-track .step')].map((x) => x.className.replace('step ', '')),
+      text: document.querySelector('main').textContent,
+    }));
+    ok(r.tabs.join() === '개요,설계,개선,테스트,일정,이슈,자료실', `탭 ${r.tabs}`);
+    ok(r.dots.join() === '이슈', `중심 점 ${r.dots}`);
+    ok(r.labels.join() === '열린 결함,평균 처리 시간,이번 주 운영 반영,처리 기한 넘김', `칸 ${r.labels}`);
+    ok(r.vals[0] === '3' && r.vals[1] === '2.5일' && r.vals[2] === '아직 없음' && r.none === 2, `값 ${r.vals}`);
+    ok(!/undefined|null|NaN|숨김|숨겼|뺐/.test(r.text), r.text.slice(0, 160));
+    ok(r.steps.join() === 'done,cur,wait', `검증 단계 ${r.steps}`);
+    await e.click('header .tab[data-group="기능"]'); await e.waitForSelector('nav.side .nav-ms');
+    ok(await e.evaluate(() => document.querySelector('nav.side .side-head-title').textContent === '개선' && /^개선/.test(document.querySelector('.crumb').textContent)), '메뉴 머리 · 위치 이름');
+    await e.close();
+    return r.vals.join(' · ');
+  });
+  await check('프로필 게임: 기능 화면 밸런스 표 칩 · 표로 가기 · 관계 서랍', async () => {
+    const e = await page();
+    await e.route('**/assets/site-db.json*', (q) => q.fulfill({ contentType: 'application/json', body: JSON.stringify(PF.game()) }));
+    await e.goto(`${PJ.url}${encodeURI('기능/002-상품관리.html')}`); await e.waitForSelector('.feat-links .fl-bal');
+    const r = await e.evaluate(() => ({ ids: [...document.querySelectorAll('.fl-bal .idc')].map((x) => x.textContent), go: [...document.querySelectorAll('.fl-bal .go')].map((a) => decodeURIComponent(a.getAttribute('href'))), hw: !!document.querySelector('.fl-hw'), tiers: document.querySelectorAll('.ds-tiers tbody tr').length }));
+    ok(r.ids.join() === 'BAL-001,BAL-002' && r.go.length === 2 && /설계\/밸런스\/README\.html#BAL-001$/.test(r.go[0]) && !r.hw, JSON.stringify(r));
+    ok(r.tiers === 3, `검증 표 줄 ${r.tiers}`);
+    await e.click('.fl-bal .idc:has-text("BAL-001")'); await e.waitForSelector('.drawer .rel-chain');
+    const t = await e.evaluate(() => [...document.querySelectorAll('.drawer .rel-row')].map((x) => x.textContent).join('|'));
+    ok(/밸런스 표BAL-001/.test(t) && /FN-010/.test(t) && !/보드 판/.test(t), t.slice(0, 200));
+    await e.close();
+  });
+  await check('프로필 장치: 보드 판 · 위험 · 인터페이스 칩 · 검증 단계 표 · 대시보드 단계 줄', async () => {
+    const e = await page();
+    await e.route('**/assets/site-db.json*', (q) => q.fulfill({ contentType: 'application/json', body: JSON.stringify(PF.device()) }));
+    await e.goto(`${PJ.url}${encodeURI('기능/003-주문관리.html')}`); await e.waitForSelector('.feat-links .fl-hw');
+    await e.waitForSelector('.ds-tiers tbody tr');
+    const r = await e.evaluate(() => ({
+      hw: [...document.querySelectorAll('.fl-hw .idc')].map((x) => x.textContent), risks: [...document.querySelectorAll('.fl-risks .idc')].map((x) => x.textContent), ifs: [...document.querySelectorAll('.fl-ifs .idc')].map((x) => x.textContent),
+      rows: [...document.querySelectorAll('.ds-tiers tbody tr')].map((tr) => tr.cells[0].textContent + '=' + tr.cells[1].querySelector('.state').className.replace('state ', '')),
+      after: (() => { const h = [...document.querySelectorAll('.ds-body h2')].find((x) => /^검증/.test(x.textContent)); return !!h && h.nextElementSibling.classList.contains('ds-tiers-cap'); })(),
+    }));
+    ok(r.hw.join() === 'HW-B2' && r.risks.join() === 'HAZ-003,RC-003-1' && r.ifs.join() === 'IF-BLE-01', JSON.stringify(r));
+    ok(r.rows.length === 4 && /=done$/.test(r.rows[0]) && /=bad$/.test(r.rows[2]) && /^HIL .*=wait$/.test(r.rows[3]) && r.after, JSON.stringify(r.rows));
+    await e.click('.fl-hw .idc'); await e.waitForSelector('.drawer .rel-chain');
+    const t = await e.evaluate(() => document.querySelector('.drawer').textContent);
+    ok(/보드 판HW-B2/.test(t) && /위험 · 대책HAZ-003RC-003-1/.test(t) && /인터페이스IF-BLE-01/.test(t) && /메인 보드 B2/.test(t), t.slice(0, 240));
+    await e.keyboard.press('Escape');
+    await e.goto(`${PJ.url}index.html`); await e.waitForSelector('.tier-track .step');
+    const d = await e.evaluate(() => ({ steps: [...document.querySelectorAll('.tier-track .step')].map((x) => x.className.replace('step ', '')), vals: [...document.querySelectorAll('.dash .stat .sv')].map((x) => x.textContent), dot: [...document.querySelectorAll('header .tab .main-dot')].map((x) => x.closest('.tab').dataset.group) }));
+    ok(d.steps.join() === 'done,cur,bad,cur' && d.vals[0] === '18일' && !/아직 없음/.test(d.vals[3]) && d.dot.join() === '기능', JSON.stringify(d));
+    await e.goto(`${PJ.url}_/team.html`); await e.waitForSelector('.view h1');
+    const tm = await e.evaluate(() => document.querySelector('.kv').textContent);
+    ok(/유형신규 구축/.test(tm) && /분야웨어러블 · 장치/.test(tm) && /사람 관문하드웨어 기동/.test(tm) && /에이전트 도구 추천Nordic nRF Connect MCP/.test(tm) && /진행 방식기능 단위/.test(tm), tm.slice(0, 200));
+    await e.close();
+    return d.steps.join(' ');
+  });
+  await check('프로필 인터페이스 명세: AsyncAPI 표 · YAML 파일 링크 · OpenAPI 는 Scalar · 옛 주소 그대로', async () => {
+    const e = await page();
+    await e.route('**/assets/site-db.json*', (q) => q.fulfill({ contentType: 'application/json', body: JSON.stringify(PF.device()) }));
+    await e.goto(`${PJ.url}_/api.html`); await e.waitForSelector('.view table');
+    const r = await e.evaluate(() => ({ h1: document.querySelector('.view h1').textContent, nav: [...document.querySelectorAll('nav.side .nav-link.on .nav-t')].map((x) => x.textContent), crumb: document.querySelector('.vcrumb').textContent, chips: [...document.querySelectorAll('.view .vchip')].map((x) => x.textContent), rows: [...document.querySelectorAll('.view table tbody tr')].map((tr) => tr.textContent) }));
+    ok(r.h1 === '인터페이스 명세' && r.nav.join() === '인터페이스 명세' && r.crumb === '설계 › 인터페이스 명세', JSON.stringify(r));
+    ok(r.chips.join() === 'band-fw · AsyncAPI,band-gw · AsyncAPI,order-api · OpenAPI', `칩 ${r.chips}`);
+    ok(r.rows.length === 3 && /band\/\{id\}\/sleep보냄SleepSamplets/.test(r.rows[0]) && /받음SetAlarm/.test(r.rows[2]), JSON.stringify(r.rows));
+    await e.click('.view .vchip:has-text("band-gw")'); await e.waitForSelector('.view .kempty a');
+    ok(/band-gw\.yaml$/.test(await e.evaluate(() => document.querySelector('.view .kempty a').getAttribute('href'))), 'YAML 파일 링크');
+    await e.click('.view .vchip:has-text("order-api")'); await e.waitForSelector('.vframe.api iframe');
     await e.close();
   });
   await check('프로젝트: 로컬 서버 쓰기 경로 (/_api/whoami · /_api/comment)', async () => {
@@ -520,7 +642,7 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
   });
   await check('스크립트 오류 없음', async () => { ok(!errors.length, errors.slice(0, 3).join(' | ')); });
 
-  await browser.close(); G.close(); F.close(); PJ.close();
+  await browser.close(); G.close(); F.close(); PJ.close(); EN.close();
   fs.rmSync(tmp, { recursive: true, force: true });
   const bad = results.filter((r) => !r[0]).length;
   console.log(bad ? `\n✖ ${bad}개 실패 (${results.length}개 중)` : `\n✔ 전부 통과 (${results.length}개)`);

@@ -196,7 +196,7 @@ function rebuilder({ root, src, tool, watch = true, delay = 400, log = () => {} 
   const schedule = () => { clearTimeout(timer); timer = setTimeout(go, delay); };
   const watchers = [];
   if (watch) {
-    for (const dir of [src, path.join(root, 'issues')]) {
+    for (const dir of [src, path.join(root, 'issues'), path.join(root, 'handoffs')]) {
       try { watchers.push(fs.watch(dir, { recursive: true }, (ev, f) => { if (f && /(^|[\\/])\.(git|DS_Store)/.test(String(f))) return; schedule(); })); } catch { /* 이 OS 에서 폴더 감시를 못 하면 쓰기 뒤에만 */ }
     }
   }

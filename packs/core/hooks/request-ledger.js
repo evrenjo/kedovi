@@ -5,7 +5,7 @@
  * 장부 = handoffs/<id>/topics/요청-목록.md (lib/requests.js). 상태 갱신 = kedovi requests set <번호> --status … --agent … --result …
  * UserPromptSubmit (메인): 요청을 적고 번호를 알린다. 맞장구(응 · 고마워) · 백그라운드 알림 · 다른 세션 · 에이전트 메시지는 적지 않고, 질문은 물음으로(답하면 Stop 이 닫음), 짧은 승인(진행해 · 배포해줘)은 열린 직전 요청에 붙인다.
  *   안내 문장은 세션 첫 요청과 30분마다, 그 사이는 번호만 한 줄
- * Stop (메인): 이번 요청 중 끼어 든 메시지(hooks/mid-turn-messages.js 와 같은 방식)도 적는다.
+ * Stop (메인): 이번 요청 중 끼어 든 메시지(hooks/mid-turn-messages.js 와 같은 방식)도 적는다. 표 검사는 이번 차례에 업무 요청(새 요청 · 이어 붙인 승인 · 끼어 든 업무)이 있을 때만.
  *   열린 요청(완료 · 취소 아님)이 있는데 마지막 답변에 요청 표(머리 「| 번호 | 요청 | … 상태 … |」)가 없으면 한 번 되돌려 붙이게 한다 (stop_hook_active 면 통과)
  * 수준 agents.enforce.requestLedger: block(기본, 기록 + 표 검사) · warn(기록만) · off(아무것도 안 함). 팀원 · 서브에이전트에서는 돌지 않는다
  */
@@ -37,6 +37,8 @@ if (require.main === module) {
 
     if (ev === 'UserPromptSubmit') {
       const r = L.record(ROOT, id, input.prompt, {}, input);
+      // 이번 차례의 요청 종류: Stop 이 표를 요구할지 본다 (업무 요청 · 이어 붙인 승인일 때만)
+      if (sid) { const tf = path.join(stateDir(ROOT), `${sid}.reqturn.json`); save(tf, { kind: r.kind, at: Date.now() }); }
       if (!r.row) return;
       if (r.kind === 'ask') return context(`📋 물음 #${r.row.no} (업무 표에 올리지 않음. 답하면 닫힘. 이 물음이 고칠 일로 이어지면 다음 요청이 업무로 올린다)`);
       const st = sid ? path.join(stateDir(ROOT), `${sid}.requests.json`) : null;
@@ -48,6 +50,7 @@ if (require.main === module) {
     }
 
     if (ev !== 'Stop') return;
+    let midWork = false;
     // 끼어 든 메시지도 적는다 (이미 적은 것은 delivery id 로 건너뜀)
     if (input.transcript_path && sid) {
       let mids = [];
@@ -55,11 +58,14 @@ if (require.main === module) {
       const f = path.join(stateDir(ROOT), `${sid}.reqmid.json`);
       const done = readJson(f, []);
       const fresh = mids.filter((m) => !done.includes(m.id));
-      for (const m of fresh) L.record(ROOT, id, m.text);
+      for (const m of fresh) { const k = L.record(ROOT, id, m.text).kind; if (k === 'new' || k === 'go') midWork = true; }
       if (fresh.length) save(f, [...done, ...fresh.map((m) => m.id)].slice(-200));
     }
     L.closeAsks(ROOT, id); // 답한 물음은 닫는다
     if (lv !== 'block' || input.stop_hook_active) return;
+    // 질문 · 맞장구 · 백그라운드 알림 · 셸 출력 차례에는 표를 요구하지 않는다 (매번 표를 붙이게 하면 답이 되풀이된다)
+    const turn = sid ? readJson(path.join(stateDir(ROOT), `${sid}.reqturn.json`), {}) : {};
+    if (!midWork && turn.kind && !['new', 'go'].includes(turn.kind)) return;
     const rows = L.read(ROOT, id);
     const t = L.table(rows);
     if (!t || L.TABLE_RE.test(String(input.last_assistant_message || ''))) return;

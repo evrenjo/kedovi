@@ -166,6 +166,15 @@
       "scope": "팀 (workspace.json)"
     },
     {
+      "id": "domain",
+      "topic": "게임|unity|unreal|언리얼|유니티|펌웨어|firmware|임베디드|embedded|MCU|ESP32|nRF|웨어러블|wearable|IoT|MQTT|HIL",
+      "when": { "packOff": ["domain-game", "domain-device", "domain-iot"] },
+      "say": "분야 프로필 (kedovi domain)",
+      "why": "게임 · 장치 · IoT 는 명세 단위 · 검증 단계(시뮬레이터 · HIL) · 사람이 정하는 관문이 웹과 다르다. 분야를 정하면 분야 규칙 팩 · 문서 쪽 · 기능 문서 틀이 붙는다",
+      "cmd": "kedovi domain game|device|iot",
+      "scope": "팀 (workspace.json)"
+    },
+    {
       "id": "ops-preflight",
       "topic": "배포\\s*(?:전|하기\\s*전)\\s*(?:점검|확인)|배포\\s*(?:했는데|후에?)\\s*(?:안|에러|장애)|헬스\\s*체크|운영\\s*(?:장애|에러)",
       "when": { "stack": "docker|docker-compose|kubernetes|helm" },

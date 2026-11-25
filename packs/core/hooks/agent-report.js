@@ -54,5 +54,5 @@ run(() => {
   const own = fs.existsSync(path.join(ROOT, '.claude', 'agents', `${role}.md`));
   if (level !== 'block' || !own) return;
   const url = R.urlOf(ROOT, R.ensureServer(ROOT, { wait: false }), file);
-  block(`보고가 깁니다 (${lines}줄, 기준 ${max}줄). 원문은 ${path.relative(ROOT, file)} 에 보관했습니다. 받는 쪽에는 결론 1줄 + 핵심 3~5줄 + 「자세히: ${url}」 만 다시 써서 끝낸다 (변경 파일 표 · 검증 표 · 근거는 그 파일에 있다). 오류 · 실패 · 받는 쪽이 정할 것 · 소유 밖 발견은 핵심에 남긴다. 끄기: kedovi team-mode enforce report off`);
+  block(`보고가 깁니다 (${lines}줄, 기준 ${max}줄). 원문은 ${path.relative(ROOT, file)} 에 보관했습니다. 받는 쪽에는 결론 1줄 + 핵심 3~5줄 + 「자세히: ${url}」 만 다시 써서 끝낸다 (변경 파일 표 · 검증 표 · 근거는 그 파일에 있다). 오류 · 실패 · 받는 쪽이 정할 것 · 소유 밖 발견은 핵심에 남긴다. 끄기: kedovi team-mode enforce report off`, { redo: true });
 });
