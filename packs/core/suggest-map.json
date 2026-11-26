@@ -4,7 +4,9 @@
     {
       "id": "remote",
       "topic": "원격|push|푸시|팀원.{0,8}(?:받|clone|합류)|팀(?:과|에)\\s*(?:공유|나누|올리)|gitlab\\s*에\\s*올|github\\s*에\\s*올",
-      "when": { "noRemote": true },
+      "when": {
+        "noRemote": true
+      },
       "say": "워크스페이스 원격 붙이기 (kedovi remote add)",
       "why": "init 은 첫 커밋까지만 하고 원격을 붙이지 않는다. 원격을 붙이고 push 해야 팀원이 clone 해 같은 규칙 · 기록으로 일한다",
       "cmd": "kedovi remote add <주소>",
@@ -13,7 +15,10 @@
     {
       "id": "trace",
       "topic": "디버깅|디버거|어디서\\s*(?:값이\\s*)?바뀌|(?:실행|호출)\\s*흐름|로직.{0,8}(?:어떻게\\s*(?:돌|흘러|타)|따라가)|어느\\s*(?:함수|메서드|서비스)를?\\s*(?:타|거치)|NPE|NullPointer|SQL.{0,8}(?:뭐가|어떤|몇\\s*번)\\s*(?:나가|실행)",
-      "when": { "packOff": "trace", "stack": "spring|java|kotlin|android|python|fastapi|django|flask|react|vue|svelte|vite|next|typescript|javascript|node|express|nest" },
+      "when": {
+        "packOff": "trace",
+        "stack": "spring|java|kotlin|android|python|fastapi|django|flask|react|vue|svelte|vite|next|typescript|javascript|node|express|nest"
+      },
       "say": "실행 흐름 디버깅 (trace 팩)",
       "why": "API · 함수 · 배치 · 화면 동작 한 번을 줄마다 값 · SQL · 요청과 함께 웹 화면으로 본다 (Java · Python · 웹 화면 · Node)",
       "cmd": "kedovi upgrade --add trace",
@@ -22,7 +27,9 @@
     {
       "id": "screens-pack",
       "topic": "프로토타입|화면\\s*설계|퍼블리싱|퍼블\\b|와이어프레임|figma|피그마",
-      "when": { "packOff": "screens" },
+      "when": {
+        "packOff": "screens"
+      },
       "say": "화면 정본 대조 (screens 팩)",
       "why": "프로토타입 · 화면설계서를 정본으로 요소 체크리스트 · 나란히 비교 · 착수 전 확인을 해 화면이 정본과 달라지지 않게 한다",
       "cmd": "kedovi upgrade --add screens",
@@ -31,7 +38,13 @@
     {
       "id": "screens-locate",
       "topic": "프로토타입.{0,12}(?:다르|달라|달랐|틀리|틀려|안\\s*맞|못\\s*찾|어디)|화면.{0,8}(?:프로토타입|정본).{0,8}(?:다르|달라)|정본을?\\s*못\\s*찾",
-      "when": { "packOn": "screens", "unset": ["vars.screens.dir", "vars.screens.prototype"] },
+      "when": {
+        "packOn": "screens",
+        "unset": [
+          "vars.screens.dir",
+          "vars.screens.prototype"
+        ]
+      },
       "say": "화면 위치 설정 (kedovi screens locate)",
       "why": "기획 repo 의 화면 폴더 · 한 페이지 앱 프로토타입이 기본 위치가 아니면 정본을 못 찾아 체크리스트 없이 만들게 된다",
       "cmd": "kedovi screens locate",
@@ -40,7 +53,10 @@
     {
       "id": "unslop",
       "topic": "프로토타입|시안|목업|랜딩\\s*페이지|AI\\s*티|AI\\s*가\\s*만든\\s*(?:것\\s*)?같|촌스럽|디자인.{0,8}(?:다듬|개선|세련)|예쁘게|unslop|언슬롭",
-      "when": { "packOn": "screens", "skillMissing": "unslop" },
+      "when": {
+        "packOn": "screens",
+        "skillMissing": "unslop"
+      },
       "say": "언슬롭(unslop) 스킬을 깔면 화면의 AI 티를 알아서 걷어 냄",
       "why": "설치하면 프로토타입 · 시안을 만들 때 화면을 보고 AI 티(보라 그라데이션 · 번짐 · 이모지 아이콘 · 들쭉날쭉한 간격 · 과한 굵기 · 느낌표 문구)를 위치까지 짚고, 제품에 맞는 방향 5줄을 제안한 뒤 간격 · 색 · 아이콘 · 문구 · 글꼴 · 배치 · 움직임 순으로 디자이너처럼 손질한다 (라이브 주소만으로도 점검). 정한 값은 토큰으로 남아 실제 구현도 그 모양을 따른다. 지금은 킷 검사기(kedovi screens slop)로 기계로 잡히는 것만 본다",
       "cmd": "claude plugin install unslop --marketplace heydamir/unslop",
@@ -49,7 +65,9 @@
     {
       "id": "notify",
       "topic": "끝나면\\s*알려|다\\s*(?:되면|끝나면)|오래\\s*걸리|자리\\s*비|외출|퇴근|기다리기\\s*(?:힘|싫)|폰으로|텔레그램",
-      "when": { "notify": "off" },
+      "when": {
+        "notify": "off"
+      },
       "say": "텔레그램 알림",
       "why": "작업이 끝나거나 결정이 필요할 때 폰으로 알림을 받는다",
       "cmd": "kedovi notify setup",
@@ -59,7 +77,12 @@
     {
       "id": "away",
       "topic": "자리\\s*비|외출|퇴근|밖에서|이동\\s*중|회의\\s*(?:들어|가)",
-      "when": { "notify": "on", "localNot": { "notify.away": true } },
+      "when": {
+        "notify": "on",
+        "localNot": {
+          "notify.away": true
+        }
+      },
       "say": "자리 비움",
       "why": "결정 질문을 텔레그램 버튼으로 받아 자리에 없어도 작업이 멈추지 않는다",
       "cmd": "kedovi notify my away on",
@@ -84,7 +107,11 @@
     {
       "id": "plan",
       "topic": "로드맵|마일스톤|다음에\\s*(?:뭐|무엇)|전체\\s*진행|남은\\s*(?:일|작업)|일정\\s*(?:관리|정리)",
-      "when": { "unset": ["vars.plan.external"] },
+      "when": {
+        "unset": [
+          "vars.plan.external"
+        ]
+      },
       "say": "로드맵 (kedovi plan)",
       "why": "단계 · 할 일 · 진행률을 한 파일로 두고 세션 시작마다 다음 할 일을 보여 준다",
       "cmd": "kedovi plan",
@@ -117,7 +144,11 @@
     {
       "id": "team-auto",
       "topic": "동시에|병렬로|나눠서\\s*(?:해|작업)|여러\\s*(?:개|작업)를?\\s*(?:같이|한꺼번에)|빨리\\s*(?:끝내|처리)",
-      "when": { "not": { "agents.mode": "auto" } },
+      "when": {
+        "not": {
+          "agents.mode": "auto"
+        }
+      },
       "say": "팀 구성 자동",
       "why": "작업 리더 · 팀원 에이전트가 나눠서 병렬로 처리한다 (요금제별 상한)",
       "cmd": "kedovi team-mode auto",
@@ -140,6 +171,17 @@
       "scope": "읽기만"
     },
     {
+      "id": "ide-diff",
+      "topic": "뭐가\\s*바뀌|무엇이\\s*바뀌|바뀐\\s*(?:파일|거|것|부분)|변경\\s*(?:파일|사항).{0,6}(?:보|확인)|diff|IDE|인텔리제이|intellij|vscode|vs\\s*code|cursor|어느\\s*repo",
+      "when": {
+        "localUnset": "ide.open"
+      },
+      "say": "바뀐 파일을 IDE 에 diff 로 띄우기 (kedovi prefs ide)",
+      "why": "차례가 끝나면 이번 차례에 바뀐 repos/ 파일을 IntelliJ · VS Code · Cursor 에 diff · 새 파일로 띄우고 창을 앞으로 가져온다. repo 가 많을 때 무엇이 바뀌었는지 바로 본다",
+      "cmd": "kedovi prefs ide auto",
+      "scope": "이 PC (.agents/local.json)"
+    },
+    {
       "id": "docs-serve",
       "topic": "(?:기획|설계|요구)\\s*문서.{0,10}(?:보기|웹|사이트|공유|찾기)|문서\\s*사이트",
       "say": "문서 사이트",
@@ -150,7 +192,9 @@
     {
       "id": "archrules",
       "topic": "레이어|계층\\s*구조|의존\\s*방향|패키지\\s*구조|구조\\s*(?:규칙|가\\s*깨|어긋)|순환\\s*참조",
-      "when": { "stack": "spring|react|fastapi|nestjs|django" },
+      "when": {
+        "stack": "spring|react|fastapi|nestjs|django"
+      },
       "say": "구조 규칙 검사 (kedovi archrules)",
       "why": "레이어 · 의존 방향 규칙을 테스트로 만들어 어긋난 코드를 커밋 전에 잡는다",
       "cmd": "kedovi archrules spring|react|fastapi|nestjs|django",
@@ -159,7 +203,9 @@
     {
       "id": "datamodel",
       "topic": "ERD|테이블\\s*관계|스키마\\s*(?:그림|정리|문서)|엔티티\\s*관계",
-      "when": { "packOff": "datamodel" },
+      "when": {
+        "packOff": "datamodel"
+      },
       "say": "데이터 모델 (datamodel 팩)",
       "why": "테이블 · 관계를 문서와 ERD 화면으로 관리한다",
       "cmd": "kedovi upgrade --add datamodel",
@@ -168,7 +214,13 @@
     {
       "id": "domain",
       "topic": "게임|unity|unreal|언리얼|유니티|펌웨어|firmware|임베디드|embedded|MCU|ESP32|nRF|웨어러블|wearable|IoT|MQTT|HIL",
-      "when": { "packOff": ["domain-game", "domain-device", "domain-iot"] },
+      "when": {
+        "packOff": [
+          "domain-game",
+          "domain-device",
+          "domain-iot"
+        ]
+      },
       "say": "분야 프로필 (kedovi domain)",
       "why": "게임 · 장치 · IoT 는 명세 단위 · 검증 단계(시뮬레이터 · HIL) · 사람이 정하는 관문이 웹과 다르다. 분야를 정하면 분야 규칙 팩 · 문서 쪽 · 기능 문서 틀이 붙는다",
       "cmd": "kedovi domain game|device|iot",
@@ -177,7 +229,9 @@
     {
       "id": "ops-preflight",
       "topic": "배포\\s*(?:전|하기\\s*전)\\s*(?:점검|확인)|배포\\s*(?:했는데|후에?)\\s*(?:안|에러|장애)|헬스\\s*체크|운영\\s*(?:장애|에러)",
-      "when": { "stack": "docker|docker-compose|kubernetes|helm" },
+      "when": {
+        "stack": "docker|docker-compose|kubernetes|helm"
+      },
       "say": "배포 전 점검 (kedovi ops)",
       "why": "배포 전에 설정 · 포트 · 헬스체크를 점검하고 통과해야 배포 명령을 실행한다",
       "cmd": "kedovi ops add all",

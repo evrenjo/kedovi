@@ -90,7 +90,7 @@
  *   kedovi gitlab busy [--repo R] [--json]   자원 경합 확인 (읽기만): 같은 repo · 러너 그룹의 도는 파이프라인과 이 PC 의 무거운 프로세스. 러너가 이 PC 면(vars.gitlab.localRunner) 겹칠 때 경고, 끝 코드 2
  *   kedovi gitlab runner-watch add [--repo R] [--interval 초] [--standalone] [--dry-run] · check [--dry-run] · status   러너 감시: 디스크 · 대기열 · 작업 시간 급증 → 알림, docker 캐시 상한. launchd plist · systemd timer 를 만들고 등록 명령을 보인다
  *   kedovi release [repo] [--deploy] [--job 작업] [--yes] [--dry-run] [--timeout 분]   운영 배포 연쇄 (gitlab 팩): 배포 전 확인(같은 트리 develop 파이프라인 성공 · 그 뒤 CI 설정 안 바뀜 · repo 확인 명령, 실패면 develop 부터 다시) → develop → release MR → MR 파이프라인 → 머지 → release 파이프라인 → (--deploy) 배포 작업. 파이프라인은 하나씩, 일시 오류는 다시 실행. --yes 없으면 계획만 (끝 코드 3)
- *   kedovi prefs [language ko|en|team · style learn|normal|expert|team · writing bullet|prose|team · writing-except <대상,…>|none|team] [--team] · mermaid [install] · setup   응답 언어 · 대화 스타일(학습 · 일반 · 전문가) · 글 형식(개조식 · 서술식)과 개조식에서 뺄 대상(chat · issue · mr · comment · report · weekly · plan) · 그림 미리보기(claude-mermaid). 이 PC 값이 팀 값보다 먼저. 인자 없이 = 지금 값
+ *   kedovi prefs [language ko|en|team · style learn|normal|expert|team · writing bullet|prose|team · writing-except <대상,…>|none|team · ide off|auto|intellij|vscode|cursor|team · ide-max <1~20>|team · change-report on|off|team] [--team] · mermaid [install] · setup   응답 언어 · 대화 스타일(학습 · 일반 · 전문가) · 글 형식(개조식 · 서술식)과 개조식에서 뺄 대상(chat · issue · mr · comment · report · weekly · plan) · 그림 미리보기(claude-mermaid). 이 PC 값이 팀 값보다 먼저. 인자 없이 = 지금 값
  *   kedovi verify areas [--repo R] [--dir D] [--base B] [--run] · full [--repo R] [--cmd "명령"] · mark --repo R [--sha S] [--by "어디서"] · status [--repo R]   검증 2단: 작업마다는 바뀐 파일의 영역 시험만(vars.verify.areaMap), 전체 실제 스택 시험(vars.verify.fullCmd)은 릴리스 직전 한 번(vars.verify.fullSuite = release). full 은 무거운 시험 줄에서 돌고 통과 커밋을 기록, 릴리스 MR 때 기록이 낡았으면 경고
  *   kedovi heavy run [--name 이름] [--dir D] [--no-mise] -- <명령 …> · status [--json] · set [--slots N] [--max-load 코어당 값] [--load-wait 분] [--reset]   무거운 시험 순번: 이 PC 에서 겹치면 안 되는 시험을 줄 세워 하나씩(vars.verify.heavySlots), 줄 · 예상 시작 · 예상 끝(같은 이름의 최근 시간) · 코어당 부하 기준(vars.verify.heavyMaxLoad). 기다리는 작업도 바꾼 기준을 바로 따름 · mise 설정이 있으면 mise exec 안에서
  *   kedovi team step --unit <단위> --stage <단계> [--left "남은 단계,…"] [--done …] [--next …] [--eta HH:MM] · --end 완료|막힘|결정 필요 · board [--all] [--json]   작업 리더 진행판: 리더가 단계마다 · vars.team.leadReportMinutes 분마다 적고, 메인 · 사용자가 표로 본다 (tmux 창 없이도). 예상 종료 = 단계 종류별 실측(지난 단계 시간 · 무거운 시험 기록)의 범위, 지난 예상과 실제 비율로 보정
@@ -2951,6 +2951,17 @@ function showPrefs(root) {
     console.log(`글 형식: ${W(r.writing)} (${where[r.from.writing]})  · 이 PC ${W(r.local.writing)} · 팀 ${W(r.team.writing)}  · 사람이 읽는 글(문서 · 이슈 · MR · 댓글 · 보고 · 채팅)`);
     console.log(`개조식 예외: ${T(r.writingExcept)} (${where[r.from.writingExcept]})  · 이 PC ${T(r.local.writingExcept)} · 팀 ${T(r.team.writingExcept)}  · 고를 수 있는 대상 ${Object.keys(WRITING_TARGETS()).join(' · ')}`);
   }
+  const ideLib = path.join(root, 'packs', 'core', 'lib', 'idediff.js');
+  if (fs.existsSync(ideLib)) {
+    const D = require(ideLib);
+    const r2 = D.resolve(root);
+    const O = { off: '끔', auto: '자동', intellij: 'IntelliJ', vscode: 'VS Code', cursor: 'Cursor' };
+    const v = (k, x) => (x === undefined ? '-' : k === 'open' ? O[x] : k === 'report' ? (x === 'on' ? '켬' : '끔') : `${x}개`);
+    const line = (k, label, cmd) => console.log(`${label}: ${v(k, r2[k])} (${where[r2.from[k]]})  · 이 PC ${v(k, r2.local[k])} · 팀 ${v(k, r2.team[k])}  · ${cmd}`);
+    line('open', '바뀐 파일 IDE 에 띄우기', '차례가 끝날 때 diff · 새 파일 열기 (kedovi prefs ide off|auto|intellij|vscode|cursor)');
+    line('max', '한 번에 띄울 파일', 'kedovi prefs ide-max <1~20>');
+    line('report', '차례 끝 변경 보고 표', 'repo · 브랜치 · 커밋 · 푸시 · 바뀐 파일 (kedovi prefs change-report on|off)');
+  }
   const m = mermaidInstalled();
   console.log(`그림 미리보기(claude-mermaid): ${m === null ? '확인 못 함 (Claude Code 없음)' : m ? '설치됨: 세션에 mermaid_preview 가 있으면 브라우저로 띄움' : '없음: 텍스트 그림으로 (설치: kedovi prefs mermaid install)'}`);
   console.log('  바꾸기: kedovi prefs language ko|en · kedovi prefs style learn|normal|expert · kedovi prefs writing bullet|prose · kedovi prefs writing-except <대상,…>|none · 이 PC 값 지우기: team · 팀 기본값: --team (팀장)');
@@ -3005,8 +3016,34 @@ async function cmdPrefs(argv) {
   const team = argv.includes('--team');
   const [what, want] = argv.filter((a) => a !== '--team');
   if (!fs.existsSync(path.join(root, 'packs', 'core', 'lib', 'chatprefs.js'))) fail('이 워크스페이스의 킷이 응답 언어 · 대화 스타일을 모릅니다. kedovi upgrade 를 먼저 하세요');
-  const usage = '사용법: kedovi prefs [language ko|en|team · style learn|normal|expert|team · writing bullet|prose|team · writing-except <대상,…>|none|team] [--team] · mermaid [install] · setup';
+  const usage = '사용법: kedovi prefs [language ko|en|team · style learn|normal|expert|team · writing bullet|prose|team · writing-except <대상,…>|none|team · ide off|auto|intellij|vscode|cursor|team · ide-max <1~20>|team · change-report on|off|team] [--team] · mermaid [install] · setup';
   if (!what) return showPrefs(root);
+  if (what === 'ide' || what === 'ide-max' || what === 'change-report') {
+    const ideLib = path.join(root, 'packs', 'core', 'lib', 'idediff.js');
+    if (!fs.existsSync(ideLib)) fail('이 워크스페이스의 킷이 IDE diff 를 모릅니다. kedovi upgrade 를 먼저 하세요');
+    const D = require(ideLib);
+    const key = what === 'ide' ? 'open' : what === 'ide-max' ? 'max' : 'report';
+    let val = want;
+    if (!want || (want === 'team' && team)) fail(usage);
+    if (want !== 'team') {
+      if (key === 'open' && !D.OPENERS.includes(want)) fail(usage);
+      if (key === 'max') { val = Number(want); if (!Number.isInteger(val) || val < 1 || val > 20) fail(usage); }
+      if (key === 'report' && !['on', 'off'].includes(want)) fail(usage);
+    }
+    if (team) {
+      requireAdmin(root, 'IDE diff · 변경 보고 팀 기본값 변경');
+      const wsFile = path.join(root, 'workspace.json');
+      const w = JSON.parse(read(wsFile));
+      w.ide = { ...(w.ide || {}), [key]: val };
+      fs.writeFileSync(wsFile, `${JSON.stringify(w, null, 2)}\n`);
+    } else {
+      const ide = { ...(readLocal(root).ide || {}) };
+      if (val === 'team') delete ide[key]; else ide[key] = val;
+      writeLocal(root, { ide });
+    }
+    console.log(`✔ ${team ? '팀 기본값(workspace.json. commit·push 하면 팀 적용)' : '이 PC(.agents/local.json)'} 에 저장했습니다. 다음 요청부터 적용됩니다`);
+    return showPrefs(root);
+  }
   if (what === 'setup') {
     if (!process.stdin.isTTY) fail('setup 은 터미널에서만 됩니다. 채팅에서는 kedovi prefs language · style · writing');
     clack();

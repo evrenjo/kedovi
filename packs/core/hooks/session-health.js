@@ -127,7 +127,7 @@ run(() => {
   const mine = snap && procs ? ownSession(snap, procs) : null;
   if (mine && cfg.longHours && mine.age > cfg.longHours * 3600 && (!st.longWarned || now - st.longWarned > 2 * 3600000)) {
     st.longWarned = now;
-    out.push(`⚠ 이 세션이 ${P.hours(mine.age)} 째입니다 (기준 ${cfg.longHours}시간, 메모리 ${P.gb(mine.rss)}). 이번 요청을 마치면 핸드오프를 남기고 새로 시작하자고 사용자에게 한 줄 제안한다 (새 세션은 핸드오프로 이어진다)`);
+    out.push(`⚠ 이 세션이 ${P.hours(mine.age)} 째입니다 (기준 ${cfg.longHours}시간, 메모리 ${P.gb(mine.rss)}). 이번 요청을 마치면 핸드오프를 남기고 새로 시작하자고 사용자에게 한 줄 제안한다 (새 세션은 핸드오프로 이어진다). 긴 대화일수록 앞 맥락을 놓치고 질문을 글자 그대로 읽기 쉬우니, 그때까지는 질문마다 사용자가 이미 아는 것 · 확인하려는 것을 직전 대화에서 먼저 잡고 답한다`);
   }
   const ctx = cfg.ctxPct ? contextUse(input.transcript_path, ROOT) : null;
   if (ctx && ctx.pct >= cfg.ctxPct && (!st.ctxWarned || ctx.pct >= st.ctxWarned + 10)) {

@@ -525,6 +525,9 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   const e = {};
   e['질문 판정'] = ['문제없지 않나?', '이거 맞아', '되나요', '다 끝난거임?'].every(q) && !['배포해줘', 'xD 도 같은 서버야', '여기 글자 겹침 고쳐줘', '/loop 5m'].some(q);
   e['첫 문장 판단'] = ['네, 문제없습니다. 이유는 …', '**아니요**. 아직 대기 중입니다.', '이번 작업은 다 끝났습니다.', '2026-11-15 21:15:22\n\n네, Firebase 쪽 준비는 다 됐습니다. 다만 두 가지는 뒤에 합니다.'].every(af) && !af('2026-11-15 21:15:22\n\n문서를 고쳤습니다.') && !af('문서를 고쳤고 커밋했습니다.\n\n문제없습니다.');
+  // 붙여 준 실제 대화: 「45, 50, 51, 52 다 된거임?」 (사용자는 개발이 끝나고 반영만 남았는지 물음) → 나눠 답하기 · 되묻기도 첫 줄 답으로
+  e['맥락 답 (나눠 답하기 · 되묻기)'] = q('45, 50, 51, 52 다 된거임?') && af('개발 · 검사는 끝났고 남은 건 push · 배포입니다.') && af('네, 코드는 끝났고 남은 건 push 입니다.') && af('코드 기준이면 예, 화면 반영 기준이면 아니오입니다. 어느 쪽이 궁금하세요?') && !af('코드를 정리했습니다.')
+    && /직전 대화에서 사용자가 무엇을 확인하려는지/.test(hook('UserPromptSubmit', { prompt: '45, 50, 51, 52 다 된거임?' }));
   const bad = '문서를 고쳤고 커밋했습니다.\n\n참고로 문제는 없어 보입니다.';
   e['막기 (기본): 마지막 답변 글'] = /마지막 보고 첫 줄에 그 답을 다시/.test(hook('UserPromptSubmit', { prompt: '이거 문제없지 않나?' })) && /마지막 답변 글의 첫 문장/.test(hook('Stop', { last_assistant_message: bad })) && !hook('UserPromptSubmit', { prompt: '배포해줘' });
   cli('team-mode', 'enforce', 'answer', 'warn', '--team');
@@ -542,7 +545,7 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   const hooks = JSON.parse(fs.readFileSync(path.join(dw, '.claude', 'settings.json'), 'utf8')).hooks || {};
   e['훅 등록'] = ['Stop', 'UserPromptSubmit'].every((k) => JSON.stringify(hooks[k] || []).includes('answer-first'));
   const rules = fs.readFileSync(path.join(dw, 'AGENTS.md'), 'utf8');
-  e['상시 룰'] = /물은 것에 먼저 답한다/.test(rules) && /사용자가 말하지 않은 문제를 만들지 않는다/.test(rules) && /대화 답변 · 사실 반영에서 가능한 영향을 늘어놓지 않는다/.test(rules);
+  e['상시 룰'] = /물은 것에 먼저 답한다/.test(rules) && /직전 대화에서 사용자가 확인하려는 것/.test(rules) && /사용자가 말하지 않은 문제를 만들지 않는다/.test(rules) && /대화 답변 · 사실 반영에서 가능한 영향을 늘어놓지 않는다/.test(rules);
   record('질문에 먼저 답하기 (알림 · 막기 · 한 번 · 팀원 제외 · 끄기 · 룰)', Object.values(e).every(Boolean), Object.entries(e).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
 
@@ -601,6 +604,72 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   record('보완 (결정 질문 막기 · 기존 폴더 훑기 · 기획 repo 경고)', Object.values(e).every(Boolean), Object.entries(e).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
 
+// 차례 끝 변경 보고 · IDE diff (kedovi prefs ide · ide-max · change-report): 이번 차례 시작점 대비 바뀐 파일만 · 표 · diff 원본 · 최대 개수 · 다시 안 띄움 · 끄기
+{
+  const dw = path.join(tmp, 'ide-ws');
+  spawnSync(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dw, '--type', 'new'], { cwd: tmp, encoding: 'utf8' });
+  const wsFile = path.join(dw, 'workspace.json');
+  const wj = JSON.parse(fs.readFileSync(wsFile, 'utf8'));
+  wj.repos = [...(wj.repos || []), { name: 'app', kind: 'code' }];
+  fs.writeFileSync(wsFile, JSON.stringify(wj, null, 2));
+  const app = path.join(dw, 'repos', 'app');
+  fs.mkdirSync(path.join(app, 'src'), { recursive: true });
+  const g = (...a) => spawnSync('git', ['-C', app, '-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { encoding: 'utf8' });
+  g('init', '-q', '-b', 'main');
+  fs.writeFileSync(path.join(app, 'src', 'a.js'), 'a1\n');
+  fs.writeFileSync(path.join(app, 'src', 'b.js'), 'b1\n');
+  fs.writeFileSync(path.join(app, 'src', 'gone.js'), 'x\n');
+  g('add', '-A'); g('commit', '-qm', 'init');
+  fs.writeFileSync(path.join(app, 'src', 'b.js'), 'b2-before-turn\n'); // 요청 전부터 고친 중
+  const dry = path.join(tmp, 'ide-dry.jsonl');
+  const env = { PATH: process.env.PATH, HOME: path.join(tmp, 'ide-home'), TMPDIR: require('os').tmpdir(), CLAUDE_PROJECT_DIR: dw, KEDOVI_IDE_DRY: dry };
+  const hook = (ev, extra = {}) => spawnSync(process.execPath, [path.join(dw, 'packs', 'core', 'hooks', 'ide-diff.js'), '--agent=claude'], { cwd: dw, encoding: 'utf8', input: JSON.stringify({ hook_event_name: ev, session_id: 'ide-1', cwd: dw, ...extra }), env }).stdout.trim();
+  const prefs = (...a) => spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'prefs', ...a], { cwd: dw, encoding: 'utf8', env: { ...process.env, HOME: env.HOME } });
+  const launched = () => { try { return fs.readFileSync(dry, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };
+  const p = {};
+  p['기본: IDE 끔 · 표 켬'] = /바뀐 파일 IDE 에 띄우기: 끔 \(기본\)/.test(prefs().stdout) && /차례 끝 변경 보고 표: 켬 \(기본\)/.test(prefs().stdout);
+  hook('UserPromptSubmit');
+  p['안 바뀌면 조용'] = !hook('Stop');
+  fs.writeFileSync(path.join(app, 'src', 'a.js'), 'a2\n'); g('add', 'src/a.js'); g('commit', '-qm', 'a');
+  fs.writeFileSync(path.join(app, 'src', 'b.js'), 'b3-in-turn\n');
+  fs.writeFileSync(path.join(app, 'src', 'new.js'), 'n\n');
+  fs.writeFileSync(path.join(app, 'package-lock.json'), '{}\n');
+  fs.rmSync(path.join(app, 'src', 'gone.js'));
+  const out1 = hook('Stop');
+  let msg = '';
+  try { msg = JSON.parse(out1).systemMessage || ''; } catch { msg = ''; }
+  p['표: repo · 브랜치 · 커밋 · 푸시 · 파일'] = /바뀐 repo 1개/.test(msg) && /app · main · 커밋 1개 · 커밋 안 한 파일 4개 · 원격 브랜치 없음/.test(msg) && /외 2개/.test(msg) && launched().length === 0;
+  p['다시 멈춰도 같은 결과는 한 번'] = !hook('Stop');
+  p['설정: ide · ide-max · 잘못된 값'] = prefs('ide', 'vscode').status === 0 && prefs('ide-max', '2').status === 0 && prefs('ide', 'emacs').status !== 0 && prefs('ide-max', '99').status !== 0;
+  hook('UserPromptSubmit');
+  fs.writeFileSync(path.join(app, 'src', 'c.js'), 'c\n');
+  fs.writeFileSync(path.join(app, 'src', 'new2.js'), 'n2\n');
+  fs.writeFileSync(path.join(app, 'src', 'b.js'), 'b4\n');
+  fs.writeFileSync(path.join(app, 'yarn.lock'), 'x\n');
+  const T0 = Date.now() / 1000; // 최근에 고친 것부터 띄운다: b → new2 → c
+  [['c.js', 30], ['new2.js', 20], ['b.js', 10]].forEach(([f, ago]) => fs.utimesSync(path.join(app, 'src', f), T0 - ago, T0 - ago));
+  const out2 = hook('Stop');
+  const L = launched();
+  const diffCall = L.find((x) => x[1] === '--diff');
+  const before = diffCall ? fs.readFileSync(diffCall[2], 'utf8') : '';
+  p['diff 원본 = 이번 차례 시작 때 내용'] = !!diffCall && before === 'b3-in-turn\n' && /이번 차례 전 · b\.js$/.test(diffCall[2]) && diffCall[3] === path.join(app, 'src', 'b.js');
+  p['최대 개수 · 생성물 뺌 · 남은 것은 표에'] = L.length === 2 && !L.some((x) => /yarn\.lock|package-lock/.test(x.join(' '))) && /IDE 에 띄움: 2개 \(나머지 1개는 표에만/.test(JSON.parse(out2).systemMessage);
+  fs.writeFileSync(dry, '');
+  fs.writeFileSync(path.join(app, 'src', 'c.js'), 'c\n'); // 같은 내용으로 다시 써도 (mtime 만 바뀜)
+  hook('Stop');
+  const again = launched();
+  p['같은 내용은 다시 안 띄움'] = !again.some((x) => /src\/(b|new2)\.js/.test(x.join(' '))) && again.some((x) => /src\/c\.js/.test(x.join(' ')));
+  prefs('ide', 'off'); prefs('change-report', 'off');
+  hook('UserPromptSubmit');
+  fs.writeFileSync(path.join(app, 'src', 'a.js'), 'a9\n');
+  fs.writeFileSync(dry, '');
+  p['둘 다 끄면 아무것도 안 함'] = !hook('Stop') && launched().length === 0;
+  p['원격 · 컨테이너는 건너뜀'] = /SSH/.test(require(path.join(KIT, 'packs', 'core', 'lib', 'idediff.js')).noGui({ SSH_CONNECTION: '1 2 3 4' }));
+  const hooks = JSON.parse(fs.readFileSync(path.join(dw, '.claude', 'settings.json'), 'utf8')).hooks || {};
+  p['훅 등록'] = ['UserPromptSubmit', 'Stop'].every((k) => JSON.stringify(hooks[k] || []).includes('ide-diff'));
+  record('차례 끝 변경 보고 · IDE diff (시작점 대비 · 표 · 원본 · 최대 개수 · 다시 안 띄움 · 끄기)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
+
 // 착수 전 확인: 요청마다 코드 repo 첫 수정 전에 답변에 「착수 전 확인:」 이 없으면 알림(기본, 한 번) · 막기 · 문서 두 줄 이하 · repo 밖 제외
 {
   const dw = path.join(tmp, 'planfirst-ws');
@@ -628,13 +697,29 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   p['다음 요청은 다시'] = /additionalContext/.test(edit(code));
   hook('UserPromptSubmit');
   say(['u', '주문 탭 추가해줘'], ['a', '착수 전 확인:\n| 영향 범위 | order.js |'], ['u', '진행해'], ['a', '시작합니다.']);
+  const noWhy = edit(code);
+  p['목적 · 성공 기준 없으면 알림'] = /additionalContext/.test(noWhy) && /목적\(왜\) · 성공 기준 칸이 없습니다/.test(noWhy);
+  hook('UserPromptSubmit');
+  say(['u', '주문 탭 추가해줘'], ['a', '착수 전 확인:\n| 목적 | 주문을 탭으로 나눠 본다 |\n| 성공 기준 | 탭 전환 시 목록이 바뀐다 |\n| 영향 범위 | order.js |'], ['u', '진행해'], ['a', '시작합니다.']);
   p['앞 요청 답변의 머리말 통과'] = !edit(code);
-  say(['u', '주문 탭'], ['a', '착수 전 확인: 계획'], ['u', '다른 것'], ['a', '네'], ['u', '이것도']);
+  say(['u', '주문 탭'], ['a', '착수 전 확인: 목적 · 성공 기준 · 계획'], ['u', '다른 것'], ['a', '네'], ['u', '이것도']);
   p['두 요청 전 머리말은 안 셈'] = /additionalContext/.test(edit(code));
   hook('UserPromptSubmit');
   say(['u', '오타 고쳐줘']);
   p['문서 두 줄 이하 · repo 밖 제외'] = !edit(path.join(dw, 'repos', 'app', 'README.md'), 2) && !edit(path.join(dw, 'handoffs', 'note.js'));
   p['문서도 세 줄 이상이면 알림'] = /additionalContext/.test(edit(path.join(dw, 'repos', 'app', 'README.md'), 3));
+  // 메인이 구현을 맡길 때 (메인 전담: 메인은 직접 고치지 않는다) — 실제 세션에서 「주문 목록에 필터 기능 추가해줘」 를 묻지 않고 바로 맡긴 일
+  const task = (ti, extra = {}) => hook('PreToolUse', { tool_name: 'Agent', tool_input: ti, ...extra });
+  hook('UserPromptSubmit');
+  say(['u', '주문 목록에 필터 기능 추가해줘'], ['a', '작업 위치부터 확인합니다.']);
+  const d1 = task({ description: '주문 목록 필터 구현', subagent_type: 'fork', prompt: 'repos/app/src/order.js 에 필터를 추가해라' });
+  p['맡기기: 첫 번 되돌림 · 다시는 통과'] = /"deny"/.test(d1) && /에이전트에게 맡기려/.test(d1) && /interview/.test(d1) && !task({ description: '주문 목록 필터 구현', prompt: 'repos/app/src/order.js 에 필터를 추가해라' });
+  hook('UserPromptSubmit');
+  p['맡기기: 조사 · 코드 repo 밖 · 팀원은 안 봄'] = !task({ description: '주문 코드 조사', subagent_type: 'Explore', prompt: 'repos/app 을 읽어라' }) && !task({ description: '리뷰', prompt: 'repos/app/src 리뷰' }) && !task({ description: '문서 정리', prompt: 'docs-site/개요.md 고쳐라' }) && !task({ description: '구현', prompt: 'repos/app 수정' }, { agent_id: 'lead-1' });
+  say(['u', '주문 목록에 필터 기능 추가해줘'], ['a', '착수 전 확인:\n| 목적 | 상태로 주문을 좁혀 본다 |\n| 성공 기준 | 상태를 고르면 그 상태만 보인다 |']);
+  p['맡기기: 목적 · 성공 기준 보였으면 통과'] = !task({ description: '필터 구현', prompt: 'repos/app/src/order.js 수정' });
+  hook('UserPromptSubmit');
+  say(['u', '오타 고쳐줘']);
   const cli = (...a) => spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'team-mode', 'enforce', 'plan', ...a], { cwd: dw, encoding: 'utf8', env: { ...process.env, HOME: env.HOME } });
   cli('block', '--team');
   hook('UserPromptSubmit');
@@ -645,8 +730,8 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   cli('off', '--team');
   p['끄기'] = !edit(code);
   const hooks = JSON.parse(fs.readFileSync(path.join(dw, '.claude', 'settings.json'), 'utf8')).hooks || {};
-  p['훅 등록'] = ['UserPromptSubmit', 'PreToolUse'].every((k) => JSON.stringify(hooks[k] || []).includes('plan-first'));
-  record('착수 전 확인 (알림 · 한 번 · 앞 요청 머리말 · 문서 · repo 밖 · 막기 · 끄기)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
+  p['훅 등록'] = ['UserPromptSubmit', 'PreToolUse'].every((k) => JSON.stringify(hooks[k] || []).includes('plan-first')) && (hooks.PreToolUse || []).some((h) => /Agent/.test(h.matcher || '') && JSON.stringify(h).includes('plan-first'));
+  record('착수 전 확인 (알림 · 목적 · 성공 기준 · 한 번 · 앞 요청 머리말 · 문서 · repo 밖 · 막기 · 끄기)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
 }
 
 // 메인 대화 전담 · 작업 중 받은 메시지: 메인의 repo 수정은 막고(기본) 서브에이전트 · 기록 파일은 통과, 끼어 든 메시지는 멈출 때 한 번 되묻기

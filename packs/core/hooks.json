@@ -109,6 +109,11 @@
     {
       "script": "hooks/notify.js",
       "timeout": 10
+    },
+    {
+      "script": "hooks/ide-diff.js",
+      "timeout": 20,
+      "agents": "claude"
     }
   ],
   "UserPromptSubmit": [
@@ -199,6 +204,11 @@
     {
       "script": "hooks/notify.js",
       "timeout": 5
+    },
+    {
+      "script": "hooks/ide-diff.js",
+      "timeout": 15,
+      "agents": "claude"
     }
   ],
   "PreToolUse": [
@@ -227,7 +237,7 @@
       "agents": "claude"
     },
     {
-      "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+      "matcher": "Edit|Write|MultiEdit|NotebookEdit|Agent|Task",
       "script": "hooks/plan-first.js",
       "timeout": 5,
       "agents": "claude"
