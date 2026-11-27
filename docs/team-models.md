@@ -15,6 +15,8 @@
 | 문서화 `documenter` | README·사용법·이슈 문서 | 쓰기(문서) | low |
 | 작업 리더 `lead` | 독립 단위 하나를 맡아 팀원을 부르고 끝까지 진행 (아래 「작업 리더 (3층)」) | 읽기 전용 (코드 안 씀) | standard |
 
+팩이 더하는 역할: 디자인 `designer` (screens 팩: 방향 5줄 → 대표 화면 시안 → 확정 시 `kedovi screens import` 로 프로토타입 정본 → 전체 화면 · 상태별 모습 → `screens quality --design`, 쓰기(기획 · 프로토타입), high) · DBA `dba` (db 팩) · `infra` (infra 팩).
+
 - **많이 부르지 않는다**: 한 요청(사용자 메시지 하나)에 메인이 직접 부르는 동시 · 모든 층 합계 상한이 있다 (절약 2 · 6, 표준 4 · 15, 최고 6 · 30, `agents.limits` 로 바꾼다. 이 PC 값은 팀 값보다 낮게만). 작업 리더 상한은 아래 「작업 리더 (3층)」. Claude Code 는 넘으면 훅이 막고 AI 가 이유와 함께 사용자에게 묻는다. Codex 는 `config.toml` 의 동시 상한과 규칙으로 지킨다. 같은 역할은 새로 부르지 않고 앞 에이전트에게 이어서 맡긴다.
 - project 팩의 `agents/` 에 같은 이름을 두면 덮어쓰고, 새 이름이면 역할이 추가된다. 역할 머리말에 `grade: high | standard | low` 를 두면 프로필에 그 역할이 없어도 성향에 맞는 모델이 정해진다 (예: 표준의 high = Sonnet high).
 

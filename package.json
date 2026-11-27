@@ -1,8 +1,8 @@
 {
   "name": "kedovi",
-  "version": "0.112.0",
+  "version": "0.113.0",
   "private": false,
-  "description": "Claude Code · Codex 팀 개발 워크스페이스 킷: 메인은 대화, 작업은 리더 · 팀원 에이전트가 병렬로 · 의도 인터뷰 → 착수 전 확인 → 검사 → 리뷰를 훅으로 지킴 · 화면 품질 점검(WCAG 2.2 · KRDS) · 프로젝트 사이트(대시보드 · 일정 · 이슈 · 바뀐 점 비교) · 유형 · 분야 프로필 · 요청 장부 · IDE diff · 실행 흐름 디버깅",
+  "description": "Claude Code · Codex 팀 개발 워크스페이스 킷: 메인은 대화, 작업은 리더 · 팀원 에이전트가 병렬로 · 의도 인터뷰 → 착수 전 확인 → 검사 → 리뷰를 훅으로 지킴 · 시안 → 프로토타입 · 화면 품질 점검(WCAG 2.2 · KRDS) · 프로젝트 사이트(대시보드 · 일정 · 이슈 · 바뀐 점) · 유형 · 분야 프로필 · 요청 장부 · IDE diff",
   "keywords": [
     "claude-code",
     "codex",
@@ -37,7 +37,8 @@
     "accessibility",
     "wcag",
     "krds",
-    "ux-testing"
+    "ux-testing",
+    "design-to-prototype"
   ],
   "license": "MIT",
   "repository": {

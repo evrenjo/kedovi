@@ -105,6 +105,7 @@
 | `kedovi screens audit [--run] [--design] [--json]` | 킷을 업그레이드한 뒤 · 마일스톤 · 배포 전 | 모든 화면의 필수 통과 · 실패 · 판정 없음 · 권장 남음 표. `--run` 이면 화면마다 자동 측정. 절차는 `screen-audit` 스킬 |
 | `kedovi screens quality-level [public\|standard\|light]` | 프로젝트 성격이 정해졌을 때 (첫 시작 인터뷰가 묻는다) | 공공 사업: KRDS · KWCAG 2.2 · 전자정부 웹사이트 품질관리 지침(브라우저 3종 · 모바일 2종 필수) · 일반 서비스: WCAG 2.2 AA · 사내 도구: 핵심만 |
 | `kedovi screens usability` | 마일스톤마다 실제 사용자 평가를 할 때 | 사용성 평가 결과서 뼈대(`docs-site/테스트/사용성-평가.md`, ISO 25062 형식: 과업 · 성공률 · 시간 · 만족도 · 발견한 문제) |
+| `kedovi screens import <HTML 파일> <화면 ID> [--from <시안 링크>] [--to <경로>] [--measure]` | 시안(아티팩트 · Pencil 내보내기 · HTML)을 사용자가 확정했을 때 | 프로토타입 정본으로 저장하고 화면 목록 「프로토타입」 칸에 파일과 시안 링크를 남긴다. 저장 위치는 화면 목록 칸 → 이름에 화면 ID 가 든 파일 → `<화면 폴더>/prototype/<화면 ID>.html`. 한 페이지 앱 프로토타입이면 덮지 않는다. `--measure` 면 설계 단계 품질 측정까지 |
 | `kedovi screens locate [--dir <폴더,…>] [--prototype "<파일>#{id}"] [--scope <CSS>]` | 화면 폴더 · 프로토타입을 못 찾을 때 | 지금 설정 · 화면 ID 수 · 프로토타입을 찾은 화면 수와, 기획 repo 의 후보(「화면 ID」 표가 있는 폴더 · `prototype/…/index.html`)를 보인다. 인자를 주면 workspace.json `vars.screens` 에 적는다. 한 페이지 앱 프로토타입은 `#{id}` 처럼 화면 ID 자리를 둔다 |
 | `kedovi screens check [repo]` | 화면설계서를 쓴 뒤 | 근거 ID 가 색인에 있는지 · 화면 ID 중복 · Description 줄이 결론 한 줄인지(60자 넘음 · 날짜 · 결정 경위는 ⚠) · 기능 ID 누락(`vars.screens.functionIds`, 화면 목록의 「화면 없음」 행은 뺀다) · 화면 목록과 장 대조 (이어지는 장 `data-continues` 는 뺀다) |
 | `kedovi datamodel check [repo]` | 테이블 정의서를 쓴 뒤 | ✖ 참조 대상 없음 · 기본키 없음 · 테이블 · 컬럼 중복 · 표 형식. ⚠ 논리명 없음 · 컨벤션 위반(`vars.datamodel`) · 기능 ID 없는 테이블 · 테이블 없는 기능(「없음」 으로 적은 것은 뺀다) |

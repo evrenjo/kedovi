@@ -72,6 +72,7 @@
  *   kedovi screens audit [--run] [--design] [--json]   모든 화면의 품질 점검 현황 (업그레이드 뒤 한 번에, --run 이면 화면마다 자동 측정)
  *   kedovi screens quality-level [public|standard|light]   화면 품질 수준 (공공: KRDS · KWCAG · 품질관리 지침 · 일반: WCAG 2.2 AA · 사내 도구)
  *   kedovi screens usability   사용성 평가 결과서 뼈대 (docs-site/테스트/사용성-평가.md)
+ *   kedovi screens import <HTML 파일> <화면 ID> [--from <시안 링크>] [--to <경로>] [--measure]   확정한 시안(아티팩트 · Pencil 내보내기 · HTML)을 프로토타입 정본으로 저장 · 화면 목록 등록
  *   kedovi screens locate [--dir <폴더,…>] [--prototype "<파일>#{id}"] [--scope <CSS>]   화면 폴더 · 프로토타입 위치 보기 · 정하기 (workspace.json vars.screens, 못 찾으면 후보를 알림)
  *   kedovi datamodel check [repo|폴더]   데이터 설계 검사: 참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조 (datamodel 팩)
  *   kedovi archrules spring|react|fastapi|nestjs|django [--repo R] [--dir 모듈 경로] [--dry-run] [--json]   구조 검사 템플릿을 repo 에 넣는다: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사 · NestJS dependency-cruiser 설정 · Django import-linter 계약과 web 배치 검사 (backend.layout = component-web 이면 web → feature → shared 방향까지). 구조 · 기준 패키지 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다
@@ -4227,7 +4228,7 @@ async function main() {
     case 'draft': return runWsTool('draft.js', rest.map((a, i) => (rest[i - 1] === '--file' ? path.resolve(a) : a)));
     case 'trace': return runWsTool('trace.js', rest, 'trace');
     case 'tidy': return runWsTool('tidy.js', rest);
-    case 'screens': return rest[0] === 'slop' ? runWsTool('ui-slop.js', [...rest.slice(1).map((x) => (x.startsWith('-') ? x : path.resolve(x))), ...(rest.slice(1).some((x) => !x.startsWith('-')) ? [] : [process.cwd()])], 'screens') : rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : ['quality', 'audit', 'quality-level', 'usability'].includes(rest[0]) ? runWsTool('screens-quality.js', rest.map((x, i) => (['--storage', '--mock'].includes(rest[i - 1]) && fs.existsSync(path.resolve(x)) ? path.resolve(x) : x)), 'screens') : ['inventory', 'checklist', 'review', 'locate'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
+    case 'screens': return rest[0] === 'slop' ? runWsTool('ui-slop.js', [...rest.slice(1).map((x) => (x.startsWith('-') ? x : path.resolve(x))), ...(rest.slice(1).some((x) => !x.startsWith('-')) ? [] : [process.cwd()])], 'screens') : rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : rest[0] === 'import' ? runWsTool('screens-import.js', rest.slice(1).map((x, i, xs) => ((i === 0 || xs[i - 1] === '--to') && !x.startsWith('-') ? path.resolve(x) : x)), 'screens') : ['quality', 'audit', 'quality-level', 'usability'].includes(rest[0]) ? runWsTool('screens-quality.js', rest.map((x, i) => (['--storage', '--mock'].includes(rest[i - 1]) && fs.existsSync(path.resolve(x)) ? path.resolve(x) : x)), 'screens') : ['inventory', 'checklist', 'review', 'locate'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
     case 'datamodel': return runWsTool('check-datamodel.js', rest.filter((x) => x !== 'check'), 'datamodel');
     case 'archrules': return runWsTool('archrules.js', rest);
     case 'views': return runWsTool('check-views.js', rest, 'backend');

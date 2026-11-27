@@ -73,7 +73,11 @@ function stagesFor(type, layers = {}, approach) {
   const extra = p.cycle || p.feature ? [] : STACK_STAGES.filter((x) => layers[x.when]).map((x) => x.name);
   const at = p.stages.findIndex((x) => x === '구현');
   if (!extra.length || at < 0) return [...idea, ...p.stages];
-  return [...idea, ...p.stages.slice(0, at), ...extra, ...p.stages.slice(at)];
+  // 화면설계(시안 → 프로토타입)는 요구사항 뒤 · 설계 앞: 프로토타입의 데이터 원천이 설계 · 데이터 설계의 입력이다. 데이터 설계는 구현 앞
+  const out = [...p.stages];
+  out.splice(out.indexOf('구현'), 0, ...extra.filter((n) => n !== '화면설계'));
+  if (extra.includes('화면설계')) { const d = out.findIndex((x) => /설계/.test(x) && x !== '데이터 설계'); out.splice(d >= 0 && d < out.indexOf('구현') ? d : out.indexOf('구현'), 0, '화면설계'); }
+  return [...idea, ...out];
 }
 
 /** 이미 만든 로드맵에 스택에 맞는 단계가 빠졌으면 경고 문장 (사람이 고친 PLAN.md 는 건드리지 않는다) */
@@ -83,7 +87,7 @@ function missingStages(plan, layers = {}, type, approach) {
   const miss = STACK_STAGES.filter((x) => layers[x.when] && !have.has(norm(x.name)));
   if (!miss.length) return [];
   const who = miss.map((x) => ({ db: 'DB', ui: '화면' }[x.when])).join(' · ');
-  return [`스택에 ${who}${/화면$/.test(who) ? '이' : ' 가'} 있는데 ${miss.map((x) => `「${x.name}」`).join(' · ')} 단계가 없습니다 (산출물: ${miss.map((x) => `${x.skill} 스킬`).join(' · ')}. 구현 앞에 넣을지 사용자에게 묻는다)`];
+  return [`스택에 ${who}${/화면$/.test(who) ? '이' : ' 가'} 있는데 ${miss.map((x) => `「${x.name}」`).join(' · ')} 단계가 없습니다 (산출물: ${miss.map((x) => `${x.skill} 스킬`).join(' · ')}. ${miss.map((x) => (x.when === 'ui' ? '화면설계는 설계 앞' : '데이터 설계는 구현 앞')).join(', ')}에 넣을지 사용자에게 묻는다)`];
 }
 
 /** 기본 단계 그대로(<!-- kedovi:preset -->)인 PLAN.md 를 스택에 맞게 다시 쓴다. 단계 상태 · 날짜는 그대로 옮긴다. 바꿀 것이 없으면 null */
@@ -481,6 +485,7 @@ function template(type, layers = {}, approach) {
   const fe = !!p.feature;
   const checks = fe ? [
     '- [ ] 요구사항: 무엇을 누가 쓰는지와 첫 기능 목록 · 마일스톤을 정한다 (방향 인터뷰 `kickoff` 스킬. 기능마다 기능 문서 한 파일)',
+    ...(layers.ui ? ['- [ ] 시안 · 디자인 토큰: 대표 화면 2~3개로 방향(색 · 글꼴 · 간격)을 정하고 `tokens.css` 와 화면 품질 수준을 남긴다 (`designer` 역할 · `screens` 스킬. 시안은 아티팩트 등으로 보이고, 확정하면 `kedovi screens import` 로 프로토타입 파일에)'] : []),
     '- [ ] 아키텍처: 서비스 · DB · 미들웨어 · 서버 구성을 `architecture` 스킬로 그린다',
     '- [ ] 개발 표준: 스택 · 코드 관례 · 테스트 기준을 적는다',
     ...STACK_STAGES.filter((x) => layers[x.when]).map((x) => `- [ ] ${x.when === 'db' ? '데이터' : '화면'} 설계 방식: 기능마다 \`${x.skill}\` 스킬로 그 기능 몫만 더한다`),

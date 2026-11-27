@@ -514,6 +514,41 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   }
 }
 
+// 시안 → 프로토타입 (kedovi screens import · designer 역할 · 화면설계 단계 위치)
+{
+  const dw = path.join(tmp, 'import-ws');
+  spawnSync(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dw, '--type', 'new'], { cwd: tmp, encoding: 'utf8' });
+  const sdir = path.join(dw, 'docs-site', '화면');
+  const readme = path.join(sdir, 'README.md');
+  fs.writeFileSync(readme, fs.readFileSync(readme, 'utf8').replace('|---|---|---|---|---|\n', '|---|---|---|---|---|\n| SCR-ORD-01 | 주문 목록 | 주문 | FN-ORD-01 | - |\n'));
+  const art = path.join(tmp, 'artifact.html');
+  fs.writeFileSync(art, '<!doctype html>\n<html><body><main><h1>주문</h1><button>엑셀</button></main></body></html>\n');
+  const imp = (...a) => spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'screens', 'import', ...a], { cwd: dw, encoding: 'utf8', env: { ...process.env, HOME: path.join(tmp, 'import-home') } });
+  const p = {};
+  const r1 = imp(art, 'SCR-ORD-01', '--from', 'https://claude.ai/artifact/abc');
+  const f1 = path.join(sdir, 'prototype', 'SCR-ORD-01.html');
+  const t1 = fs.existsSync(f1) ? fs.readFileSync(f1, 'utf8') : '';
+  p['새 파일 · 출처 주석'] = r1.status === 0 && /새로 만듦/.test(r1.stdout) && /^<!doctype html>\n<!-- kedovi:source https:\/\/claude\.ai\/artifact\/abc · \d{4}-\d{2}-\d{2} · 화면 SCR-ORD-01 -->/.test(t1);
+  p['화면 목록 등록'] = /\| SCR-ORD-01 \| 주문 목록 \| 주문 \| FN-ORD-01 \| \[SCR-ORD-01\.html\]\(prototype\/SCR-ORD-01\.html\) · \[시안\]\(https:\/\/claude\.ai\/artifact\/abc\) \|/.test(fs.readFileSync(readme, 'utf8'));
+  const C = require(path.join(dw, 'packs', 'screens', 'bin', 'compare-screens.js'));
+  const W = require(path.join(dw, 'packs', 'core', 'lib', 'workspace.js'));
+  let found = null;
+  try { found = C.findPrototype(W.load(dw), 'SCR-ORD-01', {}); } catch { found = null; }
+  p['정본 찾기가 그 파일'] = !!found && found.from === f1 && /화면 목록/.test(found.how);
+  fs.writeFileSync(art, '<!doctype html>\n<html><body><main><h1>주문 목록</h1><button>엑셀</button><p>합계</p></main></body></html>\n');
+  const r2 = imp(art, 'SCR-ORD-01', '--from', 'https://claude.ai/artifact/abc');
+  p['다시 가져오면 덮고 차이'] = r2.status === 0 && /덮음: 더한 줄 1 · 뺀 줄 1/.test(r2.stdout) && (fs.readFileSync(f1, 'utf8').match(/kedovi:source/g) || []).length === 1;
+  fs.writeFileSync(readme, fs.readFileSync(readme, 'utf8').replace('| SCR-ORD-01 | 주문 목록 | 주문 | FN-ORD-01 |', '| SCR-ORD-02 | 상세 | 주문 | FN-ORD-02 | app/index.html#SCR-ORD-02 |\n| SCR-ORD-01 | 주문 목록 | 주문 | FN-ORD-01 |'));
+  const r3 = imp(art, 'SCR-ORD-02');
+  p['한 페이지 앱은 덮지 않음'] = r3.status === 1 && /한 페이지 앱/.test(r3.stderr);
+  p['없는 파일 · HTML 아님'] = imp(path.join(tmp, 'nope.html'), 'SCR-ORD-01').status === 1 && (fs.writeFileSync(path.join(tmp, 'x.txt'), 'hello'), imp(path.join(tmp, 'x.txt'), 'SCR-ORD-01').status === 1);
+  p['designer 역할'] = fs.existsSync(path.join(dw, '.claude', 'agents', 'designer.md')) && /kedovi screens import/.test(fs.readFileSync(path.join(dw, '.claude', 'agents', 'designer.md'), 'utf8'));
+  const P = require(path.join(KIT, 'packs', 'core', 'lib', 'plan.js'));
+  const order = P.stagesFor('new', { db: true, ui: true }).join('>');
+  p['화면설계는 요구사항 뒤 · 설계 앞'] = /요구사항 분석>화면설계>설계>데이터 설계>구현/.test(order) && /요구사항>화면설계>아키텍처·설계>데이터 설계>구현/.test(P.stagesFor('modernization', { db: true, ui: true }).join('>')) && /설계>데이터 설계>구현/.test(P.stagesFor('new', { db: true }).join('>')) && /시안 · 디자인 토큰/.test(P.template('new', { ui: true }, 'feature'));
+  record('시안 → 프로토타입 (screens import · 등록 · 다시 가져오기 · designer · 단계 위치)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
+
 // 요청 표 모양: 코드 블록 고정폭 표(기본) · 마크다운, 한글 2칸 · 자르기 · 표 인정 · 설정
 {
   const L = require(path.join(KIT, 'packs', 'core', 'lib', 'requests.js'));

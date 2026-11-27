@@ -153,19 +153,19 @@ assert.strictEqual(j.current, 3);
 assert.strictEqual(j.stages[2].sub.total, 5);
 assert.strictEqual(j.releases, 2);
 
-// 스택에 따른 단계: 데이터 설계 → 화면설계 를 구현 앞에. 반복형은 단계를 늘리지 않고 분석 체크 목록
-assert.deepStrictEqual(P.stagesFor('modernization', { db: true, ui: true }), ['AS-IS 분석', '범위·계획', '요구사항', '아키텍처·설계', '데이터 설계', '화면설계', '구현', '테스트', '데이터 이관', '전환', '안정화']);
-assert.deepStrictEqual(P.stagesFor('new', { ui: true }), [P.IDEA_STAGE, '계획', '요구사항 분석', '설계', '화면설계', '구현', '테스트', '배포', '운영']);
+// 스택에 따른 단계: 화면설계는 요구사항 뒤 · 설계 앞, 데이터 설계는 구현 앞. 반복형은 단계를 늘리지 않고 분석 체크 목록
+assert.deepStrictEqual(P.stagesFor('modernization', { db: true, ui: true }), ['AS-IS 분석', '범위·계획', '요구사항', '화면설계', '아키텍처·설계', '데이터 설계', '구현', '테스트', '데이터 이관', '전환', '안정화']);
+assert.deepStrictEqual(P.stagesFor('new', { ui: true }), [P.IDEA_STAGE, '계획', '요구사항 분석', '화면설계', '설계', '구현', '테스트', '배포', '운영']);
 assert.deepStrictEqual(P.stagesFor('new', {}), [P.IDEA_STAGE, ...P.PRESETS.new.stages]);
-assert.deepStrictEqual(P.stagesFor('enhancement', { db: true, ui: true }), ['요구사항', '설계', '데이터 설계', '화면설계', '구현', '테스트', '오픈'], '고도화도 스택 단계를 구현 앞에');
+assert.deepStrictEqual(P.stagesFor('enhancement', { db: true, ui: true }), ['요구사항', '화면설계', '설계', '데이터 설계', '구현', '테스트', '오픈'], '고도화도 화면설계는 설계 앞, 데이터 설계는 구현 앞');
 const enh = P.parse(P.template('enhancement', { db: true, ui: true }, 'sprint'));
 assert.deepStrictEqual(enh.stages[0].detail.items.map((x) => x.name.split(' (')[0]).slice(1), ['스키마 변경 여부', '화면 변경 여부']);
 assert.deepStrictEqual(P.parse(P.template('new', { db: true })).stages.map((x) => x.name).slice(3, 6), ['설계', '데이터 설계', '구현']);
 assert.match(P.template('new', { db: true }), /단계별 스킬: 아이디어 · 전체 그림 → `idea` · 데이터 설계 → `datamodel`[\s\S]*「설계」: 서버 아키텍처.*`architecture` 스킬/);
 assert.strictEqual(P.skillOf({ name: '화면 설계' }), 'screens', '띄어 써도 같은 단계');
 // 사람이 고친 로드맵은 그대로 두고 경고만
-assert.deepStrictEqual(P.missingStages(plan, { db: true, ui: true }, 'new'), ['스택에 DB · 화면이 있는데 「데이터 설계」 · 「화면설계」 단계가 없습니다 (산출물: datamodel 스킬 · screens 스킬. 구현 앞에 넣을지 사용자에게 묻는다)'], '한 줄');
-assert.deepStrictEqual(P.missingStages(plan, { db: true }, 'new'), ['스택에 DB 가 있는데 「데이터 설계」 단계가 없습니다 (산출물: datamodel 스킬. 구현 앞에 넣을지 사용자에게 묻는다)']);
+assert.deepStrictEqual(P.missingStages(plan, { db: true, ui: true }, 'new'), ['스택에 DB · 화면이 있는데 「데이터 설계」 · 「화면설계」 단계가 없습니다 (산출물: datamodel 스킬 · screens 스킬. 데이터 설계는 구현 앞, 화면설계는 설계 앞에 넣을지 사용자에게 묻는다)'], '한 줄');
+assert.deepStrictEqual(P.missingStages(plan, { db: true }, 'new'), ['스택에 DB 가 있는데 「데이터 설계」 단계가 없습니다 (산출물: datamodel 스킬. 데이터 설계는 구현 앞에 넣을지 사용자에게 묻는다)']);
 assert.deepStrictEqual(P.missingStages(P.parse(text.replace('| 4 | 구현 |', '| 4 | 화면 설계 | ○ | | |\n| 5 | 구현 |')), { ui: true }, 'new'), [], '띄어 쓴 「화면 설계」 도 있는 것');
 assert.deepStrictEqual(P.missingStages(plan, {}, 'new'), []);
 assert.deepStrictEqual(P.missingStages(plan, { db: true }, 'enhancement', 'sprint'), [], '반복형은 단계 경고 없음');
@@ -174,7 +174,7 @@ assert.strictEqual(P.upgradePreset(text, 'new', { db: true }), null, '기본 단
 // 기본 단계 그대로면 상태 · 날짜를 옮기며 단계를 더한다
 const pre = P.template('new').replace(`| 1 | ${P.IDEA_STAGE} | ▶ | | |`, `| 1 | ${P.IDEA_STAGE} | ✔ | 2026-10-01 | 2026-10-03 |`);
 const up = P.parse(P.upgradePreset(pre, 'new', { db: true, ui: true }));
-assert.deepStrictEqual(up.stages.map((x) => [x.no, x.name, x.state]).slice(0, 6), [[1, P.IDEA_STAGE, 'done'], [2, '계획', 'todo'], [3, '요구사항 분석', 'todo'], [4, '설계', 'todo'], [5, '데이터 설계', 'todo'], [6, '화면설계', 'todo']]);
+assert.deepStrictEqual(up.stages.map((x) => [x.no, x.name, x.state]).slice(0, 6), [[1, P.IDEA_STAGE, 'done'], [2, '계획', 'todo'], [3, '요구사항 분석', 'todo'], [4, '화면설계', 'todo'], [5, '설계', 'todo'], [6, '데이터 설계', 'todo']]);
 // 0.74 전에 만든 신규 로드맵(아이디어 단계 없음)에는 아이디어 단계를 끼우지 않는다
 const old = P.template('new').split('\n').filter((l) => !l.includes(`| ${P.IDEA_STAGE} |`)).join('\n').replace('| 2 | 계획 | ○ | | |', '| 1 | 계획 | ✔ | 2026-10-01 | 2026-10-03 |');
 const upOld = P.parse(P.upgradePreset(old, 'new', { db: true }));
