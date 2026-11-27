@@ -1265,5 +1265,33 @@
         "added": null
       }
     ]
-  }
+  },
+  "screenQuality": [
+    {
+      "id": "SCR-ORD-001",
+      "who": "kim",
+      "level": "일반",
+      "req": 24,
+      "reqOk": 24,
+      "fail": 0,
+      "open": 0,
+      "rec": 6,
+      "recOk": 4,
+      "measured": true,
+      "at": "2026-11-25"
+    },
+    {
+      "id": "SCR-ORD-002",
+      "who": "lee",
+      "level": "일반",
+      "req": 22,
+      "reqOk": 17,
+      "fail": 2,
+      "open": 3,
+      "rec": 5,
+      "recOk": 1,
+      "measured": true,
+      "at": "2026-11-24"
+    }
+  ]
 }

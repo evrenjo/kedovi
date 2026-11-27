@@ -460,4 +460,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch((e) => { console.error(`✖ ${e.message}`); process.exit(2); });
-module.exports = { docRoots, compareLayout, relation, layoutSummary, collectRegions, screenDirNames, screenDirs, locateCandidates, sourceHits, toUrl, walk, idRe, listedPrototype, cellTarget, findPrototype, findImpl, specFiles, loadMock, loadPlaywright, parseArgs };
+module.exports = { applyMock, docRoots, compareLayout, relation, layoutSummary, collectRegions, screenDirNames, screenDirs, locateCandidates, sourceHits, toUrl, walk, idRe, listedPrototype, cellTarget, findPrototype, findImpl, specFiles, loadMock, loadPlaywright, parseArgs };

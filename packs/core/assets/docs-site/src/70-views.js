@@ -382,6 +382,17 @@
       })}<//>` : html`<${Empty}>작업 항목이 아직 없습니다. 원격을 붙이면(kedovi remote add) GitLab 작업 항목 · GitHub 이슈를 가져옵니다<//>`}</div>`;
   };
 
+  /* 화면 품질: 화면마다 품질 점검표(kedovi screens quality)의 필수 통과 · 실패 · 판정 없음. 원본은 handoffs/<사람>/screens/<화면 ID>.quality.md */
+  V.quality = function (props) {
+    var db = props.db, q = db.screenQuality || [];
+    var done = q.filter(function (x) { return !x.fail && !x.open && x.measured; }).length;
+    return html`<div class="view"><${Head} title="화면 품질" sub=${q.length ? "레이아웃 · 입력 · 목록 · 상태 · 상호작용 · 호환성 · 접근성 · 사용성 · 완료 " + done + "/" + q.length + "개 화면" : ""} />
+      ${q.length ? html`<${Tbl} head=${["화면", "수준", "필수 통과", "실패", "판정 없음", "권장", "자동 측정", "담당"]}>${q.map(function (x) {
+        var k = x.fail ? "fail" : x.open || !x.measured ? "cur" : "done";
+        return html`<tr key=${x.id + x.who}><td><span class="idc">${x.id}</span></td><td>${x.level}</td><td><${DS.State} k=${k}>${x.reqOk}/${x.req}<//></td><td class="num">${x.fail || ""}</td><td class="num">${x.open || ""}</td><td>${x.recOk}/${x.rec}</td><td>${x.measured ? DS.md(x.at) : "안 함"}</td><td>${x.who}</td></tr>`;
+      })}<//>` : html`<${Empty}>화면 품질 점검이 아직 없습니다. 화면마다 kedovi screens quality, 전체는 kedovi screens audit<//>`}</div>`;
+  };
+
   /* 백로그: handoffs/PLAN.md 의 「백로그」(이슈형은 「개선 후보」) 절. 정본은 PLAN.md, 여기서는 읽기만 */
   V.backlog = function (props) {
     var db = props.db, b = db.backlog || null, items = (b && b.items) || [], name = (b && b.label) || "백로그";

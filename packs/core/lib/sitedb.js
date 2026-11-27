@@ -596,6 +596,34 @@ function planBacklog(root) {
   return { label, items };
 }
 
+/**
+ * 화면 품질 점검 (screens 팩 kedovi screens quality): handoffs/<사람>/screens/<화면 ID>.quality.md 의 표 → [{ id, who, level, req, reqOk, fail, open, rec, recOk, measured, at }]
+ * 사이트는 읽기만. 없으면 빈 목록
+ */
+function screenQuality(root) {
+  const out = [];
+  if (!root) return out;
+  const hd = path.join(root, 'handoffs');
+  let people = [];
+  try { people = fs.readdirSync(hd); } catch { return out; }
+  for (const who of people) {
+    let files = [];
+    try { files = fs.readdirSync(path.join(hd, who, 'screens')).filter((f) => f.endsWith('.quality.md')); } catch { continue; }
+    for (const f of files) {
+      let text = '';
+      try { text = fs.readFileSync(path.join(hd, who, 'screens', f), 'utf8'); } catch { continue; }
+      const head = (k) => ((text.match(new RegExp(`^- ${k}:\\s*(.*)$`, 'm')) || [])[1] || '').trim();
+      const rows = text.split('\n').filter((l) => /^\|\s*Q-[A-Z]\d/.test(l)).map((l) => l.trim().replace(/^\||\|$/g, '').split(/(?<!\\)\|/).map((c) => c.trim()));
+      const kind = (v) => (/^통과|^해당\s*없음\s*[(（].+|^예외\s*[(（].*([A-Z][A-Z0-9]*-[A-Z0-9][\w-]*|결정\s*#?\d+)/.test(v) ? 'ok' : /^실패/.test(v) ? 'fail' : 'open');
+      const req = rows.filter((r) => r[3] === '필수');
+      const rec = rows.filter((r) => r[3] !== '필수');
+      const measured = head('자동 측정');
+      out.push({ id: f.replace(/\.quality\.md$/, ''), who, level: head('수준').replace(/\s*\(.*$/, ''), req: req.length, reqOk: req.filter((r) => kind(r[7] || '') === 'ok').length, fail: req.filter((r) => kind(r[7] || '') === 'fail').length, open: req.filter((r) => kind(r[7] || '') === 'open').length, rec: rec.length, recOk: rec.filter((r) => kind(r[7] || '') === 'ok').length, measured: !!measured && !/^미실행/.test(measured), at: (measured.match(/\d{4}-\d{2}-\d{2}/) || [head('만든 때').slice(0, 10)])[0] || null });
+    }
+  }
+  return out.sort((a, b) => a.id.localeCompare(b.id));
+}
+
 function build(opts) {
   const { ws = {}, src, title, files = {}, docs = [], index = { ids: {} }, pageOf, remote = null, apis = [], asyncs = [], library = [], config = {}, builtAt = null } = opts;
   const who = personMap(ws);
@@ -756,7 +784,7 @@ function build(opts) {
   return {
     version: 2, layout: 'workspace', title, builtAt, project, profile, metrics, stages: STAGES,
     features, milestones, docs: docList, ids, relations, changes,
-    team: teamInfo(ws), issues, workItems, board, backlog: planBacklog(ws.root),
+    team: teamInfo(ws), issues, workItems, board, backlog: planBacklog(ws.root), screenQuality: screenQuality(ws.root),
     files: library.filter((f) => !f.big).map(({ name, path: p, kind, by, at, size }) => ({ name, path: p, kind, by, at, size })),
     comments,
     remote: remote ? { kind: remote.kind || null, web: remote.web || null, project: remote.project || null, api: remote.api || null, pages: remote.pages || null, commentIssues: remote.commentIssues || {} } : { kind: null, web: null, project: null, api: null, pages: null, commentIssues: {} },
@@ -783,4 +811,4 @@ function stable(db) {
   return d;
 }
 
-module.exports = { planBacklog, STAGES, FEATURE_DIR, BOARD_DIR, FILES_DIR, COMMENTS_DIR, ID_RE, ISSUE_RE, MAX_FILE, featureMeta, featureParts, featureExtras, findAsyncApis, asyncChannels, computeMetrics, headMeta, bodyOf, mdTables, idsIn, kindOf, build, stable, teamInfo, localIssues, localBoard, localComments, libraryFiles, findApis, commentFile, personMap, lastTouch, recentChanges };
+module.exports = { screenQuality, planBacklog, STAGES, FEATURE_DIR, BOARD_DIR, FILES_DIR, COMMENTS_DIR, ID_RE, ISSUE_RE, MAX_FILE, featureMeta, featureParts, featureExtras, findAsyncApis, asyncChannels, computeMetrics, headMeta, bodyOf, mdTables, idsIn, kindOf, build, stable, teamInfo, localIssues, localBoard, localComments, libraryFiles, findApis, commentFile, personMap, lastTouch, recentChanges };

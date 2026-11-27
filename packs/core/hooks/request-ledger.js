@@ -6,7 +6,7 @@
  * UserPromptSubmit (메인): 요청을 적고 번호를 알린다. 맞장구(응 · 고마워) · 백그라운드 알림 · 다른 세션 · 에이전트 메시지는 적지 않고, 질문은 물음으로(답하면 Stop 이 닫음), 짧은 승인(진행해 · 배포해줘)은 열린 직전 요청에 붙인다.
  *   안내 문장은 세션 첫 요청과 30분마다, 그 사이는 번호만 한 줄
  * Stop (메인): 이번 요청 중 끼어 든 메시지(hooks/mid-turn-messages.js 와 같은 방식)도 적는다. 표 검사는 이번 차례에 업무 요청(새 요청 · 이어 붙인 승인 · 끼어 든 업무)이 있을 때만.
- *   열린 요청(완료 · 취소 아님)이 있는데 마지막 답변에 요청 표(머리 「| 번호 | 요청 | … 상태 … |」)가 없으면 한 번 되돌려 붙이게 한다 (stop_hook_active 면 통과)
+ *   열린 요청(완료 · 취소 아님)이 있는데 마지막 답변에 요청 표(코드 블록 고정폭 머리 「번호 상태 맡은 요청 결과」 + ─ 줄, 또는 마크다운 머리 「| 번호 | 요청 | … 상태 … |」)가 없으면 한 번 되돌려 붙이게 한다 (stop_hook_active 면 통과)
  * 수준 agents.enforce.requestLedger: block(기본, 기록 + 표 검사) · warn(기록만) · off(아무것도 안 함). 팀원 · 서브에이전트에서는 돌지 않는다
  */
 'use strict';
@@ -46,7 +46,7 @@ if (require.main === module) {
       const what = r.kind === 'go' ? `직전 요청 #${r.row.no} 에 이어 붙임` : `요청 #${r.row.no} 로 기록`;
       if (st && seen.at && Date.now() - seen.at < 30 * 60000) return context(`📋 ${what} (kedovi requests)`);
       if (st) save(st, { at: Date.now() });
-      return context(`📋 ${what} (장부 handoffs/${id}/topics/${L.NAME}.md). 맡기면 kedovi requests set ${r.row.no} --agent <맡은 에이전트> --status 진행, 끝나면 --status 완료 --result "<결과 한 줄>" (보류 · 취소도). 열린 요청이 있으면 답변 끝에 kedovi requests table 의 표(머리 ${L.TABLE_HEAD})를 붙인다`);
+      return context(`📋 ${what} (장부 handoffs/${id}/topics/${L.NAME}.md). 맡기면 kedovi requests set ${r.row.no} --agent <맡은 에이전트> --status 진행, 끝나면 --status 완료 --result "<결과 한 줄>" (보류 · 취소도). 열린 요청이 있으면 답변 끝에 kedovi requests table 의 표를 그대로 붙인다 (${L.formatOf(ROOT) === 'markdown' ? `마크다운 표, 머리 ${L.TABLE_HEAD}` : '코드 블록 안 고정폭 표: 번호 · 상태 · 맡은 · 요청 · 결과, 머리 아래 ─ 줄'})`);
     }
 
     if (ev !== 'Stop') return;
@@ -67,7 +67,7 @@ if (require.main === module) {
     const turn = sid ? readJson(path.join(stateDir(ROOT), `${sid}.reqturn.json`), {}) : {};
     if (!midWork && turn.kind && !['new', 'go'].includes(turn.kind)) return;
     const rows = L.read(ROOT, id);
-    const t = L.table(rows);
+    const t = L.table(rows, 12, L.formatOf(ROOT));
     if (!t || L.TABLE_RE.test(String(input.last_assistant_message || ''))) return;
     block(`열린 요청 ${rows.filter((r) => L.isOpen(r) && L.isWork(r)).length}건이 있는데 답변 끝에 요청 표가 없습니다. 끝난 것 · 맡긴 것은 먼저 상태를 고치고(kedovi requests set <번호> --status 완료|진행|보류|취소 --agent … --result "…"), 답변 끝에 아래 표(kedovi requests table)를 붙여 끝낸다. 끄기: kedovi team-mode enforce req off\n\n${t}`);
   });

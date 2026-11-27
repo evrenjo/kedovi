@@ -18,7 +18,42 @@ const FOLLOW_MS = 30 * 60000; // 질문 뒤 이만큼 안의 짧은 지시는 �
 const HEAD = '| 번호 | 받은 때 | 요청 | 맡은 에이전트 | 상태 | 결과 |';
 const TABLE_HEAD = '| 번호 | 요청 | 맡은 에이전트 | 상태 | 결과 |';
 /** 답변 끝 표가 있나 (머리 줄 모양) */
-const TABLE_RE = /^\s*\|\s*번호\s*\|\s*요청\s*\|[^\n]*상태[^\n]*\|\s*$/m;
+// 표가 있는가: 마크다운 머리(| 번호 | 요청 | … 상태 … |) 또는 고정폭 머리(번호 상태 맡은 요청 결과) 바로 아래 ─ 줄
+const TABLE_RE = /^\s*\|\s*번호\s*\|\s*요청\s*\|[^\n]*상태[^\n]*\|\s*$|^\s*번호\s+상태\s+맡은\s+요청\s+결과\s*\n\s*─+/m;
+const FORMATS = ['codeblock', 'markdown'];
+/** 표 모양: 이 PC(.agents/local.json agents.requestsFormat) → 팀(workspace.json) → codeblock. 리모트 컨트롤(폰)이 마크다운 표를 행마다 카드로 펼치는 것을 피한다 */
+function formatOf(root) {
+  const rd = (f) => { try { return JSON.parse(require('fs').readFileSync(f, 'utf8')); } catch { return {}; } };
+  const p = require('path');
+  for (const f of [p.join(root || '.', '.agents', 'local.json'), p.join(root || '.', 'workspace.json')]) { const v = ((rd(f).agents) || {}).requestsFormat; if (FORMATS.includes(v)) return v; }
+  return 'codeblock';
+}
+/** 터미널 칸 수: 한글 · 한자 · 전각은 2칸 (East Asian Width W · F) */
+function cols(s) {
+  let n = 0;
+  for (const ch of String(s)) {
+    const c = ch.codePointAt(0);
+    n += (c >= 0x1100 && c <= 0x115f) || (c >= 0x2e80 && c <= 0xa4cf && c !== 0x303f) || (c >= 0xac00 && c <= 0xd7a3) || (c >= 0xf900 && c <= 0xfaff) || (c >= 0xfe30 && c <= 0xfe4f) || (c >= 0xff00 && c <= 0xff60) || (c >= 0xffe0 && c <= 0xffe6) || (c >= 0x1f300 && c <= 0x1faff) || (c >= 0x20000 && c <= 0x3fffd) ? 2 : 1;
+  }
+  return n;
+}
+/** 칸 수에 맞게 자르고(넘치면 …) 채운다 */
+function fit(s, w) {
+  const t = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+  if (cols(t) <= w) return t + ' '.repeat(w - cols(t));
+  let out = '';
+  for (const ch of t) { if (cols(out + ch) > w - 1) break; out += ch; }
+  return out + '…' + ' '.repeat(Math.max(0, w - 1 - cols(out)));
+}
+// 고정폭 표 열: 번호 · 상태 · 맡은 · 요청 · 결과 (요청 22칸 · 결과 18칸)
+const CB_COLS = [['번호', 4], ['상태', 4], ['맡은', 8], ['요청', 22], ['결과', 18]];
+function codeblock(rows, more) {
+  const line = (cells) => cells.map((c, i) => (i === cells.length - 1 ? String(c).replace(/\s+$/, '') : c)).join(' ').replace(/\s+$/, '');
+  const head = line(CB_COLS.map(([h, w], i) => (i === CB_COLS.length - 1 ? h : fit(h, w))));
+  const rule = CB_COLS.map(([, w]) => '─'.repeat(w)).join(' ');
+  const body = rows.map((r) => line([`${String(r.no).padStart(3)} `.slice(0, 4).padEnd(4), fit(r.status, 4), fit(r.agent, 8), fit(r.text, 22), fit(r.result || '-', 18)]));
+  return ['```', head, rule, ...body, ...(more ? [`  … 앞선 열린 요청 ${more}건 (kedovi requests list)`] : []), '```'].join('\n');
+}
 const SUMMARY_MAX = 80;
 
 // 맞장구 · 고마움: 새 요청으로 적지 않는다
@@ -182,12 +217,13 @@ function set(root, id, no, patch) {
 }
 
 /** 열린 요청 표 (답변 끝에 붙이는 모양). 없으면 '' */
-function table(rows, max = 12) {
+function table(rows, max = 12, format = 'codeblock') {
   const open = rows.filter((r) => isOpen(r) && isWork(r));
   if (!open.length) return '';
   const shown = open.slice(-max);
+  if (format !== 'markdown') return codeblock(shown, open.length - shown.length);
   return [TABLE_HEAD, '|---|---|---|---|---|', ...shown.map((r) => `| ${r.no} | ${cell(r.text)} | ${cell(r.agent)} | ${cell(r.status)} | ${cell(r.result) || '-'} |`),
     ...(open.length > shown.length ? [`| … | 앞선 열린 요청 ${open.length - shown.length}건 (kedovi requests list) | | | |`] : [])].join('\n');
 }
 
-module.exports = { ASK, SYSTEM_RE, isAsk, isWork, closeAsks, recentAsk, NAME, STATUSES, CLOSED, HEAD, TABLE_HEAD, TABLE_RE, fileOf, summarize, kindOf, read, write, isOpen, add, attach, record, set, table };
+module.exports = { ASK, SYSTEM_RE, isAsk, isWork, closeAsks, recentAsk, NAME, STATUSES, CLOSED, HEAD, TABLE_HEAD, TABLE_RE, FORMATS, formatOf, cols, fit, fileOf, summarize, kindOf, read, write, isOpen, add, attach, record, set, table };

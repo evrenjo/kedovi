@@ -2,6 +2,19 @@
 
 `kedovi upgrade` 가 올린 버전 사이의 항목을 표로 보여 준다. 배포할 때 이번 버전 항목을 맨 위에 더한다 (`## 버전` 아래 `| 구분 | 내용 |` 표, 한 줄씩 짧게).
 
+## 0.112.0
+
+| 구분 | 내용 |
+|---|---|
+| 기능 | 화면 품질 점검 `kedovi screens quality <화면 ID>`: 레이아웃 · 입력 · 목록 · 상태 · 상호작용 · 호환성 · 접근성 · 사용성 8개 영역, 필수 항목이 남으면 화면 작업 완료 아님 |
+| 기능 | 자동 측정: axe(WCAG 2.2 AA) · 320px · 200% 확대 · 잘린 글자 · 겹침 · 키보드 · 포커스 · 24px · 빈 값 · 오류 · 끊김 · 권한 없음 · 로딩 · 중복 제출 · 브라우저 3종 · 모바일 2종 |
+| 기능 | 수준 `kedovi screens quality-level public\|standard\|light` (공공: KRDS · KWCAG 2.2 · 품질관리 지침), 첫 시작 인터뷰에서 물음 |
+| 기능 | 설계 단계부터: 프로토타입 · 화면설계에 상태 · 오류 문구 · 라벨 · 24px · 320px 기준, `--design` 으로 정본 측정 |
+| 기능 | 전체 점검 `kedovi screens audit [--run]` · `screen-audit` 스킬 (업그레이드 뒤 한 번에), 사용성 평가 결과서 `kedovi screens usability` |
+| 기능 | 문서 사이트 테스트 › 화면 품질 |
+| 기능 | 답변 끝 요청 표를 코드 블록 고정폭 표로 (폰 리모트 컨트롤에서 한 덩어리), `kedovi team-mode requests-format codeblock\|markdown` |
+| 주의 | 화면 완료 조건에 품질 점검이 들어감: 업그레이드 뒤 `kedovi screens audit --run` 을 한 번 돌린다 |
+
 ## 0.111.0
 
 | 구분 | 내용 |

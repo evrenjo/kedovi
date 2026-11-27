@@ -17,7 +17,7 @@ const RULE = '.agents/rules/screens--15-ai-look.md';
 
 /** 넣을 말 (installed: 언슬롭 있음 · pitch: 설치를 권해도 됨 · who: claude | codex) */
 function message({ installed, pitch, who }) {
-  const head = `화면 디자인 작업 (screens 팩 「AI 티 없는 화면」, 먼저 \`${RULE}\` 를 읽는다): 프로토타입 · 시안을 만들거나 다듬는 일이면 손대기 전에 방향 5줄(제품 · 성격 · 세계 · 색을 쓸 순간 · 시그니처)을 제안하고 승인받는다. 그 전에 프로젝트의 디자인 시스템 · 아이콘 · 브랜드 색 · 글꼴을 찾아 넣는다. 확인 질문이 필요하면 방향과 함께 묻는다. 구현(프로토타입대로 만들기)이면 새로 디자인하지 않고 「프로토타입대로 구현」 을 따른다.`;
+  const head = `화면 디자인 작업 (screens 팩 「AI 티 없는 화면」, 먼저 \`${RULE}\` 를 읽는다): 프로토타입 · 시안을 만들거나 다듬는 일이면 손대기 전에 방향 5줄(제품 · 성격 · 세계 · 색을 쓸 순간 · 시그니처)을 제안하고 승인받는다. 그 전에 프로젝트의 디자인 시스템 · 아이콘 · 브랜드 색 · 글꼴을 찾아 넣는다. 확인 질문이 필요하면 방향과 함께 묻는다. 화면 품질 기준도 설계부터 그린다: 상태(로딩 · 데이터 없음 · 오류 · 권한 없음) · 입력 오류 문구 · 라벨 · 누르는 영역 24px · 포커스 모양 · 320px 폭 (\`.agents/rules/screens--10-prototype-fidelity.md\` 「화면 품질 기준」), 다 그리면 \`kedovi screens quality <화면 ID> --design\`. 구현(프로토타입대로 만들기)이면 새로 디자인하지 않고 「프로토타입대로 구현」 을 따른다.`;
   if (installed) return `${head} 언슬롭(unslop) 스킬이 깔려 있다: 승인 뒤 손질은 그 스킬로 한다 (${who === 'codex' ? '$unslop' : '/unslop'}).`;
   if (!pitch) return `${head} 손질은 규칙의 기준과 \`kedovi screens slop\` 으로 한다.`;
   const cmd = who === 'codex' ? '저장소 github.com/heydamir/unslop 의 skills/unslop 폴더를 ~/.agents/skills/ 에 복사' : '`claude plugin install unslop --marketplace heydamir/unslop` (이 PC 의 모든 프로젝트)';

@@ -68,6 +68,10 @@
  *   kedovi screens checklist <화면 ID> [--start] [--md]   체크리스트 점검: --start 는 착수 전(데이터 원천 빈 칸 · 원천 없음), 기본은 완료 전(판정 빈 칸 · 결정 없는 다름 · 후속 없는 보류 · 배치 차이 · 비교 미실행), --md 는 MR 본문 표
  *   kedovi screens review <화면 ID…> [--implement]   지시서에 넣을 화면 정본 대조 블록: 리뷰(정본 경로 · 체크리스트 · 비교 스크린샷 · 정본에 있는데 없는 요소 = 블로커) · --implement 구현(정본대로 · 못 하면 멈춤)
  *   kedovi screens slop [경로…] [--changed] [--json]   AI 티 검사: 보라 그라데이션 · 번짐 그림자 · 이모지 아이콘 · transition-all · 일회성 간격 · 800~900 굵기 · 느낌표 문구 등을 파일:줄로 (경고만, 경로 없으면 지금 폴더, 언슬롭 스킬 설치 안내, screens 팩)
+ *   kedovi screens quality <화면 ID> [--design] [--no-run] [--impl …] [--mock …]   화면 품질 점검: 레이아웃 · 입력 · 목록 · 상태 · 상호작용 · 호환성 · 접근성 · 사용성 (axe · 320px · 200% · 겹침 · 키보드 · 상태 화면 · 중복 제출 · 브라우저 3종 · 모바일 2종 자동 측정, --design = 정본 측정)
+ *   kedovi screens audit [--run] [--design] [--json]   모든 화면의 품질 점검 현황 (업그레이드 뒤 한 번에, --run 이면 화면마다 자동 측정)
+ *   kedovi screens quality-level [public|standard|light]   화면 품질 수준 (공공: KRDS · KWCAG · 품질관리 지침 · 일반: WCAG 2.2 AA · 사내 도구)
+ *   kedovi screens usability   사용성 평가 결과서 뼈대 (docs-site/테스트/사용성-평가.md)
  *   kedovi screens locate [--dir <폴더,…>] [--prototype "<파일>#{id}"] [--scope <CSS>]   화면 폴더 · 프로토타입 위치 보기 · 정하기 (workspace.json vars.screens, 못 찾으면 후보를 알림)
  *   kedovi datamodel check [repo|폴더]   데이터 설계 검사: 참조 · 기본키 · 중복 · 표 형식 · 컨벤션 · 기능 ID 대조 (datamodel 팩)
  *   kedovi archrules spring|react|fastapi|nestjs|django [--repo R] [--dir 모듈 경로] [--dry-run] [--json]   구조 검사 템플릿을 repo 에 넣는다: Spring ArchUnit 테스트 · React eslint-plugin-boundaries 설정 · FastAPI import-linter 계약과 역할 파일 검사 · NestJS dependency-cruiser 설정 · Django import-linter 계약과 web 배치 검사 (backend.layout = component-web 이면 web → feature → shared 방향까지). 구조 · 기준 패키지 · 도우미 기준은 workspace.json vars, 있는 파일은 덮지 않는다
@@ -936,7 +940,7 @@ async function chooseRoleModels(root, tool, scope) {
   return changed;
 }
 
-const KEEP_LOCAL = ['access', 'plans', 'gatewayTrust', 'limits', 'mode', 'prefer', 'enforce'];
+const KEEP_LOCAL = ['access', 'plans', 'gatewayTrust', 'limits', 'mode', 'prefer', 'enforce', 'requestsFormat'];
 /** 이 PC 의 직접 지정 내려놓기 — 'all' = 프로필·직접 지정 전부(팀 값을 따른다), 도구 이름 = 그 도구의 메인 모델만 */
 function dropLocalPicks(root, what) {
   const local = readLocal(root);
@@ -3112,6 +3116,8 @@ function cmdTeamMode(argv) {
     console.log(`  사람이 읽는 글 형식  ${enLine('draftCheck')} · 이슈 · MR · 댓글을 올리기 전(gitlab 도구 · gh · glab)과 기획 repo 커밋 때 빈칸 자리표시자 · 필수 절 · 긴 글머리 · 이 PC 에만 있는 것(보고 링크 · .agents · 임시 폴더 · push 안 한 커밋)을 보고 막기 · 바꾸기: kedovi team-mode enforce draft off|warn|block [--team]`);
     console.log(`  주간 사용량 조절  ${enLine('usagePace')} · 주간 사용 속도가 빠르면 상한을 줄이고 절약 단계에서 implementer-deep 밖의 Opus 호출을 Sonnet 으로 바꿔 띄움 (Claude Code, warn 이면 알림만) · 보기: kedovi usage · 바꾸기: kedovi team-mode enforce pace off|warn|block [--team]`);
     console.log(`  작업 리더 붙잡기  ${enLine('leadHold')} · 작업 리더가 자기 팀원이 도는 채 차례를 끝내려 하면 한 번 되돌려 끝남 알림을 기다리며 단계 보고를 하게 (Claude Code) · 바꾸기: kedovi team-mode enforce hold off|block [--team]`);
+    const rf = ((readLocal(root).agents || {}).requestsFormat) || (t.requestsFormat) || 'codeblock';
+    console.log(`  요청 표 모양  ${rf === 'markdown' ? '마크다운 표' : '코드 블록 고정폭 표'}${(readLocal(root).agents || {}).requestsFormat ? ' (이 PC)' : t.requestsFormat ? ' (팀)' : ' (기본)'} · 답변 끝 요청 표 (코드 블록은 폰 리모트 컨트롤에서도 한 덩어리) · 바꾸기: kedovi team-mode requests-format codeblock|markdown [--team]`);
     console.log(`  요청 장부  ${enLine('requestLedger')} · 사용자 요청마다 번호 · 맡은 에이전트 · 상태 · 결과를 적고(handoffs/<id>/topics/요청-목록.md), 열린 요청이 있는데 답변 끝에 표가 없으면 한 번 되돌리기 (Claude Code, warn 이면 기록만) · 보기: kedovi requests · 바꾸기: kedovi team-mode enforce req off|warn|block [--team]`);
     console.log(`  리뷰 전 검사  ${enLine('checkBeforeReview')} · 리뷰를 맡기는 지시서에 「검사: <명령> 통과」 줄이 없으면 · 바꾸기: kedovi team-mode enforce check off|warn|block [--team]`);
     console.log('  요금제 바꾸기: kedovi ai (화면) · kedovi ai plan claude|gpt <요금제>');
@@ -3126,6 +3132,10 @@ function cmdTeamMode(argv) {
   const optAt = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : undefined; };
   const [cmd, a1, a2] = args;
   if (cmd === 'auto' || cmd === 'fixed') edit((x) => ({ ...x, mode: cmd }));
+  else if (cmd === 'requests-format') {
+    if (!['codeblock', 'markdown', 'team'].includes(a1) || (a1 === 'team' && team)) fail('사용법: kedovi team-mode requests-format codeblock|markdown|team [--team]  (codeblock = 코드 블록 고정폭 표: 폰 리모트 컨트롤에서도 한 덩어리 · markdown = 마크다운 표 · team = 이 PC 값 지우기)');
+    edit((x) => { const y = { ...x }; if (a1 === 'team') delete y.requestsFormat; else y.requestsFormat = a1; return y; });
+  }
   else if (cmd === 'prefer') {
     if (!a1 || !a2 || (a2 !== '-' && !/^(claude|codex):\S+$/.test(a2))) fail('사용법: kedovi team-mode prefer <역할> <claude|codex>:<모델> [--team]  (지우기: prefer <역할> -)');
     edit((x) => { const pr = { ...(x.prefer || {}) }; if (a2 === '-') delete pr[a1]; else pr[a1] = a2; const y = { ...x, prefer: pr }; if (!Object.keys(pr).length) delete y.prefer; return y; });
@@ -4217,7 +4227,7 @@ async function main() {
     case 'draft': return runWsTool('draft.js', rest.map((a, i) => (rest[i - 1] === '--file' ? path.resolve(a) : a)));
     case 'trace': return runWsTool('trace.js', rest, 'trace');
     case 'tidy': return runWsTool('tidy.js', rest);
-    case 'screens': return rest[0] === 'slop' ? runWsTool('ui-slop.js', [...rest.slice(1).map((x) => (x.startsWith('-') ? x : path.resolve(x))), ...(rest.slice(1).some((x) => !x.startsWith('-')) ? [] : [process.cwd()])], 'screens') : rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : ['inventory', 'checklist', 'review', 'locate'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
+    case 'screens': return rest[0] === 'slop' ? runWsTool('ui-slop.js', [...rest.slice(1).map((x) => (x.startsWith('-') ? x : path.resolve(x))), ...(rest.slice(1).some((x) => !x.startsWith('-')) ? [] : [process.cwd()])], 'screens') : rest[0] === 'compare' ? runWsTool('compare-screens.js', rest.slice(1), 'screens') : ['quality', 'audit', 'quality-level', 'usability'].includes(rest[0]) ? runWsTool('screens-quality.js', rest.map((x, i) => (['--storage', '--mock'].includes(rest[i - 1]) && fs.existsSync(path.resolve(x)) ? path.resolve(x) : x)), 'screens') : ['inventory', 'checklist', 'review', 'locate'].includes(rest[0]) ? runWsTool('screens-inventory.js', rest, 'screens') : runWsTool('check-screens.js', rest.filter((x) => x !== 'check'), 'screens');
     case 'datamodel': return runWsTool('check-datamodel.js', rest.filter((x) => x !== 'check'), 'datamodel');
     case 'archrules': return runWsTool('archrules.js', rest);
     case 'views': return runWsTool('check-views.js', rest, 'backend');

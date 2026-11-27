@@ -32,6 +32,7 @@ description: 화면설계서(스토리보드)를 킷 양식으로 만든다. 진
 화면 공통 규칙(접근 · 오류 · 상태 표시 · 숫자 · 날짜 · 모바일 · 접근성 등)을 md 로 먼저 정한다 (뼈대 기본: 화면 폴더 `README.md` 의 「화면 정책」 절, 업무 규칙은 `<기획 repo>/25-policies/README.md`).
 
 - 규칙 하나에 ID 하나 (`### POL-…` 제목 또는 표 첫 칸). 결정이 필요한 것은 선택지로 묻고, 정해지면 결정 ID 를 단다.
+- **화면 품질 기준도 정책에 넣는다**: 수준(`kedovi screens quality-level`, 공공 사업이면 public)을 정하고, 상태 표시(로딩 · 데이터 없음 · 오류 · 끊김 · 권한 없음) · 입력 오류 문구 · 접근성(WCAG 2.2 AA, 공공은 KWCAG 2.2 · KRDS) 규칙을 정책 ID 로 적는다. 화면마다 그릴 것은 `.agents/rules/screens--10-prototype-fidelity.md` 「화면 품질 기준」 표.
 - 정책 장(④)은 이 md 를 요약한 것이다. 비고 칸에 확정이면 근거 ID, 아니면 「결정 대기」.
 
 ## 3. 화면 목록
@@ -78,6 +79,8 @@ description: 화면설계서(스토리보드)를 킷 양식으로 만든다. 진
 **이미 쓴 설계서 다듬기**: `kedovi screens check` 의 ⚠ 줄을 위 규칙으로 고친다. 줄마다 (1) 세부 내용이 근거 문서에 있는지 보고 없으면 옮기고, (2) 결론 한 줄로 줄이고, (3) 근거 ID 를 줄 아래에 둔다. 다 고치면 `kedovi docs build` 로 다시 만들고 넘침 장도 함께 본다.
 
 ## 5. 문서 사이트 반영 · 검사
+
+- 화면(장 · 프로토타입)을 다 그리면 화면마다 `kedovi screens quality <화면 ID> --design` 으로 정본을 측정하고, 실패 · 빠진 상태는 정본에서 고친다. 모든 화면 현황은 `kedovi screens audit --design --run`.
 
 ```
 kedovi docs build <기획 repo>      # docs-site/ 와 근거 색인을 다시 만든다 (md 나 장을 고칠 때마다)

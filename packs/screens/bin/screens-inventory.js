@@ -628,6 +628,20 @@ function printChecklist(ws, id, a) {
   if (ck.untracked.length) { console.log(`✖ 보류의 후속 위치에 그 요소가 없습니다 ${ck.untracked.length}개: ${list(ck.untracked)}. 작업 기록 「완료 조건」 · 이슈에 한 줄 넣는다`); bad++; }
   if (!ck.compareDone) { console.log(`✖ 비교 미실행: kedovi screens compare ${id} (백엔드 없이: --mock <픽스처>). 정말 못 돌리면 사용자에게 알리고, 확인받은 대체 방법을 체크리스트 「- 비교:」 줄에 「대체: <무엇으로 확인> (사용자 확인 <날짜>)」 로 적는다`); bad++; }
   else if (ck.compareSubstitute && !/사용자\s*확인|[A-Z][A-Z0-9]*-[A-Z0-9][\w-]*|결정\s*#?\d+/.test(ck.head['비교'])) { console.log(`✖ 비교를 대체로 했는데 사용자 확인이 없습니다: 「- 비교: 대체: <무엇으로 확인> (사용자 확인 <날짜>)」. 스크린샷 비교 없이 완료로 보지 않는다`); bad++; }
+  // 화면 품질 점검 (screens-quality.js): 필수 항목이 모두 통과 · 해당 없음 · 예외여야 완료
+  let Q = null;
+  try { Q = require('./screens-quality.js'); } catch { Q = null; }
+  if (Q) {
+    const qf = Q.findQuality(ws, id);
+    if (!qf) { console.log(`✖ 화면 품질 점검 없음: kedovi screens quality ${id} (레이아웃 · 입력 · 목록 · 상태 · 상호작용 · 호환성 · 접근성 · 사용성, 자동 측정 포함)`); bad++; }
+    else {
+      const qc = Q.checkQuality(qf);
+      const left = [...qc.req.fail, ...qc.req.empty, ...qc.req.bad];
+      if (left.length) { console.log(`✖ 화면 품질 필수 항목 ${left.length}개가 통과 전 (실패 ${qc.req.fail.length} · 판정 없음 ${qc.req.empty.length + qc.req.bad.length}): ${left.slice(0, 8).map((r) => `${r.id} ${r.title}`).join(' · ')} (${path.relative(ws.root, qf)})`); bad++; }
+      else if (!qc.measured) { console.log(`✖ 화면 품질 자동 측정 미실행: kedovi screens quality ${id}`); bad++; }
+      else console.log(`  화면 품질: 필수 ${qc.req.ok.length}/${qc.req.total} 통과 · 권장 ${qc.rec.ok.length}/${qc.rec.total}`);
+    }
+  }
   if (bad) { console.log(`  → 완료로 보고하지 않는다 (${rel})`); return 1; }
   console.log(`✔ ${id} 요소 ${ck.rows.length}개 모두 판정${ck.deferred.length ? ` (보류 ${ck.deferred.length}개는 후속 위치 확인됨)` : ''} · 비교 ${ck.head['비교']}${ck.head['배치'] ? ` · 배치 ${ck.head['배치']}` : ''}`);
   return 0;

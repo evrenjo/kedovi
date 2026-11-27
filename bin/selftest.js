@@ -514,6 +514,32 @@ record('금지 문자열(프로젝트 이름)', hits.length === 0, hits.length ?
   }
 }
 
+// 요청 표 모양: 코드 블록 고정폭 표(기본) · 마크다운, 한글 2칸 · 자르기 · 표 인정 · 설정
+{
+  const L = require(path.join(KIT, 'packs', 'core', 'lib', 'requests.js'));
+  const rows = [
+    { no: 34, text: 'plans 이관 · repo 폐기', agent: '메인', status: '보류', result: '09시 뒤 재개' },
+    { no: 44, text: '체결 포착 하단 띠·푸시 알림까지 아주 길게 쓴 요청', agent: 'implementer-filter', status: '진행', result: 'Review blocker 0 · push 대기 중' },
+    { no: 5, text: 'THEME_DAILY 검증', agent: '메인', status: '보류', result: '' },
+  ];
+  const t = L.table(rows, 12, 'codeblock');
+  const lines = t.split('\n');
+  const body = lines.slice(3, -1);
+  const p = {};
+  p['코드 블록 · 머리 · ─ 줄'] = lines[0] === '```' && lines[lines.length - 1] === '```' && /^번호 상태 맡은\s+요청\s+결과$/.test(lines[1]) && /^─{4} ─{4} ─{8} ─{22} ─{18}$/.test(lines[2]);
+  // 한글 · 영문이 섞여도 결과 칸 시작 위치(번호4+상태4+맡은8+요청22+사이 4칸 = 42칸)가 같다
+  const resultCol = (l) => { let n = 0; let s = ''; for (const ch of l) { if (n >= 42) s += ch; n += L.cols(ch); } return s; };
+  p['칸 맞춤 (한글 2칸)'] = body.length === 3 && resultCol(body[0]).startsWith('09시') && resultCol(body[1]).startsWith('Review') && resultCol(body[2]).startsWith('-') && L.cols('가a') === 3;
+  p['넘치면 …'] = /impleme…/.test(body[1]) && /…/.test(body[1].split('impleme…')[1]) && body.every((l) => L.cols(l) <= 4 + 1 + 4 + 1 + 8 + 1 + 22 + 1 + 18);
+  p['번호 오른쪽 정렬'] = body[0].startsWith(' 34 ') && body[2].startsWith('  5 ');
+  p['표 인정 (코드 블록 · 마크다운)'] = L.TABLE_RE.test(`답입니다.\n\n${t}`) && L.TABLE_RE.test(L.table(rows, 12, 'markdown')) && !L.TABLE_RE.test('번호 상태 맡은 요청 결과 이야기만');
+  const dw = path.join(tmp, 'reqfmt-ws');
+  spawnSync(process.execPath, [path.join(KIT, 'bin', 'kit.js'), 'init', dw, '--type', 'new'], { cwd: tmp, encoding: 'utf8' });
+  const cli = (...a) => spawnSync(process.execPath, [path.join(KIT, 'bin', 'kedovi.js'), 'team-mode', ...a], { cwd: dw, encoding: 'utf8', env: { ...process.env, HOME: path.join(tmp, 'reqfmt-home') } });
+  p['설정 (기본 codeblock · markdown · team)'] = L.formatOf(dw) === 'codeblock' && cli('requests-format', 'markdown').status === 0 && L.formatOf(dw) === 'markdown' && /요청 표 모양  마크다운 표 \(이 PC\)/.test(cli().stdout) && cli('requests-format', 'team').status === 0 && L.formatOf(dw) === 'codeblock' && cli('requests-format', 'nope').status !== 0;
+  record('요청 표 모양 (코드 블록 고정폭 · 한글 2칸 · 자르기 · 표 인정 · 설정)', Object.values(p).every(Boolean), Object.entries(p).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
+
 // 질문에 먼저 답하기 (알림 기본 · 막기는 설정 · 팀원 제외 · 한 번만)
 {
   const dw = path.join(tmp, 'answer-ws');
@@ -2103,9 +2129,9 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const notTopic = !/요청-목록/.test(hook('task-focus.js', 'req-focus')) && !/요청-목록/.test(spawnSync(process.execPath, [path.join(dir, 'packs', 'core', 'bin', 'handoff.js'), 'check'], { cwd: dir, encoding: 'utf8' }).stdout);
     const set = req('set', '1', '--status', '완료', '--result', '합계 고침').status === 0 && rows()[0].status === '완료' && rows()[0].result === '합계 고침' && req('set', '1', '--status', '끝').status !== 0 && req('set', '99', '--status', '완료').status !== 0;
     const table = req('table').stdout;
-    const tableOk = /^\| 번호 \| 요청 \| 맡은 에이전트 \| 상태 \| 결과 \|/.test(table) && /\| 2 \|/.test(table) && !/\| 1 \|/.test(table);
+    const tableOk = /^```\n번호 상태 맡은\s+요청\s+결과\n─/.test(table) && /^\s+2 /m.test(table) && !/^\s+1 /m.test(table);
     const missing = rl('Stop', 'req-1', { last_assistant_message: '고쳤습니다.' });
-    const blocked = /"decision":"block"/.test(missing) && /열린 요청 2건/.test(missing) && /\| 번호 \| 요청 \|/.test(missing);
+    const blocked = /"decision":"block"/.test(missing) && /열린 요청 2건/.test(missing) && /번호 상태 맡은/.test(missing);
     const withTable = !rl('Stop', 'req-1', { last_assistant_message: `고쳤습니다.\n\n${table}` }).trim();
     const loopSafe = !rl('Stop', 'req-1', { last_assistant_message: '고쳤습니다.', stop_hook_active: true }).trim();
     req('set', '2', '--status', '취소'); req('set', '3', '--status', '보류');
@@ -3487,6 +3513,14 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
   record('프로토타입대로 구현 (화면 비교 · 지시서 비교표 · 규칙) · doctor 원격 기본 브랜치', listed && byName && impl && missing && gap && rule && warnMain && okDev && cleaned,
     `목록 칸 · @route ${listed} · 자리 값 경로 막음 ${byName} · 파일 이름 · --impl ${impl} · 없음 ${missing} · 지시서 비교표 알림 ${gap} · 상시 규칙 · 검증 규칙 ${rule} · 기본 브랜치 main 알림 ${warnMain} · develop 정상 ${okDev} · main 지우면 조용 ${cleaned}`);
 
+  // 화면 품질 점검표를 모두 통과로 채운다 (checklist 완료 조건 시험용)
+  const passQuality = (wsRoot, id) => {
+    const Q = require(path.join(wsRoot, 'packs', 'screens', 'bin', 'screens-quality.js'));
+    const wo = require(path.join(wsRoot, 'packs', 'core', 'lib', 'workspace.js')).load(wsRoot);
+    const f = Q.merge(wo, id, { level: 'standard', traits: null, results: null, measured: '2026-11-26 · 구현 시험' });
+    fs.writeFileSync(f, fs.readFileSync(f, 'utf8').split('\n').map((l) => (/^\| Q-/.test(l) ? l.replace(/\|[^|]*\|\s*$/, '| 통과 |') : l)).join('\n'));
+    return f;
+  };
   // 화면 정본 · 요소 체크리스트: 정본 판정(프로토타입 · 화면설계서 · 둘 다 · 없음) · 요소 뽑기 · 착수 전 · 완료 전 점검 · 합치기 · 리뷰 블록 · 커밋 훅 · --mock
   {
     const sdir = path.join(docs, '30-screens');
@@ -3517,9 +3551,14 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const doneFail = d1.status === 1 && /판정 모양이 틀린 요소 1개/.test(d1.stdout) && /비교 미실행/.test(d1.stdout);
     fill((c) => { if (/주문 분석/.test(c[1])) c[5] = '뺌 (DEC-007)'; return c; });
     S.recordCompare(wsObj, 'SCR-ORD-01', path.join(tmp, 'compare.html'));
+    const qMiss = /화면 품질 점검 없음: kedovi screens quality SCR-ORD-01/.test(inv('checklist', 'SCR-ORD-01').stdout);
+    const qf = passQuality(ws, 'SCR-ORD-01');
+    fs.writeFileSync(qf, fs.readFileSync(qf, 'utf8').replace(/^(\| Q-L1 .*)\| 통과 \|$/m, '$1| 실패 (주문번호가 잘림) |'));
+    const qFail = /화면 품질 필수 항목 1개가 통과 전 \(실패 1/.test(inv('checklist', 'SCR-ORD-01').stdout);
+    passQuality(ws, 'SCR-ORD-01');
     const d2 = inv('checklist', 'SCR-ORD-01');
     const md = inv('checklist', 'SCR-ORD-01', '--md');
-    const doneOk = d2.status === 0 && md.status === 0 && /\| 주문 요약 \| 주문 분석 \| 뺌 \(DEC-007\) \|/.test(md.stdout) && !S.verdictOk('다름 (API 가 일 단위만 줌)') && S.verdictOk('다름 (API 가 일 단위만 줌 · DEC-008)') && S.verdictOk('다름 (축 글자를 소수 2자리로)') && !S.verdictOk('다름') && !S.verdictOk('뺌 (나중에)');
+    const doneOk = qMiss && qFail && d2.status === 0 && /화면 품질: 필수 \d+\/\d+ 통과/.test(d2.stdout) && md.status === 0 && /\| 주문 요약 \| 주문 분석 \| 뺌 \(DEC-007\) \|/.test(md.stdout) && !S.verdictOk('다름 (API 가 일 단위만 줌)') && S.verdictOk('다름 (API 가 일 단위만 줌 · DEC-008)') && S.verdictOk('다름 (축 글자를 소수 2자리로)') && !S.verdictOk('다름') && !S.verdictOk('뺌 (나중에)');
     // 다시 뽑아도 채운 칸 · 비교 줄이 남는다
     inv('inventory', 'SCR-ORD-01');
     const kept = /\| 주문 요약 \| 주문 분석 \| 버튼 \|  \| 없음 \| 뺌 \(DEC-007\) \|/.test(fs.readFileSync(ckFile, 'utf8')) && /^- 비교: `.*compare\.html`/m.test(fs.readFileSync(ckFile, 'utf8'));
@@ -3554,6 +3593,43 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     const rule2 = /kedovi screens inventory/.test(agentsMd) && /둘 다 없음/.test(agentsMd);
     record('화면 정본 · 요소 체크리스트 (inventory · checklist · review · 커밋 훅 · compare --mock)', protoCanon && startFail && startOk && doneFail && doneOk && kept && sbCanon && both && bothWait && picked && none && review && hook && hookOff && mock && mockErr && rule2,
       `프로토타입 정본 · 요소 ${protoCanon} · 착수 전 원천 빈 칸 막음 ${startFail} · 원천 없음 알림 ${startOk} · 완료 전 판정 · 비교 ${doneFail} · 통과 · MR 표 ${doneOk} · 다시 뽑아도 판정 유지 ${kept} · 화면설계서 정본 ${sbCanon} · 둘 다 다름 묻기 ${both} · 답 전엔 체크리스트 안 만듦 ${bothWait} · 고른 정본 ${picked} · 없음 묻기 ${none} · 리뷰 블록 ${review} · 커밋 훅 ${hook} · 끄기 ${hookOff} · 픽스처 ${mock} · 없는 픽스처 ${mockErr} · 상시 규칙 ${rule2}`);
+    // 화면 품질 점검 (kedovi screens quality · audit · quality-level · usability): 수준 · 화면 성격별 항목 · 판정 유지 · 자동 판정 · 점검
+    {
+      const Q = require(path.join(ws, 'packs', 'screens', 'bin', 'screens-quality.js'));
+      const qs = (...a) => spawnSync(process.execPath, [path.join(ws, 'packs', 'screens', 'bin', 'screens-quality.js'), ...a], { cwd: ws, encoding: 'utf8' });
+      const ids = (lv, t) => Q.itemsFor(lv, t).map((x) => x.id);
+      const pub = ids('public', null); const std = ids('standard', null); const light = ids('light', null);
+      const reqN = (lv) => Q.itemsFor(lv, null).filter((x) => x.need === 'req').length;
+      const byLevel = reqN('public') > reqN('standard') && reqN('standard') > reqN('light') && pub.length >= std.length && std.length > light.length && pub.includes('Q-C1') && !light.includes('Q-C1') && Q.itemsFor('standard', null).find((x) => x.id === 'Q-C1').need === 'rec' && Q.itemsFor('public', null).find((x) => x.id === 'Q-C1').need === 'req';
+      const byTraits = !ids('standard', { form: false, list: false, api: false }).some((x) => /^Q-(F|T|S[1-4])/.test(x)) && ids('standard', { form: true, list: false, api: true }).includes('Q-F3') && ids('standard', { form: true, list: false, api: true }).includes('Q-S2');
+      const vk = Q.verdictKind;
+      const verdicts = vk('통과') === 'ok' && vk('통과 (자동)') === 'ok' && vk('실패 (잘림)') === 'fail' && vk('해당 없음 (입력 없음)') === 'ok' && vk('해당 없음') === 'bad' && vk('예외 (DEC-3)') === 'ok' && vk('예외 (나중에)') === 'bad' && vk('') === 'empty';
+      // 자동 결과: 빈 판정만 채우고 사람 판정은 그대로, 다시 돌려 자동 통과가 실패로 바뀌면 바뀐다
+      const f0 = Q.merge(wsObj, 'SCR-Q-01', { level: 'standard', traits: { form: true, list: false, api: true }, results: { axe: { pass: true, text: '위반 없음' }, clip: { pass: false, text: '잘린 글자 1곳' }, doubleSubmit: { pass: null, text: '사람 확인' } }, measured: '2026-11-26 · 구현 x' });
+      let t = fs.readFileSync(f0, 'utf8');
+      const autoFill = /\| Q-A1 \|.*\| 위반 없음 \| 통과 \(자동\) \|/.test(t) && /\| Q-L1 \|.*\| 실패 \(자동: 잘린 글자 1곳\) \|/.test(t) && /\| Q-F3 \|.*\| 사람 확인 \|  \|/.test(t);
+      fs.writeFileSync(f0, t.replace(/^(\| Q-L1 .*)\| 실패 \(자동: 잘린 글자 1곳\) \|$/m, '$1| 예외 (DEC-21) |'));
+      Q.merge(wsObj, 'SCR-Q-01', { level: 'standard', traits: { form: true, list: false, api: true }, results: { axe: { pass: false, text: '위반 2종' }, clip: { pass: false, text: '잘린 글자 3곳' } } });
+      t = fs.readFileSync(f0, 'utf8');
+      const keepHuman = /\| Q-L1 \|.*\| 예외 \(DEC-21\) \|/.test(t) && /\| Q-A1 \|.*\| 실패 \(자동: 위반 2종\) \|/.test(t) && /^- 자동 측정: 2026-11-26 · 구현 x$/m.test(t);
+      const ck = Q.checkQuality(f0);
+      const checked = ck.measured && ck.req.fail.some((r) => r.id === 'Q-A1') && ck.req.empty.length > 0;
+      const q1 = qs('quality', 'SCR-Q-01', '--no-run');
+      const cli = q1.status === 1 && /✖ SCR-Q-01 화면 품질: 필수 \d+\/\d+ 통과/.test(q1.stdout) && /실패 1개: Q-A1/.test(q1.stdout);
+      const lv0 = qs('quality-level');
+      const lv = /화면 품질 수준: 일반 \(standard\)/.test(lv0.stdout) && qs('quality-level', 'public').status === 0 && Q.levelOf(W.load(ws)) === 'public' && qs('quality-level', 'nope').status === 1 && qs('quality-level', 'standard').status === 0;
+      const au = qs('audit');
+      const audit = /화면 품질 전체 점검 · 수준 일반/.test(au.stdout) && /\| SCR-Q-01 \| \d+\/\d+ \| 1 \|/.test(au.stdout) && /\| SCR-ORD-01 \|/.test(au.stdout) && /완료 \d+\/\d+개 화면/.test(au.stdout);
+      const us = qs('usability');
+      const usFile = path.join(ws, 'docs-site', '테스트', '사용성-평가.md');
+      const usab = us.status === 0 && fs.existsSync(usFile) && /^# 사용성 평가 결과서/m.test(fs.readFileSync(usFile, 'utf8')) && /이미 있습니다/.test(qs('usability').stdout);
+      const H = require(path.join(KIT, 'packs', 'screens', 'bin', 'screens-quality.js'));
+      const catalogOk = H.catalog().items.length >= 35 && H.catalog().areas.length === 8 && H.catalog().items.every((x) => x.level.length === 3 && H.catalog().areas.includes(x.area) && x.ref);
+      const fd = Q.merge(wsObj, 'SCR-Q-01', { level: 'standard', traits: null, results: { axe: { pass: true, text: '위반 없음' } }, measured: '2026-11-26 · 정본(설계) y', design: true });
+      const designSep = /SCR-Q-01\.quality-design\.md$/.test(fd) && /\(설계 단계: 정본\)/.test(fs.readFileSync(fd, 'utf8')) && Q.findQuality(wsObj, 'SCR-Q-01') === f0 && /실패 \(자동: 위반 2종\)/.test(fs.readFileSync(f0, 'utf8')) && Q.screenIdsOf(wsObj).filter((x) => x === 'SCR-Q-01').length === 1;
+      const qrec = { byLevel, byTraits, verdicts, autoFill, keepHuman, checked, cli, lv, audit, usab, catalogOk, designSep };
+      record('화면 품질 점검 (수준 · 화면 성격 · 판정 · 자동 결과 · 사람 판정 유지 · audit · quality-level · usability)', Object.values(qrec).every(Boolean), Object.entries(qrec).map(([k, v]) => `${k} ${v}`).join(' · '));
+    }
     // AI 티: 커밋 훅이 바뀐 화면 파일의 AI 티를 알림 · 기획 repo 는 prototype/ 아래만 · 지시서 토큰 줄 · 끄기
     fs.writeFileSync(path.join(app, 'src', 'Promo.tsx'), 'export const P = () => <div className="bg-gradient-to-r from-purple-500 to-blue-500 transition-all">새 기능 ✨</div>;\n');
     const slopOut = sc('git -C repos/app commit -m x');
@@ -3614,6 +3690,7 @@ console.log(JSON.stringify({ type: 'result', result: require(${JSON.stringify(br
     hand('- 비교: 대체: e2e 스크린샷', '다름 (계약에 카드별 한도 없음 · DEC-12)');
     const h2 = inv('checklist', 'SCR-PAY-01');
     hand('- 비교: 대체: e2e 스크린샷 1280 · 390 (사용자 확인 2026-11-12)', '다름 (계약에 카드별 한도 없음 · DEC-12)');
+    passQuality(ws, 'SCR-PAY-01');
     const h3 = inv('checklist', 'SCR-PAY-01');
     const md3 = inv('checklist', 'SCR-PAY-01', '--md');
     const decided = h2.status === 1 && /사용자 확인이 없습니다/.test(h2.stdout) && !/결정 없이/.test(h2.stdout) && h3.status === 0 && /보류 1개는 후속 위치 확인됨/.test(h3.stdout) && /보류 1개 \(후속\): 영수증/.test(md3.stdout);

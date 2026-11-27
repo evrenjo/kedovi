@@ -523,6 +523,11 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     await pj.goto(`${PJ.url}_/board/post.html?id=${encodeURIComponent('#60')}`); await pj.waitForSelector('.post-body');
     return `${pages.length}쪽`;
   });
+  await check('프로젝트: 테스트 › 화면 품질 (화면별 필수 통과 · 실패 · 판정 없음)', async () => {
+    await pj.goto(`${PJ.url}_/quality.html`); await pj.waitForSelector('.view h1');
+    const t = await pj.evaluate(() => document.querySelector('main').textContent);
+    ok(/SCR-ORD-001/.test(t) && /24\/24/.test(t) && /SCR-ORD-002/.test(t) && /17\/22/.test(t) && /완료 1\/2개 화면/.test(t), t.slice(0, 200));
+  });
   await check('프로젝트: 일정 › 백로그 (PLAN.md 백로그 · 추가한 날)', async () => {
     await pj.goto(`${PJ.url}_/backlog.html`); await pj.waitForSelector('.view h1');
     const t = await pj.evaluate(() => document.querySelector('main').textContent);
@@ -533,7 +538,7 @@ const ok = (c, msg) => { if (!c) throw new Error(msg); };
     const empty = { version: 2, layout: 'workspace', title: '빈 프로젝트', project: { title: '빈 프로젝트' }, stages: ['명세', '설계', '구현', '검증', '배포'], features: [], milestones: [], docs: [], ids: {}, relations: {}, changes: [], team: { members: [] }, issues: { items: [] }, workItems: [], board: [], files: [], comments: {}, remote: { kind: null }, apis: [] };
     const e = await page();
     await e.route('**/assets/site-db.json*', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(empty) }));
-    for (const u of ['index.html', '_/gantt.html', '_/issues.html', '_/board.html', '_/api.html', '_/team.html', '_/backlog.html']) {
+    for (const u of ['index.html', '_/gantt.html', '_/issues.html', '_/board.html', '_/api.html', '_/team.html', '_/backlog.html', '_/quality.html']) {
       await e.goto(`${PJ.url}${u}`); await e.waitForSelector('.view h1');
       const t = await e.evaluate(() => document.querySelector('main').textContent);
       ok(!/undefined|null|NaN|숨김|숨겼|뺐/.test(t), `${u}: ${t.slice(0, 120)}`);

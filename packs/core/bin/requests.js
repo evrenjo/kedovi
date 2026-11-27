@@ -50,7 +50,8 @@ function cmdSet() {
 }
 
 function cmdTable() {
-  const t = L.table(L.read(ROOT, me()));
+  const fmt = argv.includes('--markdown') ? 'markdown' : argv.includes('--codeblock') ? 'codeblock' : L.formatOf(ROOT);
+  const t = L.table(L.read(ROOT, me()), 12, fmt);
   console.log(t || '열린 요청 없음 (표를 붙이지 않아도 된다)');
   return 0;
 }

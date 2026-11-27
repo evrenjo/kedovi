@@ -630,6 +630,7 @@ const VIRTUAL = [
   { view: 'all-screen', page: '_/all/screen.html', t: '화면 전체', tab: '설계', sec: '모아보기' },
   { view: 'tests', page: '_/tests.html', t: '시나리오', tab: '테스트' },
   { view: 'trace', page: '_/trace.html', t: '추적표', tab: '테스트' },
+  { view: 'quality', page: '_/quality.html', t: '화면 품질', tab: '테스트' },
   { view: 'gantt', page: '_/gantt.html', t: '간트', tab: '일정' },
   { view: 'milestones', page: '_/milestones.html', t: '마일스톤', tab: '일정' },
   { view: 'workitems', page: '_/workitems.html', t: '작업 항목', tab: '일정' },
